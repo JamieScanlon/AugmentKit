@@ -6,6 +6,7 @@
 //  Copyright (c) 2014 Luke Groeninger. All rights reserved.
 //
 
+import Metal
 
 class BlurBuffer:MetalBuffer {
 

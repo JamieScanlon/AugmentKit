@@ -6,6 +6,8 @@
 //  Copyright (c) 2014 Luke Groeninger. All rights reserved.
 //
 
+import Metal
+
 class FilterBuffer:MetalBuffer {
     private var _lowThreshold:UnsafeMutablePointer<Float32> = nil
     private var _highThreshold:UnsafeMutablePointer<Float32> = nil

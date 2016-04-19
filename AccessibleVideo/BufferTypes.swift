@@ -6,7 +6,8 @@
 //  Copyright (c) 2014 Luke Groeninger. All rights reserved.
 //
 
-
+import Metal
+import UIKit
 
 class MetalBuffer {
     let buffer:MTLBuffer?
@@ -19,12 +20,7 @@ class MetalBuffer {
         
         var options:MTLResourceOptions!
         
-        if #available(iOS 9.0, *) {
-            options = MTLResourceOptions.StorageModeShared.union(MTLResourceOptions.CPUCacheModeDefaultCache)
-        } else {
-            // Fallback on earlier versions
-            options = MTLResourceOptions.CPUCacheModeDefaultCache
-        }
+        options = MTLResourceOptions.StorageModeShared.union(MTLResourceOptions.CPUCacheModeDefaultCache)
 
         buffer = dev!.newBufferWithLength(size, options: options)
         _filterBufferData = UnsafePointer<Void>(buffer!.contents())
@@ -63,12 +59,7 @@ class MetalBufferArray<T:MetalBuffer> {
         
         var options:MTLResourceOptions!
         
-        if #available(iOS 9.0, *) {
-            options = MTLResourceOptions.StorageModeShared.union(MTLResourceOptions.CPUCacheModeDefaultCache)
-        } else {
-            // Fallback on earlier versions
-            options = MTLResourceOptions.CPUCacheModeDefaultCache
-        }
+        options = MTLResourceOptions.StorageModeShared.union(MTLResourceOptions.CPUCacheModeDefaultCache)
         
         buffer = dev!.newBufferWithLength(size * count, options: options)
         _filterBufferData = UnsafePointer<Void>(buffer!.contents())

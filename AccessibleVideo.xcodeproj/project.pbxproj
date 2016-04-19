@@ -7,6 +7,13 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		7DCB560A1CC5F17100453635 /* AugmentKit.h in Headers */ = {isa = PBXBuildFile; fileRef = 7DCB56091CC5F17100453635 /* AugmentKit.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		7DCB56111CC5F17200453635 /* AugmentKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7DCB56071CC5F17100453635 /* AugmentKit.framework */; };
+		7DCB56181CC5F17200453635 /* AugmentKitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DCB56171CC5F17200453635 /* AugmentKitTests.swift */; };
+		7DCB561C1CC5F17200453635 /* AugmentKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7DCB56071CC5F17100453635 /* AugmentKit.framework */; };
+		7DCB561D1CC5F17200453635 /* AugmentKit.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 7DCB56071CC5F17100453635 /* AugmentKit.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		7DCB56271CC5F77F00453635 /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7DCB56251CC5F77F00453635 /* MetalKit.framework */; };
+		7DCB56281CC5F77F00453635 /* MetalPerformanceShaders.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7DCB56261CC5F77F00453635 /* MetalPerformanceShaders.framework */; };
 		DF048B2219E3CC9000064E81 /* Shaders.plist in Resources */ = {isa = PBXBuildFile; fileRef = DF048B2119E3CC9000064E81 /* Shaders.plist */; };
 		DF048B2619E3F4CE00064E81 /* Sobel.metal in Sources */ = {isa = PBXBuildFile; fileRef = DF048B2519E3F4CE00064E81 /* Sobel.metal */; };
 		DF317CC31C0A909700CEF3D2 /* Filters.plist in Resources */ = {isa = PBXBuildFile; fileRef = DF317CC21C0A909700CEF3D2 /* Filters.plist */; };
@@ -19,7 +26,6 @@
 		DF9C846A1A4EB68A009C962B /* ColorBuffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF9C84691A4EB68A009C962B /* ColorBuffer.swift */; };
 		DF9C846C1A4F5C50009C962B /* BufferTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF9C846B1A4F5C50009C962B /* BufferTypes.swift */; };
 		DF9C846F1A4F66CE009C962B /* BlurBuffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF9C846E1A4F66CE009C962B /* BlurBuffer.swift */; };
-		DFAF7A0C19FFFC1800ED5B76 /* MBProgressHUD.m in Sources */ = {isa = PBXBuildFile; fileRef = DFAF7A0B19FFFC1800ED5B76 /* MBProgressHUD.m */; };
 		DFC4CFEB1A3A1ACE00964650 /* Colorblind.metal in Sources */ = {isa = PBXBuildFile; fileRef = DFC4CFEA1A3A1ACE00964650 /* Colorblind.metal */; };
 		DFC4CFED1A3A1B6D00964650 /* Common.metal in Sources */ = {isa = PBXBuildFile; fileRef = DFC4CFEC1A3A1B6D00964650 /* Common.metal */; };
 		DFD2200B19C643BC00913975 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFD2200A19C643BC00913975 /* AppDelegate.swift */; };
@@ -36,7 +42,54 @@
 		DFFEE88F19E207B700D19FFA /* MetalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFFEE88E19E207B700D19FFA /* MetalView.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		7DCB56121CC5F17200453635 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = DFD21FFD19C643BC00913975 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7DCB56061CC5F17100453635;
+			remoteInfo = AugmentKit;
+		};
+		7DCB56141CC5F17200453635 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = DFD21FFD19C643BC00913975 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = DFD2200419C643BC00913975;
+			remoteInfo = AccessibleVideo;
+		};
+		7DCB561A1CC5F17200453635 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = DFD21FFD19C643BC00913975 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7DCB56061CC5F17100453635;
+			remoteInfo = AugmentKit;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		7DCB56211CC5F17200453635 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				7DCB561D1CC5F17200453635 /* AugmentKit.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		7DCB56071CC5F17100453635 /* AugmentKit.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = AugmentKit.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		7DCB56091CC5F17100453635 /* AugmentKit.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AugmentKit.h; sourceTree = "<group>"; };
+		7DCB560B1CC5F17100453635 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		7DCB56101CC5F17200453635 /* AugmentKitTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AugmentKitTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		7DCB56171CC5F17200453635 /* AugmentKitTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AugmentKitTests.swift; sourceTree = "<group>"; };
+		7DCB56191CC5F17200453635 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		7DCB56251CC5F77F00453635 /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
+		7DCB56261CC5F77F00453635 /* MetalPerformanceShaders.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalPerformanceShaders.framework; path = System/Library/Frameworks/MetalPerformanceShaders.framework; sourceTree = SDKROOT; };
+		7DCB56291CC5F7B200453635 /* AccessibleVideo-Bridging-Header.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "AccessibleVideo-Bridging-Header.h"; sourceTree = "<group>"; };
 		DF048B2119E3CC9000064E81 /* Shaders.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Shaders.plist; path = Shaders/Shaders.plist; sourceTree = "<group>"; };
 		DF048B2519E3F4CE00064E81 /* Sobel.metal */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.metal; name = Sobel.metal; path = Shaders/Sobel.metal; sourceTree = "<group>"; };
 		DF317CC21C0A909700CEF3D2 /* Filters.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Filters.plist; sourceTree = "<group>"; };
@@ -50,9 +103,6 @@
 		DF9C84691A4EB68A009C962B /* ColorBuffer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ColorBuffer.swift; sourceTree = "<group>"; };
 		DF9C846B1A4F5C50009C962B /* BufferTypes.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BufferTypes.swift; sourceTree = "<group>"; };
 		DF9C846E1A4F66CE009C962B /* BlurBuffer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BlurBuffer.swift; sourceTree = "<group>"; };
-		DFAF7A0919FFFC1800ED5B76 /* AccessibleVideo-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "AccessibleVideo-Bridging-Header.h"; sourceTree = "<group>"; };
-		DFAF7A0A19FFFC1800ED5B76 /* MBProgressHUD.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = MBProgressHUD.h; path = MBProgressHUD/MBProgressHUD.h; sourceTree = "<group>"; };
-		DFAF7A0B19FFFC1800ED5B76 /* MBProgressHUD.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = MBProgressHUD.m; path = MBProgressHUD/MBProgressHUD.m; sourceTree = "<group>"; };
 		DFC4CFEA1A3A1ACE00964650 /* Colorblind.metal */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.metal; name = Colorblind.metal; path = Shaders/Colorblind.metal; sourceTree = "<group>"; };
 		DFC4CFEC1A3A1B6D00964650 /* Common.metal */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.metal; name = Common.metal; path = Shaders/Common.metal; sourceTree = "<group>"; };
 		DFD2200519C643BC00913975 /* AccessibleVideo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AccessibleVideo.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -72,10 +122,28 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		7DCB56031CC5F17100453635 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7DCB560D1CC5F17200453635 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7DCB56111CC5F17200453635 /* AugmentKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		DFD2200219C643BC00913975 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7DCB56271CC5F77F00453635 /* MetalKit.framework in Frameworks */,
+				7DCB56281CC5F77F00453635 /* MetalPerformanceShaders.framework in Frameworks */,
+				7DCB561C1CC5F17200453635 /* AugmentKit.framework in Frameworks */,
 				DF6A115619C810B000D20618 /* CoreVideo.framework in Frameworks */,
 				DF6A115419C8109F00D20618 /* AVFoundation.framework in Frameworks */,
 				DFD2202D19C6478D00913975 /* QuartzCore.framework in Frameworks */,
@@ -86,6 +154,24 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		7DCB56081CC5F17100453635 /* AugmentKit */ = {
+			isa = PBXGroup;
+			children = (
+				7DCB56091CC5F17100453635 /* AugmentKit.h */,
+				7DCB560B1CC5F17100453635 /* Info.plist */,
+			);
+			path = AugmentKit;
+			sourceTree = "<group>";
+		};
+		7DCB56161CC5F17200453635 /* AugmentKitTests */ = {
+			isa = PBXGroup;
+			children = (
+				7DCB56171CC5F17200453635 /* AugmentKitTests.swift */,
+				7DCB56191CC5F17200453635 /* Info.plist */,
+			);
+			path = AugmentKitTests;
+			sourceTree = "<group>";
+		};
 		DF6A115119C8092600D20618 /* Shaders */ = {
 			isa = PBXGroup;
 			children = (
@@ -103,6 +189,8 @@
 		DF6A115219C8108E00D20618 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				7DCB56251CC5F77F00453635 /* MetalKit.framework */,
+				7DCB56261CC5F77F00453635 /* MetalPerformanceShaders.framework */,
 				DF6A115519C810B000D20618 /* CoreVideo.framework */,
 				DF6A115319C8109F00D20618 /* AVFoundation.framework */,
 				DFD2202C19C6478D00913975 /* QuartzCore.framework */,
@@ -123,20 +211,11 @@
 			name = "Metal Renderer";
 			sourceTree = "<group>";
 		};
-		DFAF7A0819FFFC0900ED5B76 /* MBProgressHUD */ = {
-			isa = PBXGroup;
-			children = (
-				DFAF7A0A19FFFC1800ED5B76 /* MBProgressHUD.h */,
-				DFAF7A0B19FFFC1800ED5B76 /* MBProgressHUD.m */,
-				DFAF7A0919FFFC1800ED5B76 /* AccessibleVideo-Bridging-Header.h */,
-			);
-			name = MBProgressHUD;
-			sourceTree = "<group>";
-		};
 		DFD21FFC19C643BC00913975 = {
 			isa = PBXGroup;
 			children = (
-				DFAF7A0819FFFC0900ED5B76 /* MBProgressHUD */,
+				7DCB56081CC5F17100453635 /* AugmentKit */,
+				7DCB56161CC5F17200453635 /* AugmentKitTests */,
 				DF6A115219C8108E00D20618 /* Frameworks */,
 				DFD2200719C643BC00913975 /* AccessibleVideo */,
 				DFD2200619C643BC00913975 /* Products */,
@@ -147,6 +226,8 @@
 			isa = PBXGroup;
 			children = (
 				DFD2200519C643BC00913975 /* AccessibleVideo.app */,
+				7DCB56071CC5F17100453635 /* AugmentKit.framework */,
+				7DCB56101CC5F17200453635 /* AugmentKitTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -165,6 +246,7 @@
 				DFD2200819C643BC00913975 /* Supporting Files */,
 				DF317CC21C0A909700CEF3D2 /* Filters.plist */,
 				DF317CC61C0BC5BB00CEF3D2 /* FilterModel.swift */,
+				7DCB56291CC5F7B200453635 /* AccessibleVideo-Bridging-Header.h */,
 			);
 			path = AccessibleVideo;
 			sourceTree = "<group>";
@@ -182,7 +264,55 @@
 		};
 /* End PBXGroup section */
 
+/* Begin PBXHeadersBuildPhase section */
+		7DCB56041CC5F17100453635 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7DCB560A1CC5F17100453635 /* AugmentKit.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
+
 /* Begin PBXNativeTarget section */
+		7DCB56061CC5F17100453635 /* AugmentKit */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7DCB561E1CC5F17200453635 /* Build configuration list for PBXNativeTarget "AugmentKit" */;
+			buildPhases = (
+				7DCB56021CC5F17100453635 /* Sources */,
+				7DCB56031CC5F17100453635 /* Frameworks */,
+				7DCB56041CC5F17100453635 /* Headers */,
+				7DCB56051CC5F17100453635 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = AugmentKit;
+			productName = AugmentKit;
+			productReference = 7DCB56071CC5F17100453635 /* AugmentKit.framework */;
+			productType = "com.apple.product-type.framework";
+		};
+		7DCB560F1CC5F17200453635 /* AugmentKitTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7DCB56221CC5F17200453635 /* Build configuration list for PBXNativeTarget "AugmentKitTests" */;
+			buildPhases = (
+				7DCB560C1CC5F17200453635 /* Sources */,
+				7DCB560D1CC5F17200453635 /* Frameworks */,
+				7DCB560E1CC5F17200453635 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				7DCB56131CC5F17200453635 /* PBXTargetDependency */,
+				7DCB56151CC5F17200453635 /* PBXTargetDependency */,
+			);
+			name = AugmentKitTests;
+			productName = AugmentKitTests;
+			productReference = 7DCB56101CC5F17200453635 /* AugmentKitTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		DFD2200419C643BC00913975 /* AccessibleVideo */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = DFD2202419C643BC00913975 /* Build configuration list for PBXNativeTarget "AccessibleVideo" */;
@@ -190,10 +320,12 @@
 				DFD2200119C643BC00913975 /* Sources */,
 				DFD2200219C643BC00913975 /* Frameworks */,
 				DFD2200319C643BC00913975 /* Resources */,
+				7DCB56211CC5F17200453635 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				7DCB561B1CC5F17200453635 /* PBXTargetDependency */,
 			);
 			name = AccessibleVideo;
 			productName = AccessibleVideo;
@@ -206,15 +338,23 @@
 		DFD21FFD19C643BC00913975 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastSwiftUpdateCheck = 0700;
+				LastSwiftUpdateCheck = 0730;
 				LastUpgradeCheck = 0700;
 				ORGANIZATIONNAME = "Luke Groeninger";
 				TargetAttributes = {
+					7DCB56061CC5F17100453635 = {
+						CreatedOnToolsVersion = 7.3;
+					};
+					7DCB560F1CC5F17200453635 = {
+						CreatedOnToolsVersion = 7.3;
+						TestTargetID = DFD2200419C643BC00913975;
+					};
 					DFD2200419C643BC00913975 = {
 						CreatedOnToolsVersion = 6.0;
+						DevelopmentTeam = 3XDE7T392Z;
 						SystemCapabilities = {
 							com.apple.iCloud = {
-								enabled = 1;
+								enabled = 0;
 							};
 						};
 					};
@@ -234,11 +374,27 @@
 			projectRoot = "";
 			targets = (
 				DFD2200419C643BC00913975 /* AccessibleVideo */,
+				7DCB56061CC5F17100453635 /* AugmentKit */,
+				7DCB560F1CC5F17200453635 /* AugmentKitTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		7DCB56051CC5F17100453635 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7DCB560E1CC5F17200453635 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		DFD2200319C643BC00913975 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -254,6 +410,21 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		7DCB56021CC5F17100453635 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7DCB560C1CC5F17200453635 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7DCB56181CC5F17200453635 /* AugmentKitTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		DFD2200119C643BC00913975 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -274,12 +445,29 @@
 				DF9C846C1A4F5C50009C962B /* BufferTypes.swift in Sources */,
 				DF847FD91A11FE9A00AD6068 /* Canny.metal in Sources */,
 				DFC4CFED1A3A1B6D00964650 /* Common.metal in Sources */,
-				DFAF7A0C19FFFC1800ED5B76 /* MBProgressHUD.m in Sources */,
 				DFF6E11A1A104E36009A3CD8 /* SettingsViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		7DCB56131CC5F17200453635 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7DCB56061CC5F17100453635 /* AugmentKit */;
+			targetProxy = 7DCB56121CC5F17200453635 /* PBXContainerItemProxy */;
+		};
+		7DCB56151CC5F17200453635 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = DFD2200419C643BC00913975 /* AccessibleVideo */;
+			targetProxy = 7DCB56141CC5F17200453635 /* PBXContainerItemProxy */;
+		};
+		7DCB561B1CC5F17200453635 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7DCB56061CC5F17100453635 /* AugmentKit */;
+			targetProxy = 7DCB561A1CC5F17200453635 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		DFD2200E19C643BC00913975 /* Main.storyboard */ = {
@@ -301,6 +489,88 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
+		7DCB561F1CC5F17200453635 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ANALYZER_NONNULL = YES;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEFINES_MODULE = YES;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				GCC_NO_COMMON_BLOCKS = YES;
+				INFOPLIST_FILE = AugmentKit/Info.plist;
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				IPHONEOS_DEPLOYMENT_TARGET = 9.3;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = com.tenthlettermade.AugmentKit;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				VERSIONING_SYSTEM = "apple-generic";
+				VERSION_INFO_PREFIX = "";
+			};
+			name = Debug;
+		};
+		7DCB56201CC5F17200453635 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ANALYZER_NONNULL = YES;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEFINES_MODULE = YES;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				GCC_NO_COMMON_BLOCKS = YES;
+				INFOPLIST_FILE = AugmentKit/Info.plist;
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				IPHONEOS_DEPLOYMENT_TARGET = 9.3;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = com.tenthlettermade.AugmentKit;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				VERSIONING_SYSTEM = "apple-generic";
+				VERSION_INFO_PREFIX = "";
+			};
+			name = Release;
+		};
+		7DCB56231CC5F17200453635 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ANALYZER_NONNULL = YES;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				GCC_NO_COMMON_BLOCKS = YES;
+				INFOPLIST_FILE = AugmentKitTests/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 9.3;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = com.tenthlettermade.AugmentKitTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AccessibleVideo.app/AccessibleVideo";
+			};
+			name = Debug;
+		};
+		7DCB56241CC5F17200453635 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ANALYZER_NONNULL = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_NO_COMMON_BLOCKS = YES;
+				INFOPLIST_FILE = AugmentKitTests/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 9.3;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = com.tenthlettermade.AugmentKitTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AccessibleVideo.app/AccessibleVideo";
+			};
+			name = Release;
+		};
 		DFD2202219C643BC00913975 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -337,7 +607,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 9.3;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				PROVISIONING_PROFILE = "";
@@ -376,7 +646,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 9.3;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				PROVISIONING_PROFILE = "";
 				SDKROOT = iphoneos;
@@ -390,16 +660,15 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = AccessibleVideo/AccessibleVideo.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				INFOPLIST_FILE = AccessibleVideo/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				OTHER_SWIFT_FLAGS = "";
-				PRODUCT_BUNDLE_IDENTIFIER = "com.doomsdaytech.$(PRODUCT_NAME:rfc1034identifier)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.tenthlettermade.AccessibleVideo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE = "";
-				SWIFT_OBJC_BRIDGING_HEADER = "AccessibleVideo-Bridging-Header.h";
+				SWIFT_OBJC_BRIDGING_HEADER = "AccessibleVideo/AccessibleVideo-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
 			name = Debug;
@@ -409,22 +678,37 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = AccessibleVideo/AccessibleVideo.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				INFOPLIST_FILE = AccessibleVideo/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				OTHER_SWIFT_FLAGS = "";
-				PRODUCT_BUNDLE_IDENTIFIER = "com.doomsdaytech.$(PRODUCT_NAME:rfc1034identifier)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.tenthlettermade.AccessibleVideo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE = "";
-				SWIFT_OBJC_BRIDGING_HEADER = "AccessibleVideo-Bridging-Header.h";
+				SWIFT_OBJC_BRIDGING_HEADER = "AccessibleVideo/AccessibleVideo-Bridging-Header.h";
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		7DCB561E1CC5F17200453635 /* Build configuration list for PBXNativeTarget "AugmentKit" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7DCB561F1CC5F17200453635 /* Debug */,
+				7DCB56201CC5F17200453635 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+		};
+		7DCB56221CC5F17200453635 /* Build configuration list for PBXNativeTarget "AugmentKitTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7DCB56231CC5F17200453635 /* Debug */,
+				7DCB56241CC5F17200453635 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+		};
 		DFD2200019C643BC00913975 /* Build configuration list for PBXProject "AccessibleVideo" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

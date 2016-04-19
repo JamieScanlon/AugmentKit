@@ -6,6 +6,7 @@
 //  Copyright (c) 2014 Luke Groeninger. All rights reserved.
 //
 
+import Metal
 
 class ColorBuffer:MetalBuffer {
     var yuvToRGB:Matrix3x3? = nil

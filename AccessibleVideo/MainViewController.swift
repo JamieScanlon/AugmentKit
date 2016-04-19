@@ -22,7 +22,7 @@ protocol ControlsDelegate {
     var colorFilter:String? { get set }
 }
 
-class MainViewController: UIViewController, UIGestureRecognizerDelegate, UIPopoverPresentationControllerDelegate, MBProgressHUDDelegate, ControlsDelegate {
+class MainViewController: UIViewController, UIGestureRecognizerDelegate, UIPopoverPresentationControllerDelegate, ControlsDelegate {
     
     // MARK: Public properties
 
@@ -46,8 +46,6 @@ class MainViewController: UIViewController, UIGestureRecognizerDelegate, UIPopov
     // MARK: Private properties
     
     private var _timer: CADisplayLink? = nil
-    
-    lazy private var _hud: MBProgressHUD! = MBProgressHUD()
     
     private var _lockedImage = UIImageView(image: UIImage(named: "Lock"))
     private var _unlockedImage = UIImageView(image: UIImage(named: "Unlock"))
@@ -96,10 +94,6 @@ class MainViewController: UIViewController, UIGestureRecognizerDelegate, UIPopov
         _settingsView.layer.shouldRasterize = true
         _settingsView.layer.rasterizationScale = scale
         _settingsView.hidden = true
-
-        _hud.margin = 10.0
-        _hud.delegate = self
-        _hud.removeFromSuperViewOnHide = true
         
         tapGesture.requireGestureRecognizerToFail(longPressGesture)
         
@@ -113,6 +107,7 @@ class MainViewController: UIViewController, UIGestureRecognizerDelegate, UIPopov
         
         // cast view as MetalView type
         renderview = view as! MetalView
+        renderview.device = renderer.device
         
         // set up the renderer and set the view delegate
         renderview.delegate = renderer
@@ -355,7 +350,7 @@ class MainViewController: UIViewController, UIGestureRecognizerDelegate, UIPopov
     
     func render() {
         autoreleasepool {
-            self.renderview.display()
+            //self.renderview.draw()
         }
     }
     
@@ -480,23 +475,11 @@ class MainViewController: UIViewController, UIGestureRecognizerDelegate, UIPopov
     // MARK: UI / Overlay Manipulation
     
     func showOverlayWithText(text:String) {
-        MBProgressHUD.hideAllHUDsForView(_hudView, animated: false)
-        _hudView.addSubview(_hud)
-        _hud.customView = nil
-        _hud.mode = .Text
-        _hud.labelText = text
-        _hud.show(true)
-        _hud.hide(true, afterDelay: 2)
+        //
     }
     
     func showOverlayWithText(text:String, andImageView imageView:UIImageView) {
-        MBProgressHUD.hideAllHUDsForView(_hudView, animated: false)
-        _hudView.addSubview(_hud)
-        _hud.customView = imageView
-        _hud.mode = .CustomView
-        _hud.labelText = text
-        _hud.show(true)
-        _hud.hide(true, afterDelay: 2)
+        //
     }
     
     func showLockOverlay(locked:Bool) {

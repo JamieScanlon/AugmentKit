@@ -9,6 +9,7 @@
 import Foundation
 import CoreVideo
 import Metal
+import MetalKit
 import AVFoundation
 import UIKit
 
@@ -20,7 +21,7 @@ protocol RendererControlDelegate {
     var highQuality:Bool { get }
 }
 
-class FilterRenderer: MetalViewDelegate, CameraCaptureDelegate, RendererControlDelegate {
+class FilterRenderer: NSObject, RendererControlDelegate {
     
     var device:MTLDevice! {
         return _device
@@ -30,6 +31,24 @@ class FilterRenderer: MetalViewDelegate, CameraCaptureDelegate, RendererControlD
     var applyBlur:Bool = false
     
     var highQuality:Bool = false
+    
+    var primaryColor:UIColor = UIColor(red: 0.0, green: 1.0, blue: 1.0, alpha: 0.75) {
+        didSet {
+            setFilterBuffer()
+        }
+    }
+    
+    var secondaryColor:UIColor = UIColor(red: 1.0, green: 0.0, blue: 1.0, alpha: 0.75){
+        didSet {
+            setFilterBuffer()
+        }
+    }
+    
+    var invertScreen:Bool = false {
+        didSet {
+            setFilterBuffer()
+        }
+    }
     
     private var _controller:UIViewController! = nil
     
@@ -121,6 +140,7 @@ class FilterRenderer: MetalViewDelegate, CameraCaptureDelegate, RendererControlD
     
     init(viewController:UIViewController!) {
         _controller = viewController
+        super.init()
         setupRenderer()
     }
     
@@ -173,12 +193,7 @@ class FilterRenderer: MetalViewDelegate, CameraCaptureDelegate, RendererControlD
         
         var options:MTLResourceOptions!
         
-        if #available(iOS 9.0, *) {
-            options = MTLResourceOptions.StorageModeShared.union(MTLResourceOptions.CPUCacheModeDefaultCache)
-        } else {
-            // Fallback on earlier versions
-            options = MTLResourceOptions.CPUCacheModeDefaultCache
-        }
+        options = MTLResourceOptions.StorageModeShared.union(MTLResourceOptions.CPUCacheModeDefaultCache)
         
         _vertexBuffer = _device!.newBufferWithBytes(data, length: dataSize, options: options)
 
@@ -350,131 +365,6 @@ class FilterRenderer: MetalViewDelegate, CameraCaptureDelegate, RendererControlD
             renderEncoder.popDebugGroup()
             renderEncoder.endEncoding()
     }
-
-    func render(view: MetalView) {
-
-        let currentOrientation:UIInterfaceOrientation = _isiPad ? UIApplication.sharedApplication().statusBarOrientation : .Portrait
-        
-        guard let currentOffset = _vertexStart[currentOrientation] where _rgbTexture != nil else {
-            return
-        }
-        
-        let commandBuffer = _commandQueue.commandBuffer()
-
-        dispatch_semaphore_wait(_renderSemaphore, DISPATCH_TIME_FOREVER)
-        // get the command buffer
-        commandBuffer.enqueue()
-        defer {
-            // commit buffers to GPU
-            commandBuffer.addCompletedHandler() {
-            (cmdb:MTLCommandBuffer!) in
-            dispatch_semaphore_signal(self._renderSemaphore)
-            return
-            }
-            
-            commandBuffer.presentDrawable(view.currentDrawable!)
-            commandBuffer.commit()
-        }
-        
-        
-        var sourceTexture:MTLTexture = _rgbTexture
-        var destDescriptor:MTLRenderPassDescriptor = _intermediateRenderPassDescriptor[_currentDestTexture]
-        
-        func swapTextures() {
-            self._currentSourceTexture += 1
-            sourceTexture = self._intermediateTextures[self._currentSourceTexture]
-            destDescriptor = self._intermediateRenderPassDescriptor[self._currentDestTexture]
-        }
-        
-        var blurTex = _rgbTexture
-        
-        if applyBlur && _currentVideoFilterUsesBlur, let args = _blurArgs {
-            let parameters = [args.bufferAndOffsetForElement(_currentBlurBuffer)]
-            createRenderPass(commandBuffer,
-                pipeline:  _blurPipelineStates[0],
-                vertexIndex: 0,
-                fragmentBuffers: parameters,
-                sourceTextures: [_rgbTexture],
-                descriptor: _intermediateRenderPassDescriptor[0],
-                viewport: nil)
-            
-            createRenderPass(commandBuffer,
-                pipeline:  _blurPipelineStates[1],
-                vertexIndex: 0,
-                fragmentBuffers: parameters,
-                sourceTextures: [_intermediateTextures[0]],
-                descriptor: _blurDescriptor,
-                viewport: nil)
-            blurTex = _blurTexture
-        }
-        
-        
-        // apply all render passes in the current filter
-        let filterParameters = [_filterArgs.bufferAndOffsetForElement(_currentFilterBuffer)]
-        for (_, filter) in _currentVideoFilter.enumerate() {
-            createRenderPass(commandBuffer,
-                pipeline: filter,
-                vertexIndex: 0,
-                fragmentBuffers: filterParameters,
-                sourceTextures: [sourceTexture, blurTex, _rgbTexture],
-                descriptor: destDescriptor,
-                viewport: nil)
-            
-            swapTextures()
-        }
-        
-        
-        if let screenDescriptor = view.renderPassDescriptor {
-            
-            createRenderPass(commandBuffer,
-                pipeline: invertScreen ? _screenInvertState! : _screenBlitState!,
-                vertexIndex: currentOffset,
-                fragmentBuffers: filterParameters,
-                sourceTextures: [sourceTexture, blurTex, _rgbTexture],
-                descriptor: screenDescriptor,
-                viewport: self._viewport)
-            
-            swapTextures()
-            
-        }
-
-        
-    }
-    
-    func resize(size: CGSize) {
-        if _rgbTexture != nil {
-            let iWidth = Double(_rgbTexture.width)
-            let iHeight = Double(_rgbTexture.height)
-            let aspect = iHeight / iWidth
-            
-            
-            if size.width > size.height {
-                let newHeight = Double(size.width) * aspect
-                let diff = (Double(size.height) - newHeight) * 0.5
-                _viewport = MTLViewport(originX: 0.0, originY: diff, width: Double(size.width), height: newHeight, znear: 0.0, zfar: 1.0)
-            } else {
-                let newHeight = Double(size.height) * aspect
-                let diff = (Double(size.width) - newHeight) * 0.5
-                _viewport = MTLViewport(originX: diff, originY: 0.0, width: newHeight, height: Double(size.height), znear: 0.0, zfar: 1.0)
-            }
-            
-            if _viewport?.originX < 0.0 {
-                _viewport?.originX = 0.0
-            }
-            if _viewport?.originY < 0.0 {
-                _viewport?.originY = 0.0
-            }
-            
-            if _viewport?.width > Double(size.width) {
-                _viewport?.width = Double(size.width)
-            }
-            
-            if _viewport?.height > Double(size.height) {
-                _viewport?.height = Double(size.height)
-            }
-
-        }
-    }
     
     func setVideoFilter(filterPasses:[String], usesBlur:Bool = true) {
         print("Setting filter...")
@@ -490,100 +380,6 @@ class FilterRenderer: MetalViewDelegate, CameraCaptureDelegate, RendererControlD
         
         _currentColorFilter = shader
         _currentColorConvolution = convolution
-    }
-    
-    func setResolution(width width: Int, height: Int) {
-        objc_sync_enter(self)
-        defer {
-            objc_sync_exit(self)
-        }
-        
-        let scale = UIScreen.mainScreen().nativeScale
-  
-        var textureWidth = Int(_controller.view.bounds.width * scale)
-        var textureHeight = Int(_controller.view.bounds.height * scale)
-        
-        if (textureHeight > textureWidth) {
-            let temp = textureHeight
-            textureHeight = textureWidth
-            textureWidth = temp
-        }
-        
-        if ((textureHeight > height) || (textureWidth > width)) {
-            textureHeight = height
-            textureWidth = width
-        }
-        
-        print("Setting offscreen texure resolution to \(textureWidth)x\(textureHeight)")
-        
-        let descriptor = MTLTextureDescriptor.texture2DDescriptorWithPixelFormat(.BGRA8Unorm, width: textureWidth, height: textureHeight, mipmapped: false)
-        
-        if #available(iOS 9.0, *) {
-            descriptor.resourceOptions = MTLResourceOptions.StorageModePrivate
-            descriptor.storageMode = MTLStorageMode.Private
-        }
-        
-        _intermediateTextures = [descriptor,descriptor].map { self._device!.newTextureWithDescriptor($0) }
-        _intermediateRenderPassDescriptor = _intermediateTextures.map {
-            let renderDescriptor = MTLRenderPassDescriptor()
-            renderDescriptor.colorAttachments[0].texture = $0
-            renderDescriptor.colorAttachments[0].loadAction = .DontCare
-            renderDescriptor.colorAttachments[0].storeAction = .DontCare
-            return renderDescriptor
-        }
-        
-        _rgbTexture = _device!.newTextureWithDescriptor(descriptor)
-        _rgbDescriptor = MTLRenderPassDescriptor()
-        _rgbDescriptor.colorAttachments[0].texture = _rgbTexture
-        _rgbDescriptor.colorAttachments[0].loadAction = .DontCare
-        _rgbDescriptor.colorAttachments[0].storeAction = .Store
-        
-        _blurTexture = _device!.newTextureWithDescriptor(descriptor)
-        _blurDescriptor = MTLRenderPassDescriptor()
-        _blurDescriptor.colorAttachments[0].texture = _blurTexture
-        _blurDescriptor.colorAttachments[0].loadAction = .DontCare
-        _blurDescriptor.colorAttachments[0].storeAction = .Store
-        
-        setBlurBuffer()
-    }
-    
-    
-    func captureBuffer(sampleBuffer: CMSampleBuffer!) {
-        if _rgbTexture != nil, let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) {
-            
-            let commandBuffer = _commandQueue.commandBuffer()
-            commandBuffer.enqueue()
-            defer {
-                commandBuffer.commit()
-            }
-            
-            var y_texture: Unmanaged<CVMetalTexture>?
-            let y_width = CVPixelBufferGetWidthOfPlane(pixelBuffer, 0)
-            let y_height = CVPixelBufferGetHeightOfPlane(pixelBuffer, 0)
-            CVMetalTextureCacheCreateTextureFromImage(kCFAllocatorDefault, _textureCache, pixelBuffer, nil, MTLPixelFormat.R8Unorm, y_width, y_height, 0, &y_texture)
-            
-            var uv_texture: Unmanaged<CVMetalTexture>?
-            let uv_width = CVPixelBufferGetWidthOfPlane(pixelBuffer, 1)
-            let uv_height = CVPixelBufferGetHeightOfPlane(pixelBuffer, 1)
-            CVMetalTextureCacheCreateTextureFromImage(kCFAllocatorDefault, _textureCache, pixelBuffer, nil, MTLPixelFormat.RG8Unorm, uv_width, uv_height, 1, &uv_texture)
-            
-            let luma = CVMetalTextureGetTexture(y_texture!.takeRetainedValue())!
-            let chroma = CVMetalTextureGetTexture(uv_texture!.takeRetainedValue())!
-            
-            let yuvTextures:[MTLTexture] = [ luma, chroma ]
-            
-            // create the YUV->RGB pass
-            createRenderPass(commandBuffer,
-                pipeline: _currentColorFilter,
-                vertexIndex: 0,
-                fragmentBuffers: [_colorArgs.bufferAndOffsetForElement(_currentColorBuffer)],
-                sourceTextures: yuvTextures,
-                descriptor: _rgbDescriptor,
-                viewport: nil)
-            
-            CVMetalTextureCacheFlush(_textureCache, 0)
-
-        }
     }
     
     func setBlurBuffer() {
@@ -657,22 +453,234 @@ class FilterRenderer: MetalViewDelegate, CameraCaptureDelegate, RendererControlD
         }
     }
     
-    var primaryColor:UIColor = UIColor(red: 0.0, green: 1.0, blue: 1.0, alpha: 0.75) {
-        didSet {
-            setFilterBuffer()
-        }
-    }
     
-    var secondaryColor:UIColor = UIColor(red: 1.0, green: 0.0, blue: 1.0, alpha: 0.75){
-        didSet {
-            setFilterBuffer()
-        }
-    }
-    
-    var invertScreen:Bool = false {
-        didSet {
-            setFilterBuffer()
-        }
-    }
 
+}
+
+// MARK: - CameraCaptureDelegate
+
+extension FilterRenderer: CameraCaptureDelegate {
+    
+    func setResolution(width width: Int, height: Int) {
+        objc_sync_enter(self)
+        defer {
+            objc_sync_exit(self)
+        }
+        
+        let scale = UIScreen.mainScreen().nativeScale
+        
+        var textureWidth = Int(_controller.view.bounds.width * scale)
+        var textureHeight = Int(_controller.view.bounds.height * scale)
+        
+        if (textureHeight > textureWidth) {
+            let temp = textureHeight
+            textureHeight = textureWidth
+            textureWidth = temp
+        }
+        
+        if ((textureHeight > height) || (textureWidth > width)) {
+            textureHeight = height
+            textureWidth = width
+        }
+        
+        print("Setting offscreen texure resolution to \(textureWidth)x\(textureHeight)")
+        
+        let descriptor = MTLTextureDescriptor.texture2DDescriptorWithPixelFormat(.BGRA8Unorm, width: textureWidth, height: textureHeight, mipmapped: false)
+        descriptor.resourceOptions = MTLResourceOptions.StorageModePrivate
+        descriptor.storageMode = MTLStorageMode.Private
+        
+        _intermediateTextures = [descriptor,descriptor].map { self._device!.newTextureWithDescriptor($0) }
+        _intermediateRenderPassDescriptor = _intermediateTextures.map {
+            let renderDescriptor = MTLRenderPassDescriptor()
+            renderDescriptor.colorAttachments[0].texture = $0
+            renderDescriptor.colorAttachments[0].loadAction = .DontCare
+            renderDescriptor.colorAttachments[0].storeAction = .DontCare
+            return renderDescriptor
+        }
+        
+        _rgbTexture = _device!.newTextureWithDescriptor(descriptor)
+        _rgbDescriptor = MTLRenderPassDescriptor()
+        _rgbDescriptor.colorAttachments[0].texture = _rgbTexture
+        _rgbDescriptor.colorAttachments[0].loadAction = .DontCare
+        _rgbDescriptor.colorAttachments[0].storeAction = .Store
+        
+        _blurTexture = _device!.newTextureWithDescriptor(descriptor)
+        _blurDescriptor = MTLRenderPassDescriptor()
+        _blurDescriptor.colorAttachments[0].texture = _blurTexture
+        _blurDescriptor.colorAttachments[0].loadAction = .DontCare
+        _blurDescriptor.colorAttachments[0].storeAction = .Store
+        
+        setBlurBuffer()
+    }
+    
+    
+    func captureBuffer(sampleBuffer: CMSampleBuffer!) {
+        if _rgbTexture != nil, let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) {
+            
+            let commandBuffer = _commandQueue.commandBuffer()
+            commandBuffer.enqueue()
+            defer {
+                commandBuffer.commit()
+            }
+            
+            var y_texture: Unmanaged<CVMetalTexture>?
+            let y_width = CVPixelBufferGetWidthOfPlane(pixelBuffer, 0)
+            let y_height = CVPixelBufferGetHeightOfPlane(pixelBuffer, 0)
+            CVMetalTextureCacheCreateTextureFromImage(kCFAllocatorDefault, _textureCache, pixelBuffer, nil, MTLPixelFormat.R8Unorm, y_width, y_height, 0, &y_texture)
+            
+            var uv_texture: Unmanaged<CVMetalTexture>?
+            let uv_width = CVPixelBufferGetWidthOfPlane(pixelBuffer, 1)
+            let uv_height = CVPixelBufferGetHeightOfPlane(pixelBuffer, 1)
+            CVMetalTextureCacheCreateTextureFromImage(kCFAllocatorDefault, _textureCache, pixelBuffer, nil, MTLPixelFormat.RG8Unorm, uv_width, uv_height, 1, &uv_texture)
+            
+            let luma = CVMetalTextureGetTexture(y_texture!.takeRetainedValue())!
+            let chroma = CVMetalTextureGetTexture(uv_texture!.takeRetainedValue())!
+            
+            let yuvTextures:[MTLTexture] = [ luma, chroma ]
+            
+            // create the YUV->RGB pass
+            createRenderPass(commandBuffer,
+                             pipeline: _currentColorFilter,
+                             vertexIndex: 0,
+                             fragmentBuffers: [_colorArgs.bufferAndOffsetForElement(_currentColorBuffer)],
+                             sourceTextures: yuvTextures,
+                             descriptor: _rgbDescriptor,
+                             viewport: nil)
+            
+            CVMetalTextureCacheFlush(_textureCache, 0)
+            
+        }
+    }
+    
+}
+
+// MARK: - MTKViewDelegate
+
+extension FilterRenderer: MTKViewDelegate {
+    
+    @objc func drawInMTKView(view: MTKView) {
+        
+        let currentOrientation:UIInterfaceOrientation = _isiPad ? UIApplication.sharedApplication().statusBarOrientation : .Portrait
+        
+        guard let currentOffset = _vertexStart[currentOrientation] where _rgbTexture != nil else {
+            return
+        }
+        
+        let commandBuffer = _commandQueue.commandBuffer()
+        
+        dispatch_semaphore_wait(_renderSemaphore, DISPATCH_TIME_FOREVER)
+        // get the command buffer
+        commandBuffer.enqueue()
+        defer {
+            // commit buffers to GPU
+            commandBuffer.addCompletedHandler() {
+                (cmdb:MTLCommandBuffer!) in
+                dispatch_semaphore_signal(self._renderSemaphore)
+                return
+            }
+            
+            commandBuffer.presentDrawable(view.currentDrawable!)
+            commandBuffer.commit()
+        }
+        
+        
+        var sourceTexture:MTLTexture = _rgbTexture
+        var destDescriptor:MTLRenderPassDescriptor = _intermediateRenderPassDescriptor[_currentDestTexture]
+        
+        func swapTextures() {
+            self._currentSourceTexture += 1
+            sourceTexture = self._intermediateTextures[self._currentSourceTexture]
+            destDescriptor = self._intermediateRenderPassDescriptor[self._currentDestTexture]
+        }
+        
+        var blurTex = _rgbTexture
+        
+        if applyBlur && _currentVideoFilterUsesBlur, let args = _blurArgs {
+            let parameters = [args.bufferAndOffsetForElement(_currentBlurBuffer)]
+            createRenderPass(commandBuffer,
+                             pipeline:  _blurPipelineStates[0],
+                             vertexIndex: 0,
+                             fragmentBuffers: parameters,
+                             sourceTextures: [_rgbTexture],
+                             descriptor: _intermediateRenderPassDescriptor[0],
+                             viewport: nil)
+            
+            createRenderPass(commandBuffer,
+                             pipeline:  _blurPipelineStates[1],
+                             vertexIndex: 0,
+                             fragmentBuffers: parameters,
+                             sourceTextures: [_intermediateTextures[0]],
+                             descriptor: _blurDescriptor,
+                             viewport: nil)
+            blurTex = _blurTexture
+        }
+        
+        
+        // apply all render passes in the current filter
+        let filterParameters = [_filterArgs.bufferAndOffsetForElement(_currentFilterBuffer)]
+        for (_, filter) in _currentVideoFilter.enumerate() {
+            createRenderPass(commandBuffer,
+                             pipeline: filter,
+                             vertexIndex: 0,
+                             fragmentBuffers: filterParameters,
+                             sourceTextures: [sourceTexture, blurTex, _rgbTexture],
+                             descriptor: destDescriptor,
+                             viewport: nil)
+            
+            swapTextures()
+        }
+        
+        
+        if let screenDescriptor = view.currentRenderPassDescriptor {
+            
+            createRenderPass(commandBuffer,
+                             pipeline: invertScreen ? _screenInvertState! : _screenBlitState!,
+                             vertexIndex: currentOffset,
+                             fragmentBuffers: filterParameters,
+                             sourceTextures: [sourceTexture, blurTex, _rgbTexture],
+                             descriptor: screenDescriptor,
+                             viewport: self._viewport)
+            
+            swapTextures()
+            
+        }
+        
+        
+    }
+    
+    @objc func mtkView(view: MTKView, drawableSizeWillChange size: CGSize) {
+        if _rgbTexture != nil {
+            let iWidth = Double(_rgbTexture.width)
+            let iHeight = Double(_rgbTexture.height)
+            let aspect = iHeight / iWidth
+            
+            
+            if size.width > size.height {
+                let newHeight = Double(size.width) * aspect
+                let diff = (Double(size.height) - newHeight) * 0.5
+                _viewport = MTLViewport(originX: 0.0, originY: diff, width: Double(size.width), height: newHeight, znear: 0.0, zfar: 1.0)
+            } else {
+                let newHeight = Double(size.height) * aspect
+                let diff = (Double(size.width) - newHeight) * 0.5
+                _viewport = MTLViewport(originX: diff, originY: 0.0, width: newHeight, height: Double(size.height), znear: 0.0, zfar: 1.0)
+            }
+            
+            if _viewport?.originX < 0.0 {
+                _viewport?.originX = 0.0
+            }
+            if _viewport?.originY < 0.0 {
+                _viewport?.originY = 0.0
+            }
+            
+            if _viewport?.width > Double(size.width) {
+                _viewport?.width = Double(size.width)
+            }
+            
+            if _viewport?.height > Double(size.height) {
+                _viewport?.height = Double(size.height)
+            }
+            
+        }
+    }
+    
 }

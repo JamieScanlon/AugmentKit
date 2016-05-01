@@ -41,7 +41,7 @@ class SettingsViewController: UIViewController, SettingsViewDelegate {
     }
     
     override func viewWillAppear(animated: Bool) {
-        blurSwitch.setOn(delegate.blur, animated: false)
+        //blurSwitch.setOn(delegate.blur, animated: false)
         autoHideSwitch.setOn(delegate.autoHideUI, animated: false)
         invertSwitch.setOn(delegate.invert, animated: false)
     }
@@ -53,9 +53,9 @@ class SettingsViewController: UIViewController, SettingsViewDelegate {
     }
     
     @IBAction func handleBlur   (sender: UISwitch!) {
-        if delegate.blur != blurSwitch.on {
-            delegate.blur = blurSwitch.on
-        }
+        //if delegate.blur != blurSwitch.on {
+        //    delegate.blur = blurSwitch.on
+        //}
     }
     
     func setAutoHide(on: Bool) {

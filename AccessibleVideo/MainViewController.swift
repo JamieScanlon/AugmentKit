@@ -13,7 +13,7 @@ import AVFoundation
 import CoreVideo
 
 protocol ControlsDelegate {
-    var blur:Bool { get set }
+    //var blur:Bool { get set }
     var lock:Bool { get set }
     var invert:Bool { get set }
     var frontCamera:Bool { get set }
@@ -103,7 +103,11 @@ class MainViewController: UIViewController, UIGestureRecognizerDelegate, UIPopov
             NSUbiquitousKeyValueStoreDidChangeExternallyNotification
             , object: nil)
         
-        renderer = FilterRenderer(viewController: self)
+        do {
+            renderer = try FilterRenderer(viewController: self)
+        } catch {
+            // TODO: Handle setup error
+        }
         
         // cast view as MetalView type
         renderview = view as! MetalView
@@ -378,12 +382,12 @@ class MainViewController: UIViewController, UIGestureRecognizerDelegate, UIPopov
             _defaults.setBool(autoHideUI, forKey: "autoHideUI")
             changed = true
         }
-        
+        /*
         if _defaults.boolForKey("blur") != blur {
             _defaults.setBool(blur, forKey: "blur")
             changed = true
         }
-        
+        */
         if _defaults.boolForKey("invert") != invert {
             _defaults.setBool(invert, forKey: "invert")
             changed = true
@@ -418,7 +422,7 @@ class MainViewController: UIViewController, UIGestureRecognizerDelegate, UIPopov
         // load the defaults from the key value store
         autoHideUI = _defaults.boolForKey("autoHideUI")
         lock = _defaults.boolForKey("lock")
-        blur = _defaults.boolForKey("blur")
+        //blur = _defaults.boolForKey("blur")
         invert = _defaults.boolForKey("invert")
         frontCamera = camera.supportsFrontCamera  ? _defaults.boolForKey("useFrontCamera") : false
         colorFilter = _defaults.stringForKey("colorFilter")
@@ -446,9 +450,11 @@ class MainViewController: UIViewController, UIGestureRecognizerDelegate, UIPopov
             case "autoHideUI":
                 autoHideUI = _defaults.boolForKey(key)
                 break;
+                /*
             case "blur":
                 blur = _defaults.boolForKey(key)
                 break;
+ */
             case "invert":
                 invert = _defaults.boolForKey(key)
                 break;
@@ -548,8 +554,8 @@ class MainViewController: UIViewController, UIGestureRecognizerDelegate, UIPopov
     func setVideoFilterIndex(newFilter:Int) {
         _currentVideoFilter = newFilter
         let passes = (_filters["Video"]?[newFilter]["Passes"] as? [String]) ?? ["blit"]
-        let blur = (_filters["Video"]?[newFilter]["CanUseBlur"] as? Bool) ?? true
-        renderer.setVideoFilter(passes, usesBlur: blur)
+        //let blur = (_filters["Video"]?[newFilter]["CanUseBlur"] as? Bool) ?? true
+        renderer.setVideoFilter(passes)
         showOverlayWithText(videoFilter!, andImageView: _filterImage)
         saveDefaults()
     }
@@ -657,7 +663,8 @@ class MainViewController: UIViewController, UIGestureRecognizerDelegate, UIPopov
             saveDefaults()
         }
     }
-    
+    /*
+     // FIXME: implement this as another shader in the render pipeline
     var blur:Bool = false {
         didSet {
             print("Setting blur: \(blur)")
@@ -666,7 +673,7 @@ class MainViewController: UIViewController, UIGestureRecognizerDelegate, UIPopov
             saveDefaults()
         }
     }
-    
+    */
     var invert:Bool = false {
         didSet {
             print("Setting invert: \(invert)")

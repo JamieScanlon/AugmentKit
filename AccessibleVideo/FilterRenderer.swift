@@ -18,7 +18,6 @@ protocol RendererControlDelegate {
     var primaryColor:UIColor { get set }
     var secondaryColor:UIColor { get set }
     var invertScreen:Bool { get set }
-    var applyBlur:Bool { get set }
     var highQuality:Bool { get }
 }
 
@@ -59,9 +58,6 @@ class FilterRenderer: NSObject, RendererControlDelegate {
         return _device
     }
     
-    
-    var applyBlur:Bool = false
-    
     var highQuality:Bool = false
     
     var primaryColor:UIColor = UIColor(red: 0.0, green: 1.0, blue: 1.0, alpha: 0.75) {
@@ -90,7 +86,6 @@ class FilterRenderer: NSObject, RendererControlDelegate {
     private var _vertexBuffer:MTLBuffer? = nil
     private var _filterArgs:MetalBufferArray<FilterBuffer>? = nil
     private var _colorArgs:MetalBufferArray<ColorBuffer>? = nil
-    private var _blurArgs:MetalBufferArray<BlurBuffer>? = nil
     
     private var _currentFilterBuffer:Int = 0 {
         didSet {
@@ -103,14 +98,14 @@ class FilterRenderer: NSObject, RendererControlDelegate {
             _currentColorBuffer = _currentColorBuffer % _numberShaderBuffers
         }
     }
-    
+    /*
     private var _currentBlurBuffer:Int = 0 {
         didSet {
             _currentBlurBuffer = _currentBlurBuffer % _numberShaderBuffers
         }
     }
-    
-    private var _blurPipelineStates = [MTLRenderPipelineState]()
+    */
+    //private var _blurPipelineStates = [MTLRenderPipelineState]()
     private var _screenBlitState:MTLRenderPipelineState? = nil
     private var _screenInvertState:MTLRenderPipelineState? = nil
     
@@ -122,8 +117,8 @@ class FilterRenderer: NSObject, RendererControlDelegate {
     
     private var _rgbTexture:MTLTexture? = nil
     private var _rgbDescriptor:MTLRenderPassDescriptor? = nil
-    private var _blurTexture:MTLTexture? = nil
-    private var _blurDescriptor:MTLRenderPassDescriptor? = nil
+    //private var _blurTexture:MTLTexture? = nil
+    //private var _blurDescriptor:MTLRenderPassDescriptor? = nil
     
     
     // ping/pong index variable
@@ -158,7 +153,6 @@ class FilterRenderer: NSObject, RendererControlDelegate {
     
     private var _samplerStates = [MTLSamplerState]()
     
-    private var _currentVideoFilterUsesBlur = true
     private var _currentVideoFilter = [MTLRenderPipelineState]()
     private var _currentColorFilter:MTLRenderPipelineState? = nil
     private var _currentColorConvolution:[Float32] = [] {
@@ -314,12 +308,13 @@ class FilterRenderer: NSObject, RendererControlDelegate {
             
         }
         
-        _blurPipelineStates = []
+        //_blurPipelineStates = []
         
         if device.supportsFeatureSet(.iOS_GPUFamily2_v1) {
             
-            print("Using high quality blur...")
+            print("Using high quality")
             highQuality = true
+            /*
             _blurPipelineStates = ["BlurX_HQ", "BlurY_HQ"].map {self.cachedRenderPipelineStateFor($0)}.flatMap{$0}
             if _blurPipelineStates.count < 2 {
                 _blurPipelineStates = []
@@ -334,12 +329,15 @@ class FilterRenderer: NSObject, RendererControlDelegate {
                 }
                 
             }
-            
+            */
+        } else {
+           highQuality = false
         }
         
+         /*
         if _blurPipelineStates.count == 0 {
             
-            highQuality = false
+           
             _blurPipelineStates = ["BlurX", "BlurY"].map {self.cachedRenderPipelineStateFor($0)}.flatMap{$0}
             if _blurPipelineStates.count < 2 {
                 _blurPipelineStates = []
@@ -353,11 +351,11 @@ class FilterRenderer: NSObject, RendererControlDelegate {
                 }
                 
             }
-            
+ 
         }
-        
+        */
         setFilterBuffer()
-        
+ 
         let nearest = MTLSamplerDescriptor()
         nearest.label = "nearest"
         
@@ -476,10 +474,9 @@ class FilterRenderer: NSObject, RendererControlDelegate {
     
     // MARK: Video
     
-    func setVideoFilter(filterPasses:[String], usesBlur:Bool = true) {
+    func setVideoFilter(filterPasses:[String]) {
         print("Setting filter...")
         _currentVideoFilter = filterPasses.map {self.cachedRenderPipelineStateFor($0)}.flatMap{$0}
-        _currentVideoFilterUsesBlur = usesBlur
     }
     
     func setColorFilter(shaderName:String, convolution:[Float32]) {
@@ -491,7 +488,7 @@ class FilterRenderer: NSObject, RendererControlDelegate {
         _currentColorFilter = shader
         _currentColorConvolution = convolution
     }
-    
+    /*
     func setBlurBuffer() {
         
         //
@@ -528,7 +525,7 @@ class FilterRenderer: NSObject, RendererControlDelegate {
         _currentBlurBuffer += 1
         
     }
-    
+    */
     func setColorBuffer() {
         
         guard let colorArgs = _colorArgs else {
@@ -589,7 +586,8 @@ class FilterRenderer: NSObject, RendererControlDelegate {
     // create generic render pass
     func createRenderPass(commandBuffer: MTLCommandBuffer,
                           pipeline:MTLRenderPipelineState,
-                          vertexIndex:Int, fragmentBuffers:[(MTLBuffer,Int)],
+                          vertexIndex:Int,
+                          fragmentBuffers:[(MTLBuffer,Int)],
                           sourceTextures:[MTLTexture],
                           descriptor: MTLRenderPassDescriptor,
                           viewport:MTLViewport?) {
@@ -792,7 +790,7 @@ extension FilterRenderer: CameraCaptureDelegate {
         rgbDescriptor.colorAttachments[0].loadAction = .DontCare
         rgbDescriptor.colorAttachments[0].storeAction = .Store
         _rgbDescriptor = rgbDescriptor
-        
+        /*
         _blurTexture = device.newTextureWithDescriptor(descriptor)
         let blurDescriptor = MTLRenderPassDescriptor()
         blurDescriptor.colorAttachments[0].texture = _blurTexture
@@ -801,7 +799,7 @@ extension FilterRenderer: CameraCaptureDelegate {
         _blurDescriptor = blurDescriptor
         
         setBlurBuffer()
-        
+        */
     }
     
     
@@ -901,7 +899,9 @@ extension FilterRenderer: MTKViewDelegate {
             destDescriptor = self._intermediateRenderPassDescriptor[self._currentDestTexture]
         }
         
-        var blurTex = rgbTexture
+        let secondaryTexture = rgbTexture
+        
+        /*
         
         if  applyBlur && _currentVideoFilterUsesBlur,
             let args = _blurArgs,
@@ -924,10 +924,10 @@ extension FilterRenderer: MTKViewDelegate {
                              sourceTextures: [_intermediateTextures[0]],
                              descriptor: blurDescriptor,
                              viewport: nil)
-            blurTex = blurTexture
+            secondaryTexture = blurTexture
             
         }
-        
+        */
         
         // apply all render passes in the current filter
         if  let filterArgs = _filterArgs,
@@ -939,22 +939,26 @@ extension FilterRenderer: MTKViewDelegate {
                                  pipeline: filter,
                                  vertexIndex: 0,
                                  fragmentBuffers: filterParameters,
-                                 sourceTextures: [sourceTexture, blurTex, rgbTexture],
+                                 sourceTextures: [sourceTexture, secondaryTexture, rgbTexture],
                                  descriptor: destDescriptor,
                                  viewport: nil)
                 
                 swapTextures()
             }
             
-            createRenderPass(commandBuffer,
-                             pipeline: invertScreen ? _screenInvertState : _screenBlitState,
-                             vertexIndex: currentOffset,
-                             fragmentBuffers: filterParameters,
-                             sourceTextures: [sourceTexture, blurTex, rgbTexture],
-                             descriptor: screenDescriptor,
-                             viewport: self._viewport)
+            if let piplineState = invertScreen ? _screenInvertState : _screenBlitState {
             
-            swapTextures()
+                createRenderPass(commandBuffer,
+                                 pipeline: piplineState,
+                                 vertexIndex: currentOffset,
+                                 fragmentBuffers: filterParameters,
+                                 sourceTextures: [sourceTexture, secondaryTexture, rgbTexture],
+                                 descriptor: screenDescriptor,
+                                 viewport: _viewport)
+                
+                swapTextures()
+                
+            }
             
         }
         

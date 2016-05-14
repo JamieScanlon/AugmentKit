@@ -26,7 +26,7 @@ class MetalView:MTKView {
         self.backgroundColor = nil
         self.presentsWithTransaction = false
         self.colorPixelFormat = .BGRA8Unorm
-        self.framebufferOnly = true
+        self.framebufferOnly = false
     }
     
     override init(frame frameRect: CGRect, device: MTLDevice?) {
@@ -35,7 +35,7 @@ class MetalView:MTKView {
         self.backgroundColor = nil
         self.presentsWithTransaction = false
         self.colorPixelFormat = .BGRA8Unorm
-        self.framebufferOnly = true
+        self.framebufferOnly = false
     }
 
     /*

@@ -554,7 +554,6 @@ class MainViewController: UIViewController, UIGestureRecognizerDelegate, UIPopov
     func setVideoFilterIndex(newFilter:Int) {
         _currentVideoFilter = newFilter
         let passes = (_filters["Video"]?[newFilter]["Passes"] as? [String]) ?? ["blit"]
-        //let blur = (_filters["Video"]?[newFilter]["CanUseBlur"] as? Bool) ?? true
         renderer.setVideoFilter(passes)
         showOverlayWithText(videoFilter!, andImageView: _filterImage)
         saveDefaults()
@@ -583,9 +582,9 @@ class MainViewController: UIViewController, UIGestureRecognizerDelegate, UIPopov
     
     func setColorFilterIndex(newFilter:Int) {
         _currentColorFilter = newFilter
-        let shaderName = (_filters["Input"]?[newFilter]["Shader"] as? String) ?? "yuv_rgb"
+        let shaderName = (_filters["Color"]?[newFilter]["Shader"] as? String) ?? "yuv_rgb"
         let convolution:[Float32]
-        if let param = _filters["Input"]?[newFilter]["Convolution"] as? [NSNumber] where param.count == 9 {
+        if let param = _filters["Color"]?[newFilter]["Convolution"] as? [NSNumber] where param.count == 9 {
             convolution = param.map {Float32($0.floatValue)}
         } else {
             convolution = [1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0]
@@ -597,14 +596,14 @@ class MainViewController: UIViewController, UIGestureRecognizerDelegate, UIPopov
     }
     
     func nextColorFilter() {
-        if let colorFilter = _filters["Input"] {
+        if let colorFilter = _filters["Color"] {
             let newFilter = (_currentColorFilter + 1) % colorFilter.count
             setColorFilterIndex(newFilter)
         }
     }
     
     func prevColorFilter() {
-        if let colorFilter = _filters["Input"] {
+        if let colorFilter = _filters["Color"] {
             var newFilter = (_currentColorFilter - 1) % colorFilter.count
             if newFilter < 0 {
                 newFilter += colorFilter.count
@@ -634,10 +633,10 @@ class MainViewController: UIViewController, UIGestureRecognizerDelegate, UIPopov
     
     var colorFilter:String? {
         get {
-            return _filters["Input"]?[_currentColorFilter]["Name"] as? String
+            return _filters["Color"]?[_currentColorFilter]["Name"] as? String
         }
         set {
-            if let colorFilters = _filters["Input"] {
+            if let colorFilters = _filters["Color "] {
                 for (i, filter) in colorFilters.enumerate() {
                     if let name = filter["Name"] as? String where name == newValue {
                         setColorFilterIndex(i)

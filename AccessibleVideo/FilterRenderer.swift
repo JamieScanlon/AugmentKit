@@ -28,9 +28,13 @@ enum RendererSetupError: ErrorType {
     case FailedLibraryCreation
 }
 
+enum PassSetupError: ErrorType {
+    case MissingDevice
+}
+
 class FilterRenderer: NSObject, RendererControlDelegate {
     
-    enum MPSFilerType {
+    enum MPSFilerType: String {
         case AreaMax
         case AreaMin
         case Box
@@ -98,14 +102,7 @@ class FilterRenderer: NSObject, RendererControlDelegate {
             _currentColorBuffer = _currentColorBuffer % _numberShaderBuffers
         }
     }
-    /*
-    private var _currentBlurBuffer:Int = 0 {
-        didSet {
-            _currentBlurBuffer = _currentBlurBuffer % _numberShaderBuffers
-        }
-    }
-    */
-    //private var _blurPipelineStates = [MTLRenderPipelineState]()
+    
     private var _screenBlitState:MTLRenderPipelineState? = nil
     private var _screenInvertState:MTLRenderPipelineState? = nil
     
@@ -117,9 +114,6 @@ class FilterRenderer: NSObject, RendererControlDelegate {
     
     private var _rgbTexture:MTLTexture? = nil
     private var _rgbDescriptor:MTLRenderPassDescriptor? = nil
-    //private var _blurTexture:MTLTexture? = nil
-    //private var _blurDescriptor:MTLRenderPassDescriptor? = nil
-    
     
     // ping/pong index variable
     private var _currentSourceTexture:Int = 0 {
@@ -149,11 +143,11 @@ class FilterRenderer: NSObject, RendererControlDelegate {
     private var _renderPipelineStates = [String : MTLRenderPipelineState]()
     private var _computePipelineStates = [String : MTLComputePipelineState]()
 
-    private var _shaderArguments = [String : NSObject]() // MTLRenderPipelineReflection
+    private var _shaderArguments = [String : NSObject]() // MTLRenderPipelineReflection or MTLComputePipelineReflection
     
     private var _samplerStates = [MTLSamplerState]()
     
-    private var _currentVideoFilter = [MTLRenderPipelineState]()
+    private var _currentVideoFilter = [Any]() // MTLRenderPipelineState or MTLComputePipelineState, or MPSFilterType
     private var _currentColorFilter:MTLRenderPipelineState? = nil
     private var _currentColorConvolution:[Float32] = [] {
         didSet {
@@ -308,52 +302,15 @@ class FilterRenderer: NSObject, RendererControlDelegate {
             
         }
         
-        //_blurPipelineStates = []
-        
         if device.supportsFeatureSet(.iOS_GPUFamily2_v1) {
             
             print("Using high quality")
             highQuality = true
-            /*
-            _blurPipelineStates = ["BlurX_HQ", "BlurY_HQ"].map {self.cachedRenderPipelineStateFor($0)}.flatMap{$0}
-            if _blurPipelineStates.count < 2 {
-                _blurPipelineStates = []
-            }
             
-            if let BlurXHQArgs = _shaderArguments["BlurX_HQ"] as? MTLRenderPipelineReflection,
-               let fragmentArguments = BlurXHQArgs.fragmentArguments {
-               
-                let myFragmentArgs = fragmentArguments.filter({$0.name == "blurParameters"})
-                if myFragmentArgs.count == 1 {
-                    _blurArgs = MetalBufferArray<BlurBuffer>(arguments: myFragmentArgs[0], count: _numberShaderBuffers)
-                }
-                
-            }
-            */
         } else {
            highQuality = false
         }
         
-         /*
-        if _blurPipelineStates.count == 0 {
-            
-           
-            _blurPipelineStates = ["BlurX", "BlurY"].map {self.cachedRenderPipelineStateFor($0)}.flatMap{$0}
-            if _blurPipelineStates.count < 2 {
-                _blurPipelineStates = []
-            }
-            if let BlurXHQArgs = _shaderArguments["BlurX"] as? MTLRenderPipelineReflection,
-               let fragmentArguments = BlurXHQArgs.fragmentArguments {
-                
-                let myFragmentArgs = fragmentArguments.filter({$0.name == "blurParameters"})
-                if myFragmentArgs.count == 1 {
-                    _blurArgs = MetalBufferArray<BlurBuffer>(arguments: myFragmentArgs[0], count: _numberShaderBuffers)
-                }
-                
-            }
- 
-        }
-        */
         setFilterBuffer()
  
         let nearest = MTLSamplerDescriptor()
@@ -475,8 +432,19 @@ class FilterRenderer: NSObject, RendererControlDelegate {
     // MARK: Video
     
     func setVideoFilter(filterPasses:[String]) {
+        
         print("Setting filter...")
-        _currentVideoFilter = filterPasses.map {self.cachedRenderPipelineStateFor($0)}.flatMap{$0}
+        _currentVideoFilter = filterPasses.map {
+            
+            // TODO: Compute shaders
+            if let mpsType = MPSFilerType(rawValue:$0) {
+                return mpsType
+            } else {
+             return self.cachedRenderPipelineStateFor($0)
+            }
+            
+        }.flatMap{$0}
+        
     }
     
     func setColorFilter(shaderName:String, convolution:[Float32]) {
@@ -488,44 +456,7 @@ class FilterRenderer: NSObject, RendererControlDelegate {
         _currentColorFilter = shader
         _currentColorConvolution = convolution
     }
-    /*
-    func setBlurBuffer() {
-        
-        //
-        // Texel offset generation for linear sampled gaussian blur
-        // Source: http://rastergrid.com/blog/2010/09/efficient-gaussian-blur-with-linear-sampling/
-        //
-        
-        let nextBuffer = (_currentBlurBuffer + 1) % _numberShaderBuffers
-        
-        guard let currentBuffer = _blurArgs?[nextBuffer] else {
-            return
-        }
-        
-        guard let rgbTexture = _rgbTexture else {
-            return
-        }
-        
-        let offsets:[Float32] = [ 0.0, 1.3846153846, 3.2307692308 ]
-        
-        let texelWidth = 1.0 / Float32(rgbTexture.width)
-        let texelHeight = 1.0 / Float32(rgbTexture.height)
-        
-        currentBuffer.xOffsets = (
-            (offsets[0] * texelWidth, 0),
-            (offsets[1] * texelWidth, 0),
-            (offsets[2] * texelWidth, 0)
-        )
-        
-        currentBuffer.yOffsets = (
-            (0, offsets[0] * texelHeight),
-            (0, offsets[1] * texelHeight),
-            (0, offsets[2] * texelHeight)
-        )
-        _currentBlurBuffer += 1
-        
-    }
-    */
+    
     func setColorBuffer() {
         
         guard let colorArgs = _colorArgs else {
@@ -623,13 +554,13 @@ class FilterRenderer: NSObject, RendererControlDelegate {
                            textures:[MTLTexture],
                            descriptor: MTLRenderPassDescriptor,
                            viewport:MTLViewport?,
-                           aName: String?) {
+                           name: String?) {
         
         let computeEncoder = commandBuffer.computeCommandEncoder()
-        let name:String = aName ?? "Unnamed Compute Pass"
+        let aName:String = name ?? "Unnamed Compute Pass"
         
-        computeEncoder.pushDebugGroup(name)
-        computeEncoder.label = name
+        computeEncoder.pushDebugGroup(aName)
+        computeEncoder.label = aName
         computeEncoder.setComputePipelineState(pipeline)
         
         for (index,texture) in textures.enumerate() {
@@ -643,42 +574,64 @@ class FilterRenderer: NSObject, RendererControlDelegate {
         
     }
     
-    func createMPSPass(type: MPSFilerType,
-                       device: MTLDevice,
-                       commandBuffer: MTLCommandBuffer,
+    func createMPSPass(commandBuffer: MTLCommandBuffer,
                        texture:MTLTexture,
-                       kernelWidth: Int?,
-                       kernelHeight: Int?,
+                       type: MPSFilerType,
                        sigma: Float?,
                        diameter: Int?) {
+        
+        // TODO: New datatype to encapsulate params MPSPipelineState
+        
+        guard let device = device else {
+            //throw PassSetupError.MissingDevice
+            return
+        }
         
         var kernel: MPSUnaryImageKernel? = nil
         
         switch type {
         case .AreaMax:
+            /*
             if let kernelWidth = kernelWidth, kernelHeight = kernelHeight {
                 kernel = MPSImageAreaMax(device: device, kernelWidth: kernelWidth, kernelHeight: kernelHeight)
             }
+            */
+            break
         case .AreaMin:
+            /*
             if let kernelWidth = kernelWidth, kernelHeight = kernelHeight {
                 kernel = MPSImageAreaMin(device: device, kernelWidth: kernelWidth, kernelHeight: kernelHeight)
             }
+             */
+            break
         case .Box:
+            /*
             if let kernelWidth = kernelWidth, kernelHeight = kernelHeight {
                 kernel = MPSImageBox(device: device, kernelWidth: kernelWidth, kernelHeight: kernelHeight)
             }
+            */
+            break
         case .Convolution:
+            /*
             if let kernelWidth = kernelWidth, kernelHeight = kernelHeight {
                 kernel = MPSImageConvolution(device: device, kernelWidth: kernelWidth, kernelHeight: kernelHeight, weights: nil)
             }
+             */
+            break
         case .Dialate:
+            /*
             if let kernelWidth = kernelWidth, kernelHeight = kernelHeight {
                 kernel = MPSImageDilate(device: device, kernelWidth: kernelWidth, kernelHeight: kernelHeight, values: nil)
             }
+             */
+            break
         case .Erode:
+            /*
             if let kernelWidth = kernelWidth, kernelHeight = kernelHeight {
                 kernel = MPSImageErode(device: device, kernelWidth: kernelWidth, kernelHeight: kernelHeight, values: nil)
             }
+             */
+            break
         case .GaussianBlur:
             if let sigma = sigma {
                 kernel = MPSImageGaussianBlur(device: device, sigma: sigma)
@@ -694,9 +647,12 @@ class FilterRenderer: NSObject, RendererControlDelegate {
         case .LanczosScale:
             kernel = MPSImageLanczosScale(device: device)
         case .Median:
+            /*
             if let diameter = diameter {
                 kernel = MPSImageMedian(device: device, kernelDiameter:diameter )
             }
+             */
+            break
         case .Sobel:
             kernel = MPSImageSobel(device: device)
         case .ThresholdBinary:
@@ -790,16 +746,7 @@ extension FilterRenderer: CameraCaptureDelegate {
         rgbDescriptor.colorAttachments[0].loadAction = .DontCare
         rgbDescriptor.colorAttachments[0].storeAction = .Store
         _rgbDescriptor = rgbDescriptor
-        /*
-        _blurTexture = device.newTextureWithDescriptor(descriptor)
-        let blurDescriptor = MTLRenderPassDescriptor()
-        blurDescriptor.colorAttachments[0].texture = _blurTexture
-        blurDescriptor.colorAttachments[0].loadAction = .DontCare
-        blurDescriptor.colorAttachments[0].storeAction = .Store
-        _blurDescriptor = blurDescriptor
         
-        setBlurBuffer()
-        */
     }
     
     
@@ -901,49 +848,44 @@ extension FilterRenderer: MTKViewDelegate {
         
         let secondaryTexture = rgbTexture
         
-        /*
-        
-        if  applyBlur && _currentVideoFilterUsesBlur,
-            let args = _blurArgs,
-            let blurTexture = _blurTexture,
-            let blurDescriptor = _blurDescriptor {
-            
-            let parameters = [args.bufferAndOffsetForElement(_currentBlurBuffer)]
-            createRenderPass(commandBuffer,
-                             pipeline:  _blurPipelineStates[0],
-                             vertexIndex: 0,
-                             fragmentBuffers: parameters,
-                             sourceTextures: [rgbTexture],
-                             descriptor: _intermediateRenderPassDescriptor[0],
-                             viewport: nil)
-            
-            createRenderPass(commandBuffer,
-                             pipeline:  _blurPipelineStates[1],
-                             vertexIndex: 0,
-                             fragmentBuffers: parameters,
-                             sourceTextures: [_intermediateTextures[0]],
-                             descriptor: blurDescriptor,
-                             viewport: nil)
-            secondaryTexture = blurTexture
-            
-        }
-        */
-        
         // apply all render passes in the current filter
         if  let filterArgs = _filterArgs,
             let screenDescriptor = view.currentRenderPassDescriptor {
             
             let filterParameters = [filterArgs.bufferAndOffsetForElement(_currentFilterBuffer)]
-            for (_, filter) in _currentVideoFilter.enumerate() {
-                createRenderPass(commandBuffer,
-                                 pipeline: filter,
-                                 vertexIndex: 0,
-                                 fragmentBuffers: filterParameters,
-                                 sourceTextures: [sourceTexture, secondaryTexture, rgbTexture],
-                                 descriptor: destDescriptor,
-                                 viewport: nil)
+            for filter in _currentVideoFilter {
                 
-                swapTextures()
+                if let renderState = filter as? MTLRenderPipelineState {
+                    
+                    createRenderPass(commandBuffer,
+                                     pipeline: renderState,
+                                     vertexIndex: 0,
+                                     fragmentBuffers: filterParameters,
+                                     sourceTextures: [sourceTexture, secondaryTexture, rgbTexture],
+                                     descriptor: destDescriptor,
+                                     viewport: nil)
+                    
+                    swapTextures()
+                    
+                } else if let computeState = filter as? MTLComputePipelineState {
+                    
+                    createComputePass(commandBuffer,
+                                     pipeline: computeState,
+                                     textures: [sourceTexture, secondaryTexture, rgbTexture],
+                                     descriptor: destDescriptor,
+                                     viewport: nil,
+                                     name: nil)
+                    
+                } else if let mpsType = filter as? MPSFilerType {
+                    
+                    createMPSPass(commandBuffer,
+                                  texture: sourceTexture,
+                                  type: mpsType,
+                                  sigma: nil,
+                                  diameter: nil)
+                    
+                }
+                
             }
             
             if let piplineState = invertScreen ? _screenInvertState : _screenBlitState {

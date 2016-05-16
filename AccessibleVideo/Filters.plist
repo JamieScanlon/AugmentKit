@@ -179,6 +179,18 @@
 				<string>tritanope</string>
 			</array>
 		</dict>
+		<dict>
+			<key>Name</key>
+			<string>CannyEdgeDetection</string>
+			<key>Passes</key>
+			<array>
+				<string>grayscale</string>
+				<string>GaussianBlur</string>
+				<string>sobel_directional_edge_detection</string>
+				<string>suppression_directional_nonmaximum</string>
+				<string>weak_pixel_inclusion</string>
+			</array>
+		</dict>
 	</array>
 </dict>
 </plist>

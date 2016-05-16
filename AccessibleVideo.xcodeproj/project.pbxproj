@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		7D9ECF991CE8D904002323D2 /* Suprpession.metal in Sources */ = {isa = PBXBuildFile; fileRef = 7D9ECF981CE8D903002323D2 /* Suprpession.metal */; };
+		7D9ECF9B1CE99322002323D2 /* WeakPixelInclusion.metal in Sources */ = {isa = PBXBuildFile; fileRef = 7D9ECF9A1CE99322002323D2 /* WeakPixelInclusion.metal */; };
 		7DCB560A1CC5F17100453635 /* AugmentKit.h in Headers */ = {isa = PBXBuildFile; fileRef = 7DCB56091CC5F17100453635 /* AugmentKit.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		7DCB56111CC5F17200453635 /* AugmentKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7DCB56071CC5F17100453635 /* AugmentKit.framework */; };
 		7DCB56181CC5F17200453635 /* AugmentKitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DCB56171CC5F17200453635 /* AugmentKitTests.swift */; };
@@ -81,6 +83,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		7D9ECF981CE8D903002323D2 /* Suprpession.metal */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.metal; name = Suprpession.metal; path = Shaders/Suprpession.metal; sourceTree = "<group>"; };
+		7D9ECF9A1CE99322002323D2 /* WeakPixelInclusion.metal */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.metal; name = WeakPixelInclusion.metal; path = Shaders/WeakPixelInclusion.metal; sourceTree = "<group>"; };
 		7DCB56071CC5F17100453635 /* AugmentKit.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = AugmentKit.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		7DCB56091CC5F17100453635 /* AugmentKit.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AugmentKit.h; sourceTree = "<group>"; };
 		7DCB560B1CC5F17100453635 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -182,6 +186,8 @@
 				DF847FD81A11FE9A00AD6068 /* Canny.metal */,
 				DFC4CFEA1A3A1ACE00964650 /* Colorblind.metal */,
 				DFC4CFEC1A3A1B6D00964650 /* Common.metal */,
+				7D9ECF981CE8D903002323D2 /* Suprpession.metal */,
+				7D9ECF9A1CE99322002323D2 /* WeakPixelInclusion.metal */,
 			);
 			name = Shaders;
 			sourceTree = "<group>";
@@ -433,6 +439,7 @@
 				DFF6E11E1A10796D009A3CD8 /* Blur.metal in Sources */,
 				DFE69F2F19E0EE140072EFAC /* CameraController.swift in Sources */,
 				DF317CC71C0BC5BB00CEF3D2 /* FilterModel.swift in Sources */,
+				7D9ECF9B1CE99322002323D2 /* WeakPixelInclusion.metal in Sources */,
 				DF6A115019C8091C00D20618 /* Base.metal in Sources */,
 				DF048B2619E3F4CE00064E81 /* Sobel.metal in Sources */,
 				DF58E3F71A47EBF900020B1C /* FilterBuffer.swift in Sources */,
@@ -446,6 +453,7 @@
 				DF847FD91A11FE9A00AD6068 /* Canny.metal in Sources */,
 				DFC4CFED1A3A1B6D00964650 /* Common.metal in Sources */,
 				DFF6E11A1A104E36009A3CD8 /* SettingsViewController.swift in Sources */,
+				7D9ECF991CE8D904002323D2 /* Suprpession.metal in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -700,6 +708,7 @@
 				7DCB56201CC5F17200453635 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		7DCB56221CC5F17200453635 /* Build configuration list for PBXNativeTarget "AugmentKitTests" */ = {
 			isa = XCConfigurationList;
@@ -708,6 +717,7 @@
 				7DCB56241CC5F17200453635 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		DFD2200019C643BC00913975 /* Build configuration list for PBXProject "AccessibleVideo" */ = {
 			isa = XCConfigurationList;

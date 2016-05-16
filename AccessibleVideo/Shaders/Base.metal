@@ -35,6 +35,15 @@ fragment half4 yuv_grayscale(YUV_SHADER_ARGS)
     return half4(lumaTex.sample(bilinear, inFrag.m_TexCoord).r);
 }
 
+constant half3 W = half3(0.2125, 0.7154, 0.0721);
+fragment half4 grayscale(FILTER_SHADER_ARGS_FRAME_ONLY)
+{
+    half4 textureColor = currentFrame.sample(bilinear, inFrag.m_TexCoord);
+    half luminance = dot(textureColor.rgb, W);
+    
+    return half4(half3(luminance), textureColor.a);
+}
+
 fragment half4 blit(FILTER_SHADER_ARGS_LAST_ONLY)
 {
     half4 color = half4(lastStage.sample(bilinear, inFrag.m_TexCoord).rgb,1.0);
@@ -48,3 +57,16 @@ fragment half4 invert(FILTER_SHADER_ARGS_LAST_ONLY)
     return half4(inverse,1.0);
 }
 
+// Compute shader for composing two textures, base and overlay, into one by adding the colors
+kernel void compose_add(texture2d<float, access::read> base [[ texture(0) ]],
+                        texture2d<float, access::read> overlay [[ texture(1) ]],
+                        texture2d<float, access::write> dest [[ texture(2) ]],
+                        uint2 gid [[ thread_position_in_grid ]]) {
+    
+    float4 base_color = base.read(gid);
+    float4 overlay_color = overlay.read(gid);
+    float4 result_color = base_color + overlay_color;
+    
+    dest.write(result_color, gid);
+    
+}

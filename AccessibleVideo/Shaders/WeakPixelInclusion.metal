@@ -3,7 +3,7 @@
 //  AccessibleVideo
 //
 //  Created by Jamie Scanlon on 5/15/16.
-//  Copyright © 2016 Luke Groeninger. All rights reserved.
+//  Copyright © 2016 Tenth Letter Made LLC. All rights reserved.
 //
 
 #include <metal_stdlib>

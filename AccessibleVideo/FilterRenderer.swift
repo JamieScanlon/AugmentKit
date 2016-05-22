@@ -2,8 +2,7 @@
 //  FilterRenderer.swift
 //  AccessibleVideo
 //
-//  Created by Luke Groeninger on 10/4/14.
-//  Copyright (c) 2014 Luke Groeninger. All rights reserved.
+//  Copyright (c) 2016 Tenth Letter Made LLC. All rights reserved.
 //
 
 import Foundation

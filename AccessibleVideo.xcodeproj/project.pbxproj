@@ -16,6 +16,7 @@
 		7DCB561D1CC5F17200453635 /* AugmentKit.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 7DCB56071CC5F17100453635 /* AugmentKit.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		7DCB56271CC5F77F00453635 /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7DCB56251CC5F77F00453635 /* MetalKit.framework */; };
 		7DCB56281CC5F77F00453635 /* MetalPerformanceShaders.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7DCB56261CC5F77F00453635 /* MetalPerformanceShaders.framework */; };
+		7DE57EA71CED892A00EE668E /* ParallelCoordinateHoughTransform.metal in Sources */ = {isa = PBXBuildFile; fileRef = 7DE57EA61CED892A00EE668E /* ParallelCoordinateHoughTransform.metal */; };
 		DF048B2219E3CC9000064E81 /* Shaders.plist in Resources */ = {isa = PBXBuildFile; fileRef = DF048B2119E3CC9000064E81 /* Shaders.plist */; };
 		DF048B2619E3F4CE00064E81 /* Sobel.metal in Sources */ = {isa = PBXBuildFile; fileRef = DF048B2519E3F4CE00064E81 /* Sobel.metal */; };
 		DF317CC31C0A909700CEF3D2 /* Filters.plist in Resources */ = {isa = PBXBuildFile; fileRef = DF317CC21C0A909700CEF3D2 /* Filters.plist */; };
@@ -94,6 +95,7 @@
 		7DCB56251CC5F77F00453635 /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
 		7DCB56261CC5F77F00453635 /* MetalPerformanceShaders.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalPerformanceShaders.framework; path = System/Library/Frameworks/MetalPerformanceShaders.framework; sourceTree = SDKROOT; };
 		7DCB56291CC5F7B200453635 /* AccessibleVideo-Bridging-Header.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "AccessibleVideo-Bridging-Header.h"; sourceTree = "<group>"; };
+		7DE57EA61CED892A00EE668E /* ParallelCoordinateHoughTransform.metal */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.metal; name = ParallelCoordinateHoughTransform.metal; path = Shaders/ParallelCoordinateHoughTransform.metal; sourceTree = "<group>"; };
 		DF048B2119E3CC9000064E81 /* Shaders.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Shaders.plist; path = Shaders/Shaders.plist; sourceTree = "<group>"; };
 		DF048B2519E3F4CE00064E81 /* Sobel.metal */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.metal; name = Sobel.metal; path = Shaders/Sobel.metal; sourceTree = "<group>"; };
 		DF317CC21C0A909700CEF3D2 /* Filters.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Filters.plist; sourceTree = "<group>"; };
@@ -188,6 +190,7 @@
 				DFC4CFEC1A3A1B6D00964650 /* Common.metal */,
 				7D9ECF981CE8D903002323D2 /* Suprpession.metal */,
 				7D9ECF9A1CE99322002323D2 /* WeakPixelInclusion.metal */,
+				7DE57EA61CED892A00EE668E /* ParallelCoordinateHoughTransform.metal */,
 			);
 			name = Shaders;
 			sourceTree = "<group>";
@@ -346,7 +349,7 @@
 			attributes = {
 				LastSwiftUpdateCheck = 0730;
 				LastUpgradeCheck = 0700;
-				ORGANIZATIONNAME = "Luke Groeninger";
+				ORGANIZATIONNAME = "Tenth Letter Made LLC";
 				TargetAttributes = {
 					7DCB56061CC5F17100453635 = {
 						CreatedOnToolsVersion = 7.3;
@@ -438,6 +441,7 @@
 				DFFEE88F19E207B700D19FFA /* MetalView.swift in Sources */,
 				DFF6E11E1A10796D009A3CD8 /* Blur.metal in Sources */,
 				DFE69F2F19E0EE140072EFAC /* CameraController.swift in Sources */,
+				7DE57EA71CED892A00EE668E /* ParallelCoordinateHoughTransform.metal in Sources */,
 				DF317CC71C0BC5BB00CEF3D2 /* FilterModel.swift in Sources */,
 				7D9ECF9B1CE99322002323D2 /* WeakPixelInclusion.metal in Sources */,
 				DF6A115019C8091C00D20618 /* Base.metal in Sources */,

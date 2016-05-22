@@ -44,6 +44,14 @@ struct FilterParameters
     uint secondaryColor;
 };
 
+struct MinMaxPoint
+{
+    float minX;
+    float minY;
+    float maxX;
+    float maxY;
+};
+
 #define PRIMARY_COLOR unpack_unorm4x8_to_half(filterParameters->primaryColor)
 #define SECONDARY_COLOR unpack_unorm4x8_to_half(filterParameters->secondaryColor)
 #define HIGH_THRESHOLD half(filterParameters->highThreshold)

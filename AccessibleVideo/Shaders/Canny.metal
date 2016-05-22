@@ -2,8 +2,7 @@
 //  Canny.metal
 //  AccessibleVideo
 //
-//  Created by Luke Groeninger on 11/11/14.
-//  Copyright (c) 2014 Luke Groeninger. All rights reserved.
+//  Copyright (c) 2016 Tenth Letter Made LLC. All rights reserved.
 //
 
 #include "Common.metal"

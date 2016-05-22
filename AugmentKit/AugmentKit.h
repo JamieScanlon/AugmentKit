@@ -3,7 +3,7 @@
 //  AugmentKit
 //
 //  Created by Jamie Scanlon on 4/18/16.
-//  Copyright © 2016 Luke Groeninger. All rights reserved.
+//  Copyright © 2016 Tenth Letter Made LLC. All rights reserved.
 //
 
 #import <UIKit/UIKit.h>

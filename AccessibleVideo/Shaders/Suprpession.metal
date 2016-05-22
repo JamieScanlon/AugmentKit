@@ -3,7 +3,7 @@
 //  AccessibleVideo
 //
 //  Created by Jamie Scanlon on 5/15/16.
-//  Copyright © 2016 Luke Groeninger. All rights reserved.
+//  Copyright © 2016 Tenth Letter Made LLC. All rights reserved.
 //
 
 #include <metal_stdlib>
@@ -47,4 +47,64 @@ fragment half4 suppression_directional_nonmaximum(FILTER_SHADER_ARGS_FRAME_ONLY)
      gl_FragColor = vec4(multiplier, multiplier, multiplier, 1.0);
      */
     
+}
+
+fragment half4 suppression_threshold_nonmaximum(FILTER_SHADER_ARGS_FRAME_ONLY)
+{
+    
+    half m11 = currentFrame.sample(bilinear, inFrag.m_TexCoord,int2(-1,+1)).r; // Bottom Left
+    half m12 = currentFrame.sample(bilinear, inFrag.m_TexCoord,int2(0,+1)).r; // Bottom
+    half m13 = currentFrame.sample(bilinear, inFrag.m_TexCoord,int2(+1,+1)).r; // Bottom Right
+    half m21 = currentFrame.sample(bilinear, inFrag.m_TexCoord,int2(-1,0)).r; // Left
+    half m23 = currentFrame.sample(bilinear, inFrag.m_TexCoord,int2(+1,0)).r; // Right
+    half m31 = currentFrame.sample(bilinear, inFrag.m_TexCoord,int2(-1,-1)).r; // Top Left
+    half m32 = currentFrame.sample(bilinear, inFrag.m_TexCoord,int2(0,-1)).r; // Top
+    half m33 = currentFrame.sample(bilinear, inFrag.m_TexCoord,int2(+1,-1)).r; // Top Right
+    
+    half4 centerColor = currentFrame.sample(bilinear, inFrag.m_TexCoord);
+    
+    // Use a tiebreaker for pixels to the left and immediately above this one
+    half multiplier = 1.0 - step(centerColor.r, m32);
+    multiplier = multiplier * (1.0 - step(centerColor.r, m31));
+    multiplier = multiplier * (1.0 - step(centerColor.r, m21));
+    multiplier = multiplier * (1.0 - step(centerColor.r, m11));
+    
+    half maxValue = max(centerColor.r, m12);
+    maxValue = max(maxValue, m13);
+    maxValue = max(maxValue, m23);
+    maxValue = max(maxValue, m33);
+    
+    half finalValue = centerColor.r * step(maxValue, centerColor.r) * multiplier;
+    finalValue = step(LOW_THRESHOLD, finalValue);
+    
+    return half4(finalValue, finalValue, finalValue, 1.0);
+    
+    /*
+     lowp float bottomColor = texture2D(inputImageTexture, bottomTextureCoordinate).r;
+     lowp float bottomLeftColor = texture2D(inputImageTexture, bottomLeftTextureCoordinate).r;
+     lowp float bottomRightColor = texture2D(inputImageTexture, bottomRightTextureCoordinate).r;
+     lowp vec4 centerColor = texture2D(inputImageTexture, textureCoordinate);
+     lowp float leftColor = texture2D(inputImageTexture, leftTextureCoordinate).r;
+     lowp float rightColor = texture2D(inputImageTexture, rightTextureCoordinate).r;
+     lowp float topColor = texture2D(inputImageTexture, topTextureCoordinate).r;
+     lowp float topRightColor = texture2D(inputImageTexture, topRightTextureCoordinate).r;
+     lowp float topLeftColor = texture2D(inputImageTexture, topLeftTextureCoordinate).r;
+     
+     // Use a tiebreaker for pixels to the left and immediately above this one
+     lowp float multiplier = 1.0 - step(centerColor.r, topColor);
+     multiplier = multiplier * (1.0 - step(centerColor.r, topLeftColor));
+     multiplier = multiplier * (1.0 - step(centerColor.r, leftColor));
+     multiplier = multiplier * (1.0 - step(centerColor.r, bottomLeftColor));
+     
+     lowp float maxValue = max(centerColor.r, bottomColor);
+     maxValue = max(maxValue, bottomRightColor);
+     maxValue = max(maxValue, rightColor);
+     maxValue = max(maxValue, topRightColor);
+     
+     lowp float finalValue = centerColor.r * step(maxValue, centerColor.r) * multiplier;
+     finalValue = step(threshold, finalValue);
+     
+     gl_FragColor = vec4(finalValue, finalValue, finalValue, 1.0);
+     */
+
 }

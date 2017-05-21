@@ -12,6 +12,30 @@ import MetalKit
 import MetalPerformanceShaders
 import AVFoundation
 import UIKit
+// FIXME: comparison operators with optionals were removed from the Swift Standard Libary.
+// Consider refactoring the code to use the non-optional operators.
+fileprivate func < <T : Comparable>(lhs: T?, rhs: T?) -> Bool {
+  switch (lhs, rhs) {
+  case let (l?, r?):
+    return l < r
+  case (nil, _?):
+    return true
+  default:
+    return false
+  }
+}
+
+// FIXME: comparison operators with optionals were removed from the Swift Standard Libary.
+// Consider refactoring the code to use the non-optional operators.
+fileprivate func > <T : Comparable>(lhs: T?, rhs: T?) -> Bool {
+  switch (lhs, rhs) {
+  case let (l?, r?):
+    return l > r
+  default:
+    return rhs < lhs
+  }
+}
+
 
 protocol RendererControlDelegate {
     var primaryColor:UIColor { get set }
@@ -20,15 +44,15 @@ protocol RendererControlDelegate {
     var highQuality:Bool { get }
 }
 
-enum RendererSetupError: ErrorType {
-    case MissingDevice
-    case ShaderListNotFound
-    case FailedBufferCreation
-    case FailedLibraryCreation
+enum RendererSetupError: Error {
+    case missingDevice
+    case shaderListNotFound
+    case failedBufferCreation
+    case failedLibraryCreation
 }
 
-enum PassSetupError: ErrorType {
-    case MissingDevice
+enum PassSetupError: Error {
+    case missingDevice
 }
 
 class FilterRenderer: NSObject, RendererControlDelegate {
@@ -81,85 +105,84 @@ class FilterRenderer: NSObject, RendererControlDelegate {
         }
     }
     
-    private var _controller:UIViewController
+    fileprivate var _controller:UIViewController
     
-    lazy private var _device = MTLCreateSystemDefaultDevice()
-    lazy private var _vertexStart = [UIInterfaceOrientation : Int]()
+    lazy fileprivate var _device = MTLCreateSystemDefaultDevice()
+    lazy fileprivate var _vertexStart = [UIInterfaceOrientation : Int]()
 
-    private var _vertexBuffer:MTLBuffer? = nil
-    private var _filterArgs:MetalBufferArray<FilterBuffer>? = nil
-    private var _colorArgs:MetalBufferArray<ColorBuffer>? = nil
+    fileprivate var _vertexBuffer:MTLBuffer? = nil
+    fileprivate var _filterArgs:MetalBufferArray<FilterBuffer>? = nil
+    fileprivate var _colorArgs:MetalBufferArray<ColorBuffer>? = nil
     
-    private var _currentFilterBuffer:Int = 0 {
+    fileprivate var _currentFilterBuffer:Int = 0 {
         didSet {
             _currentFilterBuffer = _currentFilterBuffer % _numberShaderBuffers
         }
     }
     
-    private var _currentColorBuffer:Int = 0 {
+    fileprivate var _currentColorBuffer:Int = 0 {
         didSet {
             _currentColorBuffer = _currentColorBuffer % _numberShaderBuffers
         }
     }
     
-    private var _screenBlitState:MTLRenderPipelineState? = nil
-    private var _screenInvertState:MTLRenderPipelineState? = nil
+    fileprivate var _screenBlitState:MTLRenderPipelineState? = nil
+    fileprivate var _screenInvertState:MTLRenderPipelineState? = nil
     
-    private var _commandQueue: MTLCommandQueue? = nil
+    fileprivate var _commandQueue: MTLCommandQueue? = nil
     
-    private var _intermediateTextures = [MTLTexture]()
-    private var _intermediateRenderPassDescriptor = [MTLRenderPassDescriptor]()
+    fileprivate var _intermediateTextures = [MTLTexture]()
+    fileprivate var _intermediateRenderPassDescriptor = [MTLRenderPassDescriptor]()
 
     
-    private var _rgbTexture:MTLTexture? = nil
-    private var _rgbDescriptor:MTLRenderPassDescriptor? = nil
+    fileprivate var _rgbTexture:MTLTexture? = nil
+    fileprivate var _rgbDescriptor:MTLRenderPassDescriptor? = nil
     
     // ping/pong index variable
-    private var _currentSourceTexture:Int = 0 {
+    fileprivate var _currentSourceTexture:Int = 0 {
         didSet {
             _currentSourceTexture = _currentSourceTexture % 2
         }
     }
     
-    private var _currentDestTexture:Int {
+    fileprivate var _currentDestTexture:Int {
         return (_currentSourceTexture + 1) % 2
     }
     
-    private var _numberBufferedFrames:Int = 2
-    private var _numberShaderBuffers:Int {
+    fileprivate var _numberBufferedFrames:Int = 3
+    fileprivate var _numberShaderBuffers:Int {
         return _numberBufferedFrames + 1
     }
     
-    private var _renderSemaphore: dispatch_semaphore_t? = nil
+    fileprivate var _renderSemaphore: DispatchSemaphore? = nil
     
-    private var _unmanagedTextureCache: Unmanaged<CVMetalTextureCache>?
-    private var _textureCache: CVMetalTextureCache? = nil
+    fileprivate var _textureCache: CVMetalTextureCache? = nil
     
-    private var _vertexDesc: MTLVertexDescriptor? = nil
+    fileprivate var _vertexDesc: MTLVertexDescriptor? = nil
     
-    private var _shaderLibrary: MTLLibrary? = nil
-    private var _shaderDictionary: NSDictionary? = nil
-    private var _renderPipelineStates = [String : MTLRenderPipelineState]()
-    private var _computePipelineStates = [String : MTLComputePipelineState]()
+    fileprivate var _shaderLibrary: MTLLibrary? = nil
+    fileprivate var _shaderDictionary: NSDictionary? = nil
+    fileprivate var _shaderPipelineStates = [String : MTLRenderPipelineState]()
+    fileprivate var _computePipelineStates = [String : MTLComputePipelineState]()
 
-    private var _shaderArguments = [String : NSObject]() // MTLRenderPipelineReflection or MTLComputePipelineReflection
+    fileprivate var _shaderArguments = [String : NSObject]() // MTLRenderPipelineReflection or MTLComputePipelineReflection
     
-    private var _samplerStates = [MTLSamplerState]()
+    fileprivate var _samplerStates = [MTLSamplerState]()
     
-    private var _currentVideoFilter = [Any]() // MTLRenderPipelineState or MTLComputePipelineState, or MPSFilterType
-    private var _currentColorFilter:MTLRenderPipelineState? = nil
-    private var _currentColorConvolution:[Float32] = [] {
+    fileprivate var _currentVideoFilter = [Any]() // MTLRenderPipelineState or MTLComputePipelineState, or MPSFilterType
+    fileprivate var _currentColorFilter:MTLRenderPipelineState? = nil
+    fileprivate var _currentColorConvolution:[Float32] = [] {
         didSet {
             setColorBuffer()
         }
     }
     
-    lazy private var _isiPad:Bool = (UIDevice.currentDevice().userInterfaceIdiom == .Pad)
+    lazy fileprivate var _isiPad:Bool = (UIDevice.current.userInterfaceIdiom == .pad)
     
-    private var _viewport:MTLViewport? = nil
+    fileprivate var _viewport:MTLViewport = MTLViewport()
     
-    private var threadsPerGroup:MTLSize!
-    private var numThreadgroups: MTLSize!
+    fileprivate var threadsPerGroup:MTLSize!
+    fileprivate var numThreadgroups: MTLSize!
     
     init(viewController:UIViewController) throws {
         _controller = viewController
@@ -173,27 +196,21 @@ class FilterRenderer: NSObject, RendererControlDelegate {
     {
         
         guard let device = device else {
-            throw RendererSetupError.MissingDevice
+            throw RendererSetupError.missingDevice
         }
         
         // load the shader dictionary
-        guard let path = NSBundle.mainBundle().pathForResource("Shaders", ofType: "plist") else {
-            throw RendererSetupError.ShaderListNotFound
+        guard let path = Bundle.main.path(forResource: "Shaders", ofType: "plist") else {
+            throw RendererSetupError.shaderListNotFound
         }
         
         _shaderDictionary = NSDictionary(contentsOfFile: path)
         
         // create the render buffering semaphore
-        _renderSemaphore = dispatch_semaphore_create(_numberBufferedFrames)
+        _renderSemaphore = DispatchSemaphore(value: _numberBufferedFrames)
         
         // create texture caches for CoreVideo
-        CVMetalTextureCacheCreate(nil, nil, device, nil, &_unmanagedTextureCache)
-        
-        guard let unmanagedTextureCache = _unmanagedTextureCache else {
-            throw RendererSetupError.FailedBufferCreation
-        }
-        
-        _textureCache = unmanagedTextureCache.takeUnretainedValue()
+        CVMetalTextureCacheCreate(nil, nil, _device!, nil, &_textureCache)
         
         // set up the full screen quads
         let data:[Float] = [
@@ -228,19 +245,19 @@ class FilterRenderer: NSObject, RendererControlDelegate {
         ]
         
         // set up vertex buffer
-        let dataSize = data.count * sizeofValue(data[0]) // 1
-        let options = MTLResourceOptions.StorageModeShared.union(MTLResourceOptions.CPUCacheModeDefaultCache)
-        _vertexBuffer = device.newBufferWithBytes(data, length: dataSize, options: options)
+        let dataSize = data.count * MemoryLayout.size(ofValue: data[0]) // 1
+        let options = MTLResourceOptions().union(MTLResourceOptions())
+        _vertexBuffer = device.makeBuffer(bytes: data, length: dataSize, options: options)
 
         // set vertex indicies start for each rotation
-        _vertexStart[.LandscapeRight] = 0
-        _vertexStart[.LandscapeLeft] = 6
-        _vertexStart[.Portrait] = 12
-        _vertexStart[.PortraitUpsideDown] = 18
+        _vertexStart[.landscapeRight] = 0
+        _vertexStart[.landscapeLeft] = 6
+        _vertexStart[.portrait] = 12
+        _vertexStart[.portraitUpsideDown] = 18
         
         // create default shader library
         guard let library = device.newDefaultLibrary() else {
-            throw RendererSetupError.FailedLibraryCreation
+            throw RendererSetupError.failedLibraryCreation
         }
         _shaderLibrary = library
         print("Loading shader library...")
@@ -250,18 +267,18 @@ class FilterRenderer: NSObject, RendererControlDelegate {
         
         // create the full screen quad vertex attribute descriptor
         let vert = MTLVertexAttributeDescriptor()
-        vert.format = .Float2
+        vert.format = .float2
         vert.bufferIndex = 0
         vert.offset = 0
         
         let tex = MTLVertexAttributeDescriptor()
-        tex.format = .Float2
+        tex.format = .float2
         tex.bufferIndex = 0
-        tex.offset = 2 * sizeof(Float)
+        tex.offset = 2 * MemoryLayout<Float>.size
         
         let layout = MTLVertexBufferLayoutDescriptor()
-        layout.stride = 4 * sizeof(Float)
-        layout.stepFunction = MTLVertexStepFunction.PerVertex
+        layout.stride = 4 * MemoryLayout<Float>.size
+        layout.stepFunction = MTLVertexStepFunction.perVertex
         
         
         let vertexDesc = MTLVertexDescriptor()
@@ -317,31 +334,31 @@ class FilterRenderer: NSObject, RendererControlDelegate {
         
         let bilinear = MTLSamplerDescriptor()
         bilinear.label = "bilinear"
-        bilinear.minFilter = .Linear
-        bilinear.magFilter = .Linear
-        _samplerStates = [nearest, bilinear].map {device.newSamplerStateWithDescriptor($0)}
+        bilinear.minFilter = .linear
+        bilinear.magFilter = .linear
+        _samplerStates = [nearest, bilinear].map {device.makeSamplerState(descriptor: $0)}
         
         // create the command queue
-        _commandQueue = device.newCommandQueue()
+        _commandQueue = device.makeCommandQueue()
         
     }
     
     // MARK: Render
     
     // create a pipeline state descriptor for a vertex/fragment shader combo
-    func renderPipelineStateFor(label label:String, fragmentShader:String, vertexShader: String?) -> (MTLRenderPipelineState?, MTLRenderPipelineReflection?) {
+    func pipelineStateFor(label:String, fragmentShader:String, vertexShader: String?) -> (MTLRenderPipelineState?, MTLRenderPipelineReflection?) {
         
         if  let device = device,
             let shaderLibrary = _shaderLibrary,
-            let fragmentProgram = shaderLibrary.newFunctionWithName(fragmentShader),
-            let vertexProgram = shaderLibrary.newFunctionWithName(vertexShader ?? "defaultVertex") {
+            let fragmentProgram = shaderLibrary.makeFunction(name: fragmentShader),
+            let vertexProgram = shaderLibrary.makeFunction(name: vertexShader ?? "defaultVertex") {
             
             let pipelineStateDescriptor = MTLRenderPipelineDescriptor()
             pipelineStateDescriptor.label = label
             pipelineStateDescriptor.vertexFunction = vertexProgram
             pipelineStateDescriptor.fragmentFunction = fragmentProgram
             
-            pipelineStateDescriptor.colorAttachments[0].pixelFormat = .BGRA8Unorm
+            pipelineStateDescriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
             
             pipelineStateDescriptor.vertexDescriptor = _vertexDesc
             
@@ -349,33 +366,33 @@ class FilterRenderer: NSObject, RendererControlDelegate {
             var info:MTLRenderPipelineReflection? = nil
             
             do {
-                let pipelineState = try device.newRenderPipelineStateWithDescriptor(pipelineStateDescriptor, options: MTLPipelineOption.BufferTypeInfo, reflection: &info)
+                let pipelineState = try device.makeRenderPipelineState(descriptor: pipelineStateDescriptor, options: MTLPipelineOption.bufferTypeInfo, reflection: &info)
                 return (pipelineState, info)
             } catch let pipelineError as NSError {
-                print("Failed to create pipeline state for shaders \(vertexShader):\(fragmentShader) error \(pipelineError)")
+                print("Failed to create pipeline state for shaders \(vertexShader!):\(fragmentShader) error \(pipelineError)")
             }
         }
         return (nil, nil)
     }
     
-    func cachedRenderPipelineStateFor(shaderName:String) -> MTLRenderPipelineState? {
-        guard let pipeline = _renderPipelineStates[shaderName] else {
+    func cachedRenderPipelineStateFor(_ shaderName:String) -> MTLRenderPipelineState? {
+        guard let pipeline = _shaderPipelineStates[shaderName] else {
             
             var fragment = shaderName
             var vertex:String? = nil
             
             if  let shaderDictionary = _shaderDictionary,
-                let s = shaderDictionary.objectForKey(shaderName) as? NSDictionary {
+                let s = shaderDictionary.object(forKey: shaderName) as? NSDictionary {
                 
-                vertex = s.objectForKey("vertex") as? String
-                if let frag:String = s.objectForKey("fragment") as? String {
+                vertex = s.object(forKey: "vertex") as? String
+                if let frag:String = s.object(forKey: "fragment") as? String {
                     fragment = frag
                 }
                 
             }
             
-            let (state, reflector) = renderPipelineStateFor(label:shaderName, fragmentShader: fragment, vertexShader: vertex)
-            _renderPipelineStates[shaderName] = state
+            let (state, reflector) = pipelineStateFor(label:shaderName, fragmentShader: fragment, vertexShader: vertex)
+            _shaderPipelineStates[shaderName] = state
             _shaderArguments[shaderName] = reflector
             return state
         }
@@ -387,13 +404,13 @@ class FilterRenderer: NSObject, RendererControlDelegate {
     // MARK: Compute
     
     // create a pipeline state descriptor for a vertex/fragment shader combo
-    func computePipelineStateFor(shaderName shaderName:String) throws -> (MTLComputePipelineState?, MTLComputePipelineReflection?) {
+    func computePipelineStateFor(shaderName:String) throws -> (MTLComputePipelineState?, MTLComputePipelineReflection?) {
         
         if  let shaderLibrary = _shaderLibrary,
-            let computeProgram = shaderLibrary.newFunctionWithName(shaderName) {
+            let computeProgram = shaderLibrary.makeFunction(name: shaderName) {
             
             guard let device = device else {
-                throw RendererSetupError.MissingDevice
+                throw RendererSetupError.missingDevice
             }
             
             let pipelineStateDescriptor = MTLComputePipelineDescriptor()
@@ -403,7 +420,7 @@ class FilterRenderer: NSObject, RendererControlDelegate {
             // create the actual pipeline state
             var info:MTLComputePipelineReflection? = nil
             
-            let pipelineState = try device.newComputePipelineStateWithDescriptor(pipelineStateDescriptor, options: MTLPipelineOption.BufferTypeInfo, reflection: &info)
+            let pipelineState = try device.makeComputePipelineState(descriptor: pipelineStateDescriptor, options: MTLPipelineOption.bufferTypeInfo, reflection: &info)
             
             return (pipelineState, info)
             
@@ -413,7 +430,7 @@ class FilterRenderer: NSObject, RendererControlDelegate {
         
     }
     
-    func cachedComputePipelineStateFor(shaderName:String) throws -> MTLComputePipelineState? {
+    func cachedComputePipelineStateFor(_ shaderName:String) throws -> MTLComputePipelineState? {
         
         guard let pipeline = _computePipelineStates[shaderName] else {
             
@@ -430,30 +447,24 @@ class FilterRenderer: NSObject, RendererControlDelegate {
     
     // MARK: Video
     
-    func setVideoFilter(filterPasses:[String]) {
-        
-        print("Setting filter...")
-        _currentVideoFilter = filterPasses.map {
-            
-            // TODO: Compute shaders
-            if let mpsType = MPSFilerType(rawValue:$0) {
-                return mpsType
-            } else {
-             return self.cachedRenderPipelineStateFor($0)
-            }
-            
-        }.flatMap{$0}
-        
+    func setVideoFilter(_ filter:VideoFilter)
+    {
+        _currentVideoFilter = filter.passes.map {self.cachedPipelineStateFor($0)!}
     }
     
-    func setColorFilter(shaderName:String, convolution:[Float32]) {
+    func setColorFilter(_ filter:InputFilter) {
         
-        guard let shader = cachedRenderPipelineStateFor(shaderName) else {
+        guard let shader = cachedPipelineStateFor(filter.shaderName) else {
+            print("Fatal error: could not set color filter to \(filter.shaderName)")
             return
         }
         
+        let nextBuffer = (_currentColorBuffer + 1) % _numberShaderBuffers
+        
         _currentColorFilter = shader
-        _currentColorConvolution = convolution
+        
+        _colorArgs?[nextBuffer].setConvolution(filter.convolution)
+        _currentColorBuffer += 1
     }
     
     func setColorBuffer() {
@@ -508,20 +519,20 @@ class FilterRenderer: NSObject, RendererControlDelegate {
         }
         
     }
-    
+ 
     // MARK: - Methods
     
     // MARK: Create Shaders
     
     // create generic render pass
-    func createRenderPass(commandBuffer: MTLCommandBuffer,
+    func createRenderPass(_ commandBuffer: MTLCommandBuffer,
                           pipeline:MTLRenderPipelineState,
                           vertexIndex:Int,
                           fragmentBuffers:[(MTLBuffer,Int)],
                           sourceTextures:[MTLTexture],
                           descriptor: MTLRenderPassDescriptor,
                           viewport:MTLViewport?) {
-        let renderEncoder = commandBuffer.renderCommandEncoderWithDescriptor(descriptor)
+        let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: descriptor)
         
         let name:String = pipeline.label ?? "Unnamed Render Pass"
         renderEncoder.pushDebugGroup(name)
@@ -531,39 +542,39 @@ class FilterRenderer: NSObject, RendererControlDelegate {
         }
         renderEncoder.setRenderPipelineState(pipeline)
         
-        renderEncoder.setVertexBuffer(_vertexBuffer, offset: 0, atIndex: 0)
+        renderEncoder.setVertexBuffer(_vertexBuffer, offset: 0, at: 0)
         
-        for (index,(buffer, offset)) in fragmentBuffers.enumerate() {
-            renderEncoder.setFragmentBuffer(buffer, offset: offset, atIndex: index)
+        for (index,(buffer, offset)) in fragmentBuffers.enumerated() {
+            renderEncoder.setFragmentBuffer(buffer, offset: offset, at: index)
         }
-        for (index,texture) in sourceTextures.enumerate() {
-            renderEncoder.setFragmentTexture(texture, atIndex: index)
+        for (index,texture) in sourceTextures.enumerated() {
+            renderEncoder.setFragmentTexture(texture, at: index)
         }
-        for (index,samplerState) in _samplerStates.enumerate() {
-            renderEncoder.setFragmentSamplerState(samplerState, atIndex: index)
+        for (index,samplerState) in _samplerStates.enumerated() {
+            renderEncoder.setFragmentSamplerState(samplerState, at: index)
         }
         
-        renderEncoder.drawPrimitives(.Triangle, vertexStart: vertexIndex, vertexCount: 6, instanceCount: 1)
+        renderEncoder.drawPrimitives(type: .triangle, vertexStart: vertexIndex, vertexCount: 6, instanceCount: 1)
         renderEncoder.popDebugGroup()
         renderEncoder.endEncoding()
     }
     
-    func createComputePass(commandBuffer: MTLCommandBuffer,
+    func createComputePass(_ commandBuffer: MTLCommandBuffer,
                            pipeline:MTLComputePipelineState,
                            textures:[MTLTexture],
                            descriptor: MTLRenderPassDescriptor,
                            viewport:MTLViewport?,
                            name: String?) {
         
-        let computeEncoder = commandBuffer.computeCommandEncoder()
+        let computeEncoder = commandBuffer.makeComputeCommandEncoder()
         let aName:String = name ?? "Unnamed Compute Pass"
         
         computeEncoder.pushDebugGroup(aName)
         computeEncoder.label = aName
         computeEncoder.setComputePipelineState(pipeline)
         
-        for (index,texture) in textures.enumerate() {
-            computeEncoder.setTexture(texture, atIndex: index)
+        for (index,texture) in textures.enumerated() {
+            computeEncoder.setTexture(texture, at: index)
         }
         
         computeEncoder.dispatchThreadgroups(numThreadgroups, threadsPerThreadgroup: threadsPerGroup)
@@ -573,7 +584,7 @@ class FilterRenderer: NSObject, RendererControlDelegate {
         
     }
     
-    func createMPSPass(commandBuffer: MTLCommandBuffer,
+    func createMPSPass(_ commandBuffer: MTLCommandBuffer,
                        texture:MTLTexture,
                        type: MPSFilerType,
                        sigma: Float?,
@@ -636,9 +647,11 @@ class FilterRenderer: NSObject, RendererControlDelegate {
                 kernel = MPSImageGaussianBlur(device: device, sigma: sigma)
             }
         case .HistogramEqualization:
-            kernel = MPSImageHistogramEqualization(device: device, histogramInfo: nil)
+            //kernel = MPSImageHistogramEqualization(device: device, histogramInfo: nil)
+            break
         case .HistogramSpecification:
-            kernel = MPSImageHistogramSpecification(device: device, histogramInfo: nil)
+            //kernel = MPSImageHistogramSpecification(device: device, histogramInfo: nil)
+            break
         case .Integral:
             kernel = MPSImageIntegral(device: device)
         case .IntegralOfSquares:
@@ -676,16 +689,43 @@ class FilterRenderer: NSObject, RendererControlDelegate {
      
         if let unwrappedKernel = kernel {
             
-            let inPlaceTexture = UnsafeMutablePointer<MTLTexture?>.alloc(1)
-            inPlaceTexture.initialize(texture)
+            let inPlaceTexture = UnsafeMutablePointer<MTLTexture>.allocate(capacity: 1)
+            inPlaceTexture.initialize(to: texture)
             let myFallbackAllocator = { ( filter: MPSKernel, commandBuffer: MTLCommandBuffer, sourceTexture: MTLTexture) -> MTLTexture in
-                let descriptor = MTLTextureDescriptor.texture2DDescriptorWithPixelFormat(sourceTexture.pixelFormat, width: sourceTexture.width, height: sourceTexture.height, mipmapped: false)
-                let result = commandBuffer.device.newTextureWithDescriptor(descriptor)
+                let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: sourceTexture.pixelFormat, width: sourceTexture.width, height: sourceTexture.height, mipmapped: false)
+                let result = commandBuffer.device.makeTexture(descriptor: descriptor)
                 return result
             }
             
-            unwrappedKernel.encodeToCommandBuffer(commandBuffer, inPlaceTexture: inPlaceTexture, fallbackCopyAllocator: myFallbackAllocator)
+            unwrappedKernel.encode(commandBuffer: commandBuffer, inPlaceTexture: inPlaceTexture, fallbackCopyAllocator: myFallbackAllocator)
         }
+    }
+    
+    func cachedPipelineStateFor(_ shaderName:String) -> MTLRenderPipelineState? {
+        guard let pipeline = _shaderPipelineStates[shaderName] else {
+            
+            var fragment:String! = shaderName
+            var vertex:String? = nil
+            
+            if let s = _shaderDictionary?.object(forKey: shaderName) as? NSDictionary {
+                vertex = s.object(forKey: "vertex") as? String
+                if let frag:String = s.object(forKey: "fragment") as? String {
+                    fragment = frag
+                }
+            }
+            
+            let (state, reflector) = pipelineStateFor(label:shaderName, fragmentShader: fragment, vertexShader: vertex)
+            if let pipelineState = state
+            {
+                _shaderPipelineStates[shaderName] = pipelineState
+                _shaderArguments[shaderName] = reflector
+            } else {
+                print("Fatal error trying to load pipeline state for \(shaderName)")
+            }
+            return state
+            
+        }
+        return pipeline
     }
 
 }
@@ -694,7 +734,7 @@ class FilterRenderer: NSObject, RendererControlDelegate {
 
 extension FilterRenderer: CameraCaptureDelegate {
     
-    func setResolution(width width: Int, height: Int) {
+    func setResolution(width: Int, height: Int) {
         
         guard let device = device else {
             return
@@ -708,7 +748,7 @@ extension FilterRenderer: CameraCaptureDelegate {
         threadsPerGroup = MTLSizeMake(16, 16, 1)
         numThreadgroups = MTLSizeMake(width / threadsPerGroup.width, height / threadsPerGroup.height, 1)
         
-        let scale = UIScreen.mainScreen().nativeScale
+        let scale = UIScreen.main.nativeScale
         
         var textureWidth = Int(_controller.view.bounds.width * scale)
         var textureHeight = Int(_controller.view.bounds.height * scale)
@@ -726,61 +766,63 @@ extension FilterRenderer: CameraCaptureDelegate {
         
         print("Setting offscreen texure resolution to \(textureWidth)x\(textureHeight)")
         
-        let descriptor = MTLTextureDescriptor.texture2DDescriptorWithPixelFormat(.BGRA8Unorm, width: textureWidth, height: textureHeight, mipmapped: false)
-        descriptor.resourceOptions = MTLResourceOptions.StorageModePrivate
-        descriptor.storageMode = MTLStorageMode.Private
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: textureWidth, height: textureHeight, mipmapped: false)
+        descriptor.resourceOptions = .storageModePrivate
+        descriptor.storageMode = .private
+        descriptor.usage = [.renderTarget, .shaderRead]
         
-        _intermediateTextures = [descriptor,descriptor].map { device.newTextureWithDescriptor($0) }
+        _intermediateTextures = [descriptor,descriptor].map { device.makeTexture(descriptor: $0) }
         _intermediateRenderPassDescriptor = _intermediateTextures.map {
             let renderDescriptor = MTLRenderPassDescriptor()
             renderDescriptor.colorAttachments[0].texture = $0
-            renderDescriptor.colorAttachments[0].loadAction = .DontCare
-            renderDescriptor.colorAttachments[0].storeAction = .DontCare
+            renderDescriptor.colorAttachments[0].loadAction = .dontCare
+            renderDescriptor.colorAttachments[0].storeAction = .store
             return renderDescriptor
         }
         
-        _rgbTexture = device.newTextureWithDescriptor(descriptor)
+        _rgbTexture = device.makeTexture(descriptor: descriptor)
         let rgbDescriptor = MTLRenderPassDescriptor()
         rgbDescriptor.colorAttachments[0].texture = _rgbTexture
-        rgbDescriptor.colorAttachments[0].loadAction = .DontCare
-        rgbDescriptor.colorAttachments[0].storeAction = .Store
+        rgbDescriptor.colorAttachments[0].loadAction = .dontCare
+        rgbDescriptor.colorAttachments[0].storeAction = .store
         _rgbDescriptor = rgbDescriptor
         
     }
     
     
-    func captureBuffer(sampleBuffer: CMSampleBuffer!) {
+    func captureBuffer(_ sampleBuffer: CMSampleBuffer!) {
         
-        if  _rgbTexture != nil,
-            let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer),
-            let colorArgs = _colorArgs,
-            let commandQueue = _commandQueue,
+        if _rgbDescriptor != nil,
             let textureCache = _textureCache,
+            let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer),
+            let commandQueue = _commandQueue,
             let currentColorFilter = _currentColorFilter,
-            let rgbDescriptor = _rgbDescriptor {
+            let colorArgs = _colorArgs,
+            let rgbDescriptor = _rgbDescriptor
+        {
             
-            let commandBuffer = commandQueue.commandBuffer()
+            let commandBuffer = commandQueue.makeCommandBuffer()
             commandBuffer.enqueue()
             defer {
                 commandBuffer.commit()
             }
             
-            var y_texture: Unmanaged<CVMetalTexture>?
+            var y_texture: CVMetalTexture?
             let y_width = CVPixelBufferGetWidthOfPlane(pixelBuffer, 0)
             let y_height = CVPixelBufferGetHeightOfPlane(pixelBuffer, 0)
-            CVMetalTextureCacheCreateTextureFromImage(kCFAllocatorDefault, textureCache, pixelBuffer, nil, MTLPixelFormat.R8Unorm, y_width, y_height, 0, &y_texture)
+            CVMetalTextureCacheCreateTextureFromImage(kCFAllocatorDefault, textureCache, pixelBuffer, nil, .r8Unorm, y_width, y_height, 0, &y_texture)
             
-            var uv_texture: Unmanaged<CVMetalTexture>?
+            var uv_texture: CVMetalTexture?
             let uv_width = CVPixelBufferGetWidthOfPlane(pixelBuffer, 1)
             let uv_height = CVPixelBufferGetHeightOfPlane(pixelBuffer, 1)
-            CVMetalTextureCacheCreateTextureFromImage(kCFAllocatorDefault, textureCache, pixelBuffer, nil, MTLPixelFormat.RG8Unorm, uv_width, uv_height, 1, &uv_texture)
+            CVMetalTextureCacheCreateTextureFromImage(kCFAllocatorDefault, textureCache, pixelBuffer, nil, .rg8Unorm, uv_width, uv_height, 1, &uv_texture)
             
             guard let yTexture = y_texture, let uvTexture = uv_texture else {
                     return
             }
             
-            let luma = CVMetalTextureGetTexture(yTexture.takeRetainedValue())!
-            let chroma = CVMetalTextureGetTexture(uvTexture.takeRetainedValue())!
+            let luma = CVMetalTextureGetTexture(y_texture!)!
+            let chroma = CVMetalTextureGetTexture(uv_texture!)!
             
             let yuvTextures:[MTLTexture] = [ luma, chroma ]
             
@@ -804,9 +846,9 @@ extension FilterRenderer: CameraCaptureDelegate {
 
 extension FilterRenderer: MTKViewDelegate {
     
-    @objc func drawInMTKView(view: MTKView) {
+    @objc func draw(in view: MTKView) {
         
-        let currentOrientation:UIInterfaceOrientation = _isiPad ? UIApplication.sharedApplication().statusBarOrientation : .Portrait
+        let currentOrientation:UIInterfaceOrientation = _isiPad ? UIApplication.shared.statusBarOrientation : .portrait
         
         guard let commandQueue = _commandQueue,
               let renderSemaphore = _renderSemaphore,
@@ -814,25 +856,25 @@ extension FilterRenderer: MTKViewDelegate {
             return
         }
         
-        let commandBuffer = commandQueue.commandBuffer()
+        let commandBuffer = commandQueue.makeCommandBuffer()
         
-        dispatch_semaphore_wait(renderSemaphore, DISPATCH_TIME_FOREVER)
+        let _ = renderSemaphore.wait(timeout: DispatchTime.distantFuture)
         // get the command buffer
         commandBuffer.enqueue()
         defer {
             // commit buffers to GPU
             commandBuffer.addCompletedHandler() {
                 (cmdb:MTLCommandBuffer!) in
-                dispatch_semaphore_signal(renderSemaphore)
+                renderSemaphore.signal()
                 return
             }
             
-            commandBuffer.presentDrawable(currentDrawable)
+            commandBuffer.present(currentDrawable)
             commandBuffer.commit()
         }
         
         guard let rgbTexture = _rgbTexture,
-              let currentOffset = _vertexStart[currentOrientation] where _rgbTexture != nil else {
+              let currentOffset = _vertexStart[currentOrientation], _rgbTexture != nil else {
             return
         }
         
@@ -905,7 +947,7 @@ extension FilterRenderer: MTKViewDelegate {
         
     }
     
-    @objc func mtkView(view: MTKView, drawableSizeWillChange size: CGSize) {
+    @objc func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
         
         if let rgbTexture = _rgbTexture {
             
@@ -924,19 +966,19 @@ extension FilterRenderer: MTKViewDelegate {
                 _viewport = MTLViewport(originX: diff, originY: 0.0, width: newHeight, height: Double(size.height), znear: 0.0, zfar: 1.0)
             }
             
-            if _viewport?.originX < 0.0 {
-                _viewport?.originX = 0.0
+            if _viewport.originX < 0.0 {
+                _viewport.originX = 0.0
             }
-            if _viewport?.originY < 0.0 {
-                _viewport?.originY = 0.0
-            }
-            
-            if _viewport?.width > Double(size.width) {
-                _viewport?.width = Double(size.width)
+            if _viewport.originY < 0.0 {
+                _viewport.originY = 0.0
             }
             
-            if _viewport?.height > Double(size.height) {
-                _viewport?.height = Double(size.height)
+            if _viewport.width > Double(size.width) {
+                _viewport.width = Double(size.width)
+            }
+            
+            if _viewport.height > Double(size.height) {
+                _viewport.height = Double(size.height)
             }
             
         }

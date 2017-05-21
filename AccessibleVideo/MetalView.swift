@@ -22,19 +22,19 @@ class MetalView:MTKView {
     
     required init(coder: NSCoder) {
         super.init(coder: coder)
-        self.opaque = true
+        self.isOpaque = true
         self.backgroundColor = nil
         self.presentsWithTransaction = false
-        self.colorPixelFormat = .BGRA8Unorm
+        self.colorPixelFormat = .bgra8Unorm
         self.framebufferOnly = false
     }
     
     override init(frame frameRect: CGRect, device: MTLDevice?) {
         super.init(frame: frameRect, device: device)
-        self.opaque = true
+        self.isOpaque = true
         self.backgroundColor = nil
         self.presentsWithTransaction = false
-        self.colorPixelFormat = .BGRA8Unorm
+        self.colorPixelFormat = .bgra8Unorm
         self.framebufferOnly = false
     }
 

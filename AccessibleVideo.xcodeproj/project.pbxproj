@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		7D9ECF991CE8D904002323D2 /* Suprpession.metal in Sources */ = {isa = PBXBuildFile; fileRef = 7D9ECF981CE8D903002323D2 /* Suprpession.metal */; };
+		7D9ECF991CE8D904002323D2 /* Suppression.metal in Sources */ = {isa = PBXBuildFile; fileRef = 7D9ECF981CE8D903002323D2 /* Suppression.metal */; };
 		7D9ECF9B1CE99322002323D2 /* WeakPixelInclusion.metal in Sources */ = {isa = PBXBuildFile; fileRef = 7D9ECF9A1CE99322002323D2 /* WeakPixelInclusion.metal */; };
 		7DCB560A1CC5F17100453635 /* AugmentKit.h in Headers */ = {isa = PBXBuildFile; fileRef = 7DCB56091CC5F17100453635 /* AugmentKit.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		7DCB56111CC5F17200453635 /* AugmentKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7DCB56071CC5F17100453635 /* AugmentKit.framework */; };
@@ -84,7 +84,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		7D9ECF981CE8D903002323D2 /* Suprpession.metal */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.metal; name = Suprpession.metal; path = Shaders/Suprpession.metal; sourceTree = "<group>"; };
+		7D9ECF981CE8D903002323D2 /* Suppression.metal */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.metal; name = Suppression.metal; path = Shaders/Suppression.metal; sourceTree = "<group>"; };
 		7D9ECF9A1CE99322002323D2 /* WeakPixelInclusion.metal */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.metal; name = WeakPixelInclusion.metal; path = Shaders/WeakPixelInclusion.metal; sourceTree = "<group>"; };
 		7DCB56071CC5F17100453635 /* AugmentKit.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = AugmentKit.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		7DCB56091CC5F17100453635 /* AugmentKit.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AugmentKit.h; sourceTree = "<group>"; };
@@ -188,7 +188,7 @@
 				DF847FD81A11FE9A00AD6068 /* Canny.metal */,
 				DFC4CFEA1A3A1ACE00964650 /* Colorblind.metal */,
 				DFC4CFEC1A3A1B6D00964650 /* Common.metal */,
-				7D9ECF981CE8D903002323D2 /* Suprpession.metal */,
+				7D9ECF981CE8D903002323D2 /* Suppression.metal */,
 				7D9ECF9A1CE99322002323D2 /* WeakPixelInclusion.metal */,
 				7DE57EA61CED892A00EE668E /* ParallelCoordinateHoughTransform.metal */,
 			);
@@ -356,11 +356,13 @@
 					};
 					7DCB560F1CC5F17200453635 = {
 						CreatedOnToolsVersion = 7.3;
+						LastSwiftMigration = 0830;
 						TestTargetID = DFD2200419C643BC00913975;
 					};
 					DFD2200419C643BC00913975 = {
 						CreatedOnToolsVersion = 6.0;
 						DevelopmentTeam = 3XDE7T392Z;
+						LastSwiftMigration = 0830;
 						SystemCapabilities = {
 							com.apple.iCloud = {
 								enabled = 0;
@@ -457,7 +459,7 @@
 				DF847FD91A11FE9A00AD6068 /* Canny.metal in Sources */,
 				DFC4CFED1A3A1B6D00964650 /* Common.metal in Sources */,
 				DFF6E11A1A104E36009A3CD8 /* SettingsViewController.swift in Sources */,
-				7D9ECF991CE8D904002323D2 /* Suprpession.metal in Sources */,
+				7D9ECF991CE8D904002323D2 /* Suppression.metal in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -563,6 +565,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = com.tenthlettermade.AugmentKitTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 3.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AccessibleVideo.app/AccessibleVideo";
 			};
 			name = Debug;
@@ -579,6 +582,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = com.tenthlettermade.AugmentKitTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 3.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AccessibleVideo.app/AccessibleVideo";
 			};
 			name = Release;
@@ -682,6 +686,7 @@
 				PROVISIONING_PROFILE = "";
 				SWIFT_OBJC_BRIDGING_HEADER = "AccessibleVideo/AccessibleVideo-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 3.0;
 			};
 			name = Debug;
 		};
@@ -699,6 +704,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE = "";
 				SWIFT_OBJC_BRIDGING_HEADER = "AccessibleVideo/AccessibleVideo-Bridging-Header.h";
+				SWIFT_VERSION = 3.0;
 			};
 			name = Release;
 		};

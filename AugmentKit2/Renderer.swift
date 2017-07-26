@@ -21,7 +21,7 @@ protocol RenderDestinationProvider {
 }
 
 protocol MeshProvider {
-    func loadMesh(forType: MeshType, metalAllocator: MTKMeshBufferAllocator, completion: (MDLMesh?) -> Void)
+    func loadMesh(forType: MeshType, metalAllocator: MTKMeshBufferAllocator, completion: (MDLAsset?) -> Void)
 }
 
 enum MeshType {
@@ -162,7 +162,7 @@ class Renderer {
     private let textureLoader: MTKTextureLoader
     private let inFlightSemaphore = DispatchSemaphore(value: Constants.maxBuffersInFlight)
     private var renderDestination: RenderDestinationProvider
-    private let modelParser: ModelParse?
+    private var modelParser: ModelParser?
     
     // Metal objects
     private var commandQueue: MTLCommandQueue!
@@ -401,6 +401,10 @@ class Renderer {
         
             // NEW
             
+            guard let modelParser = modelParser else {
+                return
+            }
+            
             let anchorVertexDescriptor = createVertexDescriptor(with: modelParser.vertexDescriptors)
             
             if let meshGPUData = meshGPUData {
@@ -464,17 +468,22 @@ class Renderer {
         (vertexDescriptor.attributes[Int(kVertexAttributeTexcoord.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributeTextureCoordinate
         (vertexDescriptor.attributes[Int(kVertexAttributeNormal.rawValue)] as! MDLVertexAttribute).name   = MDLVertexAttributeNormal
         
-        meshProvider.loadMesh(forType: .anchor, metalAllocator: metalAllocator) { [weak self] mesh in
+        meshProvider.loadMesh(forType: .anchor, metalAllocator: metalAllocator) { [weak self] asset in
             
-            guard let mesh = mesh else {
-                fatalError("Failed to get mesh from meshProvider.")
+            guard let asset = asset else {
+                fatalError("Failed to get asset from meshProvider.")
             }
             
-            // Perform the format/relayout of mesh vertices by setting the new vertex descriptor in our
-            //   Model IO mesh
-            mesh.vertexDescriptor = vertexDescriptor
-            
             if useOldFlow {
+                
+                guard let mesh = asset.object(at: 0).children[0].children[0] as? MDLMesh else {
+                    fatalError("Failed to get mesh from asset.")
+                }
+                
+                // Perform the format/relayout of mesh vertices by setting the new vertex descriptor in our
+                //   Model IO mesh
+                mesh.vertexDescriptor = vertexDescriptor
+                
                 // Create a MetalKit mesh (and submeshes) backed by Metal buffers
                 do {
                     try self?.anchorMesh = MTKMesh(mesh: mesh, device: device)
@@ -483,58 +492,71 @@ class Renderer {
                 }
             } else {
                 // Load meshes into mode parser
-                modelParser = ModelParser(asset: mesh)
+                modelParser = ModelParser(asset: asset)
             }
             
             // TODO: Figure out a way to load a new mesh per anchor.
             
         }
         
-        meshProvider.loadMesh(forType: .horizPlane, metalAllocator: metalAllocator) { [weak self] mesh in
-            
-            let myMesh: MDLMesh = {
-                if let mesh = mesh {
-                    return mesh
-                } else {
-                    // Use ModelIO to create a box mesh as our object
-                    let mesh = MDLMesh(planeWithExtent: vector3(1, 0, 1), segments: vector2(1, 1), geometryType: .triangles, allocator: metalAllocator)
-                    if let submesh = mesh.submeshes?.firstObject as? MDLSubmesh {
-                        let scatteringFunction = MDLScatteringFunction()
-                        submesh.material = MDLMaterial(name: "plane_grid", scatteringFunction: scatteringFunction)
-                    }
-                    return mesh
-                }
-            }()
-            
-            // Perform the format/relayout of mesh vertices by setting the new vertex descriptor in our
-            //   Model IO mesh
-            myMesh.vertexDescriptor = vertexDescriptor
+        meshProvider.loadMesh(forType: .horizPlane, metalAllocator: metalAllocator) { [weak self] asset in
             
             if useOldFlow {
+                
+                let myMesh: MDLMesh = {
+                    if let asset = asset, let mesh = asset.object(at: 0).children[0].children[0] as? MDLMesh {
+                        return mesh
+                    } else {
+                        // Use ModelIO to create a box mesh as our object
+                        let mesh = MDLMesh(planeWithExtent: vector3(1, 0, 1), segments: vector2(1, 1), geometryType: .triangles, allocator: metalAllocator)
+                        if let submesh = mesh.submeshes?.firstObject as? MDLSubmesh {
+                            let scatteringFunction = MDLScatteringFunction()
+                            submesh.material = MDLMaterial(name: "plane_grid", scatteringFunction: scatteringFunction)
+                        }
+                        return mesh
+                    }
+                }()
+                
+                // Perform the format/relayout of mesh vertices by setting the new vertex descriptor in our
+                //   Model IO mesh
+                myMesh.vertexDescriptor = vertexDescriptor
+                
                 // Create a MetalKit mesh (and submeshes) backed by Metal buffers
                 do {
                     try self?.horizPlaneMesh = MTKMesh(mesh: myMesh, device: device)
                 } catch let error {
                     print("Error creating MetalKit mesh from MDLMesh, error \(error)")
                 }
+                
             } else {
+                
+                guard let asset = asset else {
+                    return
+                }
+                
                 // Load meshes into mode parser
-                modelParser = ModelParser(asset: mesh)
+                modelParser = ModelParser(asset: asset)
+                
             }
             
         }
         
-        meshProvider.loadMesh(forType: .vertPlane, metalAllocator: metalAllocator) { [weak self] mesh in
+        meshProvider.loadMesh(forType: .vertPlane, metalAllocator: metalAllocator) { [weak self] asset in
             
-            guard let mesh = mesh else {
-                return
+            guard let asset = asset else {
+                fatalError("Failed to get asset from meshProvider.")
             }
             
-            // Perform the format/relayout of mesh vertices by setting the new vertex descriptor in our
-            //   Model IO mesh
-            mesh.vertexDescriptor = vertexDescriptor
-            
             if useOldFlow {
+                
+                guard let mesh = asset.object(at: 0).children[0].children[0] as? MDLMesh else {
+                    fatalError("Failed to get mesh from asset.")
+                }
+                
+                // Perform the format/relayout of mesh vertices by setting the new vertex descriptor in our
+                //   Model IO mesh
+                mesh.vertexDescriptor = vertexDescriptor
+                
                 // Create a MetalKit mesh (and submeshes) backed by Metal buffers
                 do {
                     try self?.vertPlaneMesh = MTKMesh(mesh: mesh, device: device)
@@ -543,7 +565,7 @@ class Renderer {
                 }
             } else {
                 // Load meshes into mode parser
-                modelParser = ModelParser(asset: mesh)
+                modelParser = ModelParser(asset: asset)
             }
             
         }
@@ -551,6 +573,10 @@ class Renderer {
     }
     
     private func loadMeshesFromParser() {
+        
+        guard let modelParser = modelParser else {
+            return
+        }
         
         if modelParser.meshNodeIndices.count > 1 {
             print("WARNING: More than one mesh was found. Currently only one mesh per anchor is supported.")

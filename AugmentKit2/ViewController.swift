@@ -133,7 +133,7 @@ extension ViewController: ARSessionDelegate {
 
 extension ViewController: MeshProvider {
     
-    func loadMesh(forType type: MeshType, metalAllocator: MTKMeshBufferAllocator, completion: (MDLMesh?) -> Void) {
+    func loadMesh(forType type: MeshType, metalAllocator: MTKMeshBufferAllocator, completion: (MDLAsset?) -> Void) {
         
         switch type {
         case .anchor:
@@ -141,10 +141,7 @@ extension ViewController: MeshProvider {
                 fatalError("Failed to find model file.")
             }
             let asset = MDLAsset(scnScene: scene, bufferAllocator: metalAllocator)
-            guard let mesh = asset.object(at: 0).children[0].children[0] as? MDLMesh else {
-                fatalError("Failed to get mesh from asset.")
-            }
-            completion(mesh)
+            completion(asset)
         case .horizPlane:
             // Use the default guide
             completion(nil)

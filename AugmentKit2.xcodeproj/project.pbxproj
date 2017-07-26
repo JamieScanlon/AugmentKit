@@ -16,7 +16,6 @@
 		7D88D7B51F0AFD550009A154 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 7D88D7B31F0AFD550009A154 /* Main.storyboard */; };
 		7D88D7B71F0AFD560009A154 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7D88D7B61F0AFD560009A154 /* Assets.xcassets */; };
 		7D88D7BA1F0AFD560009A154 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 7D88D7B81F0AFD560009A154 /* LaunchScreen.storyboard */; };
-		7D88D7C31F0B025A0009A154 /* Models.scnassets in Resources */ = {isa = PBXBuildFile; fileRef = 7D88D7C21F0B025A0009A154 /* Models.scnassets */; };
 		7D88D7C71F0C07960009A154 /* LocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D88D7C61F0C07960009A154 /* LocationManager.swift */; };
 		7D88D7CC1F0C2B0A0009A154 /* LocalStoreManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D88D7CB1F0C2B0A0009A154 /* LocalStoreManager.swift */; };
 		7D88D7CE1F0C51CD0009A154 /* ErrorManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D88D7CD1F0C51CD0009A154 /* ErrorManager.swift */; };
@@ -29,6 +28,7 @@
 
 /* Begin PBXFileReference section */
 		7D1B6F081F23B2B200AB035D /* ModelParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelParser.swift; sourceTree = "<group>"; };
+		7D1B6F0A1F286C4600AB035D /* Models.scnassets */ = {isa = PBXFileReference; lastKnownFileType = wrapper.scnassets; path = Models.scnassets; sourceTree = "<group>"; };
 		7D8111EE1F12974D00DD11E9 /* MotionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionManager.swift; sourceTree = "<group>"; };
 		7D88D7A71F0AFD550009A154 /* AugmentKit2.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AugmentKit2.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7D88D7AA1F0AFD550009A154 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -41,7 +41,6 @@
 		7D88D7B91F0AFD560009A154 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		7D88D7BB1F0AFD560009A154 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		7D88D7BC1F0AFD560009A154 /* AugmentKit2-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "AugmentKit2-Bridging-Header.h"; sourceTree = "<group>"; };
-		7D88D7C21F0B025A0009A154 /* Models.scnassets */ = {isa = PBXFileReference; lastKnownFileType = wrapper.scnassets; name = Models.scnassets; path = "../../ARTest-Metal/ARTest-Metal/Models.scnassets"; sourceTree = "<group>"; };
 		7D88D7C61F0C07960009A154 /* LocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationManager.swift; sourceTree = "<group>"; };
 		7D88D7CB1F0C2B0A0009A154 /* LocalStoreManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocalStoreManager.swift; path = AugmentKit2/Managers/LocalStoreManager.swift; sourceTree = SOURCE_ROOT; };
 		7D88D7CD1F0C51CD0009A154 /* ErrorManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ErrorManager.swift; path = AugmentKit2/Managers/ErrorManager.swift; sourceTree = SOURCE_ROOT; };
@@ -91,7 +90,7 @@
 				7D88D7B11F0AFD550009A154 /* ViewController.swift */,
 				7D88D7B31F0AFD550009A154 /* Main.storyboard */,
 				7D88D7B61F0AFD560009A154 /* Assets.xcassets */,
-				7D88D7C21F0B025A0009A154 /* Models.scnassets */,
+				7D1B6F0A1F286C4600AB035D /* Models.scnassets */,
 				7D88D7B81F0AFD560009A154 /* LaunchScreen.storyboard */,
 				7D88D7BB1F0AFD560009A154 /* Info.plist */,
 				7D88D7BC1F0AFD560009A154 /* AugmentKit2-Bridging-Header.h */,
@@ -182,7 +181,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				7D88D7BA1F0AFD560009A154 /* LaunchScreen.storyboard in Resources */,
-				7D88D7C31F0B025A0009A154 /* Models.scnassets in Resources */,
 				7D88D7B71F0AFD560009A154 /* Assets.xcassets in Resources */,
 				7D88D7B51F0AFD550009A154 /* Main.storyboard in Resources */,
 			);

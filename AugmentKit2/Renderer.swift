@@ -33,7 +33,7 @@ enum MeshType {
 class Renderer {
     
     // Debugging
-    var useOldFlow = true
+    var useOldFlow = false
     
     enum Constants {
         static let maxBuffersInFlight = 3
@@ -70,8 +70,13 @@ class Renderer {
         self.meshProvider = meshProvider
         self.textureLoader = MTKTextureLoader(device: device)
         
-        loadMetal()
-        loadAssets()
+        if useOldFlow {
+            loadMetal()
+            loadAssets()
+        } else {
+            loadAssets()
+            loadMetal()
+        }
         reset()
     }
     
@@ -402,6 +407,8 @@ class Renderer {
             // NEW
             
             guard let modelParser = modelParser else {
+                print("Model Perser is nil.")
+                fatalError()
                 return
             }
             
@@ -459,15 +466,6 @@ class Renderer {
         //   Metal buffers accessible by the GPU
         let metalAllocator = MTKMeshBufferAllocator(device: device)
         
-        // Creata a Model IO vertexDescriptor so that we format/layout our model IO mesh vertices to
-        //   fit our Metal render pipeline's vertex descriptor layout
-        let vertexDescriptor = MTKModelIOVertexDescriptorFromMetal(geometryVertexDescriptor)
-        
-        // Indicate how each Metal vertex descriptor attribute maps to each ModelIO attribute
-        (vertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributePosition
-        (vertexDescriptor.attributes[Int(kVertexAttributeTexcoord.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributeTextureCoordinate
-        (vertexDescriptor.attributes[Int(kVertexAttributeNormal.rawValue)] as! MDLVertexAttribute).name   = MDLVertexAttributeNormal
-        
         meshProvider.loadMesh(forType: .anchor, metalAllocator: metalAllocator) { [weak self] asset in
             
             guard let asset = asset else {
@@ -479,6 +477,15 @@ class Renderer {
                 guard let mesh = asset.object(at: 0).children[0].children[0] as? MDLMesh else {
                     fatalError("Failed to get mesh from asset.")
                 }
+                
+                // Creata a Model IO vertexDescriptor so that we format/layout our model IO mesh vertices to
+                //   fit our Metal render pipeline's vertex descriptor layout
+                let vertexDescriptor = MTKModelIOVertexDescriptorFromMetal(geometryVertexDescriptor)
+                
+                // Indicate how each Metal vertex descriptor attribute maps to each ModelIO attribute
+                (vertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributePosition
+                (vertexDescriptor.attributes[Int(kVertexAttributeTexcoord.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributeTextureCoordinate
+                (vertexDescriptor.attributes[Int(kVertexAttributeNormal.rawValue)] as! MDLVertexAttribute).name   = MDLVertexAttributeNormal
                 
                 // Perform the format/relayout of mesh vertices by setting the new vertex descriptor in our
                 //   Model IO mesh
@@ -517,6 +524,15 @@ class Renderer {
                     }
                 }()
                 
+                // Creata a Model IO vertexDescriptor so that we format/layout our model IO mesh vertices to
+                //   fit our Metal render pipeline's vertex descriptor layout
+                let vertexDescriptor = MTKModelIOVertexDescriptorFromMetal(geometryVertexDescriptor)
+                
+                // Indicate how each Metal vertex descriptor attribute maps to each ModelIO attribute
+                (vertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributePosition
+                (vertexDescriptor.attributes[Int(kVertexAttributeTexcoord.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributeTextureCoordinate
+                (vertexDescriptor.attributes[Int(kVertexAttributeNormal.rawValue)] as! MDLVertexAttribute).name   = MDLVertexAttributeNormal
+                
                 // Perform the format/relayout of mesh vertices by setting the new vertex descriptor in our
                 //   Model IO mesh
                 myMesh.vertexDescriptor = vertexDescriptor
@@ -544,7 +560,7 @@ class Renderer {
         meshProvider.loadMesh(forType: .vertPlane, metalAllocator: metalAllocator) { [weak self] asset in
             
             guard let asset = asset else {
-                fatalError("Failed to get asset from meshProvider.")
+                return
             }
             
             if useOldFlow {
@@ -552,6 +568,15 @@ class Renderer {
                 guard let mesh = asset.object(at: 0).children[0].children[0] as? MDLMesh else {
                     fatalError("Failed to get mesh from asset.")
                 }
+                
+                // Creata a Model IO vertexDescriptor so that we format/layout our model IO mesh vertices to
+                //   fit our Metal render pipeline's vertex descriptor layout
+                let vertexDescriptor = MTKModelIOVertexDescriptorFromMetal(geometryVertexDescriptor)
+                
+                // Indicate how each Metal vertex descriptor attribute maps to each ModelIO attribute
+                (vertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributePosition
+                (vertexDescriptor.attributes[Int(kVertexAttributeTexcoord.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributeTextureCoordinate
+                (vertexDescriptor.attributes[Int(kVertexAttributeNormal.rawValue)] as! MDLVertexAttribute).name   = MDLVertexAttributeNormal
                 
                 // Perform the format/relayout of mesh vertices by setting the new vertex descriptor in our
                 //   Model IO mesh

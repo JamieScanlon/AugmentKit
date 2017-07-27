@@ -276,17 +276,37 @@ vertex ColorInOut anchorGeometryVertexTransform(Vertex in [[stage_in]],
 
 // MARK: Anchor geometry fragment function
 fragment float4 anchorGeometryFragmentLighting(ColorInOut in [[stage_in]],
-                                               constant SharedUniforms &uniforms [[ buffer(kBufferIndexSharedUniforms) ]]//,
-                                               //constant MaterialUniforms &materialUniforms [[ buffer(kBufferIndexMaterialUniforms) ]],
-                                               //texture2d<float> baseColorMap [[ texture(kTextureIndexBaseColor), function_constant(has_base_color_map) ]],
-                                               //texture2d<float> normalMap    [[ texture(kTextureIndexNormal), function_constant(has_normal_map) ]],
-                                               //texture2d<float> metallicMap  [[ texture(kTextureIndexMetallic), function_constant(has_metallic_map) ]],
-                                               //texture2d<float> roughnessMap  [[ texture(kTextureIndexRoughness), function_constant(has_roughness_map) ]],
-                                               //texture2d<float> ambientOcclusionMap  [[ texture(kTextureIndexAmbientOcclusion), function_constant(has_ambient_occlusion_map) ]],
-                                               //texturecube<float> irradianceMap [[texture(kTextureIndexIrradianceMap), function_constant(has_irradiance_map)]]
+                                               constant SharedUniforms &uniforms [[ buffer(kBufferIndexSharedUniforms) ]],
+                                               constant MaterialUniforms &materialUniforms [[ buffer(kBufferIndexMaterialUniforms) ]],
+                                               texture2d<float> baseColorMap [[ texture(kTextureIndexColor), function_constant(has_base_color_map) ]],
+                                               texture2d<float> normalMap    [[ texture(kTextureIndexNormal), function_constant(has_normal_map) ]],
+                                               texture2d<float> metallicMap  [[ texture(kTextureIndexMetallic), function_constant(has_metallic_map) ]],
+                                               texture2d<float> roughnessMap  [[ texture(kTextureIndexRoughness), function_constant(has_roughness_map) ]],
+                                               texture2d<float> ambientOcclusionMap  [[ texture(kTextureIndexAmbientOcclusion), function_constant(has_ambient_occlusion_map) ]],
+                                               texturecube<float> irradianceMap [[texture(kTextureIndexIrradianceMap), function_constant(has_irradiance_map)]]
                                                ) {
     
     float4 final_color = float4(0);
+    
+    LightingParameters parameters = calculateParameters(in,
+                                                        uniforms,
+                                                        materialUniforms,
+                                                        baseColorMap,
+                                                        normalMap,
+                                                        metallicMap,
+                                                        roughnessMap,
+                                                        ambientOcclusionMap,
+                                                        irradianceMap);
+    
+    if(parameters.baseColor.w <= 0.01f)
+        discard_fragment();
+    
+    const float baseReflectance = 0.4f;
+    float3 Cspec0 = float3(mix(baseReflectance, 1.0f, parameters.metalness));
+    float3 Fs = float3(mix(float3(Cspec0), float3(1), Fresnel(parameters.hDotl)));
+    final_color = float4(Fs * computeSpecular(parameters) +
+                         computeDiffuse(parameters) * (1.0f - Fs), 1.0f);
+    
     float3 normal = float3(in.normal);
     
     // Calculate the contribution of the directional light as a sum of diffuse and specular terms
@@ -328,9 +348,9 @@ fragment float4 anchorGeometryFragmentLighting(ColorInOut in [[stage_in]],
     
     // We compute the final color by multiplying the sample from our color maps by the fragment's
     // lighting value
-    float3 color = lightContributions;
+    float4 color = final_color * float4(lightContributions, 1.0);
     
     // We use the color we just computed and the alpha channel of our
     // colorMap for this fragment's alpha value
-    return float4(color, 1.0);
+    return color;
 }

@@ -43,9 +43,9 @@ struct ImageColorInOut {
 // MARK: Ancors Vertex In
 // Per-vertex inputs fed by vertex buffer laid out with MTLVertexDescriptor in Metal API
 struct Vertex {
-    float3 position [[attribute(kVertexAttributePosition)]];
-    float2 texCoord [[attribute(kVertexAttributeTexcoord)]];
-    half3 normal    [[attribute(kVertexAttributeNormal)]];
+    float3 position      [[attribute(kVertexAttributePosition)]];
+    float3 normal        [[attribute(kVertexAttributeNormal)]];
+    float2 texCoord      [[attribute(kVertexAttributeTexcoord)]];
     ushort4 jointIndices [[attribute(kVertexAttributeJointIndices)]];
     float4 jointWeights  [[attribute(kVertexAttributeJointWeights)]];
 };
@@ -244,7 +244,7 @@ fragment float4 capturedImageFragmentShader(ImageColorInOut in [[stage_in]],
 // MARK: Anchor geometry vertex function
 vertex ColorInOut anchorGeometryVertexTransform(Vertex in [[stage_in]],
                                                 constant SharedUniforms &sharedUniforms [[ buffer(kBufferIndexSharedUniforms) ]],
-                                                constant InstanceUniforms *instanceUniforms [[ buffer(kBufferIndexInstanceUniforms) ]],
+                                                constant AnchorInstanceUniforms *anchorInstanceUniforms [[ buffer(kBufferIndexAnchorInstanceUniforms) ]],
                                                 uint vid [[vertex_id]],
                                                 ushort iid [[instance_id]]) {
     ColorInOut out;
@@ -252,7 +252,7 @@ vertex ColorInOut anchorGeometryVertexTransform(Vertex in [[stage_in]],
     // Make position a float4 to perform 4x4 matrix math on it
     float4 position = float4(in.position, 1.0);
     
-    float4x4 modelMatrix = instanceUniforms[iid].modelMatrix;
+    float4x4 modelMatrix = anchorInstanceUniforms[iid].modelMatrix;
     float4x4 modelViewMatrix = sharedUniforms.viewMatrix * modelMatrix;
     
     // Calculate the position of our vertex in clip space and output for clipping and rasterization
@@ -274,7 +274,8 @@ vertex ColorInOut anchorGeometryVertexTransform(Vertex in [[stage_in]],
     return out;
 }
 
-// MARK: Anchor geometry fragment function
+// MARK: Anchor geometry fragment function with materials
+
 fragment float4 anchorGeometryFragmentLighting(ColorInOut in [[stage_in]],
                                                constant SharedUniforms &uniforms [[ buffer(kBufferIndexSharedUniforms) ]],
                                                constant MaterialUniforms &materialUniforms [[ buffer(kBufferIndexMaterialUniforms) ]],
@@ -286,7 +287,7 @@ fragment float4 anchorGeometryFragmentLighting(ColorInOut in [[stage_in]],
                                                texturecube<float> irradianceMap [[texture(kTextureIndexIrradianceMap), function_constant(has_irradiance_map)]]
                                                ) {
     
-    float4 final_color = float4(0);
+    float4 final_color = float4(1);
     
     LightingParameters parameters = calculateParameters(in,
                                                         uniforms,
@@ -298,8 +299,10 @@ fragment float4 anchorGeometryFragmentLighting(ColorInOut in [[stage_in]],
                                                         ambientOcclusionMap,
                                                         irradianceMap);
     
-    if(parameters.baseColor.w <= 0.01f)
-        discard_fragment();
+    if(parameters.baseColor.w <= 0.01f) {
+        parameters.baseColor = float4(1.0, 0.0, 0.0, 1.0);
+        //discard_fragment();
+    }
     
     const float baseReflectance = 0.4f;
     float3 Cspec0 = float3(mix(baseReflectance, 1.0f, parameters.metalness));
@@ -354,3 +357,57 @@ fragment float4 anchorGeometryFragmentLighting(ColorInOut in [[stage_in]],
     // colorMap for this fragment's alpha value
     return color;
 }
+
+// MARK: Simple anchor geometry fragment function (no material support)
+
+fragment float4 anchorGeometryFragmentLightingSimple(ColorInOut in [[stage_in]],
+                                               constant SharedUniforms &uniforms [[ buffer(kBufferIndexSharedUniforms) ]]) {
+    
+    float3 normal = float3(in.normal);
+    
+    // Calculate the contribution of the directional light as a sum of diffuse and specular terms
+    float3 directionalContribution = float3(0);
+    {
+        // Light falls off based on how closely aligned the surface normal is to the light direction
+        float nDotL = saturate(dot(normal, -uniforms.directionalLightDirection));
+        
+        // The diffuse term is then the product of the light color, the surface material
+        // reflectance, and the falloff
+        float3 diffuseTerm = uniforms.directionalLightColor * nDotL;
+        
+        // Apply specular lighting...
+        
+        // 1) Calculate the halfway vector between the light direction and the direction they eye is looking
+        float3 halfwayVector = normalize(-uniforms.directionalLightDirection - float3(in.eyePosition));
+        
+        // 2) Calculate the reflection angle between our reflection vector and the eye's direction
+        float reflectionAngle = saturate(dot(normal, halfwayVector));
+        
+        // 3) Calculate the specular intensity by multiplying our reflection angle with our object's
+        //    shininess
+        float specularIntensity = saturate(powr(reflectionAngle, 30));
+        
+        // 4) Obtain the specular term by multiplying the intensity by our light's color
+        float3 specularTerm = uniforms.directionalLightColor * specularIntensity;
+        
+        // Calculate total contribution from this light is the sum of the diffuse and specular values
+        directionalContribution = diffuseTerm + specularTerm;
+    }
+    
+    // The ambient contribution, which is an approximation for global, indirect lighting, is
+    // the product of the ambient light intensity multiplied by the material's reflectance
+    float3 ambientContribution = uniforms.ambientLightColor;
+    
+    // Now that we have the contributions our light sources in the scene, we sum them together
+    // to get the fragment's lighting value
+    float3 lightContributions = ambientContribution + directionalContribution;
+    
+    // We compute the final color by multiplying the sample from our color maps by the fragment's
+    // lighting value
+    float4 color = float4(lightContributions, 1.0);
+    
+    // We use the color we just computed and the alpha channel of our
+    // colorMap for this fragment's alpha value
+    return color;
+}
+

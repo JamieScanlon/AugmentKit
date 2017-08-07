@@ -21,7 +21,7 @@
 enum BufferIndices {
     kBufferIndexMeshPositions    = 0,
     kBufferIndexMeshGenerics,
-    kBufferIndexInstanceUniforms,
+    kBufferIndexAnchorInstanceUniforms,
     kBufferIndexSharedUniforms,
     kBufferIndexMaterialUniforms
 };
@@ -92,7 +92,7 @@ struct SharedUniforms {
 
 // Structure shared between shader and C code to ensure the layout of instance uniform data accessed in
 //    Metal shaders matches the layout of uniform data set in C code
-struct InstanceUniforms {
+struct AnchorInstanceUniforms {
     matrix_float4x4 modelMatrix;
 };
 

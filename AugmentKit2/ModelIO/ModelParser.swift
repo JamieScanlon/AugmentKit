@@ -148,7 +148,7 @@ class ModelParser {
 
     /// Store skinning information if object has MDLSkinDeformerComponent
     private func storeMeshSkin(for object: MDLObject) -> Bool {
-        guard let skinDeformer = object.componentConforming(to: MDLSkinDeformerComponent.self) as? MDLSkinDeformer else {
+        guard let skinDeformer = object.componentConforming(to: MDLTransformComponent.self) as? MDLSkeleton else {
             return false
         }
 
@@ -160,8 +160,8 @@ class ModelParser {
         // store the joint paths which tell us where the skeleton joints are
         skin.jointPaths = skinDeformer.jointPaths
         // store the joint bind transforms which give us the bind pose
-        let jointBindTransforms = skinDeformer.jointBindTransforms()
-        skin.inverseBindTransforms = jointBindTransforms.map { simd_inverse($0) }
+        let jointBindTransforms = skinDeformer.jointBindTransforms
+        skin.inverseBindTransforms = jointBindTransforms.float4x4Array.map { simd_inverse($0) }
         skins.append(skin)
         return true
     }

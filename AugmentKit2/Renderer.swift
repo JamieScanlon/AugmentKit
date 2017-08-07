@@ -20,6 +20,10 @@ protocol RenderDestinationProvider {
     var sampleCount: Int { get set }
 }
 
+protocol RenderDebugLogger {
+    func updatedAnchors(count: Int, numAnchors: Int, numPlanes: Int)
+}
+
 protocol MeshProvider {
     func loadMesh(forType: MeshType, metalAllocator: MTKMeshBufferAllocator, completion: (MDLAsset?) -> Void)
 }
@@ -33,7 +37,8 @@ enum MeshType {
 class Renderer {
     
     // Debugging
-    var useOldFlow = false
+    var useOldFlow = true
+    var logger: RenderDebugLogger?
     
     enum Constants {
         static let maxBuffersInFlight = 3
@@ -48,9 +53,9 @@ class Renderer {
         ]
         
         // The 16 byte aligned size of our uniform structures
-        static let alignedSharedUniformsSize = (MemoryLayout<SharedUniforms>.size & ~0xFF) + 0x100
+        static let alignedSharedUniformsSize = (MemoryLayout<SharedUniforms>.stride & ~0xFF) + 0x100
         static let alignedMaterialSize = (MemoryLayout<MaterialUniforms>.stride & ~0xFF) + 0x100
-        static let alignedInstanceUniformsSize = ((MemoryLayout<InstanceUniforms>.size * Constants.maxAnchorInstanceCount) & ~0xFF) + 0x100
+        static let alignedAnchorInstanceUniformsSize = ((MemoryLayout<AnchorInstanceUniforms>.stride * Constants.maxAnchorInstanceCount) & ~0xFF) + 0x100
     }
     
     let session: ARSession
@@ -75,6 +80,7 @@ class Renderer {
             loadAssets()
         } else {
             loadAssets()
+            loadMeshesFromParser()
             loadMetal()
         }
         reset()
@@ -137,14 +143,7 @@ class Renderer {
     }
     
     func run() {
-        
-        // Create a session configuration
-        let configuration = ARWorldTrackingSessionConfiguration()
-        if showGuides {
-            configuration.planeDetection = .horizontal
-        }
-        session.run(configuration)
-        
+        session.run(createNewConfiguration())
     }
     
     func pause() {
@@ -152,14 +151,7 @@ class Renderer {
     }
     
     func reset() {
-        
-        // Create a session configuration
-        let configuration = ARWorldTrackingSessionConfiguration()
-        if showGuides {
-            configuration.planeDetection = .horizontal
-        }
-        session.run(configuration, options: [.removeExistingAnchors, .resetTracking])
-        
+        session.run(createNewConfiguration(), options: [.removeExistingAnchors, .resetTracking])
     }
     
     // MARK: - Private
@@ -232,6 +224,15 @@ class Renderer {
     
     private var usesMaterials = false
     
+    private func createNewConfiguration() -> ARWorldTrackingSessionConfiguration {
+        let configuration = ARWorldTrackingSessionConfiguration()
+        //configuration.worldAlignment = .gravityAndHeading
+        if showGuides {
+            configuration.planeDetection = .horizontal
+        }
+        return configuration
+    }
+    
     private func loadMetal() {
         
         //
@@ -250,7 +251,7 @@ class Renderer {
         //   Also uniform storage must be aligned (to 256 bytes) to meet the requirements to be an
         //   argument in the constant address space of our shading functions.
         let sharedUniformBufferSize = Constants.alignedSharedUniformsSize * Constants.maxBuffersInFlight
-        let anchorUniformBufferSize = Constants.alignedInstanceUniformsSize * Constants.maxBuffersInFlight * totalMeshTransforms
+        let anchorUniformBufferSize = Constants.alignedAnchorInstanceUniformsSize * Constants.maxBuffersInFlight
         let materialUniformBufferSize = Constants.alignedMaterialSize * Constants.maxBuffersInFlight
         
         // Create and allocate our uniform buffer objects. Indicate shared storage so that both the
@@ -350,7 +351,11 @@ class Renderer {
             }()
             let anchorGeometryFragmentFunction: MTLFunction = {
                 do {
-                    return try defaultLibrary.makeFunction(name: "anchorGeometryFragmentLighting", constantValues: funcConstants)
+                    if useOldFlow {
+                        return try defaultLibrary.makeFunction(name: "anchorGeometryFragmentLightingSimple", constantValues: funcConstants)
+                    } else {
+                        return try defaultLibrary.makeFunction(name: "anchorGeometryFragmentLighting", constantValues: funcConstants)
+                    }
                 } catch let error {
                     print("Failed to create anchor vertex and fragment functions, error \(error)")
                     fatalError()
@@ -364,15 +369,17 @@ class Renderer {
             geometryVertexDescriptor.attributes[0].offset = 0
             geometryVertexDescriptor.attributes[0].bufferIndex = Int(kBufferIndexMeshPositions.rawValue)
             
-            // Texture coordinates.
-            geometryVertexDescriptor.attributes[1].format = .float2
+            // Normals.
+            geometryVertexDescriptor.attributes[1].format = .float3
             geometryVertexDescriptor.attributes[1].offset = 0
             geometryVertexDescriptor.attributes[1].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
             
-            // Normals.
-            geometryVertexDescriptor.attributes[2].format = .half3
-            geometryVertexDescriptor.attributes[2].offset = 8
+            // Texture coordinates.
+            geometryVertexDescriptor.attributes[2].format = .float2
+            geometryVertexDescriptor.attributes[2].offset = 12
             geometryVertexDescriptor.attributes[2].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
+            
+            
             
             // TODO: JointIndices and JointWeights for Puppet animations
             
@@ -382,7 +389,7 @@ class Renderer {
             geometryVertexDescriptor.layouts[0].stepFunction = .perVertex
             
             // Generic Attribute Buffer Layout
-            geometryVertexDescriptor.layouts[1].stride = 16
+            geometryVertexDescriptor.layouts[1].stride = 20
             geometryVertexDescriptor.layouts[1].stepRate = 1
             geometryVertexDescriptor.layouts[1].stepFunction = .perVertex
             
@@ -419,8 +426,10 @@ class Renderer {
                     let anchorPipelineStateDescriptor = MTLRenderPipelineDescriptor()
                     do {
                         let funcConstants = MetalUtilities.getFuncConstantsForDrawDataSet(meshData: modelParser.meshes[drawIdx], useMaterials: usesMaterials)
-                        let vertexName = (drawData.paletteStartIndex != nil) ? "vertex_skinned" : "vertexShader"
-                        let fragFunc = try defaultLibrary.makeFunction(name: "fragmentShader",
+                        // TODO: Implement a vertex shader with puppet animation support
+                        //let vertexName = (drawData.paletteStartIndex != nil) ? "vertex_skinned" : "anchorGeometryVertexTransform"
+                        let vertexName = "anchorGeometryVertexTransform"
+                        let fragFunc = try defaultLibrary.makeFunction(name: "anchorGeometryFragmentLighting",
                                                                        constantValues: funcConstants)
                         let vertFunc = try defaultLibrary.makeFunction(name: vertexName,
                                                                        constantValues: funcConstants)
@@ -546,12 +555,20 @@ class Renderer {
                 
             } else {
                 
-                guard let asset = asset else {
-                    return
-                }
+                if let asset = asset {
+                    modelParser = ModelParser(asset: asset)
+                } else {
                 
-                // Load meshes into mode parser
-                modelParser = ModelParser(asset: asset)
+                    let mesh = MDLMesh(planeWithExtent: vector3(1, 0, 1), segments: vector2(1, 1), geometryType: .triangles, allocator: metalAllocator)
+                    if let submesh = mesh.submeshes?.firstObject as? MDLSubmesh {
+                        let scatteringFunction = MDLScatteringFunction()
+                        submesh.material = MDLMaterial(name: "plane_grid", scatteringFunction: scatteringFunction)
+                    }
+                    let asset = MDLAsset(bufferAllocator: metalAllocator)
+                    asset.add(mesh)
+                    modelParser = ModelParser(asset: asset)
+                    
+                }
                 
             }
             
@@ -756,7 +773,7 @@ class Renderer {
         uniformBufferIndex = (uniformBufferIndex + 1) % Constants.maxBuffersInFlight
         
         sharedUniformBufferOffset = Constants.alignedSharedUniformsSize * uniformBufferIndex
-        anchorUniformBufferOffset = Constants.alignedInstanceUniformsSize * uniformBufferIndex * totalMeshTransforms
+        anchorUniformBufferOffset = Constants.alignedAnchorInstanceUniformsSize * uniformBufferIndex
         materialUniformBufferOffset = Constants.alignedMaterialSize * uniformBufferIndex
         
         sharedUniformBufferAddress = sharedUniformBuffer.contents().advanced(by: sharedUniformBufferOffset)
@@ -846,10 +863,13 @@ class Renderer {
                 modelMatrix = modelMatrix.translate(x: -plane.center.x/2.0, y: -plane.center.y/2.0, z: -plane.center.z/2.0)
             }
 
-            let anchorUniforms = anchorUniformBufferAddress.assumingMemoryBound(to: InstanceUniforms.self).advanced(by: index)
+            let anchorUniforms = anchorUniformBufferAddress.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: index)
             anchorUniforms.pointee.modelMatrix = modelMatrix
             
         }
+        
+        logger?.updatedAnchors(count: frame.anchors.count, numAnchors: anchorInstanceCount, numPlanes: horizPlaneInstanceCount)
+        
     }
     
     private func updateCapturedImageTextures(frame: ARFrame) {
@@ -898,7 +918,7 @@ class Renderer {
         }
         
         // Push a debug group allowing us to identify render commands in the GPU Frame Capture tool
-        renderEncoder.pushDebugGroup("DrawCapturedImage")
+        renderEncoder.pushDebugGroup("Draw Captured Image")
         
         // Set render command encoder state
         renderEncoder.setCullMode(.none)
@@ -921,7 +941,7 @@ class Renderer {
     
     private func drawSharedUniforms(renderEncoder: MTLRenderCommandEncoder) {
         
-        renderEncoder.pushDebugGroup("DrawSharedUniforms")
+        renderEncoder.pushDebugGroup("Draw Shared Uniforms")
         
         renderEncoder.setVertexBuffer(sharedUniformBuffer, offset: sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
         renderEncoder.setFragmentBuffer(sharedUniformBuffer, offset: sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
@@ -933,7 +953,7 @@ class Renderer {
     private func drawAnchors(renderEncoder: MTLRenderCommandEncoder) {
         
         // Push a debug group allowing us to identify render commands in the GPU Frame Capture tool
-        renderEncoder.pushDebugGroup("DrawAnchors")
+        renderEncoder.pushDebugGroup("Draw Anchors")
         
         // Set render command encoder state
         renderEncoder.setCullMode(.back)
@@ -954,7 +974,7 @@ class Renderer {
             renderEncoder.setDepthStencilState(anchorDepthState)
             
             // Set any buffers fed into our render pipeline
-            renderEncoder.setVertexBuffer(anchorUniformBuffer, offset: anchorUniformBufferOffset, index: Int(kBufferIndexInstanceUniforms.rawValue))
+            renderEncoder.setVertexBuffer(anchorUniformBuffer, offset: anchorUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
             
             // Set mesh's vertex buffers
             for bufferIndex in 0..<anchorMesh.vertexBuffers.count {
@@ -977,13 +997,15 @@ class Renderer {
             
             for (drawDataIdx, drawData) in meshGPUData.drawData.enumerated() {
                 
-                renderEncoder.setRenderPipelineState(anchorPipelineStates[drawDataIdx])
-                
-                var instBufferStartIdx = drawData.instBufferStartIdx
-                renderEncoder.setVertexBytes(&instBufferStartIdx, length: 8, index: Int(kBufferIndexInstanceUniforms.rawValue))
-                
-                // Set the mesh's vertex data buffers
-                encodeMeshGPUData(with: renderEncoder, drawData: drawData)
+                if drawDataIdx < anchorPipelineStates.count {
+                    renderEncoder.setRenderPipelineState(anchorPipelineStates[drawDataIdx])
+                    
+                    var instBufferStartIdx = drawData.instBufferStartIdx
+                    renderEncoder.setVertexBytes(&instBufferStartIdx, length: 64, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
+                    
+                    // Set the mesh's vertex data buffers
+                    encodeMeshGPUData(with: renderEncoder, drawData: drawData)
+                }
                 
             }
             
@@ -1012,7 +1034,7 @@ class Renderer {
         }
         
         // Push a debug group allowing us to identify render commands in the GPU Frame Capture tool
-        renderEncoder.pushDebugGroup("DrawGuides")
+        renderEncoder.pushDebugGroup("Draw Guides")
         
         // Set render command encoder state
         renderEncoder.setCullMode(.back)
@@ -1020,7 +1042,7 @@ class Renderer {
         renderEncoder.setDepthStencilState(anchorDepthState)
         
         // Set any buffers fed into our render pipeline
-        renderEncoder.setVertexBuffer(anchorUniformBuffer, offset: anchorUniformBufferOffset, index: Int(kBufferIndexInstanceUniforms.rawValue))
+        renderEncoder.setVertexBuffer(anchorUniformBuffer, offset: anchorUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
         renderEncoder.setVertexBuffer(sharedUniformBuffer, offset: sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
         renderEncoder.setFragmentBuffer(sharedUniformBuffer, offset: sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
         

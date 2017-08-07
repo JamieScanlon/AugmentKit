@@ -16,7 +16,7 @@ class WorldLocationManager: NSObject, LocationManager, MotionManager {
     
     func startServices() {
         startLocationService()
-        startTrackingCompasDirection()
+        //startTrackingCompasDirection()
     }
     
     func stopServices() {
@@ -43,6 +43,8 @@ class WorldLocationManager: NSObject, LocationManager, MotionManager {
     private(set) var serviceAvailable: Bool = false
     private(set) var serviceStarted: Bool = false
     private(set) var lastLocation: CLLocation?
+    private(set) var lastHeading: CLLocationDirection?
+    private(set) var headingAccuracy: CLLocationDegrees?
     
     func locationServicesEnabled() -> Bool {
         return CLLocationManager.locationServicesEnabled()
@@ -60,6 +62,14 @@ class WorldLocationManager: NSObject, LocationManager, MotionManager {
     func setLastLocation(_ value: CLLocation) {
         lastLocation = value
     }
+    func setLastHeading(_ value: CLLocationDirection) {
+        print(value)
+        lastHeading = value
+    }
+    func setHeadingAccuracy(_ value: CLLocationDegrees) {
+        headingAccuracy = value
+    }
+    
     
     // MARK: - MotionManager Methods
     

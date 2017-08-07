@@ -52,16 +52,6 @@ extension MDLAsset {
     }
 }
 
-extension MDLSkinDeformer {
-    /// Swiftified access to MDLSkinDeformer's jointBindTransforms
-    func jointBindTransforms() -> [matrix_float4x4] {
-        let jointCount = jointPaths.count
-        var jointBindTransforms = [matrix_float4x4](repeating: matrix_float4x4(), count: jointCount)
-        copyJointBindTransforms(into: &jointBindTransforms[0], maxCount: Int(jointCount))
-        return jointBindTransforms
-    }
-}
-
 /// Protocol for remapping joint paths (e.g. between a skeleton's complete joint list
 /// and the the subset bound to a particular mesh)
 protocol JointPathRemappable {

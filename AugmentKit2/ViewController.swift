@@ -17,6 +17,8 @@ class ViewController: UIViewController {
     var session: ARSession?
     var renderer: Renderer?
     
+    @IBOutlet var debugInfoAnchorCounts: UILabel?
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -41,6 +43,7 @@ class ViewController: UIViewController {
             
             // Debugging
             renderer?.showGuides = true
+            renderer?.logger = self
             
         }
         
@@ -49,7 +52,7 @@ class ViewController: UIViewController {
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(ViewController.handleTap(gestureRecognize:)))
         view.addGestureRecognizer(tapGesture)
         
-        WorldLocationManager.shared.startServices()
+        //WorldLocationManager.shared.startServices()
         
     }
     
@@ -158,4 +161,11 @@ extension ViewController: MeshProvider {
 
 extension MTKView : RenderDestinationProvider {
     
+}
+
+extension ViewController: RenderDebugLogger {
+    
+    func updatedAnchors(count: Int, numAnchors: Int, numPlanes: Int) {
+        debugInfoAnchorCounts?.text = "Total Anchor Count: \(count) - User: \(numAnchors), planes: \(numPlanes)"
+    }
 }

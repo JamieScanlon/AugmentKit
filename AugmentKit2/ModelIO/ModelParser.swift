@@ -33,16 +33,21 @@ class ModelParser {
 
     init() {}
 
-    init(asset: MDLAsset) {
+    init(asset: MDLAsset, vertexDescriptor: MDLVertexDescriptor? = nil) {
         sampleTimes = ModelIOTools.sampleTimeInterval(start: asset.startTime, end: asset.endTime, frameInterval: 1.0 / 60.0)
-        storeAllMeshesInSceneGraph(with: asset)
+        storeAllMeshesInSceneGraph(with: asset, vertexDescriptor: vertexDescriptor)
         flattenSceneGraphHierarchy(with: asset)
         computeSkinToSkeletonMaps()
         ModelIOTools.fixupPaths(asset, &texturePaths)
     }
 
     /// Record all buffers and materials for an MDLMesh
-    private func store(_ mesh: MDLMesh) {
+    private func store(_ mesh: MDLMesh, vertexDescriptor: MDLVertexDescriptor? = nil) {
+        
+        if let vertexDescriptor = vertexDescriptor {
+            mesh.vertexDescriptor = vertexDescriptor
+        }
+        
         let vertexBufferCount = ModelIOTools.getVertexBufferCount(mesh)
         let vbStartIdx = vertexBuffers.count
         let ibStartIdx = indexBuffers.count
@@ -116,11 +121,11 @@ class ModelParser {
     }
 
     /// Record all mesh data required to render a particular mesh
-    private func storeAllMeshesInSceneGraph(with asset: MDLAsset) {
+    private func storeAllMeshesInSceneGraph(with asset: MDLAsset, vertexDescriptor: MDLVertexDescriptor? = nil) {
         var masterMeshes: [MDLMesh] = []
         ModelIOTools.walkMasters(in: asset) { object in
             guard let mesh = object as? MDLMesh else { return }
-            store(mesh)
+            store(mesh, vertexDescriptor: vertexDescriptor)
             masterMeshes.append(mesh)
         }
 
@@ -128,7 +133,7 @@ class ModelParser {
         ModelIOTools.walkSceneGraph(in: asset) { object, currentIdx, _ in
             if let mesh = object as? MDLMesh {
                 meshNodeIndices.append(currentIdx)
-                store(mesh)
+                store(mesh, vertexDescriptor: vertexDescriptor)
                 instanceMeshIdx.append(meshes.count - 1)
                 let hasSkin = storeMeshSkin(for: object)
                 meshSkinIndices.append(hasSkin ? skins.count - 1 : nil)

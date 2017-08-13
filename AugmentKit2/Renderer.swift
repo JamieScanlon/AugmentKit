@@ -77,11 +77,13 @@ class Renderer {
         
         if useOldFlow {
             loadMetal()
+            loadPipeline()
             loadAssets()
         } else {
+            loadMetal()
             loadAssets()
             loadMeshesFromParser()
-            loadMetal()
+            loadPipeline()
         }
         reset()
     }
@@ -162,6 +164,7 @@ class Renderer {
     private var modelParser: ModelParser?
     
     // Metal objects
+    private var defaultLibrary: MTLLibrary!
     private var commandQueue: MTLCommandQueue!
     private var sharedUniformBuffer: MTLBuffer!
     private var anchorUniformBuffer: MTLBuffer!
@@ -224,8 +227,8 @@ class Renderer {
     
     private var usesMaterials = false
     
-    private func createNewConfiguration() -> ARWorldTrackingSessionConfiguration {
-        let configuration = ARWorldTrackingSessionConfiguration()
+    private func createNewConfiguration() -> ARWorldTrackingConfiguration {
+        let configuration = ARWorldTrackingConfiguration()
         //configuration.worldAlignment = .gravityAndHeading
         if showGuides {
             configuration.planeDetection = .horizontal
@@ -266,7 +269,7 @@ class Renderer {
         materialUniformBuffer.label = "MaterialUniformBuffer"
         
         // Load all the shader files with a metal file extension in the project
-        let defaultLibrary = device.makeDefaultLibrary()!
+        defaultLibrary = device.makeDefaultLibrary()!
         
         //
         // Image Capture Plane
@@ -313,7 +316,7 @@ class Renderer {
             try capturedImagePipelineState = device.makeRenderPipelineState(descriptor: capturedImagePipelineStateDescriptor)
         } catch let error {
             print("Failed to create captured image pipeline state, error \(error)")
-            return
+            fatalError()
         }
         
         let capturedImageDepthStateDescriptor = MTLDepthStencilDescriptor()
@@ -335,6 +338,38 @@ class Renderer {
         //   output position separate (world position, skinning, tweening weights) separate from other
         //   attributes (texture coordinates, normals).  This generally maximizes pipeline efficiency
         
+        geometryVertexDescriptor = MTLVertexDescriptor()
+        
+        // Positions.
+        geometryVertexDescriptor.attributes[0].format = .float3
+        geometryVertexDescriptor.attributes[0].offset = 0
+        geometryVertexDescriptor.attributes[0].bufferIndex = Int(kBufferIndexMeshPositions.rawValue)
+        
+        // Texture coordinates.
+        geometryVertexDescriptor.attributes[1].format = .float2
+        geometryVertexDescriptor.attributes[1].offset = 0
+        geometryVertexDescriptor.attributes[1].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
+        
+        // Normals.
+        geometryVertexDescriptor.attributes[2].format = .float3
+        geometryVertexDescriptor.attributes[2].offset = 8
+        geometryVertexDescriptor.attributes[2].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
+        
+        // TODO: JointIndices and JointWeights for Puppet animations
+        
+        // Position Buffer Layout
+        geometryVertexDescriptor.layouts[0].stride = 12
+        geometryVertexDescriptor.layouts[0].stepRate = 1
+        geometryVertexDescriptor.layouts[0].stepFunction = .perVertex
+        
+        // Generic Attribute Buffer Layout
+        geometryVertexDescriptor.layouts[1].stride = 20
+        geometryVertexDescriptor.layouts[1].stepRate = 1
+        geometryVertexDescriptor.layouts[1].stepFunction = .perVertex
+        
+    }
+    
+    private func loadPipeline() {
         
         if useOldFlow {
             
@@ -362,37 +397,6 @@ class Renderer {
                 }
             }()
             
-            geometryVertexDescriptor = MTLVertexDescriptor()
-            
-            // Positions.
-            geometryVertexDescriptor.attributes[0].format = .float3
-            geometryVertexDescriptor.attributes[0].offset = 0
-            geometryVertexDescriptor.attributes[0].bufferIndex = Int(kBufferIndexMeshPositions.rawValue)
-            
-            // Normals.
-            geometryVertexDescriptor.attributes[1].format = .float3
-            geometryVertexDescriptor.attributes[1].offset = 0
-            geometryVertexDescriptor.attributes[1].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
-            
-            // Texture coordinates.
-            geometryVertexDescriptor.attributes[2].format = .float2
-            geometryVertexDescriptor.attributes[2].offset = 12
-            geometryVertexDescriptor.attributes[2].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
-            
-            
-            
-            // TODO: JointIndices and JointWeights for Puppet animations
-            
-            // Position Buffer Layout
-            geometryVertexDescriptor.layouts[0].stride = 12
-            geometryVertexDescriptor.layouts[0].stepRate = 1
-            geometryVertexDescriptor.layouts[0].stepFunction = .perVertex
-            
-            // Generic Attribute Buffer Layout
-            geometryVertexDescriptor.layouts[1].stride = 20
-            geometryVertexDescriptor.layouts[1].stepRate = 1
-            geometryVertexDescriptor.layouts[1].stepFunction = .perVertex
-            
             // Create a reusable pipeline state for rendering anchor geometry
             let anchorPipelineStateDescriptor = MTLRenderPipelineDescriptor()
             anchorPipelineStateDescriptor.label = "MyAnchorPipeline"
@@ -403,52 +407,54 @@ class Renderer {
             anchorPipelineStateDescriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
             anchorPipelineStateDescriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
             anchorPipelineStateDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-     
+            
             do {
                 try anchorPipelineState = device.makeRenderPipelineState(descriptor: anchorPipelineStateDescriptor)
             } catch let error {
                 print("Failed to created anchor geometry pipeline state, error \(error)")
             }
         } else {
-        
+            
             // NEW
             
             guard let modelParser = modelParser else {
                 print("Model Perser is nil.")
                 fatalError()
-                return
             }
             
-            let anchorVertexDescriptor = createVertexDescriptor(with: modelParser.vertexDescriptors)
+            guard let meshGPUData = meshGPUData else {
+                print("ERROR: No meshGPUData found when trying to load the pipeline.")
+                fatalError()
+            }
             
-            if let meshGPUData = meshGPUData {
-                for (drawIdx, drawData) in meshGPUData.drawData.enumerated() {
-                    let anchorPipelineStateDescriptor = MTLRenderPipelineDescriptor()
-                    do {
-                        let funcConstants = MetalUtilities.getFuncConstantsForDrawDataSet(meshData: modelParser.meshes[drawIdx], useMaterials: usesMaterials)
-                        // TODO: Implement a vertex shader with puppet animation support
-                        //let vertexName = (drawData.paletteStartIndex != nil) ? "vertex_skinned" : "anchorGeometryVertexTransform"
-                        let vertexName = "anchorGeometryVertexTransform"
-                        let fragFunc = try defaultLibrary.makeFunction(name: "anchorGeometryFragmentLighting",
-                                                                       constantValues: funcConstants)
-                        let vertFunc = try defaultLibrary.makeFunction(name: vertexName,
-                                                                       constantValues: funcConstants)
-                        anchorPipelineStateDescriptor.vertexDescriptor = anchorVertexDescriptor
-                        anchorPipelineStateDescriptor.vertexFunction = vertFunc
-                        anchorPipelineStateDescriptor.fragmentFunction = fragFunc
-                        anchorPipelineStateDescriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
-                        anchorPipelineStateDescriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-                        anchorPipelineStateDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-                        anchorPipelineStateDescriptor.sampleCount = renderDestination.sampleCount
-                    } catch let error {
-                        print("Failed to create pipeline state descriptor, error \(error)")
-                    }
-                    
-                    do {
-                        try anchorPipelineStates.append(device.makeRenderPipelineState(descriptor: anchorPipelineStateDescriptor))
-                    } catch let error {
-                        print("Failed to create pipeline state, error \(error)")
-                    }
+            let anchorVertexDescriptor = createMetalVertexDescriptor(withModelIOVertexDescriptor: modelParser.vertexDescriptors)
+            
+            for (drawIdx, drawData) in meshGPUData.drawData.enumerated() {
+                let anchorPipelineStateDescriptor = MTLRenderPipelineDescriptor()
+                do {
+                    let funcConstants = MetalUtilities.getFuncConstantsForDrawDataSet(meshData: modelParser.meshes[drawIdx], useMaterials: usesMaterials)
+                    // TODO: Implement a vertex shader with puppet animation support
+                    //let vertexName = (drawData.paletteStartIndex != nil) ? "vertex_skinned" : "anchorGeometryVertexTransform"
+                    let vertexName = "anchorGeometryVertexTransform"
+                    let fragFunc = try defaultLibrary.makeFunction(name: "anchorGeometryFragmentLighting",
+                                                                   constantValues: funcConstants)
+                    let vertFunc = try defaultLibrary.makeFunction(name: vertexName,
+                                                                   constantValues: funcConstants)
+                    anchorPipelineStateDescriptor.vertexDescriptor = anchorVertexDescriptor
+                    anchorPipelineStateDescriptor.vertexFunction = vertFunc
+                    anchorPipelineStateDescriptor.fragmentFunction = fragFunc
+                    anchorPipelineStateDescriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
+                    anchorPipelineStateDescriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
+                    anchorPipelineStateDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
+                    anchorPipelineStateDescriptor.sampleCount = renderDestination.sampleCount
+                } catch let error {
+                    print("Failed to create pipeline state descriptor, error \(error)")
+                }
+                
+                do {
+                    try anchorPipelineStates.append(device.makeRenderPipelineState(descriptor: anchorPipelineStateDescriptor))
+                } catch let error {
+                    print("Failed to create pipeline state, error \(error)")
                 }
             }
         }
@@ -481,20 +487,20 @@ class Renderer {
                 fatalError("Failed to get asset from meshProvider.")
             }
             
+            // Creata a Model IO vertexDescriptor so that we format/layout our model IO mesh vertices to
+            //   fit our Metal render pipeline's vertex descriptor layout
+            let vertexDescriptor = MTKModelIOVertexDescriptorFromMetal(geometryVertexDescriptor)
+            
+            // Indicate how each Metal vertex descriptor attribute maps to each ModelIO attribute
+            (vertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributePosition
+            (vertexDescriptor.attributes[Int(kVertexAttributeTexcoord.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributeTextureCoordinate
+            (vertexDescriptor.attributes[Int(kVertexAttributeNormal.rawValue)] as! MDLVertexAttribute).name   = MDLVertexAttributeNormal
+            
             if useOldFlow {
                 
                 guard let mesh = asset.object(at: 0).children[0].children[0] as? MDLMesh else {
                     fatalError("Failed to get mesh from asset.")
                 }
-                
-                // Creata a Model IO vertexDescriptor so that we format/layout our model IO mesh vertices to
-                //   fit our Metal render pipeline's vertex descriptor layout
-                let vertexDescriptor = MTKModelIOVertexDescriptorFromMetal(geometryVertexDescriptor)
-                
-                // Indicate how each Metal vertex descriptor attribute maps to each ModelIO attribute
-                (vertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributePosition
-                (vertexDescriptor.attributes[Int(kVertexAttributeTexcoord.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributeTextureCoordinate
-                (vertexDescriptor.attributes[Int(kVertexAttributeNormal.rawValue)] as! MDLVertexAttribute).name   = MDLVertexAttributeNormal
                 
                 // Perform the format/relayout of mesh vertices by setting the new vertex descriptor in our
                 //   Model IO mesh
@@ -508,7 +514,7 @@ class Renderer {
                 }
             } else {
                 // Load meshes into mode parser
-                modelParser = ModelParser(asset: asset)
+                modelParser = ModelParser(asset: asset, vertexDescriptor: vertexDescriptor)
             }
             
             // TODO: Figure out a way to load a new mesh per anchor.
@@ -516,6 +522,15 @@ class Renderer {
         }
         
         meshProvider.loadMesh(forType: .horizPlane, metalAllocator: metalAllocator) { [weak self] asset in
+            
+            // Creata a Model IO vertexDescriptor so that we format/layout our model IO mesh vertices to
+            //   fit our Metal render pipeline's vertex descriptor layout
+            let vertexDescriptor = MTKModelIOVertexDescriptorFromMetal(geometryVertexDescriptor)
+            
+            // Indicate how each Metal vertex descriptor attribute maps to each ModelIO attribute
+            (vertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributePosition
+            (vertexDescriptor.attributes[Int(kVertexAttributeTexcoord.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributeTextureCoordinate
+            (vertexDescriptor.attributes[Int(kVertexAttributeNormal.rawValue)] as! MDLVertexAttribute).name   = MDLVertexAttributeNormal
             
             if useOldFlow {
                 
@@ -533,15 +548,6 @@ class Renderer {
                     }
                 }()
                 
-                // Creata a Model IO vertexDescriptor so that we format/layout our model IO mesh vertices to
-                //   fit our Metal render pipeline's vertex descriptor layout
-                let vertexDescriptor = MTKModelIOVertexDescriptorFromMetal(geometryVertexDescriptor)
-                
-                // Indicate how each Metal vertex descriptor attribute maps to each ModelIO attribute
-                (vertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributePosition
-                (vertexDescriptor.attributes[Int(kVertexAttributeTexcoord.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributeTextureCoordinate
-                (vertexDescriptor.attributes[Int(kVertexAttributeNormal.rawValue)] as! MDLVertexAttribute).name   = MDLVertexAttributeNormal
-                
                 // Perform the format/relayout of mesh vertices by setting the new vertex descriptor in our
                 //   Model IO mesh
                 myMesh.vertexDescriptor = vertexDescriptor
@@ -556,7 +562,7 @@ class Renderer {
             } else {
                 
                 if let asset = asset {
-                    modelParser = ModelParser(asset: asset)
+                    modelParser = ModelParser(asset: asset, vertexDescriptor: vertexDescriptor)
                 } else {
                 
                     let mesh = MDLMesh(planeWithExtent: vector3(1, 0, 1), segments: vector2(1, 1), geometryType: .triangles, allocator: metalAllocator)
@@ -566,7 +572,7 @@ class Renderer {
                     }
                     let asset = MDLAsset(bufferAllocator: metalAllocator)
                     asset.add(mesh)
-                    modelParser = ModelParser(asset: asset)
+                    modelParser = ModelParser(asset: asset, vertexDescriptor: vertexDescriptor)
                     
                 }
                 
@@ -580,20 +586,20 @@ class Renderer {
                 return
             }
             
+            // Creata a Model IO vertexDescriptor so that we format/layout our model IO mesh vertices to
+            //   fit our Metal render pipeline's vertex descriptor layout
+            let vertexDescriptor = MTKModelIOVertexDescriptorFromMetal(geometryVertexDescriptor)
+            
+            // Indicate how each Metal vertex descriptor attribute maps to each ModelIO attribute
+            (vertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributePosition
+            (vertexDescriptor.attributes[Int(kVertexAttributeTexcoord.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributeTextureCoordinate
+            (vertexDescriptor.attributes[Int(kVertexAttributeNormal.rawValue)] as! MDLVertexAttribute).name   = MDLVertexAttributeNormal
+            
             if useOldFlow {
                 
                 guard let mesh = asset.object(at: 0).children[0].children[0] as? MDLMesh else {
                     fatalError("Failed to get mesh from asset.")
                 }
-                
-                // Creata a Model IO vertexDescriptor so that we format/layout our model IO mesh vertices to
-                //   fit our Metal render pipeline's vertex descriptor layout
-                let vertexDescriptor = MTKModelIOVertexDescriptorFromMetal(geometryVertexDescriptor)
-                
-                // Indicate how each Metal vertex descriptor attribute maps to each ModelIO attribute
-                (vertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributePosition
-                (vertexDescriptor.attributes[Int(kVertexAttributeTexcoord.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributeTextureCoordinate
-                (vertexDescriptor.attributes[Int(kVertexAttributeNormal.rawValue)] as! MDLVertexAttribute).name   = MDLVertexAttributeNormal
                 
                 // Perform the format/relayout of mesh vertices by setting the new vertex descriptor in our
                 //   Model IO mesh
@@ -607,7 +613,7 @@ class Renderer {
                 }
             } else {
                 // Load meshes into mode parser
-                modelParser = ModelParser(asset: asset)
+                modelParser = ModelParser(asset: asset, vertexDescriptor: vertexDescriptor)
             }
             
         }
@@ -617,7 +623,8 @@ class Renderer {
     private func loadMeshesFromParser() {
         
         guard let modelParser = modelParser else {
-            return
+            print("ERROR: Model Parser not found when attempting to load meshes.")
+            fatalError()
         }
         
         if modelParser.meshNodeIndices.count > 1 {
@@ -626,6 +633,7 @@ class Renderer {
         
         var myGPUData = MeshGPUData()
         
+        // Create Vertex Buffers
         for vtxBuffer in modelParser.vertexBuffers {
             vtxBuffer.withUnsafeBytes { (bytes: UnsafePointer<UInt8>) in
                 let buffer = device.makeBuffer(bytes: bytes, length: vtxBuffer.count, options: .storageModeShared)
@@ -634,6 +642,7 @@ class Renderer {
             
         }
         
+        // Create Index Buffers
         for idxBuffer in modelParser.indexBuffers {
             idxBuffer.withUnsafeBytes { (bytes: UnsafePointer<UInt8>) in
                 let buffer = device.makeBuffer(bytes: bytes, length: idxBuffer.count, options: .storageModeShared)
@@ -641,10 +650,12 @@ class Renderer {
             }
         }
         
+        // Create Texture Buffers
         for texturePath in modelParser.texturePaths {
             myGPUData.textures.append(createMTLTexture(fromAssetPath: texturePath))
         }
         
+        // Encode the data in the meshes as DrawData objects and store them in the MeshGPUData
         var instStartIdx = 0
         var paletteStartIdx = 0
         for (meshIdx, meshData) in modelParser.meshes.enumerated() {
@@ -689,7 +700,7 @@ class Renderer {
     private func createMTLTexture(fromAssetPath assetPath: String) -> MTLTexture? {
         do {
             guard let textureURL = URL(string: assetPath) else { return nil }
-            return try textureLoader.newTexture(withContentsOf: textureURL, options: nil)
+            return try textureLoader.newTexture(URL: textureURL, options: nil)
         } catch {
             print("Unable to loader texture with assetPath \(assetPath) with error \(error)")
         }
@@ -697,7 +708,7 @@ class Renderer {
         return nil
     }
     
-    private func createVertexDescriptor(with vtxDesc: [MDLVertexDescriptor]) -> MTLVertexDescriptor {
+    private func createMetalVertexDescriptor(withModelIOVertexDescriptor vtxDesc: [MDLVertexDescriptor]) -> MTLVertexDescriptor {
         let mtlVertexDescriptor = MTKMetalVertexDescriptorFromModelIO(vtxDesc[0])
         return mtlVertexDescriptor!
     }
@@ -805,8 +816,8 @@ class Renderer {
         
         let uniforms = sharedUniformBufferAddress.assumingMemoryBound(to: SharedUniforms.self)
         
-        uniforms.pointee.viewMatrix = simd_inverse(frame.camera.transform)
-        uniforms.pointee.projectionMatrix = frame.camera.projectionMatrix(withViewportSize: viewportSize, orientation: .landscapeRight, zNear: 0.001, zFar: 1000)
+        uniforms.pointee.viewMatrix = frame.camera.viewMatrix(for: .landscapeRight)
+        uniforms.pointee.projectionMatrix = frame.camera.projectionMatrix(for: .landscapeRight, viewportSize: viewportSize, zNear: 0.001, zFar: 1000)
         
         // Set up lighting for the scene using the ambient intensity if provided
         var ambientIntensity: Float = 1.0
@@ -900,7 +911,7 @@ class Renderer {
     
     private func updateImagePlane(frame: ARFrame) {
         // Update the texture coordinates of our image plane to aspect fill the viewport
-        let displayToCameraTransform = frame.displayTransform(withViewportSize: viewportSize, orientation: .landscapeRight).inverted()
+        let displayToCameraTransform = frame.displayTransform(for: .landscapeRight, viewportSize: viewportSize).inverted()
         
         let vertexData = imagePlaneVertexBuffer.contents().assumingMemoryBound(to: Float.self)
         for index in 0...3 {
@@ -992,6 +1003,7 @@ class Renderer {
             // NEW.
             
             guard let meshGPUData = meshGPUData else {
+                print("Error: meshGPUData not available a draw time. Aborting")
                 return
             }
             
@@ -1000,8 +1012,11 @@ class Renderer {
                 if drawDataIdx < anchorPipelineStates.count {
                     renderEncoder.setRenderPipelineState(anchorPipelineStates[drawDataIdx])
                     
-                    var instBufferStartIdx = drawData.instBufferStartIdx
-                    renderEncoder.setVertexBytes(&instBufferStartIdx, length: 64, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
+                    //var instBufferStartIdx = drawData.instBufferStartIdx
+                    //renderEncoder.setVertexBytes(&instBufferStartIdx, length: 64, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
+                    
+                    // Set any buffers fed into our render pipeline
+                    renderEncoder.setVertexBuffer(anchorUniformBuffer, offset: anchorUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
                     
                     // Set the mesh's vertex data buffers
                     encodeMeshGPUData(with: renderEncoder, drawData: drawData)

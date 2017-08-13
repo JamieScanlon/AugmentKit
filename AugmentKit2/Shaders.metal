@@ -44,8 +44,8 @@ struct ImageColorInOut {
 // Per-vertex inputs fed by vertex buffer laid out with MTLVertexDescriptor in Metal API
 struct Vertex {
     float3 position      [[attribute(kVertexAttributePosition)]];
-    float3 normal        [[attribute(kVertexAttributeNormal)]];
     float2 texCoord      [[attribute(kVertexAttributeTexcoord)]];
+    float3 normal        [[attribute(kVertexAttributeNormal)]];
     ushort4 jointIndices [[attribute(kVertexAttributeJointIndices)]];
     float4 jointWeights  [[attribute(kVertexAttributeJointWeights)]];
 };

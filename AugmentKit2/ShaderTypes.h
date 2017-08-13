@@ -29,11 +29,11 @@ enum BufferIndices {
 // Attribute index values shared between shader and C code to ensure Metal shader vertex
 //   attribute indices match the Metal API vertex descriptor attribute indices
 enum VertexAttributes {
-    kVertexAttributePosition  = 0,
-    kVertexAttributeTexcoord,
-    kVertexAttributeNormal,
-    kVertexAttributeJointIndices,
-    kVertexAttributeJointWeights
+    kVertexAttributePosition  = 0,  // Used by both Image Render and Anchor Render
+    kVertexAttributeTexcoord,       // Used by both Image Render and Anchor Render
+    kVertexAttributeNormal,         // Used by Anchor Render only
+    kVertexAttributeJointIndices,   // Used by Anchor Render only
+    kVertexAttributeJointWeights    // Used by Anchor Render only
 };
 
 // Texture index values shared between shader and C code to ensure Metal shader texture indices

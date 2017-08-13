@@ -37,7 +37,7 @@ enum MeshType {
 class Renderer {
     
     // Debugging
-    var useOldFlow = true
+    var useOldFlow = false
     var logger: RenderDebugLogger?
     
     enum Constants {
@@ -161,7 +161,9 @@ class Renderer {
     private let textureLoader: MTKTextureLoader
     private let inFlightSemaphore = DispatchSemaphore(value: Constants.maxBuffersInFlight)
     private var renderDestination: RenderDestinationProvider
-    private var modelParser: ModelParser?
+    private var anchorModelParser: ModelParser?
+    private var horizPlaneModelParser: ModelParser?
+    private var vertPlaneModelParser: ModelParser?
     
     // Metal objects
     private var defaultLibrary: MTLLibrary!
@@ -187,9 +189,11 @@ class Renderer {
     
     // MetalKit mesh containing vertex data and index buffer for our anchor geometry
     private var anchorMesh: MTKMesh? // OLD
-    private var meshGPUData: MeshGPUData? // NEW
-    private var horizPlaneMesh: MTKMesh?
-    private var vertPlaneMesh: MTKMesh?
+    private var horizPlaneMesh: MTKMesh? // OLD
+    private var vertPlaneMesh: MTKMesh? // OLD
+    private var anchorMeshGPUData: MeshGPUData? // NEW
+    private var horizPlaneMeshGPUData: MeshGPUData? // NEW
+    private var vertPlaneMeshGPUData: MeshGPUData? // NEW
     private var horizPlaneInstanceCount: Int = 0
     private var vertPlaneInstanceCount: Int = 0
     private var totalMeshTransforms = 1
@@ -417,12 +421,12 @@ class Renderer {
             
             // NEW
             
-            guard let modelParser = modelParser else {
+            guard let modelParser = anchorModelParser else {
                 print("Model Perser is nil.")
                 fatalError()
             }
             
-            guard let meshGPUData = meshGPUData else {
+            guard let meshGPUData = anchorMeshGPUData else {
                 print("ERROR: No meshGPUData found when trying to load the pipeline.")
                 fatalError()
             }
@@ -514,7 +518,7 @@ class Renderer {
                 }
             } else {
                 // Load meshes into mode parser
-                modelParser = ModelParser(asset: asset, vertexDescriptor: vertexDescriptor)
+                anchorModelParser = ModelParser(asset: asset, vertexDescriptor: vertexDescriptor)
             }
             
             // TODO: Figure out a way to load a new mesh per anchor.
@@ -562,7 +566,7 @@ class Renderer {
             } else {
                 
                 if let asset = asset {
-                    modelParser = ModelParser(asset: asset, vertexDescriptor: vertexDescriptor)
+                    horizPlaneModelParser = ModelParser(asset: asset, vertexDescriptor: vertexDescriptor)
                 } else {
                 
                     let mesh = MDLMesh(planeWithExtent: vector3(1, 0, 1), segments: vector2(1, 1), geometryType: .triangles, allocator: metalAllocator)
@@ -572,7 +576,7 @@ class Renderer {
                     }
                     let asset = MDLAsset(bufferAllocator: metalAllocator)
                     asset.add(mesh)
-                    modelParser = ModelParser(asset: asset, vertexDescriptor: vertexDescriptor)
+                    horizPlaneModelParser = ModelParser(asset: asset, vertexDescriptor: vertexDescriptor)
                     
                 }
                 
@@ -613,7 +617,7 @@ class Renderer {
                 }
             } else {
                 // Load meshes into mode parser
-                modelParser = ModelParser(asset: asset, vertexDescriptor: vertexDescriptor)
+                vertPlaneModelParser = ModelParser(asset: asset, vertexDescriptor: vertexDescriptor)
             }
             
         }
@@ -622,7 +626,7 @@ class Renderer {
     
     private func loadMeshesFromParser() {
         
-        guard let modelParser = modelParser else {
+        guard let modelParser = anchorModelParser else {
             print("ERROR: Model Parser not found when attempting to load meshes.")
             fatalError()
         }
@@ -631,10 +635,25 @@ class Renderer {
             print("WARNING: More than one mesh was found. Currently only one mesh per anchor is supported.")
         }
         
+        anchorMeshGPUData = meshData(from: modelParser)
+        totalMeshTransforms = modelParser.meshNodeIndices.count
+        
+        if let horizPlaneModelParser = horizPlaneModelParser {
+            horizPlaneMeshGPUData = meshData(from: horizPlaneModelParser)
+        }
+        
+        if let vertPlaneModelParser = vertPlaneModelParser {
+            vertPlaneMeshGPUData = meshData(from: vertPlaneModelParser)
+        }
+        
+    }
+    
+    private func meshData(from aModelParser: ModelParser) -> MeshGPUData {
+        
         var myGPUData = MeshGPUData()
         
         // Create Vertex Buffers
-        for vtxBuffer in modelParser.vertexBuffers {
+        for vtxBuffer in aModelParser.vertexBuffers {
             vtxBuffer.withUnsafeBytes { (bytes: UnsafePointer<UInt8>) in
                 let buffer = device.makeBuffer(bytes: bytes, length: vtxBuffer.count, options: .storageModeShared)
                 myGPUData.vtxBuffers.append(buffer!)
@@ -643,7 +662,7 @@ class Renderer {
         }
         
         // Create Index Buffers
-        for idxBuffer in modelParser.indexBuffers {
+        for idxBuffer in aModelParser.indexBuffers {
             idxBuffer.withUnsafeBytes { (bytes: UnsafePointer<UInt8>) in
                 let buffer = device.makeBuffer(bytes: bytes, length: idxBuffer.count, options: .storageModeShared)
                 myGPUData.indexBuffers.append(buffer!)
@@ -651,24 +670,24 @@ class Renderer {
         }
         
         // Create Texture Buffers
-        for texturePath in modelParser.texturePaths {
+        for texturePath in aModelParser.texturePaths {
             myGPUData.textures.append(createMTLTexture(fromAssetPath: texturePath))
         }
         
         // Encode the data in the meshes as DrawData objects and store them in the MeshGPUData
         var instStartIdx = 0
         var paletteStartIdx = 0
-        for (meshIdx, meshData) in modelParser.meshes.enumerated() {
+        for (meshIdx, meshData) in aModelParser.meshes.enumerated() {
             
             var drawData = DrawData()
             drawData.vbCount = meshData.vbCount
             drawData.vbStartIdx = meshData.vbStartIdx
             drawData.ibStartIdx = meshData.ibStartIdx
-            drawData.instCount = !modelParser.instanceCount.isEmpty ? modelParser.instanceCount[meshIdx] : 1
+            drawData.instCount = !aModelParser.instanceCount.isEmpty ? aModelParser.instanceCount[meshIdx] : 1
             drawData.instBufferStartIdx = instStartIdx
-            if !modelParser.meshSkinIndices.isEmpty,
-                let paletteIndex = modelParser.meshSkinIndices[instStartIdx] {
-                drawData.paletteSize = modelParser.skins[paletteIndex].jointPaths.count
+            if !aModelParser.meshSkinIndices.isEmpty,
+                let paletteIndex = aModelParser.meshSkinIndices[instStartIdx] {
+                drawData.paletteSize = aModelParser.skins[paletteIndex].jointPaths.count
                 drawData.paletteStartIndex = paletteStartIdx
                 paletteStartIdx += drawData.paletteSize * drawData.instCount
             }
@@ -692,8 +711,7 @@ class Renderer {
             
         }
         
-        meshGPUData = myGPUData
-        totalMeshTransforms = modelParser.meshNodeIndices.count
+        return myGPUData
         
     }
     
@@ -715,7 +733,7 @@ class Renderer {
     
     private func encodeMeshGPUData(with renderEncoder: MTLRenderCommandEncoder, drawData: DrawData) {
         
-        guard let meshGPUData = meshGPUData else {
+        guard let meshGPUData = anchorMeshGPUData else {
             return
         }
         
@@ -1002,7 +1020,7 @@ class Renderer {
             
             // NEW.
             
-            guard let meshGPUData = meshGPUData else {
+            guard let meshGPUData = anchorMeshGPUData else {
                 print("Error: meshGPUData not available a draw time. Aborting")
                 return
             }
@@ -1012,14 +1030,12 @@ class Renderer {
                 if drawDataIdx < anchorPipelineStates.count {
                     renderEncoder.setRenderPipelineState(anchorPipelineStates[drawDataIdx])
                     
-                    //var instBufferStartIdx = drawData.instBufferStartIdx
-                    //renderEncoder.setVertexBytes(&instBufferStartIdx, length: 64, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
-                    
                     // Set any buffers fed into our render pipeline
                     renderEncoder.setVertexBuffer(anchorUniformBuffer, offset: anchorUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
                     
                     // Set the mesh's vertex data buffers
                     encodeMeshGPUData(with: renderEncoder, drawData: drawData)
+                    
                 }
                 
             }
@@ -1040,36 +1056,70 @@ class Renderer {
             return
         }
         
-        guard let horizPlaneMesh = horizPlaneMesh else {
-            return
-        }
-        
-        guard horizPlaneInstanceCount > 0 else {
-            return
-        }
-        
         // Push a debug group allowing us to identify render commands in the GPU Frame Capture tool
         renderEncoder.pushDebugGroup("Draw Guides")
         
         // Set render command encoder state
         renderEncoder.setCullMode(.back)
-        renderEncoder.setRenderPipelineState(anchorPipelineState)
-        renderEncoder.setDepthStencilState(anchorDepthState)
         
-        // Set any buffers fed into our render pipeline
-        renderEncoder.setVertexBuffer(anchorUniformBuffer, offset: anchorUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
-        renderEncoder.setVertexBuffer(sharedUniformBuffer, offset: sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
-        renderEncoder.setFragmentBuffer(sharedUniformBuffer, offset: sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
+        if useOldFlow {
+            
+            // OLD
         
-        // Set mesh's vertex buffers
-        for bufferIndex in 0..<horizPlaneMesh.vertexBuffers.count {
-            let vertexBuffer = horizPlaneMesh.vertexBuffers[bufferIndex]
-            renderEncoder.setVertexBuffer(vertexBuffer.buffer, offset: vertexBuffer.offset, index:bufferIndex)
-        }
-        
-        // Draw each submesh of our mesh
-        for submesh in horizPlaneMesh.submeshes {
-            renderEncoder.drawIndexedPrimitives(type: submesh.primitiveType, indexCount: submesh.indexCount, indexType: submesh.indexType, indexBuffer: submesh.indexBuffer.buffer, indexBufferOffset: submesh.indexBuffer.offset, instanceCount: horizPlaneInstanceCount)
+            guard let horizPlaneMesh = horizPlaneMesh else {
+                return
+            }
+            
+            guard horizPlaneInstanceCount > 0 else {
+                return
+            }
+            
+            
+            renderEncoder.setRenderPipelineState(anchorPipelineState)
+            renderEncoder.setDepthStencilState(anchorDepthState)
+            
+            // Set any buffers fed into our render pipeline
+            renderEncoder.setVertexBuffer(anchorUniformBuffer, offset: anchorUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
+            renderEncoder.setVertexBuffer(sharedUniformBuffer, offset: sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
+            renderEncoder.setFragmentBuffer(sharedUniformBuffer, offset: sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
+            
+            // Set mesh's vertex buffers
+            for bufferIndex in 0..<horizPlaneMesh.vertexBuffers.count {
+                let vertexBuffer = horizPlaneMesh.vertexBuffers[bufferIndex]
+                renderEncoder.setVertexBuffer(vertexBuffer.buffer, offset: vertexBuffer.offset, index:bufferIndex)
+            }
+            
+            // Draw each submesh of our mesh
+            for submesh in horizPlaneMesh.submeshes {
+                renderEncoder.drawIndexedPrimitives(type: submesh.primitiveType, indexCount: submesh.indexCount, indexType: submesh.indexType, indexBuffer: submesh.indexBuffer.buffer, indexBufferOffset: submesh.indexBuffer.offset, instanceCount: horizPlaneInstanceCount)
+            }
+            
+        } else {
+            
+            // NEW.
+            
+            guard let meshGPUData = horizPlaneMeshGPUData else {
+                print("Error: meshGPUData not available a draw time. Aborting")
+                return
+            }
+            
+            for (drawDataIdx, drawData) in meshGPUData.drawData.enumerated() {
+                
+                if drawDataIdx < anchorPipelineStates.count {
+                    renderEncoder.setRenderPipelineState(anchorPipelineStates[drawDataIdx])
+                    
+                    // Set any buffers fed into our render pipeline
+                    renderEncoder.setVertexBuffer(anchorUniformBuffer, offset: anchorUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
+                    renderEncoder.setVertexBuffer(sharedUniformBuffer, offset: sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
+                    renderEncoder.setFragmentBuffer(sharedUniformBuffer, offset: sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
+                    
+                    // Set the mesh's vertex data buffers
+                    encodeMeshGPUData(with: renderEncoder, drawData: drawData)
+                    
+                }
+                
+            }
+            
         }
         
         renderEncoder.popDebugGroup()

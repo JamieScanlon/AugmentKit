@@ -39,6 +39,11 @@ class Renderer {
     // Debugging
     var useOldFlow = false
     var logger: RenderDebugLogger?
+    var orientation: UIInterfaceOrientation = .landscapeRight {
+        didSet {
+            // TODO: Refresh?
+        }
+    }
     
     enum Constants {
         static let maxBuffersInFlight = 3
@@ -699,6 +704,10 @@ class Renderer {
                 subData.idxType = MetalUtilities.convertToMTLIndexType(from: meshData.idxTypes[subIndex])
                 subData.materialUniforms = usesMaterials ? MetalUtilities.convertToMaterialUniform(from: meshData.materials[subIndex])
                     : MaterialUniforms()
+                if usesMaterials {
+                    MetalUtilities.convertMaterialBuffer(from: meshData.materials[subIndex], with: materialUniformBuffer, offset: materialUniformBufferOffset)
+                    subData.materialBuffer = materialUniformBuffer
+                }
                 subData.baseColorTexIdx = usesMaterials ? meshData.materials[subIndex].baseColor.1 : nil
                 subData.normalTexIdx = usesMaterials ? meshData.materials[subIndex].normalMap : nil
                 subData.aoTexIdx = usesMaterials ? meshData.materials[subIndex].ambientOcclusionMap : nil
@@ -731,11 +740,7 @@ class Renderer {
         return mtlVertexDescriptor!
     }
     
-    private func encodeMeshGPUData(with renderEncoder: MTLRenderCommandEncoder, drawData: DrawData) {
-        
-        guard let meshGPUData = anchorMeshGPUData else {
-            return
-        }
+    private func encode(meshGPUData: MeshGPUData, fromDrawData drawData: DrawData, with renderEncoder: MTLRenderCommandEncoder) {
         
         // Set mesh's vertex buffers
         for vtxBufferIdx in 0..<drawData.vbCount {
@@ -745,17 +750,28 @@ class Renderer {
         // Draw each submesh of our mesh
         for drawDataSubIndex in 0..<drawData.subData.count {
             
-            let idxCount = Int(drawData.subData[drawDataSubIndex].idxCount)
-            let idxType = drawData.subData[drawDataSubIndex].idxType
+            let submeshData = drawData.subData[drawDataSubIndex]
+
+            // Sets the weight of values sampled from a texture vs value from a material uniform
+            //   for a transition between quality levels
+            //submeshData.computeTextureWeights(for: currentQualityLevel, with: globalMapWeight)
+
+            let idxCount = Int(submeshData.idxCount)
+            let idxType = submeshData.idxType
             let ibOffset = drawData.ibStartIdx
             let indexBuffer = meshGPUData.indexBuffers[ibOffset + drawDataSubIndex]
-            var materialUniforms = drawData.subData[drawDataSubIndex].materialUniforms
-            
+            var materialUniforms = submeshData.materialUniforms
+            let materialBuffer = submeshData.materialBuffer
+
             // Set textures based off material flags
-            encodeTextures(with: meshGPUData, renderEncoder: renderEncoder, subData: drawData.subData[drawDataSubIndex])
-            
-            renderEncoder.setFragmentBytes(&materialUniforms, length: Constants.alignedMaterialSize,
-                                           index: Int(kBufferIndexMaterialUniforms.rawValue))
+            encodeTextures(with: meshGPUData, renderEncoder: renderEncoder, subData: submeshData)
+
+            // Set Material
+            if let materialBuffer = materialBuffer {
+                renderEncoder.setFragmentBuffer(materialBuffer, offset: materialUniformBufferOffset, index: Int(kBufferIndexMaterialUniforms.rawValue))
+            } else {
+                renderEncoder.setFragmentBytes(&materialUniforms, length: Constants.alignedMaterialSize, index: Int(kBufferIndexMaterialUniforms.rawValue))
+            }
             
             renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: idxCount, indexType: idxType,
                                                 indexBuffer: indexBuffer, indexBufferOffset: 0,
@@ -834,8 +850,8 @@ class Renderer {
         
         let uniforms = sharedUniformBufferAddress.assumingMemoryBound(to: SharedUniforms.self)
         
-        uniforms.pointee.viewMatrix = frame.camera.viewMatrix(for: .landscapeRight)
-        uniforms.pointee.projectionMatrix = frame.camera.projectionMatrix(for: .landscapeRight, viewportSize: viewportSize, zNear: 0.001, zFar: 1000)
+        uniforms.pointee.viewMatrix = frame.camera.viewMatrix(for: orientation)
+        uniforms.pointee.projectionMatrix = frame.camera.projectionMatrix(for: orientation, viewportSize: viewportSize, zNear: 0.001, zFar: 1000)
         
         // Set up lighting for the scene using the ambient intensity if provided
         var ambientIntensity: Float = 1.0
@@ -929,7 +945,7 @@ class Renderer {
     
     private func updateImagePlane(frame: ARFrame) {
         // Update the texture coordinates of our image plane to aspect fill the viewport
-        let displayToCameraTransform = frame.displayTransform(for: .landscapeRight, viewportSize: viewportSize).inverted()
+        let displayToCameraTransform = frame.displayTransform(for: orientation, viewportSize: viewportSize).inverted()
         
         let vertexData = imagePlaneVertexBuffer.contents().assumingMemoryBound(to: Float.self)
         for index in 0...3 {
@@ -981,6 +997,10 @@ class Renderer {
     
     private func drawAnchors(renderEncoder: MTLRenderCommandEncoder) {
         
+        guard anchorInstanceCount > 0 else {
+            return
+        }
+        
         // Push a debug group allowing us to identify render commands in the GPU Frame Capture tool
         renderEncoder.pushDebugGroup("Draw Anchors")
         
@@ -992,10 +1012,6 @@ class Renderer {
             // OLD
             
             guard let anchorMesh = anchorMesh else {
-                return
-            }
-            
-            guard anchorInstanceCount > 0 else {
                 return
             }
             
@@ -1013,7 +1029,7 @@ class Renderer {
             
             // Draw each submesh of our mesh
             for submesh in anchorMesh.submeshes {
-                renderEncoder.drawIndexedPrimitives(type: submesh.primitiveType, indexCount: submesh.indexCount, indexType: submesh.indexType, indexBuffer: submesh.indexBuffer.buffer, indexBufferOffset: submesh.indexBuffer.offset, instanceCount: anchorInstanceCount)
+                renderEncoder.drawIndexedPrimitives(type: submesh.primitiveType, indexCount: submesh.indexCount, indexType: submesh.indexType, indexBuffer: submesh.indexBuffer.buffer, indexBufferOffset: submesh.indexBuffer.offset, instanceCount: anchorInstanceCount + horizPlaneInstanceCount + vertPlaneInstanceCount)
             }
  
         } else {
@@ -1033,8 +1049,11 @@ class Renderer {
                     // Set any buffers fed into our render pipeline
                     renderEncoder.setVertexBuffer(anchorUniformBuffer, offset: anchorUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
                     
+                    var mutableDrawData = drawData
+                    mutableDrawData.instCount = anchorInstanceCount
+                    
                     // Set the mesh's vertex data buffers
-                    encodeMeshGPUData(with: renderEncoder, drawData: drawData)
+                    encode(meshGPUData: meshGPUData, fromDrawData: mutableDrawData, with: renderEncoder)
                     
                 }
                 
@@ -1049,6 +1068,10 @@ class Renderer {
     }
     
     private func drawGuides(renderEncoder: MTLRenderCommandEncoder) {
+        
+        guard horizPlaneInstanceCount > 0 else {
+            return
+        }
         
         // TODO: Support vertical planes
         
@@ -1069,11 +1092,6 @@ class Renderer {
             guard let horizPlaneMesh = horizPlaneMesh else {
                 return
             }
-            
-            guard horizPlaneInstanceCount > 0 else {
-                return
-            }
-            
             
             renderEncoder.setRenderPipelineState(anchorPipelineState)
             renderEncoder.setDepthStencilState(anchorDepthState)
@@ -1113,8 +1131,11 @@ class Renderer {
                     renderEncoder.setVertexBuffer(sharedUniformBuffer, offset: sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
                     renderEncoder.setFragmentBuffer(sharedUniformBuffer, offset: sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
                     
+                    var mutableDrawData = drawData
+                    mutableDrawData.instCount = horizPlaneInstanceCount + vertPlaneInstanceCount
+                    
                     // Set the mesh's vertex data buffers
-                    encodeMeshGPUData(with: renderEncoder, drawData: drawData)
+                    encode(meshGPUData: meshGPUData, fromDrawData: mutableDrawData, with: renderEncoder)
                     
                 }
                 

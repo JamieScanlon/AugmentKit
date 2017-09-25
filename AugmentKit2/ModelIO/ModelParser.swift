@@ -70,7 +70,7 @@ class ModelParser {
             idxTypes.append(submesh.indexType)
 
             var material = Material()
-            if let mdlMaterial = submesh.material {
+            if let mdlMaterial = submesh.material, readMaterialProperty(mdlMaterial, .baseColor, ModelIOTools.getMaterialFloat3Value).uniform != nil {
                 material.baseColor = readMaterialProperty(mdlMaterial, .baseColor, ModelIOTools.getMaterialFloat3Value)
                 material.metallic = readMaterialProperty(mdlMaterial, .metallic, ModelIOTools.getMaterialFloatValue)
                 material.roughness = readMaterialProperty(mdlMaterial, .roughness, ModelIOTools.getMaterialFloatValue)
@@ -209,7 +209,13 @@ class ModelParser {
 
     /// Map the joint indices bound to a mesh to the list of all joint indices of a skeleton
     private func computeSkinToSkeletonMaps() {
-        let skeletons = skeletonAnimations.map { $0.jointPaths[0] }
+        let skeletons = skeletonAnimations.map {
+            if $0.jointPaths.count > 0 {
+                return $0.jointPaths[0]
+            } else {
+                return nil
+            }
+        }.flatMap({$0})
         for (skinIndex, skin) in skins.enumerated() {
             guard let boundSkeletonRoot = ModelIOTools.findShortestPath(in: skin.jointPaths[0], containing: jointRootID) else {
                 continue

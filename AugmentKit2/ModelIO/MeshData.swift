@@ -10,7 +10,7 @@ import simd
 import ModelIO
 import MetalKit
 
-// MARK: - Material Data
+// MARK: - Material Data. Intermediate format sutable for serialization and transport.
 
 struct Material {
     var baseColor: (float3?, Int?) = (float3(1, 1, 1), nil)
@@ -18,6 +18,7 @@ struct Material {
     var roughness: (Float?, Int?) = (0, nil)
     var normalMap: Int?
     var ambientOcclusionMap: Int?
+    //var irradiatedColor: float3? // TODO: Add
 }
 
 // MARK: - Mesh Data that will be converted into GPU Data
@@ -42,6 +43,36 @@ struct DrawSubData {
     var metalTexIdx: Int?
     var roughTexIdx: Int?
     var materialUniforms = MaterialUniforms()
+    var materialBuffer: MTLBuffer?
+
+    func computeTextureWeights(for quality: QualityLevel, with globalWeight:Float) {
+        for textureIndex in 0..<kNumTextureIndices.rawValue {
+            let constantIndex = mapTextureBindPoint(to: TextureIndices(rawValue:textureIndex))
+
+            if MetalUtilities.isTexturedProperty(constantIndex, at: quality) && !MetalUtilities.isTexturedProperty(constantIndex, at: QualityLevel(rawValue: quality.rawValue + 1)) {
+                //materialUniforms.mapWeights[textureIndex] = globalWeight
+            } else {
+                //materialUniforms.mapWeights[textureIndex] = 1.0
+            }
+        }
+    }
+
+    func mapTextureBindPoint(to textureIndex: TextureIndices) -> FunctionConstantIndices {
+        switch textureIndex {
+        case kTextureIndexColor:
+            return kFunctionConstantBaseColorMapIndex
+        case kTextureIndexNormal:
+            return kFunctionConstantNormalMapIndex
+        case kTextureIndexMetallic:
+            return kFunctionConstantMetallicMapIndex
+        case kTextureIndexAmbientOcclusion:
+            return kFunctionConstantAmbientOcclusionMapIndex
+        case kTextureIndexRoughness:
+            return kFunctionConstantRoughnessMapIndex
+        default:
+            assert(false)
+        }
+    }
 }
 
 struct DrawData {

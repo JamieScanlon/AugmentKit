@@ -70,6 +70,30 @@ class MetalUtilities {
         return matUniforms
     }
     
+    static func convertMaterialBuffer(from material: Material, with materialBuffer: MTLBuffer, offset: Int) {
+        
+        let matUniforms = materialBuffer.contents().assumingMemoryBound(to: MaterialUniforms.self).advanced(by: offset)
+        let baseColor = material.baseColor.0 ?? float3(1.0, 1.0, 1.0)
+        matUniforms.pointee.baseColor = float4(baseColor.x, baseColor.y, baseColor.z, 1.0)
+        matUniforms.pointee.roughness = material.roughness.0 ?? 1.0
+        matUniforms.pointee.irradiatedColor = float4(1.0, 1.0, 1.0, 1.0)
+        matUniforms.pointee.metalness = material.metallic.0 ?? 0.0
+        
+    }
+    
+    static func isTexturedProperty(_ propertyIndex: FunctionConstantIndices, at quality: QualityLevel) -> Bool {
+        var minLevelForProperty = kQualityLevelHigh
+        switch propertyIndex {
+        case kFunctionConstantBaseColorMapIndex:
+            fallthrough
+        case kFunctionConstantIrradianceMapIndex:
+            minLevelForProperty = kQualityLevelMedium
+        default:
+            break
+        }
+        return quality.rawValue <= minLevelForProperty.rawValue
+    }
+    
 }
 
 // MARK: - float4x4

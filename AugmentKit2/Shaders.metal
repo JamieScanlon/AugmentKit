@@ -16,6 +16,7 @@ using namespace metal;
 
 // MARK: - Constants
 
+// See: https://developer.apple.com/documentation/metal/advanced_techniques/lod_with_function_specialization#//apple_ref/doc/uid/TP40016233
 constant bool has_base_color_map [[ function_constant(kFunctionConstantBaseColorMapIndex) ]];
 constant bool has_normal_map [[ function_constant(kFunctionConstantNormalMapIndex) ]];
 constant bool has_metallic_map [[ function_constant(kFunctionConstantMetallicMapIndex) ]];
@@ -55,8 +56,8 @@ struct Vertex {
 //  interpolated by rasterizer and fed to each fragment genterated by clip-space primitives.
 struct ColorInOut {
     float4 position [[position]];
-    half3  eyePosition;
-    half3  normal;
+    float3  eyePosition;
+    float3  normal;
     float2 texCoord [[ function_constant(has_any_map) ]];
 };
 
@@ -172,9 +173,9 @@ LightingParameters calculateParameters(ColorInOut in,
     parameters.baseColor = has_base_color_map ? (baseColorMap.sample(linearSampler, in.texCoord.xy)) : materialUniforms.baseColor;
     parameters.normal = has_normal_map ? computeNormalMap(in, normalMap) : float3(in.normal);
     
-    // TODO: ???
-    //parameters.viewDir = normalize(uniforms.cameraPos - float3(in.worldPos));
-    //parameters.reflectedVector = reflect(-parameters.viewDir, parameters.normal);
+    // TODO: ??? - use of uniforms.viewMatrix, parameters.projectionMatrix and in.eyePosition may not be correct
+//    parameters.viewDir = normalize(float3(1.0, 1.0, 1.0) - float3(in.eyePosition));
+//    parameters.reflectedVector = reflect(-parameters.viewDir, parameters.normal);
     
     parameters.roughness = has_roughness_map ? max(roughnessMap.sample(linearSampler, in.texCoord.xy).x, 0.001f) :
     materialUniforms.roughness;
@@ -252,18 +253,21 @@ vertex ColorInOut anchorGeometryVertexTransform(Vertex in [[stage_in]],
     // Make position a float4 to perform 4x4 matrix math on it
     float4 position = float4(in.position, 1.0);
     
+    // Get the anchor model's orientation in world space
     float4x4 modelMatrix = anchorInstanceUniforms[iid].modelMatrix;
+    
+    // Transform the model's orientation from world space to camera space.
     float4x4 modelViewMatrix = sharedUniforms.viewMatrix * modelMatrix;
     
     // Calculate the position of our vertex in clip space and output for clipping and rasterization
     out.position = sharedUniforms.projectionMatrix * modelViewMatrix * position;
     
     // Calculate the positon of our vertex in eye space
-    out.eyePosition = half3((modelViewMatrix * position).xyz);
+    out.eyePosition = float3((modelViewMatrix * position).xyz);
     
     // Rotate our normals to world coordinates
     float4 normal = modelMatrix * float4(in.normal.x, in.normal.y, in.normal.z, 0.0f);
-    out.normal = normalize(half3(normal.xyz));
+    out.normal = normalize(float3(normal.xyz));
     
     // Pass along the texture coordinate of our vertex such which we'll use to sample from texture's
     //   in our fragment function, if we need it
@@ -299,16 +303,16 @@ fragment float4 anchorGeometryFragmentLighting(ColorInOut in [[stage_in]],
                                                         ambientOcclusionMap,
                                                         irradianceMap);
     
-    if(parameters.baseColor.w <= 0.01f) {
-        parameters.baseColor = float4(1.0, 0.0, 0.0, 1.0);
-        //discard_fragment();
-    }
+//    if(parameters.baseColor.w <= 0.01f) {
+//        parameters.baseColor = float4(1.0, 0.0, 0.0, 1.0);
+//        discard_fragment();
+//    }
     
     const float baseReflectance = 0.4f;
     float3 Cspec0 = float3(mix(baseReflectance, 1.0f, parameters.metalness));
     float3 Fs = float3(mix(float3(Cspec0), float3(1), Fresnel(parameters.hDotl)));
-    final_color = float4(Fs * computeSpecular(parameters) +
-                         computeDiffuse(parameters) * (1.0f - Fs), 1.0f);
+    final_color = float4(Fs * computeSpecular(parameters) + computeDiffuse(parameters) * (1.0f - Fs), 1.0f);
+    final_color = float4(computeSpecular(parameters) + computeDiffuse(parameters), 1.0f);
     
     float3 normal = float3(in.normal);
     

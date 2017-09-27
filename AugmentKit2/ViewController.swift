@@ -140,7 +140,7 @@ extension ViewController: MeshProvider {
         
         switch type {
         case .anchor:
-            guard let scene = SCNScene(named: "Pin.scn") else {
+            guard let scene = SCNScene(named: "ship.scn") else {
                 fatalError("Failed to find model file.")
             }
             let asset = MDLAsset(scnScene: scene, bufferAllocator: metalAllocator)

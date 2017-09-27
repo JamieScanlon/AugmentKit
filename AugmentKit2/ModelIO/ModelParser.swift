@@ -12,7 +12,10 @@ class ModelParser {
     var nodeNames = [String]()
     var texturePaths = [String]()
 
+    // Transform for a node at a given index
     var localTransforms = [matrix_float4x4]()
+    // Combined transform of all the parent nodes of a node at a given index
+    var worldTransforms = [matrix_float4x4]()
     var parentIndices = [Int?]()
     var meshNodeIndices = [Int]()
     var meshSkinIndices = [Int?]()
@@ -27,7 +30,9 @@ class ModelParser {
 
     var sampleTimes = [Double]()
     var localTransformAnimations = [[matrix_float4x4]]()
+    var worldTransformAnimations = [[matrix_float4x4]]()
     var localTransformAnimationIndices = [Int?]()
+    var worldTransformAnimationIndices = [Int?]()
 
     var skeletonAnimations = [AnimatedSkeleton]()
 
@@ -39,9 +44,12 @@ class ModelParser {
         flattenSceneGraphHierarchy(with: asset)
         computeSkinToSkeletonMaps()
         ModelIOTools.fixupPaths(asset, &texturePaths)
+        updateWorldTransforms()
     }
+    
+    // MARK: - Private
 
-    /// Record all buffers and materials for an MDLMesh
+    // Record all buffers and materials for an MDLMesh
     private func store(_ mesh: MDLMesh, vertexDescriptor: MDLVertexDescriptor? = nil) {
         
         if let vertexDescriptor = vertexDescriptor {
@@ -87,14 +95,14 @@ class ModelParser {
         meshes.append(meshData)
     }
 
-    /// Record a node's parent index and store its local transform
+    // Record a node's parent index and store its local transform
     private func flattenNode(_ nodeObject: MDLObject, nodeIndex: Int, parentNodeIndex: Int?) {
         nodeNames.append(nodeObject.path)
         if let transform = nodeObject.transform {
             localTransforms.append(transform.matrix)
             if transform.keyTimes.count > 1 {
-                let sampledXM = sampleTimes.map { transform.localTransform!(atTime: $0) }
-                localTransformAnimations.append(sampledXM)
+                let sampledLocalTransforms = sampleTimes.map { transform.localTransform!(atTime: $0) }
+                localTransformAnimations.append(sampledLocalTransforms)
                 localTransformAnimationIndices.append(localTransformAnimations.count - 1)
             } else {
                 localTransformAnimationIndices.append(nil)
@@ -107,7 +115,7 @@ class ModelParser {
         parentIndices.append(parentNodeIndex)
     }
 
-    /// Store scene graph hierarchy's data in linear arrays
+    // Store scene graph hierarchy's data in linear arrays
     private func flattenSceneGraphHierarchy(with asset: MDLAsset) {
         ModelIOTools.walkSceneGraph(in: asset) { object, currentIdx, parentIdx in
             self.flattenNode(object, nodeIndex: currentIdx, parentNodeIndex: parentIdx)
@@ -120,7 +128,7 @@ class ModelParser {
         }
     }
 
-    /// Record all mesh data required to render a particular mesh
+    // Record all mesh data required to render a particular mesh
     private func storeAllMeshesInSceneGraph(with asset: MDLAsset, vertexDescriptor: MDLVertexDescriptor? = nil) {
         var masterMeshes: [MDLMesh] = []
         ModelIOTools.walkMasters(in: asset) { object in
@@ -151,7 +159,7 @@ class ModelParser {
         instanceCount = instCount
     }
 
-    /// Store skinning information if object has MDLSkinDeformerComponent
+    // Store skinning information if object has MDLSkinDeformerComponent
     private func storeMeshSkin(for object: MDLObject) -> Bool {
         guard let skinDeformer = object.componentConforming(to: MDLTransformComponent.self) as? MDLSkeleton else {
             return false
@@ -171,7 +179,7 @@ class ModelParser {
         return true
     }
 
-    /// Construct a SkeletonAnimation by time-sampling all joint transforms
+    // Construct a SkeletonAnimation by time-sampling all joint transforms
     private func createSkeletonAnimation(for asset: MDLAsset, rootPath: String) -> AnimatedSkeleton {
         var animation = AnimatedSkeleton()
         var jointCount = 0
@@ -207,7 +215,7 @@ class ModelParser {
         return animation
     }
 
-    /// Map the joint indices bound to a mesh to the list of all joint indices of a skeleton
+    // Map the joint indices bound to a mesh to the list of all joint indices of a skeleton
     private func computeSkinToSkeletonMaps() {
         let skeletons = skeletonAnimations.map {
             if $0.jointPaths.count > 0 {
@@ -230,8 +238,8 @@ class ModelParser {
         }
     }
 
-    /// Read a material's property of a particular semantic (e.g. .baseColor),
-    /// and return tuple of uniform value or texture index
+    // Read a material's property of a particular semantic (e.g. .baseColor),
+    // and return tuple of uniform value or texture index
     private func readMaterialProperty<T>(_ mdlMaterial: MDLMaterial, _ semantic: MDLMaterialSemantic,
                                  _ getPropertyValue: (MDLMaterialProperty) -> T) -> (uniform: T?, textureIndex: Int?) {
         var result: (uniform: T?, textureIndex: Int?) = (nil, nil)
@@ -248,4 +256,55 @@ class ModelParser {
         }
         return result
     }
+    
+    private func updateWorldTransforms() {
+        
+        if sampleTimes.count > 0 {
+            var myTransform = [[matrix_float4x4]]()
+            for time in sampleTimes {
+                myTransform.append(calculateWorldTransforms(atTime: time))
+            }
+            worldTransformAnimations = myTransform
+        } else {
+            worldTransforms = calculateWorldTransforms(atTime: 0)
+            worldTransformAnimations = []
+        }
+        
+    }
+    
+    private func calculateWorldTransforms(atTime time: Double) -> [matrix_float4x4] {
+        
+        let numParents = parentIndices.count
+        var myTransforms = [matrix_float4x4](repeating: matrix_identity_float4x4, count: numParents)
+        
+        // -- traverse the scene and update the node transforms
+        for (tfIdx, parentIndexOptional) in parentIndices.enumerated() {
+            let localTransform = getLocalTransform(atTime: time, index: tfIdx)
+            if let parentIndex = parentIndexOptional {
+                let parentTransform = myTransforms[parentIndex]
+                let worldMatrix = simd_mul(parentTransform, localTransform)
+                myTransforms[tfIdx] = worldMatrix
+                
+            } else {
+                myTransforms[tfIdx] = localTransform
+            }
+        }
+        
+        return myTransforms
+        
+    }
+    
+    private func getLocalTransform(atTime time: Double, index tansformIndex: Int) -> matrix_float4x4 {
+        var localTransform: matrix_float4x4
+        if !localTransformAnimationIndices.isEmpty,
+            let localTransformIndice = localTransformAnimationIndices[tansformIndex] {
+            let keyFrameIdx = ModelIOTools.lowerBoundKeyframeIndex(sampleTimes, key: time)!
+            localTransform = localTransformAnimations[localTransformIndice][keyFrameIdx]
+        } else {
+            localTransform = localTransforms[tansformIndex]
+        }
+        
+        return localTransform
+    }
+    
 }

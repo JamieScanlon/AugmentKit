@@ -147,6 +147,9 @@ class Renderer {
             commandBuffer.commit()
         }
         
+        // Update the current frame
+        currentFrameNumber += 1
+        
     }
     
     func run() {
@@ -235,6 +238,13 @@ class Renderer {
     private var viewportSizeDidChange: Bool = false
     
     private var usesMaterials = false
+    
+    // TODO: Implement anchor animation
+    // Keeps track of the current frame in order to support animtaion for anchors.
+    private var currentFrameNumber = 0
+    
+    // number of frames in the anchor animation by anchor index
+    private var anchorAnimationFrameCount = [Int]()
     
     // MARK: ARKit Session Configuration
     
@@ -843,6 +853,18 @@ class Renderer {
             var coordinateSpaceTransform = matrix_identity_float4x4
             coordinateSpaceTransform.columns.2.z = -1.0
             
+            // NEW.
+            if let modelParser = anchorModelParser, !useOldFlow, !(anchor is ARPlaneAnchor) {
+                
+                // Apply the world transform (as defined in the imported model) if applicable
+                let anchorIndex = index - horizPlaneInstanceCount - vertPlaneInstanceCount
+                if let modelParserIndex = modelParserIndex(in: modelParser, fromAnchorIndex: anchorIndex), modelParserIndex < modelParser.worldTransforms.count {
+                    let worldTransform = modelParser.worldTransforms[modelParserIndex]
+                    coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
+                }
+                
+            }
+            
             var modelMatrix = anchor.transform * coordinateSpaceTransform
             if let plane = anchor as? ARPlaneAnchor {
                 modelMatrix = modelMatrix.scale(x: plane.extent.x, y: plane.extent.y, z: plane.extent.z)
@@ -870,20 +892,6 @@ class Renderer {
         
         capturedImageTextureY = createTexture(fromPixelBuffer: pixelBuffer, pixelFormat:.r8Unorm, planeIndex:0)
         capturedImageTextureCbCr = createTexture(fromPixelBuffer: pixelBuffer, pixelFormat:.rg8Unorm, planeIndex:1)
-    }
-    
-    private func createTexture(fromPixelBuffer pixelBuffer: CVPixelBuffer, pixelFormat: MTLPixelFormat, planeIndex: Int) -> CVMetalTexture? {
-        let width = CVPixelBufferGetWidthOfPlane(pixelBuffer, planeIndex)
-        let height = CVPixelBufferGetHeightOfPlane(pixelBuffer, planeIndex)
-        
-        var texture: CVMetalTexture? = nil
-        let status = CVMetalTextureCacheCreateTextureFromImage(nil, capturedImageTextureCache, pixelBuffer, nil, pixelFormat, width, height, planeIndex, &texture)
-        
-        if status != kCVReturnSuccess {
-            texture = nil
-        }
-        
-        return texture
     }
     
     // MARK: Update background image layer
@@ -1162,6 +1170,30 @@ class Renderer {
                                              index: Int(kTextureIndexMetallic.rawValue))
         }
         
+    }
+    
+    // MARK: Util
+    
+    private func modelParserIndex(in modelParser: ModelParser, fromAnchorIndex anchorIndex: Int) -> Int? {
+        if anchorIndex < modelParser.meshNodeIndices.count, anchorIndex >= 0 {
+            return modelParser.meshNodeIndices[anchorIndex]
+        } else {
+            return nil
+        }
+    }
+    
+    private func createTexture(fromPixelBuffer pixelBuffer: CVPixelBuffer, pixelFormat: MTLPixelFormat, planeIndex: Int) -> CVMetalTexture? {
+        let width = CVPixelBufferGetWidthOfPlane(pixelBuffer, planeIndex)
+        let height = CVPixelBufferGetHeightOfPlane(pixelBuffer, planeIndex)
+        
+        var texture: CVMetalTexture? = nil
+        let status = CVMetalTextureCacheCreateTextureFromImage(nil, capturedImageTextureCache, pixelBuffer, nil, pixelFormat, width, height, planeIndex, &texture)
+        
+        if status != kCVReturnSuccess {
+            texture = nil
+        }
+        
+        return texture
     }
     
 }

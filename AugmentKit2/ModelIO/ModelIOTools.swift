@@ -245,5 +245,30 @@ class ModelIOTools {
         let count = Int( (endTime - startTime) / frameInterval )
         return (0..<count).map { startTime + TimeInterval($0) * frameInterval }
     }
+    
+    // Find the largest index of time stamp <= key
+    static func lowerBoundKeyframeIndex(_ lhs: [Double], key: Double) -> Int? {
+        if lhs.isEmpty {
+            return nil
+        }
+        
+        if key < lhs.first! { return 0 }
+        if key > lhs.last! { return lhs.count - 1 }
+        
+        var range = 0..<lhs.count
+        
+        while range.endIndex - range.startIndex > 1 {
+            let midIndex = range.startIndex + (range.endIndex - range.startIndex) / 2
+            
+            if lhs[midIndex] == key {
+                return midIndex
+            } else if lhs[midIndex] < key {
+                range = midIndex..<range.endIndex
+            } else {
+                range = range.startIndex..<midIndex
+            }
+        }
+        return range.startIndex
+    }
 
 }

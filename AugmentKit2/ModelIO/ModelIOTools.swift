@@ -195,11 +195,14 @@ class ModelIOTools {
 
     /// Returns the index of a texture path
     static func findTextureIndex(_ path: String?, _ texturePaths: inout [String]) -> Int? {
-        guard path != nil else { return nil }
-        if let idx = texturePaths.index(of: path!) {
+        guard let path = path else {
+            return nil
+            
+        }
+        if let idx = texturePaths.index(of: path) {
             return idx
         } else {
-            texturePaths.append(path!)
+            texturePaths.append(path)
             return texturePaths.count - 1
         }
     }

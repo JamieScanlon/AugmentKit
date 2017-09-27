@@ -5,6 +5,12 @@
 //  Created by Jamie Scanlon on 7/3/17.
 //  Copyright © 2017 TenthLetterMade. All rights reserved.
 //
+// References --
+// See: https://developer.apple.com/documentation/metal/advanced_techniques/lod_with_function_specialization#//apple_ref/doc/uid/TP40016233
+// Sample Code: LODwithFunctionSpecialization
+//
+// See: https://developer.apple.com/videos/play/wwdc2017/610/
+// Sample Code: ModelIO-from-MDLAsset-to-Game-Engine
 
 #include <metal_stdlib>
 #include <simd/simd.h>
@@ -16,7 +22,6 @@ using namespace metal;
 
 // MARK: - Constants
 
-// See: https://developer.apple.com/documentation/metal/advanced_techniques/lod_with_function_specialization#//apple_ref/doc/uid/TP40016233
 constant bool has_base_color_map [[ function_constant(kFunctionConstantBaseColorMapIndex) ]];
 constant bool has_normal_map [[ function_constant(kFunctionConstantNormalMapIndex) ]];
 constant bool has_metallic_map [[ function_constant(kFunctionConstantMetallicMapIndex) ]];
@@ -56,9 +61,11 @@ struct Vertex {
 //  interpolated by rasterizer and fed to each fragment genterated by clip-space primitives.
 struct ColorInOut {
     float4 position [[position]];
-    float3  eyePosition;
-    float3  normal;
+    float3 eyePosition;
+    float3 normal;
     float2 texCoord [[ function_constant(has_any_map) ]];
+//    float3 tangent;
+//    float3 bitangent;
 };
 
 // MARK: - Pipeline Functions
@@ -160,7 +167,7 @@ float3 computeSpecular(LightingParameters parameters) {
 }
 
 LightingParameters calculateParameters(ColorInOut in,
-                                       constant SharedUniforms & uniforms,
+                                       constant SharedUniforms & sharedUniforms,
                                        constant MaterialUniforms & materialUniforms,
                                        texture2d<float> baseColorMap [[ function_constant(has_base_color_map) ]],
                                        texture2d<float> normalMap [[ function_constant(has_normal_map) ]],
@@ -173,25 +180,20 @@ LightingParameters calculateParameters(ColorInOut in,
     parameters.baseColor = has_base_color_map ? (baseColorMap.sample(linearSampler, in.texCoord.xy)) : materialUniforms.baseColor;
     parameters.normal = has_normal_map ? computeNormalMap(in, normalMap) : float3(in.normal);
     
-    // TODO: ??? - use of uniforms.viewMatrix, parameters.projectionMatrix and in.eyePosition may not be correct
-//    parameters.viewDir = normalize(float3(1.0, 1.0, 1.0) - float3(in.eyePosition));
-//    parameters.reflectedVector = reflect(-parameters.viewDir, parameters.normal);
+    // TODO: ??? - not sure if this is correct. float3(in.eyePosition) or -float3(in.eyePosition) ?
+    parameters.viewDir = float3(in.eyePosition);
+    parameters.reflectedVector = reflect(-parameters.viewDir, parameters.normal);
     
-    parameters.roughness = has_roughness_map ? max(roughnessMap.sample(linearSampler, in.texCoord.xy).x, 0.001f) :
-    materialUniforms.roughness;
-    parameters.metalness = has_metallic_map ? metallicMap.sample(linearSampler, in.texCoord.xy).x :
-    materialUniforms.metalness;
+    parameters.roughness = has_roughness_map ? max(roughnessMap.sample(linearSampler, in.texCoord.xy).x, 0.001f) : materialUniforms.roughness;
+    parameters.metalness = has_metallic_map ? metallicMap.sample(linearSampler, in.texCoord.xy).x : materialUniforms.metalness;
     
     uint8_t mipLevel = parameters.roughness * irradianceMap.get_num_mip_levels();
-    parameters.irradiatedColor = has_irradiance_map ? irradianceMap.sample(mipSampler,
-                                                                           parameters.reflectedVector, level(mipLevel)).xyz
-    : materialUniforms.irradiatedColor.xyz;
-    parameters.ambientOcclusion = has_ambient_occlusion_map ? ambientOcclusionMap.sample(linearSampler, in.texCoord.xy).x
-    : 1.0f;
+    parameters.irradiatedColor = has_irradiance_map ? irradianceMap.sample(mipSampler, parameters.reflectedVector, level(mipLevel)).xyz : materialUniforms.irradiatedColor.xyz;
+    parameters.ambientOcclusion = has_ambient_occlusion_map ? ambientOcclusionMap.sample(linearSampler, in.texCoord.xy).x : 1.0f;
     
-    parameters.lightCol = uniforms.directionalLightColor;
-    parameters.lightDir = uniforms.directionalLightDirection;
-    parameters.nDotl = max(0.001f,saturate(dot(parameters.normal, parameters.lightDir)));
+    parameters.lightCol = sharedUniforms.directionalLightColor;
+    parameters.lightDir = -sharedUniforms.directionalLightDirection;
+    parameters.nDotl = max(0.001f, saturate(dot(parameters.normal, parameters.lightDir)));
     
     parameters.halfVector = normalize(parameters.lightDir + parameters.viewDir);
     parameters.nDoth = max(0.001f,saturate(dot(parameters.normal, parameters.halfVector)));
@@ -233,8 +235,7 @@ fragment float4 capturedImageFragmentShader(ImageColorInOut in [[stage_in]],
     );
     
     // Sample Y and CbCr textures to get the YCbCr color at the given texture coordinate
-    float4 ycbcr = float4(capturedImageTextureY.sample(colorSampler, in.texCoord).r,
-                          capturedImageTextureCbCr.sample(colorSampler, in.texCoord).rg, 1.0);
+    float4 ycbcr = float4(capturedImageTextureY.sample(colorSampler, in.texCoord).r, capturedImageTextureCbCr.sample(colorSampler, in.texCoord).rg, 1.0);
     
     // Return converted RGB color
     return ycbcrToRGBTransform * ycbcr;
@@ -291,7 +292,7 @@ fragment float4 anchorGeometryFragmentLighting(ColorInOut in [[stage_in]],
                                                texturecube<float> irradianceMap [[texture(kTextureIndexIrradianceMap), function_constant(has_irradiance_map)]]
                                                ) {
     
-    float4 final_color = float4(1);
+    float4 final_color = float4(0);
     
     LightingParameters parameters = calculateParameters(in,
                                                         uniforms,
@@ -303,16 +304,21 @@ fragment float4 anchorGeometryFragmentLighting(ColorInOut in [[stage_in]],
                                                         ambientOcclusionMap,
                                                         irradianceMap);
     
-//    if(parameters.baseColor.w <= 0.01f) {
-//        parameters.baseColor = float4(1.0, 0.0, 0.0, 1.0);
-//        discard_fragment();
-//    }
+    if ( parameters.baseColor.w <= 0.01f ) {
+        discard_fragment();
+    }
     
     const float baseReflectance = 0.4f;
     float3 Cspec0 = float3(mix(baseReflectance, 1.0f, parameters.metalness));
     float3 Fs = float3(mix(float3(Cspec0), float3(1), Fresnel(parameters.hDotl)));
+    
+    // TODO: ??? - I don't know what the difference is. The ModelIO-from-MDLAsset-to-Game-Engine version
+    // Seems a little dark but the LODwithFunctionSpecialization version seems wased out...
+    
+    // ModelIO-from-MDLAsset-to-Game-Engine version
     final_color = float4(Fs * computeSpecular(parameters) + computeDiffuse(parameters) * (1.0f - Fs), 1.0f);
-    final_color = float4(computeSpecular(parameters) + computeDiffuse(parameters), 1.0f);
+    // LODwithFunctionSpecialization version
+//    final_color = float4(computeSpecular(parameters) + computeDiffuse(parameters), 1.0f);
     
     float3 normal = float3(in.normal);
     

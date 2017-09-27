@@ -99,7 +99,7 @@ enum QualityLevel {
 // Structure shared between shader and C code to ensure the layout of shared uniform data accessed in
 //    Metal shaders matches the layout of uniform data set in C code
 struct SharedUniforms {
-    // Camera (Device) Position Uniforms
+    // Camera (eye) Position Uniforms
     matrix_float4x4 projectionMatrix; // A transform matrix to convert to 'clip space' for the devices screen taking into account the properties of the camera.
     matrix_float4x4 viewMatrix; // A transform matrix for converting from world space to camera (eye) space.
     

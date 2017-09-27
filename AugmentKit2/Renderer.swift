@@ -236,6 +236,8 @@ class Renderer {
     
     private var usesMaterials = false
     
+    // MARK: ARKit Session Configuration
+    
     private func createNewConfiguration() -> ARWorldTrackingConfiguration {
         let configuration = ARWorldTrackingConfiguration()
         //configuration.worldAlignment = .gravityAndHeading
@@ -244,6 +246,8 @@ class Renderer {
         }
         return configuration
     }
+    
+    // MARK: Bootstrap
     
     private func loadMetal() {
         
@@ -576,8 +580,11 @@ class Renderer {
                 
                     let mesh = MDLMesh(planeWithExtent: vector3(1, 0, 1), segments: vector2(1, 1), geometryType: .triangles, allocator: metalAllocator)
                     if let submesh = mesh.submeshes?.firstObject as? MDLSubmesh {
-                        let scatteringFunction = MDLScatteringFunction()
-                        submesh.material = MDLMaterial(name: "plane_grid", scatteringFunction: scatteringFunction)
+                        let scatteringFunction = MDLPhysicallyPlausibleScatteringFunction()
+                        scatteringFunction.baseColor.textureSamplerValue = MDLTextureSampler()
+                        scatteringFunction.baseColor.textureSamplerValue?.texture = MDLTexture(named: "plane_grid.png")
+                        submesh.material = MDLMaterial(name: "Grid", scatteringFunction: scatteringFunction)
+//                        let gridAssetURL = Bundle.main.url(forResource: "plane_grid", withExtension: ".png")
                     }
                     let asset = MDLAsset(bufferAllocator: metalAllocator)
                     asset.add(mesh)
@@ -740,77 +747,9 @@ class Renderer {
         return mtlVertexDescriptor!
     }
     
-    private func encode(meshGPUData: MeshGPUData, fromDrawData drawData: DrawData, with renderEncoder: MTLRenderCommandEncoder) {
-        
-        // Set mesh's vertex buffers
-        for vtxBufferIdx in 0..<drawData.vbCount {
-            renderEncoder.setVertexBuffer(meshGPUData.vtxBuffers[drawData.vbStartIdx + vtxBufferIdx], offset: 0, index: vtxBufferIdx)
-        }
-        
-        // Draw each submesh of our mesh
-        for drawDataSubIndex in 0..<drawData.subData.count {
-            
-            let submeshData = drawData.subData[drawDataSubIndex]
-
-            // Sets the weight of values sampled from a texture vs value from a material uniform
-            //   for a transition between quality levels
-            //submeshData.computeTextureWeights(for: currentQualityLevel, with: globalMapWeight)
-
-            let idxCount = Int(submeshData.idxCount)
-            let idxType = submeshData.idxType
-            let ibOffset = drawData.ibStartIdx
-            let indexBuffer = meshGPUData.indexBuffers[ibOffset + drawDataSubIndex]
-            var materialUniforms = submeshData.materialUniforms
-            let materialBuffer = submeshData.materialBuffer
-
-            // Set textures based off material flags
-            encodeTextures(with: meshGPUData, renderEncoder: renderEncoder, subData: submeshData)
-
-            // Set Material
-            if let materialBuffer = materialBuffer {
-                renderEncoder.setFragmentBuffer(materialBuffer, offset: materialUniformBufferOffset, index: Int(kBufferIndexMaterialUniforms.rawValue))
-            } else {
-                renderEncoder.setFragmentBytes(&materialUniforms, length: Constants.alignedMaterialSize, index: Int(kBufferIndexMaterialUniforms.rawValue))
-            }
-            
-            renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: idxCount, indexType: idxType,
-                                                indexBuffer: indexBuffer, indexBufferOffset: 0,
-                                                instanceCount: drawData.instCount)
-        }
-        
-    }
-    
-    private func encodeTextures(with meshData: MeshGPUData, renderEncoder: MTLRenderCommandEncoder, subData drawSubData: DrawSubData) {
-        if let baseColorTexIdx = drawSubData.baseColorTexIdx {
-            renderEncoder.setFragmentTexture(meshData.textures[baseColorTexIdx],
-                                             index: Int(kTextureIndexColor.rawValue))
-        }
-        
-        if let aoTexIdx = drawSubData.aoTexIdx {
-            renderEncoder.setFragmentTexture(meshData.textures[aoTexIdx],
-                                             index: Int(kTextureIndexAmbientOcclusion.rawValue))
-        }
-        
-        if let normalTexIdx = drawSubData.normalTexIdx {
-            renderEncoder.setFragmentTexture(meshData.textures[normalTexIdx],
-                                             index: Int(kTextureIndexNormal.rawValue))
-        }
-        
-        if let roughTexIdx = drawSubData.roughTexIdx {
-            renderEncoder.setFragmentTexture(meshData.textures[roughTexIdx],
-                                             index: Int(kTextureIndexRoughness.rawValue))
-        }
-        
-        if let metalTexIdx = drawSubData.metalTexIdx {
-            renderEncoder.setFragmentTexture(meshData.textures[metalTexIdx],
-                                             index: Int(kTextureIndexMetallic.rawValue))
-        }
-        
-    }
-    
     // MARK: - Render loop
     
-    // MARK: Sterp 1 - Update State
+    // MARK: Step 1 - Update State
     // Update the location(s) to which we'll write to in our dynamically changing Metal buffers for
     // the current frame (i.e. update our slot in the ring buffer used for the current frame)
     private func updateBufferStates() {
@@ -844,6 +783,8 @@ class Renderer {
             updateImagePlane(frame: currentFrame)
         }
     }
+    
+    // MARK: Update Uniforms
     
     // Update the shared uniforms of the frame
     private func updateSharedUniforms(frame: ARFrame) {
@@ -917,6 +858,8 @@ class Renderer {
         
     }
     
+    // MARK: Update Textures
+    
     private func updateCapturedImageTextures(frame: ARFrame) {
         // Create two textures (Y and CbCr) from the provided frame's captured image
         let pixelBuffer = frame.capturedImage
@@ -943,6 +886,8 @@ class Renderer {
         return texture
     }
     
+    // MARK: Update background image layer
+    
     private func updateImagePlane(frame: ARFrame) {
         // Update the texture coordinates of our image plane to aspect fill the viewport
         let displayToCameraTransform = frame.displayTransform(for: orientation, viewportSize: viewportSize).inverted()
@@ -956,6 +901,8 @@ class Renderer {
             vertexData[textureCoordIndex + 1] = Float(transformedCoord.y)
         }
     }
+    
+    // MARK: Drawing
     
     private func drawCapturedImage(renderEncoder: MTLRenderCommandEncoder) {
         guard let textureY = capturedImageTextureY, let textureCbCr = capturedImageTextureCbCr else {
@@ -1144,6 +1091,76 @@ class Renderer {
         }
         
         renderEncoder.popDebugGroup()
+        
+    }
+    
+    // MARK: Encoding from MeshGPUData
+    
+    private func encode(meshGPUData: MeshGPUData, fromDrawData drawData: DrawData, with renderEncoder: MTLRenderCommandEncoder) {
+        
+        // Set mesh's vertex buffers
+        for vtxBufferIdx in 0..<drawData.vbCount {
+            renderEncoder.setVertexBuffer(meshGPUData.vtxBuffers[drawData.vbStartIdx + vtxBufferIdx], offset: 0, index: vtxBufferIdx)
+        }
+        
+        // Draw each submesh of our mesh
+        for drawDataSubIndex in 0..<drawData.subData.count {
+            
+            let submeshData = drawData.subData[drawDataSubIndex]
+            
+            // Sets the weight of values sampled from a texture vs value from a material uniform
+            //   for a transition between quality levels
+            //submeshData.computeTextureWeights(for: currentQualityLevel, with: globalMapWeight)
+            
+            let idxCount = Int(submeshData.idxCount)
+            let idxType = submeshData.idxType
+            let ibOffset = drawData.ibStartIdx
+            let indexBuffer = meshGPUData.indexBuffers[ibOffset + drawDataSubIndex]
+            var materialUniforms = submeshData.materialUniforms
+            let materialBuffer = submeshData.materialBuffer
+            
+            // Set textures based off material flags
+            encodeTextures(with: meshGPUData, renderEncoder: renderEncoder, subData: submeshData)
+            
+            // Set Material
+            //if let materialBuffer = materialBuffer {
+            //    renderEncoder.setFragmentBuffer(materialBuffer, offset: materialUniformBufferOffset, index: Int(kBufferIndexMaterialUniforms.rawValue))
+            //} else {
+                renderEncoder.setFragmentBytes(&materialUniforms, length: Constants.alignedMaterialSize, index: Int(kBufferIndexMaterialUniforms.rawValue))
+            //}
+            
+            renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: idxCount, indexType: idxType,
+                                                indexBuffer: indexBuffer, indexBufferOffset: 0,
+                                                instanceCount: drawData.instCount)
+        }
+        
+    }
+    
+    private func encodeTextures(with meshData: MeshGPUData, renderEncoder: MTLRenderCommandEncoder, subData drawSubData: DrawSubData) {
+        if let baseColorTexIdx = drawSubData.baseColorTexIdx {
+            renderEncoder.setFragmentTexture(meshData.textures[baseColorTexIdx],
+                                             index: Int(kTextureIndexColor.rawValue))
+        }
+        
+        if let aoTexIdx = drawSubData.aoTexIdx {
+            renderEncoder.setFragmentTexture(meshData.textures[aoTexIdx],
+                                             index: Int(kTextureIndexAmbientOcclusion.rawValue))
+        }
+        
+        if let normalTexIdx = drawSubData.normalTexIdx {
+            renderEncoder.setFragmentTexture(meshData.textures[normalTexIdx],
+                                             index: Int(kTextureIndexNormal.rawValue))
+        }
+        
+        if let roughTexIdx = drawSubData.roughTexIdx {
+            renderEncoder.setFragmentTexture(meshData.textures[roughTexIdx],
+                                             index: Int(kTextureIndexRoughness.rawValue))
+        }
+        
+        if let metalTexIdx = drawSubData.metalTexIdx {
+            renderEncoder.setFragmentTexture(meshData.textures[metalTexIdx],
+                                             index: Int(kTextureIndexMetallic.rawValue))
+        }
         
     }
     

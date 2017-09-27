@@ -26,6 +26,8 @@
 		7DB396AE1F1AFD8B0003019B /* MeshData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DB396AD1F1AFD860003019B /* MeshData.swift */; };
 		7DB396B01F1AFDD60003019B /* ModelIOTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DB396AF1F1AFDD30003019B /* ModelIOTools.swift */; };
 		7DBA369C1F7AE0AE0006310A /* plane_grid.png in Resources */ = {isa = PBXBuildFile; fileRef = 7DBA369B1F7AE0AD0006310A /* plane_grid.png */; };
+		7DBA36A11F7C1AA10006310A /* ship.scn in Resources */ = {isa = PBXBuildFile; fileRef = 7DBA36A01F7C1A310006310A /* ship.scn */; };
+		7DBA36A21F7C1AA50006310A /* texture.png in Resources */ = {isa = PBXBuildFile; fileRef = 7DBA369F1F7C1A310006310A /* texture.png */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -52,6 +54,8 @@
 		7DB396AD1F1AFD860003019B /* MeshData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshData.swift; sourceTree = "<group>"; };
 		7DB396AF1F1AFDD30003019B /* ModelIOTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelIOTools.swift; sourceTree = "<group>"; };
 		7DBA369B1F7AE0AD0006310A /* plane_grid.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = plane_grid.png; sourceTree = "<group>"; };
+		7DBA369F1F7C1A310006310A /* texture.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = texture.png; sourceTree = "<group>"; };
+		7DBA36A01F7C1A310006310A /* ship.scn */ = {isa = PBXFileReference; lastKnownFileType = file.bplist; path = ship.scn; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -84,8 +88,7 @@
 		7D88D7A91F0AFD550009A154 /* AugmentKit2 */ = {
 			isa = PBXGroup;
 			children = (
-				7DBA369B1F7AE0AD0006310A /* plane_grid.png */,
-				7D1B6F0C1F2983DA00AB035D /* Pin.scn */,
+				7DBA369E1F7C1A180006310A /* Models */,
 				7DB396B11F1AFDDB0003019B /* ModelIO */,
 				7D88D7C81F0C079B0009A154 /* Managers */,
 				7D88D7AA1F0AFD550009A154 /* AppDelegate.swift */,
@@ -124,6 +127,17 @@
 				7DB396AB1F1AFBFB0003019B /* MetalUtilities.swift */,
 			);
 			path = ModelIO;
+			sourceTree = "<group>";
+		};
+		7DBA369E1F7C1A180006310A /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				7DBA36A01F7C1A310006310A /* ship.scn */,
+				7DBA369F1F7C1A310006310A /* texture.png */,
+				7DBA369B1F7AE0AD0006310A /* plane_grid.png */,
+				7D1B6F0C1F2983DA00AB035D /* Pin.scn */,
+			);
+			path = Models;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -185,7 +199,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				7D1B6F0D1F29851E00AB035D /* Pin.scn in Resources */,
+				7DBA36A21F7C1AA50006310A /* texture.png in Resources */,
 				7D88D7BA1F0AFD560009A154 /* LaunchScreen.storyboard in Resources */,
+				7DBA36A11F7C1AA10006310A /* ship.scn in Resources */,
 				7DBA369C1F7AE0AE0006310A /* plane_grid.png in Resources */,
 				7D88D7B71F0AFD560009A154 /* Assets.xcassets in Resources */,
 				7D88D7B51F0AFD550009A154 /* Main.storyboard in Resources */,

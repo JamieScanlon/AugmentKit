@@ -137,7 +137,8 @@ float3 computeNormalMap(ColorInOut in, texture2d<float> normalMapTexture) {
 }
 
 float3 computeDiffuse(LightingParameters parameters) {
-    float3 diffuseRawValue = float3(((1.0/PI) * parameters.baseColor));
+    //float3 diffuseRawValue = float3(((1.0/PI) * parameters.baseColor)); // I don't know why base  color needs to be reduced like this?
+    float3 diffuseRawValue = float3(parameters.baseColor);
     return diffuseRawValue * parameters.lightCol * parameters.nDotl;
 }
 
@@ -193,14 +194,22 @@ LightingParameters calculateParameters(ColorInOut in,
     
     parameters.lightCol = sharedUniforms.directionalLightColor;
     parameters.lightDir = -sharedUniforms.directionalLightDirection;
+    
+    // Light falls off based on how closely aligned the surface normal is to the light direction.
+    // This is the dot product of the light direction vector and vertex normal.
+    // The smaller the angle between those two vectors, the higher this value,
+    // and the stronger the diffuse lighting effect should be.
     parameters.nDotl = max(0.001f, saturate(dot(parameters.normal, parameters.lightDir)));
     
+    // Calculate the halfway vector between the light direction and the direction they eye is looking
     parameters.halfVector = normalize(parameters.lightDir + parameters.viewDir);
+    
     parameters.nDoth = max(0.001f,saturate(dot(parameters.normal, parameters.halfVector)));
     parameters.nDotv = max(0.001f,saturate(dot(parameters.normal, parameters.viewDir)));
     parameters.hDotl = max(0.001f,saturate(dot(parameters.lightDir, parameters.halfVector)));
     
     return parameters;
+    
 }
 
 // MARK: - Frame Capure Shaders
@@ -308,64 +317,18 @@ fragment float4 anchorGeometryFragmentLighting(ColorInOut in [[stage_in]],
         discard_fragment();
     }
     
-    const float baseReflectance = 0.4f;
-    float3 Cspec0 = float3(mix(baseReflectance, 1.0f, parameters.metalness));
-    float3 Fs = float3(mix(float3(Cspec0), float3(1), Fresnel(parameters.hDotl)));
+    // Compute the diffuse and spectacular contributions
     
-    // TODO: ??? - I don't know what the difference is. The ModelIO-from-MDLAsset-to-Game-Engine version
-    // Seems a little dark but the LODwithFunctionSpecialization version seems wased out...
-    
-    // ModelIO-from-MDLAsset-to-Game-Engine version
-    final_color = float4(Fs * computeSpecular(parameters) + computeDiffuse(parameters) * (1.0f - Fs), 1.0f);
-    // LODwithFunctionSpecialization version
-//    final_color = float4(computeSpecular(parameters) + computeDiffuse(parameters), 1.0f);
-    
-    float3 normal = float3(in.normal);
-    
-    // Calculate the contribution of the directional light as a sum of diffuse and specular terms
-    float3 directionalContribution = float3(0);
-    {
-        // Light falls off based on how closely aligned the surface normal is to the light direction
-        float nDotL = saturate(dot(normal, -uniforms.directionalLightDirection));
-        
-        // The diffuse term is then the product of the light color, the surface material
-        // reflectance, and the falloff
-        float3 diffuseTerm = uniforms.directionalLightColor * nDotL;
-        
-        // Apply specular lighting...
-        
-        // 1) Calculate the halfway vector between the light direction and the direction they eye is looking
-        float3 halfwayVector = normalize(-uniforms.directionalLightDirection - float3(in.eyePosition));
-        
-        // 2) Calculate the reflection angle between our reflection vector and the eye's direction
-        float reflectionAngle = saturate(dot(normal, halfwayVector));
-        
-        // 3) Calculate the specular intensity by multiplying our reflection angle with our object's
-        //    shininess
-        float specularIntensity = saturate(powr(reflectionAngle, 30));
-        
-        // 4) Obtain the specular term by multiplying the intensity by our light's color
-        float3 specularTerm = uniforms.directionalLightColor * specularIntensity;
-        
-        // Calculate total contribution from this light is the sum of the diffuse and specular values
-        directionalContribution = diffuseTerm + specularTerm;
-    }
-    
-    // The ambient contribution, which is an approximation for global, indirect lighting, is
-    // the product of the ambient light intensity multiplied by the material's reflectance
-    float3 ambientContribution = uniforms.ambientLightColor;
+    float3 diffuseContribution = computeDiffuse(parameters);
+    float3 specularContribution = computeSpecular(parameters);
     
     // Now that we have the contributions our light sources in the scene, we sum them together
     // to get the fragment's lighting value
-    float3 lightContributions = ambientContribution + directionalContribution;
+	float3 lightContributions = diffuseContribution + specularContribution;
     
-    // We compute the final color by multiplying the sample from our color maps by the fragment's
-    // lighting value
-    float4 color = final_color * float4(lightContributions, 1.0);
+    final_color = float4(lightContributions, 1.0f);
+    return final_color;
     
-    // We use the color we just computed and the alpha channel of our
-    // colorMap for this fragment's alpha value
-    return color;
 }
 
 // MARK: Simple anchor geometry fragment function (no material support)

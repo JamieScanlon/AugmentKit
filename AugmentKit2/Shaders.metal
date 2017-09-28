@@ -137,9 +137,7 @@ float3 computeNormalMap(ColorInOut in, texture2d<float> normalMapTexture) {
 }
 
 float3 computeDiffuse(LightingParameters parameters) {
-    //float3 diffuseRawValue = float3(((1.0/PI) * parameters.baseColor)); // I don't know why base  color needs to be reduced like this?
-    float3 diffuseRawValue = float3(parameters.baseColor);
-    return diffuseRawValue * parameters.lightCol * parameters.nDotl;
+    return parameters.lightCol * parameters.nDotl;
 }
 
 float Distribution(float NdotH, float roughness) {
@@ -322,11 +320,18 @@ fragment float4 anchorGeometryFragmentLighting(ColorInOut in [[stage_in]],
     float3 diffuseContribution = computeDiffuse(parameters);
     float3 specularContribution = computeSpecular(parameters);
     
+    // The ambient contribution, which is an approximation for global, indirect lighting, is
+    // the product of the ambient light intensity multiplied by the ambient light color
+    // (assumed as <0.5, 0.5, 0.5> by the renderer)
+    float3 ambientContribution = uniforms.ambientLightColor;
+
     // Now that we have the contributions our light sources in the scene, we sum them together
     // to get the fragment's lighting value
-	float3 lightContributions = diffuseContribution + specularContribution;
+    float3 lightContributions = diffuseContribution + specularContribution + ambientContribution;
     
-    final_color = float4(lightContributions, 1.0f);
+    // We compute the final color by multiplying the base color with all of the environmental contributions
+    final_color = float4(parameters.baseColor.rgb * lightContributions, 1.0f);
+    
     return final_color;
     
 }

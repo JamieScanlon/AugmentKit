@@ -1153,6 +1153,7 @@ class Renderer {
             encodeTextures(with: meshGPUData, renderEncoder: renderEncoder, subData: submeshData)
             
             // Set Material
+            // FIXME: Using a buffer is not working. I think the buffer is set up wrong.
             //if let materialBuffer = materialBuffer {
             //    renderEncoder.setFragmentBuffer(materialBuffer, offset: materialUniformBufferOffset, index: Int(kBufferIndexMaterialUniforms.rawValue))
             //} else {

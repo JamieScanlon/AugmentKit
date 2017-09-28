@@ -72,12 +72,12 @@ class MetalUtilities {
     
     static func convertMaterialBuffer(from material: Material, with materialBuffer: MTLBuffer, offset: Int) {
         
-        let matUniforms = materialBuffer.contents().assumingMemoryBound(to: MaterialUniforms.self).advanced(by: offset)
+        let theBuffer = materialBuffer.contents().assumingMemoryBound(to: MaterialUniforms.self).advanced(by: offset)
         let baseColor = material.baseColor.0 ?? float3(1.0, 1.0, 1.0)
-        matUniforms.pointee.baseColor = float4(baseColor.x, baseColor.y, baseColor.z, 1.0)
-        matUniforms.pointee.roughness = material.roughness.0 ?? 1.0
-        matUniforms.pointee.irradiatedColor = float4(1.0, 1.0, 1.0, 1.0)
-        matUniforms.pointee.metalness = material.metallic.0 ?? 0.0
+        theBuffer.pointee.baseColor = float4(baseColor.x, baseColor.y, baseColor.z, 1.0)
+        theBuffer.pointee.roughness = material.roughness.0 ?? 1.0
+        theBuffer.pointee.irradiatedColor = float4(1.0, 1.0, 1.0, 1.0)
+        theBuffer.pointee.metalness = material.metallic.0 ?? 0.0
         
     }
     

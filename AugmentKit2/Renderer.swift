@@ -743,8 +743,30 @@ class Renderer {
     
     private func createMTLTexture(fromAssetPath assetPath: String) -> MTLTexture? {
         do {
-            guard let textureURL = URL(string: assetPath) else { return nil }
-            return try textureLoader.newTexture(URL: textureURL, options: nil)
+            
+            let textureURL: URL? = {
+                guard let aURL = URL(string: assetPath) else {
+                    return nil
+                }
+                if aURL.scheme == nil {
+                    // If there is no scheme, assume it's a file in the bundle.
+                    let last = aURL.lastPathComponent
+                    if let bundleURL = Bundle.main.url(forResource: last, withExtension: nil) {
+                        return bundleURL
+                    } else {
+                        return aURL
+                    }
+                } else {
+                    return aURL
+                }
+            }()
+            
+            guard let aURL = textureURL else {
+                return nil
+            }
+            
+            return try textureLoader.newTexture(URL: aURL, options: nil)
+            
         } catch {
             print("Unable to loader texture with assetPath \(assetPath) with error \(error)")
         }

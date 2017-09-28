@@ -78,7 +78,7 @@ class ModelParser {
             idxTypes.append(submesh.indexType)
 
             var material = Material()
-            if let mdlMaterial = submesh.material, readMaterialProperty(mdlMaterial, .baseColor, ModelIOTools.getMaterialFloat3Value).uniform != nil {
+            if let mdlMaterial = submesh.material {
                 material.baseColor = readMaterialProperty(mdlMaterial, .baseColor, ModelIOTools.getMaterialFloat3Value)
                 material.metallic = readMaterialProperty(mdlMaterial, .metallic, ModelIOTools.getMaterialFloatValue)
                 material.roughness = readMaterialProperty(mdlMaterial, .roughness, ModelIOTools.getMaterialFloatValue)
@@ -250,7 +250,17 @@ class ModelParser {
                     result.uniform = getPropertyValue(property)
                     return result
                 case .string, .URL:
-                    result.textureIndex = ModelIOTools.findTextureIndex(property.stringValue, &texturePaths)
+                    if let path = property.stringValue {
+                        if let index = texturePaths.index(of: path) {
+                            result.textureIndex = index
+                        } else {
+                            let index = texturePaths.count
+                            texturePaths.append(path)
+                            result.textureIndex = index
+                        }
+                    } else {
+                        result.textureIndex = nil
+                    }
                 default: break
             }
         }

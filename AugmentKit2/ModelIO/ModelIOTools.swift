@@ -193,20 +193,6 @@ class ModelIOTools {
         return (permutation, instanceCounts)
     }
 
-    /// Returns the index of a texture path
-    static func findTextureIndex(_ path: String?, _ texturePaths: inout [String]) -> Int? {
-        guard let path = path else {
-            return nil
-            
-        }
-        if let idx = texturePaths.index(of: path) {
-            return idx
-        } else {
-            texturePaths.append(path)
-            return texturePaths.count - 1
-        }
-    }
-
     /// Append the asset url to all texture paths
     static func fixupPaths(_ asset: MDLAsset, _ texturePaths: inout [String]) {
         guard let assetURL = asset.url else { return }

@@ -1022,6 +1022,7 @@ class Renderer {
                 
                 if drawDataIdx < anchorPipelineStates.count {
                     renderEncoder.setRenderPipelineState(anchorPipelineStates[drawDataIdx])
+                    renderEncoder.setDepthStencilState(anchorDepthState)
                     
                     // Set any buffers fed into our render pipeline
                     renderEncoder.setVertexBuffer(anchorUniformBuffer, offset: anchorUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
@@ -1102,6 +1103,7 @@ class Renderer {
                 
                 if drawDataIdx < anchorPipelineStates.count {
                     renderEncoder.setRenderPipelineState(anchorPipelineStates[drawDataIdx])
+                    renderEncoder.setDepthStencilState(anchorDepthState)
                     
                     // Set any buffers fed into our render pipeline
                     renderEncoder.setVertexBuffer(anchorUniformBuffer, offset: anchorUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))

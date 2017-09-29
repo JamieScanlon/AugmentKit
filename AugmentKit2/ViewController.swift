@@ -2,8 +2,27 @@
 //  ViewController.swift
 //  AugmentKit2
 //
-//  Created by Jamie Scanlon on 7/3/17.
-//  Copyright © 2017 TenthLetterMade. All rights reserved.
+//  MIT License
+//
+//  Copyright (c) 2017 JamieScanlon
+//
+//  Permission is hereby granted, free of charge, to any person obtaining a copy
+//  of this software and associated documentation files (the "Software"), to deal
+//  in the Software without restriction, including without limitation the rights
+//  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+//  copies of the Software, and to permit persons to whom the Software is
+//  furnished to do so, subject to the following conditions:
+//
+//  The above copyright notice and this permission notice shall be included in all
+//  copies or substantial portions of the Software.
+//
+//  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+//  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+//  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+//  SOFTWARE.
 //
 
 import UIKit
@@ -14,40 +33,28 @@ import SceneKit.ModelIO
 
 class ViewController: UIViewController {
     
-    var session: ARSession?
-    var renderer: Renderer?
+    var world: AKWorld?
     
     @IBOutlet var debugInfoAnchorCounts: UILabel?
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        // Set the view's delegate
-        let mySession = ARSession()
-        mySession.delegate = self
-        
         // Set the view to use the default device
         if let view = self.view as? MTKView {
             
-            guard let device = MTLCreateSystemDefaultDevice() else {
-                print("Metal is not supported on this device")
-                return
-            }
-            view.device = device
             view.backgroundColor = UIColor.clear
-            view.delegate = self
             
-            // Configure the renderer to draw to the view
-            renderer = Renderer(session: mySession, metalDevice: device, renderDestination: view, meshProvider: self)
-            renderer?.drawRectResized(size: view.bounds.size)
+            world = AKWorld(renderDestination: view)
             
             // Debugging
-            renderer?.showGuides = true
-            renderer?.logger = self
+            world?.renderer.showGuides = true
+            world?.renderer.logger = self
+            
+            // Begin
+            world?.begin(withAnchorNamed: "ship.scn")
             
         }
-        
-        session = mySession
         
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(ViewController.handleTap(gestureRecognize:)))
         view.addGestureRecognizer(tapGesture)
@@ -58,12 +65,12 @@ class ViewController: UIViewController {
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        renderer?.run()
+        world?.renderer.run()
     }
     
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-        renderer?.pause()
+        world?.renderer.pause()
     }
     
     override func didReceiveMemoryWarning() {
@@ -74,7 +81,7 @@ class ViewController: UIViewController {
     @objc
     private func handleTap(gestureRecognize: UITapGestureRecognizer) {
         
-        guard let session = session else {
+        guard let session = world?.session else {
             return
         }
         
@@ -95,73 +102,7 @@ class ViewController: UIViewController {
     
 }
 
-// MARK: - MTKViewDelegate
-
-extension ViewController: MTKViewDelegate {
-    
-    // Called whenever view changes orientation or layout is changed
-    func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
-        renderer?.drawRectResized(size: size)
-    }
-    
-    // Called whenever the view needs to render
-    func draw(in view: MTKView) {
-        renderer?.update()
-    }
-    
-}
-
-// MARK: - ARSessionDelegate
-
-extension ViewController: ARSessionDelegate {
-    
-    func session(_ session: ARSession, didFailWithError error: Error) {
-        // Present an error message to the user
-        
-    }
-    
-    func sessionWasInterrupted(_ session: ARSession) {
-        // Inform the user that the session has been interrupted, for example, by presenting an overlay
-        
-    }
-    
-    func sessionInterruptionEnded(_ session: ARSession) {
-        // Reset tracking and/or remove existing anchors if consistent tracking is required
-        
-    }
-    
-}
-
-// MARK: - MeshProvider
-
-extension ViewController: MeshProvider {
-    
-    func loadMesh(forType type: MeshType, metalAllocator: MTKMeshBufferAllocator, completion: (MDLAsset?) -> Void) {
-        
-        switch type {
-        case .anchor:
-            guard let scene = SCNScene(named: "ship.scn") else {
-                fatalError("Failed to find model file.")
-            }
-            let asset = MDLAsset(scnScene: scene, bufferAllocator: metalAllocator)
-            completion(asset)
-        case .horizPlane:
-            // Use the default guide
-            completion(nil)
-        case .vertPlane:
-            completion(nil)
-        }
-        
-        
-        
-    }
-}
-
-// MARK: - RenderDestinationProvider
-
-extension MTKView : RenderDestinationProvider {
-    
-}
+// MARK: - RenderDebugLogger
 
 extension ViewController: RenderDebugLogger {
     

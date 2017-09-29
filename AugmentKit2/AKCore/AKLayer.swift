@@ -1,5 +1,5 @@
 //
-//  AugmentKit2-Bridging-Header.h
+//  AKLayer.swift
 //  AugmentKit2
 //
 //  MIT License
@@ -25,8 +25,11 @@
 //  SOFTWARE.
 //
 
-//
-//  Use this file to import your target's public headers that you would like to expose to Swift.
-//
+import Foundation
 
-#import "ShaderTypes.h"
+struct AKLayer: AKAnchor {
+    
+    var transform: matrix_float4x4 = matrix_identity_float4x4
+    var type: String?
+    
+}

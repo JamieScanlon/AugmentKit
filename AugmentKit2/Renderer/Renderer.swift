@@ -2,8 +2,27 @@
 //  Renderer.swift
 //  AugmentKit2
 //
-//  Created by Jamie Scanlon on 7/3/17.
-//  Copyright © 2017 TenthLetterMade. All rights reserved.
+//  MIT License
+//
+//  Copyright (c) 2017 JamieScanlon
+//
+//  Permission is hereby granted, free of charge, to any person obtaining a copy
+//  of this software and associated documentation files (the "Software"), to deal
+//  in the Software without restriction, including without limitation the rights
+//  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+//  copies of the Software, and to permit persons to whom the Software is
+//  furnished to do so, subject to the following conditions:
+//
+//  The above copyright notice and this permission notice shall be included in all
+//  copies or substantial portions of the Software.
+//
+//  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+//  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+//  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+//  SOFTWARE.
 //
 
 import Foundation
@@ -63,34 +82,40 @@ class Renderer {
         static let alignedAnchorInstanceUniformsSize = ((MemoryLayout<AnchorInstanceUniforms>.stride * Constants.maxAnchorInstanceCount) & ~0xFF) + 0x100
     }
     
+    enum RendererState {
+        case uninitialized
+        case initialized
+        case running
+        case paused
+    }
+    
+    private(set) var state: RendererState = .uninitialized
     let session: ARSession
     let device: MTLDevice
-    var meshProvider: MeshProvider
+    var meshProvider: MeshProvider? {
+        didSet {
+            if meshProvider != nil {
+                initialize()
+                reset()
+            }
+        }
+    }
     // Guide Meshes for debugging
     var showGuides = false {
         didSet {
             reset()
         }
     }
+    //var groundPlane: matri
     
-    init(session: ARSession, metalDevice device: MTLDevice, renderDestination: RenderDestinationProvider, meshProvider: MeshProvider) {
+    init(session: ARSession, metalDevice device: MTLDevice, renderDestination: RenderDestinationProvider, meshProvider: MeshProvider? = nil) {
         self.session = session
         self.device = device
         self.renderDestination = renderDestination
-        self.meshProvider = meshProvider
         self.textureLoader = MTKTextureLoader(device: device)
-        
-        if useOldFlow {
-            loadMetal()
-            loadPipeline()
-            loadAssets()
-        } else {
-            loadMetal()
-            loadAssets()
-            loadMeshesFromParser()
-            loadPipeline()
+        if let provider = meshProvider {
+            self.meshProvider = provider
         }
-        reset()
     }
     
     func drawRectResized(size: CGSize) {
@@ -153,15 +178,27 @@ class Renderer {
     }
     
     func run() {
+        guard state != .uninitialized else {
+            return
+        }
         session.run(createNewConfiguration())
+        state = .running
     }
     
     func pause() {
+        guard state != .uninitialized else {
+            return
+        }
         session.pause()
+        state = .paused
     }
     
     func reset() {
+        guard state != .uninitialized else {
+            return
+        }
         session.run(createNewConfiguration(), options: [.removeExistingAnchors, .resetTracking])
+        state = .running
     }
     
     // MARK: - Private
@@ -245,6 +282,29 @@ class Renderer {
     
     // number of frames in the anchor animation by anchor index
     private var anchorAnimationFrameCount = [Int]()
+    
+    // MARK: Inititialization
+    
+    private func initialize() {
+        
+        guard state == .uninitialized else {
+            return
+        }
+        
+        if useOldFlow {
+            loadMetal()
+            loadPipeline()
+            loadAssets()
+        } else {
+            loadMetal()
+            loadAssets()
+            loadMeshesFromParser()
+            loadPipeline()
+        }
+        
+        state = .initialized
+        
+    }
     
     // MARK: ARKit Session Configuration
     
@@ -504,6 +564,10 @@ class Renderer {
     }
     
     private func loadAssets() {
+        
+        guard let meshProvider = meshProvider else {
+            fatalError("MeshProvider not found.")
+        }
         
         //
         // Create and load our assets into Metal objects including meshes and textures

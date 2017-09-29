@@ -292,7 +292,10 @@ class Renderer {
         materialUniformBuffer.label = "MaterialUniformBuffer"
         
         // Load all the shader files with a metal file extension in the project
-        defaultLibrary = device.makeDefaultLibrary()!
+        guard let library = device.makeDefaultLibrary() else {
+            fatalError("failed to create a default library for the device.")
+        }
+        defaultLibrary = library
         
         //
         // Image Capture Plane
@@ -303,8 +306,14 @@ class Renderer {
         imagePlaneVertexBuffer = device.makeBuffer(bytes: Constants.imagePlaneVertexData, length: imagePlaneVertexDataCount, options: [])
         imagePlaneVertexBuffer.label = "ImagePlaneVertexBuffer"
         
-        let capturedImageVertexFunction = defaultLibrary.makeFunction(name: "capturedImageVertexTransform")!
-        let capturedImageFragmentFunction = defaultLibrary.makeFunction(name: "capturedImageFragmentShader")!
+        guard let capturedImageVertexTransform = defaultLibrary.makeFunction(name: "capturedImageVertexTransform") else {
+            fatalError("failed to create the capturedImageVertexTransform function")
+        }
+        guard let capturedImageFragmentShader = defaultLibrary.makeFunction(name: "capturedImageFragmentShader") else {
+            fatalError("failed to create the capturedImageFragmentShader function")
+        }
+        let capturedImageVertexFunction = capturedImageVertexTransform
+        let capturedImageFragmentFunction = capturedImageFragmentShader
         
         // Create a vertex descriptor for our image plane vertex buffer
         let imagePlaneVertexDescriptor = MTLVertexDescriptor()
@@ -677,8 +686,10 @@ class Renderer {
         // Create Vertex Buffers
         for vtxBuffer in aModelParser.vertexBuffers {
             vtxBuffer.withUnsafeBytes { (bytes: UnsafePointer<UInt8>) in
-                let buffer = device.makeBuffer(bytes: bytes, length: vtxBuffer.count, options: .storageModeShared)
-                myGPUData.vtxBuffers.append(buffer!)
+                guard let aVTXBuffer = device.makeBuffer(bytes: bytes, length: vtxBuffer.count, options: .storageModeShared) else {
+                    fatalError("Failed to create a buffer from the device.")
+                }
+                myGPUData.vtxBuffers.append(aVTXBuffer)
             }
             
         }
@@ -686,8 +697,10 @@ class Renderer {
         // Create Index Buffers
         for idxBuffer in aModelParser.indexBuffers {
             idxBuffer.withUnsafeBytes { (bytes: UnsafePointer<UInt8>) in
-                let buffer = device.makeBuffer(bytes: bytes, length: idxBuffer.count, options: .storageModeShared)
-                myGPUData.indexBuffers.append(buffer!)
+                guard let aIDXBuffer = device.makeBuffer(bytes: bytes, length: idxBuffer.count, options: .storageModeShared) else {
+                    fatalError("Failed to create a buffer from the device.")
+                }
+                myGPUData.indexBuffers.append(aIDXBuffer)
             }
         }
         
@@ -775,8 +788,10 @@ class Renderer {
     }
     
     private func createMetalVertexDescriptor(withModelIOVertexDescriptor vtxDesc: [MDLVertexDescriptor]) -> MTLVertexDescriptor {
-        let mtlVertexDescriptor = MTKMetalVertexDescriptorFromModelIO(vtxDesc[0])
-        return mtlVertexDescriptor!
+        guard let mtlVertexDescriptor = MTKMetalVertexDescriptorFromModelIO(vtxDesc[0]) else {
+            fatalError("Failed to create a MetalKit vertex descriptor from ModelIO.")
+        }
+        return mtlVertexDescriptor
     }
     
     // MARK: - Render loop

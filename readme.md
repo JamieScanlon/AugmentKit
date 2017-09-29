@@ -34,3 +34,6 @@ This project is currently on phase 1 (see goals below)
 1. Use ARKit and Metal for plane detection and anchor tracking. Load and render complex models from ModelIO to use as anchors
 2. Integrate with CoreLocation and CoreMotion to provide macro (meter scale) absolute location tracking in world space and micro (centemeter scale) relative anchor location tracking.
 3. Ability to serialize, store, transmit, and load anchors in world space.
+
+#### LICENSE
+MIT

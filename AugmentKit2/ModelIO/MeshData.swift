@@ -45,6 +45,7 @@ struct DrawSubData {
     var materialUniforms = MaterialUniforms()
     var materialBuffer: MTLBuffer?
 
+    // TODO: Implement for Quality level
     func computeTextureWeights(for quality: QualityLevel, with globalWeight:Float) {
         for textureIndex in 0..<kNumTextureIndices.rawValue {
             let constantIndex = mapTextureBindPoint(to: TextureIndices(rawValue:textureIndex))

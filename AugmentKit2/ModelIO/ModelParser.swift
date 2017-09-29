@@ -70,23 +70,25 @@ class ModelParser {
             return Data(bytes: vertexBuffer.map().bytes, count: Int(vertexBuffer.length))
         }
 
-        for case let submesh as MDLSubmesh in mesh.submeshes! {
-            let idxBuffer = submesh.indexBuffer
-            indexBuffers.append(Data(bytes: idxBuffer.map().bytes, count: Int(idxBuffer.length)))
+        if let submeshes = mesh.submeshes {
+            for case let submesh as MDLSubmesh in submeshes {
+                let idxBuffer = submesh.indexBuffer
+                indexBuffers.append(Data(bytes: idxBuffer.map().bytes, count: Int(idxBuffer.length)))
 
-            idxCounts.append(Int(submesh.indexCount))
-            idxTypes.append(submesh.indexType)
+                idxCounts.append(Int(submesh.indexCount))
+                idxTypes.append(submesh.indexType)
 
-            var material = Material()
-            if let mdlMaterial = submesh.material {
-                material.baseColor = readMaterialProperty(mdlMaterial, .baseColor, ModelIOTools.getMaterialFloat3Value)
-                material.metallic = readMaterialProperty(mdlMaterial, .metallic, ModelIOTools.getMaterialFloatValue)
-                material.roughness = readMaterialProperty(mdlMaterial, .roughness, ModelIOTools.getMaterialFloatValue)
-                (_, material.normalMap) = readMaterialProperty(mdlMaterial, .bump, ModelIOTools.getMaterialFloat3Value)
-                (_, material.ambientOcclusionMap) = readMaterialProperty(mdlMaterial, .ambientOcclusion,
-                                                                         ModelIOTools.getMaterialFloat3Value)
+                var material = Material()
+                if let mdlMaterial = submesh.material {
+                    material.baseColor = readMaterialProperty(mdlMaterial, .baseColor, ModelIOTools.getMaterialFloat3Value)
+                    material.metallic = readMaterialProperty(mdlMaterial, .metallic, ModelIOTools.getMaterialFloatValue)
+                    material.roughness = readMaterialProperty(mdlMaterial, .roughness, ModelIOTools.getMaterialFloatValue)
+                    (_, material.normalMap) = readMaterialProperty(mdlMaterial, .bump, ModelIOTools.getMaterialFloat3Value)
+                    (_, material.ambientOcclusionMap) = readMaterialProperty(mdlMaterial, .ambientOcclusion,
+                                                                             ModelIOTools.getMaterialFloat3Value)
+                }
+                materials.append(material)
             }
-            materials.append(material)
         }
 
         let meshData = MeshData(vbCount: vertexBufferCount, vbStartIdx: vbStartIdx,
@@ -101,7 +103,7 @@ class ModelParser {
         if let transform = nodeObject.transform {
             localTransforms.append(transform.matrix)
             if transform.keyTimes.count > 1 {
-                let sampledLocalTransforms = sampleTimes.map { transform.localTransform!(atTime: $0) }
+                let sampledLocalTransforms = sampleTimes.map { transform.localTransform?(atTime: $0) ?? matrix_identity_float4x4 }
                 localTransformAnimations.append(sampledLocalTransforms)
                 localTransformAnimationIndices.append(localTransformAnimations.count - 1)
             } else {
@@ -119,10 +121,8 @@ class ModelParser {
     private func flattenSceneGraphHierarchy(with asset: MDLAsset) {
         ModelIOTools.walkSceneGraph(in: asset) { object, currentIdx, parentIdx in
             self.flattenNode(object, nodeIndex: currentIdx, parentNodeIndex: parentIdx)
-
-            let skeletonRootPath = ModelIOTools.findShortestPath(in: object.path, containing: jointRootID)
-            if skeletonRootPath == object.path {
-                let animation = createSkeletonAnimation(for: asset, rootPath: skeletonRootPath!)
+            if let skeletonRootPath = ModelIOTools.findShortestPath(in: object.path, containing: jointRootID), skeletonRootPath == object.path {
+                let animation = createSkeletonAnimation(for: asset, rootPath: skeletonRootPath)
                 skeletonAnimations.append(animation)
             }
         }
@@ -145,9 +145,9 @@ class ModelParser {
                 instanceMeshIdx.append(meshes.count - 1)
                 let hasSkin = storeMeshSkin(for: object)
                 meshSkinIndices.append(hasSkin ? skins.count - 1 : nil)
-            } else if let instance = object.instance {
+            } else if let instance = object.instance, let masterIndex = ModelIOTools.findMasterIndex(masterMeshes, instance) {
                 meshNodeIndices.append(currentIdx)
-                instanceMeshIdx.append(ModelIOTools.findMasterIndex(masterMeshes, instance)!)
+                instanceMeshIdx.append(masterIndex)
                 let hasSkin = storeMeshSkin(for: object)
                 meshSkinIndices.append(hasSkin ? skins.count - 1 : nil)
             }
@@ -201,7 +201,7 @@ class ModelParser {
 
             if let xform = object.componentConforming(to: MDLTransformComponent.self) as? MDLTransformComponent {
                 for timeIndex in 0..<sampleTimes.count {
-                    let xM = xform.localTransform!(atTime: sampleTimes[timeIndex])
+                    let xM = xform.localTransform?(atTime: sampleTimes[timeIndex]) ?? matrix_identity_float4x4
                     let xR = matrix_float3x3(columns: (simd_float3(xM.columns.0.x, xM.columns.0.y, xM.columns.0.z),
                                                        simd_float3(xM.columns.1.x, xM.columns.1.y, xM.columns.1.z),
                                                        simd_float3(xM.columns.2.x, xM.columns.2.y, xM.columns.2.z)))
@@ -306,9 +306,7 @@ class ModelParser {
     
     private func getLocalTransform(atTime time: Double, index tansformIndex: Int) -> matrix_float4x4 {
         var localTransform: matrix_float4x4
-        if !localTransformAnimationIndices.isEmpty,
-            let localTransformIndice = localTransformAnimationIndices[tansformIndex] {
-            let keyFrameIdx = ModelIOTools.lowerBoundKeyframeIndex(sampleTimes, key: time)!
+        if let localTransformIndice = localTransformAnimationIndices[tansformIndex], let keyFrameIdx = ModelIOTools.lowerBoundKeyframeIndex(sampleTimes, key: time), !localTransformAnimationIndices.isEmpty {
             localTransform = localTransformAnimations[localTransformIndice][keyFrameIdx]
         } else {
             localTransform = localTransforms[tansformIndex]

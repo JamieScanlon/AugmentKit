@@ -20,7 +20,7 @@ extension MDLAsset {
         }
 
         for childIndex in 0..<self.count {
-            printSubgraph(object: self[childIndex]!)
+            printSubgraph(object: self.object(at: childIndex))
         }
     }
 
@@ -103,7 +103,7 @@ class ModelIOTools {
 
         var currentIndex = 0
         for childIndex in 0..<asset.count {
-            walkGraph(in: asset[childIndex]!, currentIndex: &currentIndex, parentIndex: nil, perNodeBody: perNodeBody)
+            walkGraph(in: asset.object(at: childIndex), currentIndex: &currentIndex, parentIndex: nil, perNodeBody: perNodeBody)
         }
     }
 
@@ -185,7 +185,13 @@ class ModelIOTools {
     static func sortedMeshIndexPermutation(_ instanceMeshIndices: [Int]) -> ([Int], [Int]) {
         let permutation = (0..<instanceMeshIndices.count).sorted { instanceMeshIndices[$0] < instanceMeshIndices[$1] }
 
-        var instanceCounts = [Int](repeating: 0, count: instanceMeshIndices.max()! + 1)
+        var instanceCounts: [Int] = {
+            if let max = instanceMeshIndices.max() {
+                return [Int](repeating: 0, count: max + 1)
+            } else {
+                return []
+            }
+        }()
         for instanceMeshIndex in instanceMeshIndices {
             instanceCounts[instanceMeshIndex] += 1
         }
@@ -234,12 +240,16 @@ class ModelIOTools {
     
     // Find the largest index of time stamp <= key
     static func lowerBoundKeyframeIndex(_ lhs: [Double], key: Double) -> Int? {
-        if lhs.isEmpty {
+        guard let lhsFirst = lhs.first else {
             return nil
         }
         
-        if key < lhs.first! { return 0 }
-        if key > lhs.last! { return lhs.count - 1 }
+        guard let lhsLast = lhs.last else {
+            return nil
+        }
+        
+        if key < lhsFirst { return 0 }
+        if key > lhsLast { return lhs.count - 1 }
         
         var range = 0..<lhs.count
         

@@ -106,7 +106,7 @@ class Renderer {
             reset()
         }
     }
-    //var groundPlane: matri
+    private(set) var currentCameraTransform: matrix_float4x4?
     
     init(session: ARSession, metalDevice device: MTLDevice, renderDestination: RenderDestinationProvider, meshProvider: MeshProvider? = nil) {
         self.session = session
@@ -890,9 +890,11 @@ class Renderer {
         
         if viewportSizeDidChange {
             viewportSizeDidChange = false
-            
             updateImagePlane(frame: currentFrame)
         }
+        
+        currentCameraTransform = currentFrame.camera.transform
+        
     }
     
     // MARK: Update Uniforms

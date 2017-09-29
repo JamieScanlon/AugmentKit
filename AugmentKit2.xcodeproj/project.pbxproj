@@ -9,9 +9,10 @@
 /* Begin PBXBuildFile section */
 		7D1B6F091F23B3A600AB035D /* ModelParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D1B6F081F23B2B200AB035D /* ModelParser.swift */; };
 		7D1B6F0D1F29851E00AB035D /* Pin.scn in Resources */ = {isa = PBXBuildFile; fileRef = 7D1B6F0C1F2983DA00AB035D /* Pin.scn */; };
-		7D3EAC0A1F7EA6120076635C /* AKLayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D3EAC091F7EA6120076635C /* AKLayer.swift */; };
+		7D3EAC0A1F7EA6120076635C /* AKGroundLayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D3EAC091F7EA6120076635C /* AKGroundLayer.swift */; };
 		7D3EAC0C1F7EA6790076635C /* AKAnchor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D3EAC0B1F7EA6790076635C /* AKAnchor.swift */; };
 		7D3EAC0F1F7EA8440076635C /* AKWorld.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D3EAC0E1F7EA8440076635C /* AKWorld.swift */; };
+		7D3EAC111F7ED05B0076635C /* AKObject.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D3EAC101F7ED05B0076635C /* AKObject.swift */; };
 		7D8111EF1F12974D00DD11E9 /* MotionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D8111EE1F12974D00DD11E9 /* MotionManager.swift */; };
 		7D88D7AB1F0AFD550009A154 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D88D7AA1F0AFD550009A154 /* AppDelegate.swift */; };
 		7D88D7AD1F0AFD550009A154 /* Shaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = 7D88D7AC1F0AFD550009A154 /* Shaders.metal */; };
@@ -36,9 +37,10 @@
 /* Begin PBXFileReference section */
 		7D1B6F081F23B2B200AB035D /* ModelParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelParser.swift; sourceTree = "<group>"; };
 		7D1B6F0C1F2983DA00AB035D /* Pin.scn */ = {isa = PBXFileReference; lastKnownFileType = file.bplist; path = Pin.scn; sourceTree = "<group>"; };
-		7D3EAC091F7EA6120076635C /* AKLayer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AKLayer.swift; sourceTree = "<group>"; };
+		7D3EAC091F7EA6120076635C /* AKGroundLayer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AKGroundLayer.swift; sourceTree = "<group>"; };
 		7D3EAC0B1F7EA6790076635C /* AKAnchor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKAnchor.swift; sourceTree = "<group>"; };
 		7D3EAC0E1F7EA8440076635C /* AKWorld.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKWorld.swift; sourceTree = "<group>"; };
+		7D3EAC101F7ED05B0076635C /* AKObject.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKObject.swift; sourceTree = "<group>"; };
 		7D8111EE1F12974D00DD11E9 /* MotionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionManager.swift; sourceTree = "<group>"; };
 		7D88D7A71F0AFD550009A154 /* AugmentKit2.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AugmentKit2.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7D88D7AA1F0AFD550009A154 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -78,9 +80,10 @@
 		7D3EAC081F7EA5E30076635C /* AKCore */ = {
 			isa = PBXGroup;
 			children = (
-				7D3EAC091F7EA6120076635C /* AKLayer.swift */,
+				7D3EAC091F7EA6120076635C /* AKGroundLayer.swift */,
 				7D3EAC0B1F7EA6790076635C /* AKAnchor.swift */,
 				7D3EAC0E1F7EA8440076635C /* AKWorld.swift */,
+				7D3EAC101F7ED05B0076635C /* AKObject.swift */,
 			);
 			path = AKCore;
 			sourceTree = "<group>";
@@ -240,6 +243,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7D3EAC111F7ED05B0076635C /* AKObject.swift in Sources */,
 				7D3EAC0C1F7EA6790076635C /* AKAnchor.swift in Sources */,
 				7DB396AE1F1AFD8B0003019B /* MeshData.swift in Sources */,
 				7D88D7AD1F0AFD550009A154 /* Shaders.metal in Sources */,
@@ -256,7 +260,7 @@
 				7D88D7B21F0AFD550009A154 /* ViewController.swift in Sources */,
 				7D3EAC0F1F7EA8440076635C /* AKWorld.swift in Sources */,
 				7D88D7AB1F0AFD550009A154 /* AppDelegate.swift in Sources */,
-				7D3EAC0A1F7EA6120076635C /* AKLayer.swift in Sources */,
+				7D3EAC0A1F7EA6120076635C /* AKGroundLayer.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

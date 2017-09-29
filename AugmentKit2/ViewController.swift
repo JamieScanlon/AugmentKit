@@ -45,7 +45,8 @@ class ViewController: UIViewController {
             
             view.backgroundColor = UIColor.clear
             
-            world = AKWorld(renderDestination: view)
+            let worldConfiguration = AKWorldConfiguration(usesLocation: false) // Turn locaion off for now because it's not fully implemented yet.
+            world = AKWorld(renderDestination: view, configuration: worldConfiguration)
             
             // Debugging
             world?.renderer.showGuides = true
@@ -58,8 +59,6 @@ class ViewController: UIViewController {
         
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(ViewController.handleTap(gestureRecognize:)))
         view.addGestureRecognizer(tapGesture)
-        
-        //WorldLocationManager.shared.startServices()
         
     }
     
@@ -84,6 +83,8 @@ class ViewController: UIViewController {
         guard let session = world?.session else {
             return
         }
+        
+        // TODO: Refactor this to use an AKObject and the rederers currentCameraTransform
         
         // Create anchor using the camera's current position
         if let currentFrame = session.currentFrame {

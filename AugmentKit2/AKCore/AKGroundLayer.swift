@@ -1,5 +1,5 @@
 //
-//  AKLayer.swift
+//  AKGroundLayer.swift
 //  AugmentKit2
 //
 //  MIT License
@@ -24,12 +24,23 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 //
+//
+//  And anchor representing the lowest horizontal plane that has been detected which
+//  is assumed to be the ground. Usually these are provided by the AR engine,
+//  not created by hand.
+//
 
 import Foundation
+import ModelIO
 
-struct AKLayer: AKAnchor {
+struct AKGroundLayer: AKAnchor {
     
     var transform: matrix_float4x4 = matrix_identity_float4x4
-    var type: String?
+    var type: String? = "groundLayer"
+    var mdlAsset: MDLAsset?
+    
+    init(withMDLAsset asset: MDLAsset) {
+        self.mdlAsset = asset
+    }
     
 }

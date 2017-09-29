@@ -34,6 +34,11 @@ import Foundation
 import ARKit
 import Metal
 import MetalKit
+import CoreLocation
+
+struct AKWorldConfiguration {
+    var usesLocation = true
+}
 
 class AKWorld: NSObject {
     
@@ -42,7 +47,7 @@ class AKWorld: NSObject {
     let device: MTLDevice
     let renderDestination: MTKView
     
-    init(renderDestination: MTKView) {
+    init(renderDestination: MTKView, configuration: AKWorldConfiguration = AKWorldConfiguration()) {
         
         self.renderDestination = renderDestination
         self.session = ARSession()
@@ -60,6 +65,15 @@ class AKWorld: NSObject {
         self.session.delegate = self
         self.renderDestination.delegate = self
         
+        if configuration.usesLocation {
+            WorldLocationManager.shared.startServices()
+            NotificationCenter.default.addObserver(forName: .locationDelegateUpdateLocationNotification, object: self, queue: nil, using: { [weak self] notification in
+                if let location = notification.userInfo?["location"] as? CLLocation {
+                    self?.associateLocationWithCameraPosition(location)
+                }
+            })
+        }
+        
     }
     
     func begin(withAnchorNamed anchorName: String) {
@@ -72,6 +86,10 @@ class AKWorld: NSObject {
     
     func begin(withAnchor anchor: MDLAsset) {
         anchorAsset = anchor
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
     
     // MARK: - Private
@@ -98,6 +116,10 @@ class AKWorld: NSObject {
                 renderer.meshProvider = self
             }
         }
+    }
+    
+    private func associateLocationWithCameraPosition(_ location: CLLocation) {
+        // TODO: Implement
     }
     
 }

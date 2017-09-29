@@ -1,5 +1,5 @@
 //
-//  AKAnchor.swift
+//  AKObject.swift
 //  AugmentKit2
 //
 //  MIT License
@@ -24,27 +24,24 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 //
+//
+//  A generic AR anchor that can be placed in the AR world. These can be created
+//  and given to the AR engine to render in the AR world.
+//
 
 import Foundation
 import ModelIO
 
-protocol AKAnchor {
+struct AKObject: AKAugmentedAnchor {
     
-    var type: String? { get set }
-    var transform: matrix_float4x4 { get set }
-    var mdlAsset: MDLAsset? { get }
+    var transform: matrix_float4x4 = matrix_identity_float4x4
+    var type: String? = "object"
+    var mdlAsset: MDLAsset?
     
-}
-
-//  Represents an anchor placed in the AR world. This anchor only exists in the AR world
-//  as opposed to a real anchor like a detected horizontal / vertical plane which exists
-//  in the physical world.
-protocol AKAugmentedAnchor: AKAnchor {
+    init(withMDLAsset asset: MDLAsset) {
+        self.mdlAsset = asset
+    }
     
-}
-
-//  Represents an anchor in the AR world that is tied to an object in the real world
-//  for example a detected horizontal / vertical plane wich represents a table or wall
-protocol AKRealAnchor: AKAnchor {
+    // MARK: - Private
     
 }

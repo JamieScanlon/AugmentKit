@@ -34,14 +34,14 @@ import ModelIO
 
 struct AKObject: AKAugmentedAnchor {
     
+    static var type: String {
+        return "object"
+    }
     var transform: matrix_float4x4 = matrix_identity_float4x4
-    var type: String? = "object"
-    var mdlAsset: MDLAsset?
+    var mdlAsset: MDLAsset
     
     init(withMDLAsset asset: MDLAsset) {
         self.mdlAsset = asset
     }
-    
-    // MARK: - Private
     
 }

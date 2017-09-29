@@ -30,9 +30,9 @@ import ModelIO
 
 protocol AKAnchor {
     
-    var type: String? { get set }
+    static var type: String { get }
     var transform: matrix_float4x4 { get set }
-    var mdlAsset: MDLAsset? { get }
+    var mdlAsset: MDLAsset { get }
     
 }
 

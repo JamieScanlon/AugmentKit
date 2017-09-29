@@ -1,5 +1,5 @@
 //
-//  AKGroundLayer.swift
+//  AKAnchorSceneKitExtensions.swift
 //  AugmentKit2
 //
 //  MIT License
@@ -25,24 +25,46 @@
 //  SOFTWARE.
 //
 //
-//  And anchor representing the lowest horizontal plane that has been detected which
-//  is assumed to be the ground. Usually these are provided by the AR engine,
-//  not created by hand.
+//  Extensions for loading a model from SceneKit so it can be used as an anchor.
+//  This can be excluded if SceneKit is not being used.
 //
 
 import Foundation
-import ModelIO
+import SceneKit.ModelIO
+import MetalKit
 
-struct AKGroundLayer: AKAnchor {
+extension AKAnchor {
     
-    static var type: String {
-        return "groundLayer"
+    static func mdlAssetFromScene(named: String, world: AKWorld) -> MDLAsset? {
+    
+        guard let scene = SCNScene(named: named) else {
+            return nil
+        }
+        
+        return Self.mdlAssetFromScene(scene, world: world)
+        
     }
-    var transform: matrix_float4x4 = matrix_identity_float4x4
-    var mdlAsset: MDLAsset
     
-    init(withMDLAsset asset: MDLAsset) {
-        self.mdlAsset = asset
+    static func mdlAssetFromScene(withURL url: URL, world: AKWorld) -> MDLAsset? {
+        
+        do {
+            let scene = try SCNScene(url: url, options: nil)
+            return Self.mdlAssetFromScene(scene, world: world)
+        } catch {
+            return nil
+        }
+        
+    }
+    
+    static func mdlAssetFromScene(_ scene: SCNScene, world: AKWorld) -> MDLAsset {
+        
+        // Create a MetalKit mesh buffer allocator so that ModelIO will load mesh data directly into
+        //   Metal buffers accessible by the GPU
+        let metalAllocator = MTKMeshBufferAllocator(device: world.device)
+        
+        let asset = MDLAsset(scnScene: scene, bufferAllocator: metalAllocator)
+        return asset
+        
     }
     
 }

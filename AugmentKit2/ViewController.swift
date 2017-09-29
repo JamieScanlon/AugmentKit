@@ -29,11 +29,11 @@ import UIKit
 import Metal
 import MetalKit
 import ARKit
-import SceneKit.ModelIO
 
 class ViewController: UIViewController {
     
     var world: AKWorld?
+    var anchorAsset: MDLAsset?
     
     @IBOutlet var debugInfoAnchorCounts: UILabel?
     
@@ -46,14 +46,25 @@ class ViewController: UIViewController {
             view.backgroundColor = UIColor.clear
             
             let worldConfiguration = AKWorldConfiguration(usesLocation: false) // Turn locaion off for now because it's not fully implemented yet.
-            world = AKWorld(renderDestination: view, configuration: worldConfiguration)
+            let myWorld = AKWorld(renderDestination: view, configuration: worldConfiguration)
             
             // Debugging
-            world?.renderer.showGuides = true
-            world?.renderer.logger = self
+            myWorld.renderer.showGuides = true
+            myWorld.renderer.logger = self
+            
+            // Setup the model that will be used for AKObject anchors
+            guard let asset = AKObject.mdlAssetFromScene(named: "ship.scn", world: myWorld) else {
+                print("ERROR: Could not load the SceneKit model")
+                return
+            }
+            let anchor = AKObject(withMDLAsset: asset)
+            myWorld.setAnchor(anchor, forAnchorType: AKObject.type)
             
             // Begin
-            world?.begin(withAnchorNamed: "ship.scn")
+            myWorld.begin()
+            
+            world = myWorld
+            anchorAsset = asset
             
         }
         
@@ -80,24 +91,30 @@ class ViewController: UIViewController {
     @objc
     private func handleTap(gestureRecognize: UITapGestureRecognizer) {
         
-        guard let session = world?.session else {
+        guard let renderer = world?.renderer else {
             return
         }
         
-        // TODO: Refactor this to use an AKObject and the rederers currentCameraTransform
-        
-        // Create anchor using the camera's current position
-        if let currentFrame = session.currentFrame {
-            
-            // Create a transform with a translation of 1 meters in front of the camera
-            var translation = matrix_identity_float4x4
-            translation.columns.3.z = -1
-            let transform = simd_mul(currentFrame.camera.transform, translation)
-            
-            // Add a new anchor to the session
-            let anchor = ARAnchor(transform: transform)
-            session.add(anchor: anchor)
+        guard let currentCameraTransform = renderer.currentCameraTransform else {
+            return
         }
+        
+        guard let anchorAsset = anchorAsset else {
+            return
+        }
+        
+        var newObject = AKObject(withMDLAsset: anchorAsset)
+        
+        // Create a transform with a translation of 1 meters in front of the camera
+        // TODO: Provide some convenience methods for creating common transforms.
+        // Something like... transformOneMeterInFrontOfMe() or transform(forLatitude: Double, longitude: Double)
+        var translation = matrix_identity_float4x4
+        translation.columns.3.z = -1
+        let transform = simd_mul(currentCameraTransform, translation)
+        
+        newObject.transform = transform
+        
+        world?.add(anchor: newObject)
         
     }
     

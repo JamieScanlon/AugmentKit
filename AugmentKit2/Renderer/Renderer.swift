@@ -44,7 +44,7 @@ protocol RenderDebugLogger {
 }
 
 protocol MeshProvider {
-    func loadMesh(forType: MeshType, metalAllocator: MTKMeshBufferAllocator, completion: (MDLAsset?) -> Void)
+    func loadMesh(forType: MeshType, completion: (MDLAsset?) -> Void)
 }
 
 enum MeshType {
@@ -92,14 +92,8 @@ class Renderer {
     private(set) var state: RendererState = .uninitialized
     let session: ARSession
     let device: MTLDevice
-    var meshProvider: MeshProvider? {
-        didSet {
-            if meshProvider != nil {
-                initialize()
-                reset()
-            }
-        }
-    }
+    var meshProvider: MeshProvider?
+    
     // Guide Meshes for debugging
     var showGuides = false {
         didSet {
@@ -118,10 +112,35 @@ class Renderer {
         }
     }
     
+    // MARK: Inititialization
+    
+    func initialize() {
+        
+        guard state == .uninitialized else {
+            return
+        }
+        
+        if useOldFlow {
+            loadMetal()
+            loadPipeline()
+            loadAssets()
+        } else {
+            loadMetal()
+            loadAssets()
+            loadMeshesFromParser()
+            loadPipeline()
+        }
+        
+        state = .initialized
+        
+    }
+    
     func drawRectResized(size: CGSize) {
         viewportSize = size
         viewportSizeDidChange = true
     }
+    
+    // MARK: Update
     
     func update() {
         
@@ -282,29 +301,6 @@ class Renderer {
     
     // number of frames in the anchor animation by anchor index
     private var anchorAnimationFrameCount = [Int]()
-    
-    // MARK: Inititialization
-    
-    private func initialize() {
-        
-        guard state == .uninitialized else {
-            return
-        }
-        
-        if useOldFlow {
-            loadMetal()
-            loadPipeline()
-            loadAssets()
-        } else {
-            loadMetal()
-            loadAssets()
-            loadMeshesFromParser()
-            loadPipeline()
-        }
-        
-        state = .initialized
-        
-    }
     
     // MARK: ARKit Session Configuration
     
@@ -573,11 +569,7 @@ class Renderer {
         // Create and load our assets into Metal objects including meshes and textures
         //
         
-        // Create a MetalKit mesh buffer allocator so that ModelIO will load mesh data directly into
-        //   Metal buffers accessible by the GPU
-        let metalAllocator = MTKMeshBufferAllocator(device: device)
-        
-        meshProvider.loadMesh(forType: .anchor, metalAllocator: metalAllocator) { [weak self] asset in
+        meshProvider.loadMesh(forType: .anchor) { [weak self] asset in
             
             guard let asset = asset else {
                 fatalError("Failed to get asset from meshProvider.")
@@ -617,7 +609,7 @@ class Renderer {
             
         }
         
-        meshProvider.loadMesh(forType: .horizPlane, metalAllocator: metalAllocator) { [weak self] asset in
+        meshProvider.loadMesh(forType: .horizPlane) { [weak self] asset in
             
             // Creata a Model IO vertexDescriptor so that we format/layout our model IO mesh vertices to
             //   fit our Metal render pipeline's vertex descriptor layout
@@ -634,6 +626,11 @@ class Renderer {
                     if let asset = asset, let mesh = asset.object(at: 0).children[0].children[0] as? MDLMesh {
                         return mesh
                     } else {
+                        
+                        // Create a MetalKit mesh buffer allocator so that ModelIO will load mesh data directly into
+                        //   Metal buffers accessible by the GPU
+                        let metalAllocator = MTKMeshBufferAllocator(device: device)
+                        
                         // Use ModelIO to create a box mesh as our object
                         let mesh = MDLMesh(planeWithExtent: vector3(1, 0, 1), segments: vector2(1, 1), geometryType: .triangles, allocator: metalAllocator)
                         if let submesh = mesh.submeshes?.firstObject as? MDLSubmesh {
@@ -661,6 +658,10 @@ class Renderer {
                     horizPlaneModelParser = ModelParser(asset: asset, vertexDescriptor: vertexDescriptor)
                 } else {
                 
+                    // Create a MetalKit mesh buffer allocator so that ModelIO will load mesh data directly into
+                    //   Metal buffers accessible by the GPU
+                    let metalAllocator = MTKMeshBufferAllocator(device: device)
+                    
                     let mesh = MDLMesh(planeWithExtent: vector3(1, 0, 1), segments: vector2(1, 1), geometryType: .triangles, allocator: metalAllocator)
                     if let submesh = mesh.submeshes?.firstObject as? MDLSubmesh {
                         let scatteringFunction = MDLPhysicallyPlausibleScatteringFunction()
@@ -679,7 +680,7 @@ class Renderer {
             
         }
         
-        meshProvider.loadMesh(forType: .vertPlane, metalAllocator: metalAllocator) { [weak self] asset in
+        meshProvider.loadMesh(forType: .vertPlane) { [weak self] asset in
             
             guard let asset = asset else {
                 return

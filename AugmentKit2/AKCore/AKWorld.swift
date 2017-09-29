@@ -62,6 +62,7 @@ class AKWorld: NSObject {
         
         self.renderDestination.device = self.device
         self.renderer.drawRectResized(size: renderDestination.bounds.size)
+        self.renderer.meshProvider = self
         self.session.delegate = self
         self.renderDestination.delegate = self
         
@@ -76,16 +77,26 @@ class AKWorld: NSObject {
         
     }
     
-    func begin(withAnchorNamed anchorName: String) {
-        anchorAssetFileName = anchorName
+    func setAnchor(_ anchor: AKAnchor, forAnchorType type: String) {
+        switch type {
+        case AKObject.type:
+            anchorAsset = anchor.mdlAsset
+        default:
+            return
+        }
     }
     
-    func begin(withAnchorURL anchorURL: URL) {
-        anchorAssetURL = anchorURL
+    func begin() {
+        renderer.initialize()
+        renderer.reset()
     }
     
-    func begin(withAnchor anchor: MDLAsset) {
-        anchorAsset = anchor
+    func add(anchor: AKAugmentedAnchor) {
+        
+        // Add a new anchor to the session
+        let anchor = ARAnchor(transform: anchor.transform)
+        session.add(anchor: anchor)
+        
     }
     
     deinit {
@@ -93,30 +104,8 @@ class AKWorld: NSObject {
     }
     
     // MARK: - Private
-    
-    fileprivate var anchorAssetFileName: String? {
-        didSet {
-            if anchorAssetFileName != nil && renderer.meshProvider == nil {
-                renderer.meshProvider = self
-            }
-        }
-    }
-    
-    fileprivate var anchorAssetURL: URL? {
-        didSet {
-            if anchorAssetURL != nil && renderer.meshProvider == nil {
-                renderer.meshProvider = self
-            }
-        }
-    }
-    
-    fileprivate var anchorAsset: MDLAsset? {
-        didSet {
-            if anchorAsset != nil && renderer.meshProvider == nil {
-                renderer.meshProvider = self
-            }
-        }
-    }
+
+    fileprivate var anchorAsset: MDLAsset?
     
     private func associateLocationWithCameraPosition(_ location: CLLocation) {
         // TODO: Implement
@@ -165,30 +154,12 @@ extension AKWorld: ARSessionDelegate {
 
 extension AKWorld: MeshProvider {
     
-    func loadMesh(forType type: MeshType, metalAllocator: MTKMeshBufferAllocator, completion: (MDLAsset?) -> Void) {
+    func loadMesh(forType type: MeshType, completion: (MDLAsset?) -> Void) {
         
         switch type {
         case .anchor:
-            if let anchorAssetFileName = anchorAssetFileName {
-                guard let scene = SCNScene(named: anchorAssetFileName) else {
-                    fatalError("Failed to find model file.")
-                }
-                let asset = MDLAsset(scnScene: scene, bufferAllocator: metalAllocator)
-                anchorAsset = asset
-                completion(asset)
-            } else if let anchorAssetURL  = anchorAssetURL {
-                do {
-                    let scene = try SCNScene(url: anchorAssetURL, options: nil)
-                    let asset = MDLAsset(scnScene: scene, bufferAllocator: metalAllocator)
-                    anchorAsset = asset
-                    completion(asset)
-                } catch {
-                    fatalError("Failed to find model file.")
-                }
-            } else if let anchorAsset = anchorAsset {
-                 let scene = SCNScene(mdlAsset: anchorAsset)
-                let asset = MDLAsset(scnScene: scene, bufferAllocator: metalAllocator)
-                completion(asset)
+            if let anchorAsset = anchorAsset {
+                completion(anchorAsset)
             } else {
                 fatalError("Failed to find an anchor model.")
             }

@@ -13,6 +13,7 @@
 		7D3EAC0C1F7EA6790076635C /* AKAnchor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D3EAC0B1F7EA6790076635C /* AKAnchor.swift */; };
 		7D3EAC0F1F7EA8440076635C /* AKWorld.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D3EAC0E1F7EA8440076635C /* AKWorld.swift */; };
 		7D3EAC111F7ED05B0076635C /* AKObject.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D3EAC101F7ED05B0076635C /* AKObject.swift */; };
+		7D3EAC141F7EEDCA0076635C /* AKAnchorSceneKitExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D3EAC131F7EEDCA0076635C /* AKAnchorSceneKitExtensions.swift */; };
 		7D8111EF1F12974D00DD11E9 /* MotionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D8111EE1F12974D00DD11E9 /* MotionManager.swift */; };
 		7D88D7AB1F0AFD550009A154 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D88D7AA1F0AFD550009A154 /* AppDelegate.swift */; };
 		7D88D7AD1F0AFD550009A154 /* Shaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = 7D88D7AC1F0AFD550009A154 /* Shaders.metal */; };
@@ -41,6 +42,7 @@
 		7D3EAC0B1F7EA6790076635C /* AKAnchor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKAnchor.swift; sourceTree = "<group>"; };
 		7D3EAC0E1F7EA8440076635C /* AKWorld.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKWorld.swift; sourceTree = "<group>"; };
 		7D3EAC101F7ED05B0076635C /* AKObject.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKObject.swift; sourceTree = "<group>"; };
+		7D3EAC131F7EEDCA0076635C /* AKAnchorSceneKitExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKAnchorSceneKitExtensions.swift; sourceTree = "<group>"; };
 		7D8111EE1F12974D00DD11E9 /* MotionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionManager.swift; sourceTree = "<group>"; };
 		7D88D7A71F0AFD550009A154 /* AugmentKit2.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AugmentKit2.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7D88D7AA1F0AFD550009A154 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -98,6 +100,14 @@
 			path = Renderer;
 			sourceTree = "<group>";
 		};
+		7D3EAC121F7EEDAD0076635C /* SceneKit Extensions */ = {
+			isa = PBXGroup;
+			children = (
+				7D3EAC131F7EEDCA0076635C /* AKAnchorSceneKitExtensions.swift */,
+			);
+			path = "SceneKit Extensions";
+			sourceTree = "<group>";
+		};
 		7D88D79E1F0AFD550009A154 = {
 			isa = PBXGroup;
 			children = (
@@ -117,6 +127,7 @@
 		7D88D7A91F0AFD550009A154 /* AugmentKit2 */ = {
 			isa = PBXGroup;
 			children = (
+				7D3EAC121F7EEDAD0076635C /* SceneKit Extensions */,
 				7D3EAC0D1F7EA7E40076635C /* Renderer */,
 				7D3EAC081F7EA5E30076635C /* AKCore */,
 				7DBA369E1F7C1A180006310A /* Models */,
@@ -244,6 +255,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				7D3EAC111F7ED05B0076635C /* AKObject.swift in Sources */,
+				7D3EAC141F7EEDCA0076635C /* AKAnchorSceneKitExtensions.swift in Sources */,
 				7D3EAC0C1F7EA6790076635C /* AKAnchor.swift in Sources */,
 				7DB396AE1F1AFD8B0003019B /* MeshData.swift in Sources */,
 				7D88D7AD1F0AFD550009A154 /* Shaders.metal in Sources */,

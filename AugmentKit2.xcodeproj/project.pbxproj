@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		7D1B6F091F23B3A600AB035D /* ModelParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D1B6F081F23B2B200AB035D /* ModelParser.swift */; };
 		7D1B6F0D1F29851E00AB035D /* Pin.scn in Resources */ = {isa = PBXBuildFile; fileRef = 7D1B6F0C1F2983DA00AB035D /* Pin.scn */; };
+		7D3E488A1F88C1C800814875 /* AKUtility.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D3E48891F88C1C800814875 /* AKUtility.swift */; };
 		7D3EAC0A1F7EA6120076635C /* AKGroundLayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D3EAC091F7EA6120076635C /* AKGroundLayer.swift */; };
 		7D3EAC0C1F7EA6790076635C /* AKAnchor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D3EAC0B1F7EA6790076635C /* AKAnchor.swift */; };
 		7D3EAC0F1F7EA8440076635C /* AKWorld.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D3EAC0E1F7EA8440076635C /* AKWorld.swift */; };
@@ -38,6 +39,7 @@
 /* Begin PBXFileReference section */
 		7D1B6F081F23B2B200AB035D /* ModelParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelParser.swift; sourceTree = "<group>"; };
 		7D1B6F0C1F2983DA00AB035D /* Pin.scn */ = {isa = PBXFileReference; lastKnownFileType = file.bplist; path = Pin.scn; sourceTree = "<group>"; };
+		7D3E48891F88C1C800814875 /* AKUtility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKUtility.swift; sourceTree = "<group>"; };
 		7D3EAC091F7EA6120076635C /* AKGroundLayer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AKGroundLayer.swift; sourceTree = "<group>"; };
 		7D3EAC0B1F7EA6790076635C /* AKAnchor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKAnchor.swift; sourceTree = "<group>"; };
 		7D3EAC0E1F7EA8440076635C /* AKWorld.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKWorld.swift; sourceTree = "<group>"; };
@@ -86,6 +88,7 @@
 				7D3EAC0B1F7EA6790076635C /* AKAnchor.swift */,
 				7D3EAC0E1F7EA8440076635C /* AKWorld.swift */,
 				7D3EAC101F7ED05B0076635C /* AKObject.swift */,
+				7D3E48891F88C1C800814875 /* AKUtility.swift */,
 			);
 			path = AKCore;
 			sourceTree = "<group>";
@@ -256,6 +259,7 @@
 			files = (
 				7D3EAC111F7ED05B0076635C /* AKObject.swift in Sources */,
 				7D3EAC141F7EEDCA0076635C /* AKAnchorSceneKitExtensions.swift in Sources */,
+				7D3E488A1F88C1C800814875 /* AKUtility.swift in Sources */,
 				7D3EAC0C1F7EA6790076635C /* AKAnchor.swift in Sources */,
 				7DB396AE1F1AFD8B0003019B /* MeshData.swift in Sources */,
 				7D88D7AD1F0AFD550009A154 /* Shaders.metal in Sources */,

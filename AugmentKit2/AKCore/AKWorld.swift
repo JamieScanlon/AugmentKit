@@ -40,6 +40,20 @@ struct AKWorldConfiguration {
     var usesLocation = true
 }
 
+struct AKWorldLocation {
+    var latitude: Double
+    var longitude: Double
+    var elevation: Double
+}
+
+struct AKWorldDistance {
+    var metersX: Double
+    var metersY: Double
+    var metersZ: Double
+    var distance2D: Double
+    var distance3D: Double
+}
+
 class AKWorld: NSObject {
     
     let session: ARSession
@@ -135,17 +149,14 @@ extension AKWorld: ARSessionDelegate {
     
     func session(_ session: ARSession, didFailWithError error: Error) {
         // Present an error message to the user
-        
     }
     
     func sessionWasInterrupted(_ session: ARSession) {
         // Inform the user that the session has been interrupted, for example, by presenting an overlay
-        
     }
     
     func sessionInterruptionEnded(_ session: ARSession) {
         // Reset tracking and/or remove existing anchors if consistent tracking is required
-        
     }
     
 }

@@ -8,7 +8,7 @@ The original goal of this project was to provide a general framework for buildin
 
 ARKit, released by Apple, is an amazing foundation for building AR apps. AugmentKit will be built on top of ARKit and provide additional  tools for app developers.
 
-ARKit provides three ways to interact with it. You can use SpriteKit, an unattractive choice for most because SpriteKit is a 2D gme engine and AR is fundamentally a 3D technology. The second option is SceneKit which is a full 3D game engine wich makes it a natural choice for ARKit integration. If you are developing a game, and especially if you already have someknowledge of SceneKit, you probably have enough tools with Apples frameworks to reach your goals. The last option is Metal and it is kindof the 'everything else' option. Metal provides low level access to the GPU which means that if it can be done, Metal can do it.
+ARKit provides three ways to interact with it. You can use SpriteKit, an unattractive choice for most because SpriteKit is a 2D gme engine and AR is fundamentally a 3D technology. The second option is SceneKit, a full 3D game engine, which makes it a natural choice for ARKit integration. If you are developing a game, and especially if you already have some knowledge of SceneKit, you probably have enough tools with Apple's frameworks to reach your goals. But if you are an app developer, the idea of including a game engine in your project may not be that attractive. The last option is Metal. It is not only the most powerful and flexible option, it is also the most difficult to learn and use. Metal provides low level access to the GPU which means that if it can be done, Metal can do it, but it also requires a basic knoledge of GPU architecture and programming.
 
 The problem is that none of these are particularly great options for app developers. Two out of the three frameworks are geared toward games, and the other requires so much setup, configuration, and knowledge about GPU architecture that it's too cumbersome for the average developer. AugmetKit is attempting to solve this problem by providing a framework geared towawrd app developers that is higer level than Metal. AugmetKit is based on the Metal flavor of ARKit and will integrate with ModelIO to provide a way to load in models to use as anchors.
 
@@ -16,7 +16,7 @@ Another feature that AugmentKit will provide is integrating more contextual awar
 
 #### Pre-Release
 
-This project is currently on phase 1 (see goals below)
+This project is currently on phase 2 (see goals below)
 
 #### Features
 

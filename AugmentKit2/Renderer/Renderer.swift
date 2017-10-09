@@ -306,7 +306,13 @@ class Renderer {
     
     private func createNewConfiguration() -> ARWorldTrackingConfiguration {
         let configuration = ARWorldTrackingConfiguration()
-        //configuration.worldAlignment = .gravityAndHeading
+        // Setting this to gravityAndHeading aligns the the origin of the scene to compas
+        // direction but it also tend to make the scene jumpy.
+//        configuration.worldAlignment = .gravityAndHeading
+        // TODO: Experiment with using gravity only and using CoreLocation to determine
+        // The origins relation to compas direction. That way we have control over when
+        // it needs to be adjusted so that the experience does not seem jumpy.
+        configuration.worldAlignment = .gravity
         if showGuides {
             configuration.planeDetection = .horizontal
         }

@@ -78,6 +78,22 @@ class AKLocationUtility {
         
     }
     
+    static func worldLocation(from location: AKWorldLocation, translatedBy: AKWorldDistance) -> AKWorldLocation {
+        
+        // See: https://en.wikipedia.org/wiki/Geographic_coordinate_system
+        let latitudeInRadians = location.latitude.degreesToRadians()
+        let metersPerDegreeLatitude =  111132.92 - 559.82 * cos(2 * latitudeInRadians) + 1.175 * cos(4 * latitudeInRadians) - 0.0023 * cos(6 * latitudeInRadians)
+        let metersPerDegreeLongitude = 11412.84 * cos(latitudeInRadians) - 93.5 * cos(3 * latitudeInRadians) + 118 * cos(5 * latitudeInRadians)
+        
+        let Δx = (translatedBy.metersX / metersPerDegreeLongitude).radiansToDegrees()
+        let Δz = (translatedBy.metersZ / metersPerDegreeLatitude).radiansToDegrees()
+        
+        let transform = location.transform.translate(x: Float(translatedBy.metersX), y: Float(translatedBy.metersY), z: Float(translatedBy.metersZ))
+        
+        return AKWorldLocation(latitude: location.latitude + Δz, longitude: location.longitude + Δx, elevation: location.elevation + translatedBy.metersY, transform: transform)
+        
+    }
+    
     // Haversine formula
     static func distance(fromLocation location: AKWorldLocation, to toLocation: AKWorldLocation) -> Double {
         

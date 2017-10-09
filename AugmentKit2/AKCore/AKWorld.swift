@@ -43,7 +43,8 @@ struct AKWorldConfiguration {
 struct AKWorldLocation {
     var latitude: Double
     var longitude: Double
-    var elevation: Double
+    var elevation: Double = 0
+    var transform: matrix_float4x4 = matrix_identity_float4x4
 }
 
 struct AKWorldDistance {
@@ -82,11 +83,7 @@ class AKWorld: NSObject {
         
         if configuration.usesLocation {
             WorldLocationManager.shared.startServices()
-            NotificationCenter.default.addObserver(forName: .locationDelegateUpdateLocationNotification, object: self, queue: nil, using: { [weak self] notification in
-                if let location = notification.userInfo?["location"] as? CLLocation {
-                    self?.associateLocationWithCameraPosition(location)
-                }
-            })
+            NotificationCenter.default.addObserver(self, selector: #selector(AKWorld.associateLocationWithCameraPosition(notif:)), name: .locationDelegateMoreReliableARLocationNotification, object: nil)
         }
         
     }
@@ -120,9 +117,25 @@ class AKWorld: NSObject {
     // MARK: - Private
 
     fileprivate var anchorAsset: MDLAsset?
+    fileprivate var reliableWorldLocations = [AKWorldLocation]()
     
-    private func associateLocationWithCameraPosition(_ location: CLLocation) {
-        // TODO: Implement
+    @objc private func associateLocationWithCameraPosition(notif: NSNotification) {
+        
+        guard let location = notif.userInfo?["location"] as? CLLocation else {
+            return
+        }
+        
+        guard let currentCameraPose = renderer.currentCameraTransform else {
+            return
+        }
+        
+        let newReliableWorldLocation = AKWorldLocation(latitude: location.coordinate.latitude, longitude: location.coordinate.longitude, elevation: location.altitude, transform: currentCameraPose)
+        if reliableWorldLocations.count > 100 {
+            reliableWorldLocations = Array(reliableWorldLocations.dropLast(reliableWorldLocations.count - 100))
+        }
+        reliableWorldLocations.insert(newReliableWorldLocation, at: 0)
+        print("New reliable location found: \(newReliableWorldLocation.latitude)lat, \(newReliableWorldLocation.longitude)lng = \(newReliableWorldLocation.transform)")
+        
     }
     
 }

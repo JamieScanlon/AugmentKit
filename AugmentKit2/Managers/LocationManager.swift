@@ -12,20 +12,7 @@ import CoreLocation
 extension Notification.Name {
     static let locationDelegateUpdateLocationNotification = Notification.Name("com.tenthlettermade.notificaiton.LocationDelegateUpdateLocation")
     static let locationDelegateNearObjectNotification = Notification.Name("com.tenthlettermade.notificaiton.LocationDelegateNearObjectNotification")
-}
-
-// MARK: - LocationTranslation
-// Translation in meters between 2 locations
-public struct LocationTranslation {
-    public var latitudeTranslation: Double
-    public var longitudeTranslation: Double
-    public var altitudeTranslation: Double
-    
-    public init(latitudeTranslation: Double, longitudeTranslation: Double, altitudeTranslation: Double) {
-        self.latitudeTranslation = latitudeTranslation
-        self.longitudeTranslation = longitudeTranslation
-        self.altitudeTranslation = altitudeTranslation
-    }
+    static let locationDelegateMoreReliableARLocationNotification = Notification.Name("com.tenthlettermade.notificaiton.LocationDelegateMoreReliableARLocation")
 }
 
 // MARK: - LocationManager
@@ -39,6 +26,11 @@ protocol LocationManager {
     var lastHeading: CLLocationDirection? { get }
     var headingAccuracy: CLLocationDegrees? { get }
     
+    // Provides the CLLocation with the highest accuracy. This gets updated
+    // With the most recent location if the most recent location has at least
+    // as much accuracy as the last reading.
+    var mostReliableARLocation: CLLocation? { get }
+    
     // This should return the CLLocationManager.locationServicesEnabled()
     func locationServicesEnabled() -> Bool
     // This should return the CLLocationManager.authorizationStatus()
@@ -48,6 +40,7 @@ protocol LocationManager {
     func setLastLocation(_ value: CLLocation)
     func setLastHeading(_ value: CLLocationDirection)
     func setHeadingAccuracy(_ value: CLLocationDegrees)
+    func setMostReliableARLocation(_ value: CLLocation)
     
 }
 
@@ -137,52 +130,6 @@ extension LocationManager {
         
     }
     
-    // MARK: Utility
-    
-    // Translates distance in meters between two locations.
-    // Returns the result as the distance in latitude and distance in longitude.
-    func translate(fromLocation: CLLocation, toLocation: CLLocation) -> LocationTranslation {
-        let inbetweenLocation = CLLocation(latitude: fromLocation.coordinate.latitude, longitude: toLocation.coordinate.longitude)
-        
-        let distanceLatitude = toLocation.distance(from: inbetweenLocation)
-        
-        let latitudeTranslation: Double
-        
-        if toLocation.coordinate.latitude > inbetweenLocation.coordinate.latitude {
-            latitudeTranslation = distanceLatitude
-        } else {
-            latitudeTranslation = 0 - distanceLatitude
-        }
-        
-        let distanceLongitude = fromLocation.distance(from: inbetweenLocation)
-        
-        let longitudeTranslation: Double
-        
-        if fromLocation.coordinate.longitude > inbetweenLocation.coordinate.longitude {
-            longitudeTranslation = 0 - distanceLongitude
-        } else {
-            longitudeTranslation = distanceLongitude
-        }
-        
-        let altitudeTranslation = toLocation.altitude - fromLocation.altitude
-        
-        return LocationTranslation(latitudeTranslation: latitudeTranslation, longitudeTranslation: longitudeTranslation, altitudeTranslation: altitudeTranslation)
-    }
-    
-    func newLocation(from fromLocation: CLLocation, with translation: LocationTranslation) -> CLLocation {
-        let latitudeCoordinate = fromLocation.coordinate.coordinateWithBearing(bearing: 0, distanceMeters: translation.latitudeTranslation)
-        
-        let longitudeCoordinate = fromLocation.coordinate.coordinateWithBearing(bearing: 90, distanceMeters: translation.longitudeTranslation)
-        
-        let coordinate = CLLocationCoordinate2D(
-            latitude: latitudeCoordinate.latitude,
-            longitude: longitudeCoordinate.longitude)
-        
-        let altitude = fromLocation.altitude + translation.altitudeTranslation
-        
-        return CLLocation(coordinate: coordinate, altitude: altitude, horizontalAccuracy: fromLocation.horizontalAccuracy, verticalAccuracy: fromLocation.verticalAccuracy, timestamp: fromLocation.timestamp)
-    }
-    
     // MARK: CLLocationManagerDelegate Handlers
     
     // Call this in the locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) Method
@@ -192,22 +139,33 @@ extension LocationManager {
             return
         }
         
+        // Ignore results more than 15 seconds old as they are likely to be cached.
+        guard fabs(mostRecentLocation.timestamp.timeIntervalSinceNow) < 15 else {
+            return
+        }
+        
         setLastLocation(mostRecentLocation)
         
-        let archivedLocationDict: [String: Any] = ["location": mostRecentLocation, "updated": Date()]
-        let archivedLocationData = NSKeyedArchiver.archivedData(withRootObject: archivedLocationDict)
-        localStoreManager?.setLastKnownLocationData(archivedLocationData)
-        
-        let eventDate = mostRecentLocation.timestamp
-        let howRecent = eventDate.timeIntervalSinceNow
-        
-        // Throw away results more than 15 seconds old as they are likely to be cached.
-        if fabs(howRecent) < 15 {
-            
-            print("INFO: latitude \(mostRecentLocation.coordinate.latitude), longitude \(mostRecentLocation.coordinate.longitude)")
-            NotificationCenter.default.post(Notification(name: .locationDelegateUpdateLocationNotification, object: self, userInfo: ["location": mostRecentLocation]))
-            
+        if let mostReliableARLocation = mostReliableARLocation {
+            if mostRecentLocation.horizontalAccuracy == mostReliableARLocation.horizontalAccuracy && mostRecentLocation.verticalAccuracy == mostReliableARLocation.verticalAccuracy {
+                if mostRecentLocation.timestamp > mostReliableARLocation.timestamp {
+                    setMostReliableARLocation(mostRecentLocation)
+                }
+            } else if (mostRecentLocation.horizontalAccuracy < mostReliableARLocation.horizontalAccuracy && mostRecentLocation.horizontalAccuracy > 0) || (mostRecentLocation.verticalAccuracy < mostReliableARLocation.verticalAccuracy && mostRecentLocation.verticalAccuracy > 0) {
+                setMostReliableARLocation(mostRecentLocation)
+                NotificationCenter.default.post(Notification(name: .locationDelegateMoreReliableARLocationNotification, object: self, userInfo: ["location": mostRecentLocation]))
+            }
+        } else {
+            setMostReliableARLocation(mostRecentLocation)
+            NotificationCenter.default.post(Notification(name: .locationDelegateMoreReliableARLocationNotification, object: self, userInfo: ["location": mostRecentLocation]))
         }
+        
+        
+//        let archivedLocationDict: [String: Any] = ["location": mostRecentLocation, "updated": Date()]
+//        let archivedLocationData = NSKeyedArchiver.archivedData(withRootObject: archivedLocationDict)
+//        localStoreManager?.setLastKnownLocationData(archivedLocationData)
+        print("INFO: latitude \(mostRecentLocation.coordinate.latitude), longitude \(mostRecentLocation.coordinate.longitude)")
+        NotificationCenter.default.post(Notification(name: .locationDelegateUpdateLocationNotification, object: self, userInfo: ["location": mostRecentLocation]))
         
     }
     
@@ -302,31 +260,23 @@ extension LocationManager {
 
 // MARK: - Convenience extensions
 
-extension Double {
-    func metersToLatitude() -> Double {
-        return self / (6360500.0)
-    }
-    
-    func metersToLongitude() -> Double {
-        return self / (5602900.0)
-    }
-}
+
 
 public extension CLLocationCoordinate2D {
-    public func coordinateWithBearing(bearing:Double, distanceMeters:Double) -> CLLocationCoordinate2D {
-        //The numbers for earth radius may be _off_ here
-        //but this gives a reasonably accurate result..
-        //Any correction here is welcome.
-        let distRadiansLat = distanceMeters.metersToLatitude() // earth radius in meters latitude
-        let distRadiansLong = distanceMeters.metersToLongitude() // earth radius in meters longitude
-        
-        let lat1 = self.latitude * Double.pi / 180
-        let lon1 = self.longitude * Double.pi / 180
-        
-        let lat2 = asin(sin(lat1) * cos(distRadiansLat) + cos(lat1) * sin(distRadiansLat) * cos(bearing))
-        let lon2 = lon1 + atan2(sin(bearing) * sin(distRadiansLong) * cos(lat1), cos(distRadiansLong) - sin(lat1) * sin(lat2))
-        
-        return CLLocationCoordinate2D(latitude: lat2 * 180 / Double.pi, longitude: lon2 * 180 / Double.pi)
-    }
+//    public func coordinateWithBearing(bearing:Double, distanceMeters:Double) -> CLLocationCoordinate2D {
+//        //The numbers for earth radius may be _off_ here
+//        //but this gives a reasonably accurate result..
+//        //Any correction here is welcome.
+//        let distRadiansLat = distanceMeters.metersToLatitude() // earth radius in meters latitude
+//        let distRadiansLong = distanceMeters.metersToLongitude() // earth radius in meters longitude
+//
+//        let lat1 = self.latitude * Double.pi / 180
+//        let lon1 = self.longitude * Double.pi / 180
+//
+//        let lat2 = asin(sin(lat1) * cos(distRadiansLat) + cos(lat1) * sin(distRadiansLat) * cos(bearing))
+//        let lon2 = lon1 + atan2(sin(bearing) * sin(distRadiansLong) * cos(lat1), cos(distRadiansLong) - sin(lat1) * sin(lat2))
+//
+//        return CLLocationCoordinate2D(latitude: lat2 * 180 / Double.pi, longitude: lon2 * 180 / Double.pi)
+//    }
 }
 

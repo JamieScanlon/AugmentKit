@@ -45,6 +45,7 @@ class WorldLocationManager: NSObject, LocationManager, MotionManager {
     private(set) var lastLocation: CLLocation?
     private(set) var lastHeading: CLLocationDirection?
     private(set) var headingAccuracy: CLLocationDegrees?
+    private(set) var mostReliableARLocation: CLLocation?
     
     func locationServicesEnabled() -> Bool {
         return CLLocationManager.locationServicesEnabled()
@@ -69,7 +70,9 @@ class WorldLocationManager: NSObject, LocationManager, MotionManager {
     func setHeadingAccuracy(_ value: CLLocationDegrees) {
         headingAccuracy = value
     }
-    
+    func setMostReliableARLocation(_ value: CLLocation) {
+        mostReliableARLocation = value
+    }
     
     // MARK: - MotionManager Methods
     

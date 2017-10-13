@@ -32,15 +32,15 @@
 import Foundation
 import ModelIO
 
-struct AKObject: AKAugmentedAnchor {
+public struct AKObject: AKAugmentedAnchor {
     
-    static var type: String {
+    public static var type: String {
         return "object"
     }
-    var transform: matrix_float4x4 = matrix_identity_float4x4
-    var mdlAsset: MDLAsset
+    public var transform: matrix_float4x4 = matrix_identity_float4x4
+    public var mdlAsset: MDLAsset
     
-    init(withMDLAsset asset: MDLAsset) {
+    public init(withMDLAsset asset: MDLAsset) {
         self.mdlAsset = asset
     }
     

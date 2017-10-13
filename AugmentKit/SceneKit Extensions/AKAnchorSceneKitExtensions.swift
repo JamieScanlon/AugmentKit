@@ -33,9 +33,9 @@ import Foundation
 import SceneKit.ModelIO
 import MetalKit
 
-extension AKAnchor {
+public extension AKAnchor {
     
-    static func mdlAssetFromScene(named: String, world: AKWorld) -> MDLAsset? {
+    public static func mdlAssetFromScene(named: String, world: AKWorld) -> MDLAsset? {
     
         guard let scene = SCNScene(named: named) else {
             return nil
@@ -45,7 +45,7 @@ extension AKAnchor {
         
     }
     
-    static func mdlAssetFromScene(withURL url: URL, world: AKWorld) -> MDLAsset? {
+    public static func mdlAssetFromScene(withURL url: URL, world: AKWorld) -> MDLAsset? {
         
         do {
             let scene = try SCNScene(url: url, options: nil)
@@ -56,7 +56,7 @@ extension AKAnchor {
         
     }
     
-    static func mdlAssetFromScene(_ scene: SCNScene, world: AKWorld) -> MDLAsset {
+    public static func mdlAssetFromScene(_ scene: SCNScene, world: AKWorld) -> MDLAsset {
         
         // Create a MetalKit mesh buffer allocator so that ModelIO will load mesh data directly into
         //   Metal buffers accessible by the GPU

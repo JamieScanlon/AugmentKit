@@ -33,15 +33,15 @@
 import Foundation
 import ModelIO
 
-struct AKGroundLayer: AKAnchor {
+public struct AKGroundLayer: AKAnchor {
     
-    static var type: String {
+    public static var type: String {
         return "groundLayer"
     }
-    var transform: matrix_float4x4 = matrix_identity_float4x4
-    var mdlAsset: MDLAsset
+    public var transform: matrix_float4x4 = matrix_identity_float4x4
+    public var mdlAsset: MDLAsset
     
-    init(withMDLAsset asset: MDLAsset) {
+    public init(withMDLAsset asset: MDLAsset) {
         self.mdlAsset = asset
     }
     

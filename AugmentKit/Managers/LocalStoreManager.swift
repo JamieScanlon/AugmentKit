@@ -8,17 +8,17 @@
 
 import Foundation
 
-protocol LocalStoreManager {
+public protocol LocalStoreManager {
     var lastKnownLocationData: Data? { get }
     func setLastKnownLocationData(_ value: Data)
 }
 
-class DefaultLocalStoreManager: LocalStoreManager {
+public class DefaultLocalStoreManager: LocalStoreManager {
     
-    static let shared = DefaultLocalStoreManager()
+    public static let shared = DefaultLocalStoreManager()
     
-    var lastKnownLocationData: Data?
-    func setLastKnownLocationData(_ value: Data) {
+    public var lastKnownLocationData: Data?
+    public func setLastKnownLocationData(_ value: Data) {
         lastKnownLocationData = value
     }
     

@@ -30,7 +30,7 @@ import ModelIO
 
 // MARK: - AKAnchor
 
-protocol AKAnchor {
+public protocol AKAnchor {
     
     static var type: String { get }
     var transform: matrix_float4x4 { get set }
@@ -43,11 +43,11 @@ protocol AKAnchor {
 //  Represents an anchor placed in the AR world. This anchor only exists in the AR world
 //  as opposed to a real anchor like a detected horizontal / vertical plane which exists
 //  in the physical world.
-protocol AKAugmentedAnchor: AKAnchor {
+public protocol AKAugmentedAnchor: AKAnchor {
     
 }
 
-extension AKAugmentedAnchor {
+public extension AKAugmentedAnchor {
     
     // This function sets the transform of this anchor given an origin location.
     // The origin location is usually the location of the camera when the AR session starts.
@@ -63,6 +63,6 @@ extension AKAugmentedAnchor {
 
 //  Represents an anchor in the AR world that is tied to an object in the real world
 //  for example a detected horizontal / vertical plane wich represents a table or wall
-protocol AKRealAnchor: AKAnchor {
+public protocol AKRealAnchor: AKAnchor {
     
 }

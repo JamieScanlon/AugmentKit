@@ -8,18 +8,18 @@
 
 import UIKit
 
-class DeviceManager {
+public class DeviceManager {
     
-    static var shared = DeviceManager()
+    public static var shared = DeviceManager()
     
-    enum ScreenHeights: Int {
+    public enum ScreenHeights: Int {
         case inches_3_5
         case inches_4
         case inches_4_7
         case inches_5_5
     }
     
-    func isSize(_ height: ScreenHeights) -> Bool {
+    public func isSize(_ height: ScreenHeights) -> Bool {
         let deviceHeight = deviceRect().height
         var targetHight: CGFloat = 0
         switch height {
@@ -35,7 +35,7 @@ class DeviceManager {
         return deviceHeight == targetHight
     }
     
-    func isSizeOrLarger(_ height: ScreenHeights) -> Bool {
+    public func isSizeOrLarger(_ height: ScreenHeights) -> Bool {
         let deviceHeight = deviceRect().height
         var targetHight: CGFloat = 0
         switch height {
@@ -51,7 +51,7 @@ class DeviceManager {
         return deviceHeight >= targetHight
     }
     
-    func isSizeOrSmaller(_ height: ScreenHeights) -> Bool {
+    public func isSizeOrSmaller(_ height: ScreenHeights) -> Bool {
         let deviceHeight = deviceRect().height
         var targetHight: CGFloat = 0
         switch height {
@@ -67,21 +67,21 @@ class DeviceManager {
         return deviceHeight <= targetHight
     }
     
-    func screenSizeInPixels() -> CGSize {
+   public  func screenSizeInPixels() -> CGSize {
         let screen = UIScreen.main
         let height = screen.nativeBounds.size.height
         let width = screen.nativeBounds.size.width
         return CGSize(width: width, height: height)
     }
     
-    func screenSizeInPoints() -> CGSize {
+    public func screenSizeInPoints() -> CGSize {
         let screen = UIScreen.main
         let height = screen.bounds.size.height
         let width = screen.bounds.size.width
         return CGSize(width: width, height: height)
     }
     
-    func isPhone() -> Bool {
+    public func isPhone() -> Bool {
         return isSizeOrSmaller(.inches_5_5)
     }
     

@@ -10,16 +10,16 @@ import Foundation
 import CoreLocation
 import CoreMotion
 
-class WorldLocationManager: NSObject, LocationManager, MotionManager {
+public class WorldLocationManager: NSObject, LocationManager, MotionManager {
     
-    static let shared = WorldLocationManager()
+    public static let shared = WorldLocationManager()
     
-    func startServices() {
+    public func startServices() {
         startLocationService()
         //startTrackingCompasDirection()
     }
     
-    func stopServices() {
+    public func stopServices() {
         stopLocationService()
         stopTrackingCompasDirection()
     }
@@ -27,7 +27,7 @@ class WorldLocationManager: NSObject, LocationManager, MotionManager {
     // MARK: - LocationManager Methods
     
     private var _clLocationManager: CLLocationManager?
-    var clLocationManager: CLLocationManager {
+    public var clLocationManager: CLLocationManager {
         if let _clLocationManager = _clLocationManager {
             return _clLocationManager
         } else {
@@ -37,47 +37,47 @@ class WorldLocationManager: NSObject, LocationManager, MotionManager {
             return aCLLocationManager
         }
     }
-    var localStoreManager: LocalStoreManager? {
+    public var localStoreManager: LocalStoreManager? {
         return DefaultLocalStoreManager.shared as LocalStoreManager
     }
-    private(set) var serviceAvailable: Bool = false
-    private(set) var serviceStarted: Bool = false
-    private(set) var lastLocation: CLLocation?
-    private(set) var lastHeading: CLLocationDirection?
-    private(set) var headingAccuracy: CLLocationDegrees?
-    private(set) var mostReliableARLocation: CLLocation?
+    public private(set) var serviceAvailable: Bool = false
+    public private(set) var serviceStarted: Bool = false
+    public private(set) var lastLocation: CLLocation?
+    public private(set) var lastHeading: CLLocationDirection?
+    public private(set) var headingAccuracy: CLLocationDegrees?
+    public private(set) var mostReliableARLocation: CLLocation?
     
-    func locationServicesEnabled() -> Bool {
+    public func locationServicesEnabled() -> Bool {
         return CLLocationManager.locationServicesEnabled()
     }
     
-    func authorizationStatus() -> CLAuthorizationStatus {
+    public func authorizationStatus() -> CLAuthorizationStatus {
         return CLLocationManager.authorizationStatus()
     }
-    func setServiceAvailable(_ value: Bool) {
+    public func setServiceAvailable(_ value: Bool) {
         serviceAvailable = value
     }
-    func setServiceStarted(_ value: Bool) {
+    public func setServiceStarted(_ value: Bool) {
         serviceStarted = value
     }
-    func setLastLocation(_ value: CLLocation) {
+    public func setLastLocation(_ value: CLLocation) {
         lastLocation = value
     }
-    func setLastHeading(_ value: CLLocationDirection) {
+    public func setLastHeading(_ value: CLLocationDirection) {
         print(value)
         lastHeading = value
     }
-    func setHeadingAccuracy(_ value: CLLocationDegrees) {
+    public func setHeadingAccuracy(_ value: CLLocationDegrees) {
         headingAccuracy = value
     }
-    func setMostReliableARLocation(_ value: CLLocation) {
+    public func setMostReliableARLocation(_ value: CLLocation) {
         mostReliableARLocation = value
     }
     
     // MARK: - MotionManager Methods
     
     private var _cmMotionManager: CMMotionManager?
-    var cmMotionManager: CMMotionManager {
+    public var cmMotionManager: CMMotionManager {
         if let _cmMotionManager = _cmMotionManager {
             return _cmMotionManager
         } else {
@@ -88,7 +88,7 @@ class WorldLocationManager: NSObject, LocationManager, MotionManager {
     }
     
     private var _motionQueue: OperationQueue?
-    var operationQueue: OperationQueue {
+    public var operationQueue: OperationQueue {
         if let _motionQueue = _motionQueue {
             return _motionQueue
         } else {
@@ -97,7 +97,7 @@ class WorldLocationManager: NSObject, LocationManager, MotionManager {
             return aMotionQueue
         }
     }
-    var viewPort: ViewPort {
+    public var viewPort: ViewPort {
         let screenSize = DeviceManager.shared.screenSizeInPoints()
         let viewport = ViewPort(width: Double(screenSize.width), height: Double(screenSize.height))
         return viewport
@@ -107,23 +107,23 @@ class WorldLocationManager: NSObject, LocationManager, MotionManager {
 
 extension WorldLocationManager: CLLocationManagerDelegate {
     
-    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+    public func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         updateLocations(locations)
     }
     
-    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+    public func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         handlerError(error)
     }
     
-    func locationManagerDidResumeLocationUpdates(_ manager: CLLocationManager) {
+    public func locationManagerDidResumeLocationUpdates(_ manager: CLLocationManager) {
         didResumeUpdates()
     }
     
-    func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
+    public func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
         didEnterRegion(region)
     }
     
-    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
+   public  func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
         didChangeAuthorizationStatus(status)
     }
     

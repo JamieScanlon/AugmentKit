@@ -9,15 +9,15 @@
 import Foundation
 import CoreLocation
 
-extension Notification.Name {
-    static let locationDelegateUpdateLocationNotification = Notification.Name("com.tenthlettermade.notificaiton.LocationDelegateUpdateLocation")
-    static let locationDelegateNearObjectNotification = Notification.Name("com.tenthlettermade.notificaiton.LocationDelegateNearObjectNotification")
-    static let locationDelegateMoreReliableARLocationNotification = Notification.Name("com.tenthlettermade.notificaiton.LocationDelegateMoreReliableARLocation")
+public extension Notification.Name {
+    public static let locationDelegateUpdateLocationNotification = Notification.Name("com.tenthlettermade.notificaiton.LocationDelegateUpdateLocation")
+    public static let locationDelegateNearObjectNotification = Notification.Name("com.tenthlettermade.notificaiton.LocationDelegateNearObjectNotification")
+    public static let locationDelegateMoreReliableARLocationNotification = Notification.Name("com.tenthlettermade.notificaiton.LocationDelegateMoreReliableARLocation")
 }
 
 // MARK: - LocationManager
 
-protocol LocationManager {
+public protocol LocationManager {
     var clLocationManager: CLLocationManager { get }
     var localStoreManager: LocalStoreManager? { get }
     var serviceAvailable: Bool { get }
@@ -44,9 +44,9 @@ protocol LocationManager {
     
 }
 
-extension LocationManager {
+public extension LocationManager {
     
-    func startLocationService() {
+    public func startLocationService() {
         
         if locationServicesEnabled() {
             setServiceAvailable(false)
@@ -68,7 +68,7 @@ extension LocationManager {
         
     }
     
-    func stopLocationService() {
+    public func stopLocationService() {
         
         clLocationManager.stopUpdatingLocation()
         clLocationManager.stopMonitoringSignificantLocationChanges()
@@ -76,19 +76,19 @@ extension LocationManager {
         
     }
     
-    func isLocationServiceAvailable() -> Bool {
+    public func isLocationServiceAvailable() -> Bool {
         return serviceAvailable
     }
     
-    func isServiceStarted() -> Bool {
+    public func isServiceStarted() -> Bool {
         return serviceStarted
     }
     
-    func hasGivenAutorization() -> Bool {
+    public func hasGivenAutorization() -> Bool {
         return  (authorizationStatus() == .authorizedAlways || authorizationStatus() == .authorizedWhenInUse)
     }
     
-    func stopMonitoringRegions() {
+    public func stopMonitoringRegions() {
         
         setupCLLocationManager()
         
@@ -98,15 +98,15 @@ extension LocationManager {
         
     }
     
-    func requestAlwaysAuthorization() {
+    public func requestAlwaysAuthorization() {
         clLocationManager.requestAlwaysAuthorization()
     }
     
-    func requestInUseAuthorization() {
+    public func requestInUseAuthorization() {
         clLocationManager.requestWhenInUseAuthorization()
     }
     
-    func currentLocation() -> CLLocation? {
+    public func currentLocation() -> CLLocation? {
         
         guard isLocationServiceAvailable() else {
             return nil

@@ -12,25 +12,25 @@ import GLKit
 
 // MARK: - ViewPort
 
-struct ViewPort {
-    var width: Double = 0
-    var height: Double = 0
-    func aspectRatio() -> Double {
+public struct ViewPort {
+    public var width: Double = 0
+    public var height: Double = 0
+    public func aspectRatio() -> Double {
         return width/height
     }
 }
 
 // MARK: - MotionManager
 
-protocol MotionManager {
+public protocol MotionManager {
     var cmMotionManager: CMMotionManager { get }
     var operationQueue: OperationQueue { get }
     var viewPort: ViewPort { get }
 }
 
-extension MotionManager {
+public extension MotionManager {
     
-    func startTrackingCompasDirection() {
+    public func startTrackingCompasDirection() {
         cmMotionManager.startDeviceMotionUpdates(using: .xTrueNorthZVertical, to: operationQueue) { (deviceMotion, error) in
             if let error = error {
                 // TODO: Log errors
@@ -40,11 +40,11 @@ extension MotionManager {
             }
         }
     }
-    func stopTrackingCompasDirection() {
+    public func stopTrackingCompasDirection() {
         cmMotionManager.stopMagnetometerUpdates()
     }
     
-    func headingCorrectedForTilt(withMotion motion: CMDeviceMotion, viewPort: ViewPort) -> Float?{
+    public func headingCorrectedForTilt(withMotion motion: CMDeviceMotion, viewPort: ViewPort) -> Float?{
         
         let aspect = fabsf(Float(viewPort.width / viewPort.height))
         let projectionMatrix = GLKMatrix4MakePerspective(GLKMathDegreesToRadians(45.0), aspect, 0.1, 100)

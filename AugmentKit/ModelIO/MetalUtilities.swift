@@ -32,6 +32,7 @@ import Foundation
 import MetalKit
 import simd
 import GLKit
+import AugmentKitShader
 
 class MetalUtilities {
     

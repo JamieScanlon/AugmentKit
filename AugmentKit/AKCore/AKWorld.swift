@@ -36,33 +36,36 @@ import Metal
 import MetalKit
 import CoreLocation
 
-struct AKWorldConfiguration {
-    var usesLocation = true
+public struct AKWorldConfiguration {
+    public var usesLocation = true
+    public init(usesLocation: Bool = true) {
+        
+    }
 }
 
-struct AKWorldLocation {
-    var latitude: Double
-    var longitude: Double
-    var elevation: Double = 0
-    var transform: matrix_float4x4 = matrix_identity_float4x4
+public struct AKWorldLocation {
+    public var latitude: Double
+    public var longitude: Double
+    public var elevation: Double = 0
+    public var transform: matrix_float4x4 = matrix_identity_float4x4
 }
 
-struct AKWorldDistance {
-    var metersX: Double
-    var metersY: Double
-    var metersZ: Double
-    var distance2D: Double
-    var distance3D: Double
+public struct AKWorldDistance {
+    public var metersX: Double
+    public var metersY: Double
+    public var metersZ: Double
+    public var distance2D: Double
+    public var distance3D: Double
 }
 
-class AKWorld: NSObject {
+public class AKWorld: NSObject {
     
-    let session: ARSession
-    let renderer: Renderer
-    let device: MTLDevice
-    let renderDestination: MTKView
+    public let session: ARSession
+    public let renderer: Renderer
+    public let device: MTLDevice
+    public let renderDestination: MTKView
     
-    init(renderDestination: MTKView, configuration: AKWorldConfiguration = AKWorldConfiguration()) {
+    public init(renderDestination: MTKView, configuration: AKWorldConfiguration = AKWorldConfiguration()) {
         
         self.renderDestination = renderDestination
         self.session = ARSession()
@@ -88,7 +91,7 @@ class AKWorld: NSObject {
         
     }
     
-    func setAnchor(_ anchor: AKAnchor, forAnchorType type: String) {
+    public func setAnchor(_ anchor: AKAnchor, forAnchorType type: String) {
         switch type {
         case AKObject.type:
             anchorAsset = anchor.mdlAsset
@@ -97,12 +100,12 @@ class AKWorld: NSObject {
         }
     }
     
-    func begin() {
+    public func begin() {
         renderer.initialize()
         renderer.reset()
     }
     
-    func add(anchor: AKAugmentedAnchor) {
+    public func add(anchor: AKAugmentedAnchor) {
         
         // Add a new anchor to the session
         let anchor = ARAnchor(transform: anchor.transform)
@@ -145,12 +148,12 @@ class AKWorld: NSObject {
 extension AKWorld: MTKViewDelegate {
     
     // Called whenever view changes orientation or layout is changed
-    func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
+    public func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
         renderer.drawRectResized(size: size)
     }
     
     // Called whenever the view needs to render
-    func draw(in view: MTKView) {
+    public func draw(in view: MTKView) {
         renderer.update()
     }
     
@@ -160,15 +163,15 @@ extension AKWorld: MTKViewDelegate {
 
 extension AKWorld: ARSessionDelegate {
     
-    func session(_ session: ARSession, didFailWithError error: Error) {
+    public func session(_ session: ARSession, didFailWithError error: Error) {
         // Present an error message to the user
     }
     
-    func sessionWasInterrupted(_ session: ARSession) {
+    public func sessionWasInterrupted(_ session: ARSession) {
         // Inform the user that the session has been interrupted, for example, by presenting an overlay
     }
     
-    func sessionInterruptionEnded(_ session: ARSession) {
+    public func sessionInterruptionEnded(_ session: ARSession) {
         // Reset tracking and/or remove existing anchors if consistent tracking is required
     }
     
@@ -178,7 +181,7 @@ extension AKWorld: ARSessionDelegate {
 
 extension AKWorld: MeshProvider {
     
-    func loadMesh(forType type: MeshType, completion: (MDLAsset?) -> Void) {
+    public func loadMesh(forType type: MeshType, completion: (MDLAsset?) -> Void) {
         
         switch type {
         case .anchor:

@@ -30,8 +30,9 @@ import Metal
 import MetalKit
 import ARKit
 import ModelIO
+import AugmentKitShader
 
-protocol RenderDestinationProvider {
+public protocol RenderDestinationProvider {
     var currentRenderPassDescriptor: MTLRenderPassDescriptor? { get }
     var currentDrawable: CAMetalDrawable? { get }
     var colorPixelFormat: MTLPixelFormat { get set }
@@ -39,32 +40,32 @@ protocol RenderDestinationProvider {
     var sampleCount: Int { get set }
 }
 
-protocol RenderDebugLogger {
+public protocol RenderDebugLogger {
     func updatedAnchors(count: Int, numAnchors: Int, numPlanes: Int)
 }
 
-protocol MeshProvider {
+public protocol MeshProvider {
     func loadMesh(forType: MeshType, completion: (MDLAsset?) -> Void)
 }
 
-enum MeshType {
+public enum MeshType {
     case anchor
     case horizPlane
     case vertPlane
 }
 
-class Renderer {
+public class Renderer {
     
     // Debugging
-    var useOldFlow = false
-    var logger: RenderDebugLogger?
-    var orientation: UIInterfaceOrientation = .landscapeRight {
+    public var useOldFlow = false
+    public var logger: RenderDebugLogger?
+    public var orientation: UIInterfaceOrientation = .landscapeRight {
         didSet {
             // TODO: Refresh?
         }
     }
     
-    enum Constants {
+    public enum Constants {
         static let maxBuffersInFlight = 3
         static let maxAnchorInstanceCount = 64
         
@@ -82,27 +83,28 @@ class Renderer {
         static let alignedAnchorInstanceUniformsSize = ((MemoryLayout<AnchorInstanceUniforms>.stride * Constants.maxAnchorInstanceCount) & ~0xFF) + 0x100
     }
     
-    enum RendererState {
+    public enum RendererState {
         case uninitialized
         case initialized
         case running
         case paused
     }
     
-    private(set) var state: RendererState = .uninitialized
-    let session: ARSession
-    let device: MTLDevice
-    var meshProvider: MeshProvider?
+    public private(set) var state: RendererState = .uninitialized
+    public let session: ARSession
+    public let device: MTLDevice
+    public var meshProvider: MeshProvider?
     
     // Guide Meshes for debugging
-    var showGuides = false {
+    public var showGuides = false {
         didSet {
             reset()
         }
     }
-    private(set) var currentCameraTransform: matrix_float4x4?
+    public private(set) var currentCameraTransform: matrix_float4x4?
+    public private(set) var lowestHorizPlaneAnchor: ARPlaneAnchor?
     
-    init(session: ARSession, metalDevice device: MTLDevice, renderDestination: RenderDestinationProvider, meshProvider: MeshProvider? = nil) {
+    public init(session: ARSession, metalDevice device: MTLDevice, renderDestination: RenderDestinationProvider, meshProvider: MeshProvider? = nil) {
         self.session = session
         self.device = device
         self.renderDestination = renderDestination
@@ -114,7 +116,7 @@ class Renderer {
     
     // MARK: Inititialization
     
-    func initialize() {
+    public func initialize() {
         
         guard state == .uninitialized else {
             return
@@ -135,14 +137,14 @@ class Renderer {
         
     }
     
-    func drawRectResized(size: CGSize) {
+    public func drawRectResized(size: CGSize) {
         viewportSize = size
         viewportSizeDidChange = true
     }
     
     // MARK: Update
     
-    func update() {
+    public func update() {
         
         // Wait to ensure only kMaxBuffersInFlight are getting proccessed by any stage in the Metal
         //   pipeline (App, Metal, Drivers, GPU, etc)
@@ -196,7 +198,7 @@ class Renderer {
         
     }
     
-    func run() {
+    public func run() {
         guard state != .uninitialized else {
             return
         }
@@ -204,7 +206,7 @@ class Renderer {
         state = .running
     }
     
-    func pause() {
+    public func pause() {
         guard state != .uninitialized else {
             return
         }
@@ -212,7 +214,7 @@ class Renderer {
         state = .paused
     }
     
-    func reset() {
+    public func reset() {
         guard state != .uninitialized else {
             return
         }
@@ -353,11 +355,18 @@ class Renderer {
         materialUniformBuffer = device.makeBuffer(length: materialUniformBufferSize, options: .storageModeShared)
         materialUniformBuffer.label = "MaterialUniformBuffer"
         
-        // Load all the shader files with a metal file extension in the project
-        guard let library = device.makeDefaultLibrary() else {
+        // Load the default metal library file which contains all of the compiled .metal files
+        guard let libraryFile = Bundle(for: Renderer.self).path(forResource: "default", ofType: "metallib") else {
             fatalError("failed to create a default library for the device.")
         }
-        defaultLibrary = library
+        
+        defaultLibrary = {
+            do {
+                 return try device.makeLibrary(filepath: libraryFile)
+            } catch {
+                fatalError("failed to create a default library for the device.")
+            }
+        }()
         
         //
         // Image Capture Plane
@@ -947,6 +956,14 @@ class Renderer {
             if let plane = anchor as? ARPlaneAnchor {
                 if plane.alignment == .horizontal {
                     horizPlaneInstanceCount += 1
+                    // Keep track of the lowest horizontal plane. This can be assumed to be the ground.
+                    if lowestHorizPlaneAnchor != nil {
+                        if plane.transform.columns.1.y < lowestHorizPlaneAnchor?.transform.columns.1.y ?? 0 {
+                            lowestHorizPlaneAnchor = plane
+                        }
+                    } else {
+                        lowestHorizPlaneAnchor = plane
+                    }
                 } else {
                     vertPlaneInstanceCount += 1
                 }

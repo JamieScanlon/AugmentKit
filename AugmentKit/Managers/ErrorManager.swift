@@ -8,6 +8,6 @@
 
 import Foundation
 
-protocol ErrorManager {
+public protocol ErrorManager {
     
 }

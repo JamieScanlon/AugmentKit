@@ -31,7 +31,7 @@ import Foundation
 
 // MARK: - Degree / Radian conversion
 
-extension Int {
+public extension Int {
     func degreesToRadians() -> Double {
         return Double(self) * .pi / 180
     }
@@ -39,7 +39,7 @@ extension Int {
         return Double(self) * 180 / .pi
     }
 }
-extension FloatingPoint {
+public extension FloatingPoint {
     func degreesToRadians() -> Self {
         return self * .pi / 180
     }
@@ -50,7 +50,7 @@ extension FloatingPoint {
 
 // MARK: - Lat/Lng calculations
 
-class AKLocationUtility {
+public class AKLocationUtility {
     
     static let R = 6371000.0 // Mean earth radius in meters
     
@@ -58,7 +58,7 @@ class AKLocationUtility {
     // The distances are calculated at the lattitude/longitude given by atLocation. Technically it is more accurate
     // To find a latitude/longitude midway between the two points in order to do the calculation but the slight
     // sacrifce in precision is worth the increase in calculation speed.
-    static func worldDistance(atLocation location: AKWorldLocation, to toLocation: AKWorldLocation) -> AKWorldDistance {
+    public static func worldDistance(atLocation location: AKWorldLocation, to toLocation: AKWorldLocation) -> AKWorldDistance {
         
         // See: https://en.wikipedia.org/wiki/Geographic_coordinate_system
         let latitudeInRadians = location.latitude.degreesToRadians()
@@ -78,7 +78,7 @@ class AKLocationUtility {
         
     }
     
-    static func worldLocation(from location: AKWorldLocation, translatedBy: AKWorldDistance) -> AKWorldLocation {
+    public static func worldLocation(from location: AKWorldLocation, translatedBy: AKWorldDistance) -> AKWorldLocation {
         
         // See: https://en.wikipedia.org/wiki/Geographic_coordinate_system
         let latitudeInRadians = location.latitude.degreesToRadians()
@@ -95,7 +95,7 @@ class AKLocationUtility {
     }
     
     // Haversine formula
-    static func distance(fromLocation location: AKWorldLocation, to toLocation: AKWorldLocation) -> Double {
+    public static func distance(fromLocation location: AKWorldLocation, to toLocation: AKWorldLocation) -> Double {
         
         let φ1 = location.latitude.degreesToRadians()
         let φ2 = toLocation.latitude.degreesToRadians()
@@ -111,7 +111,7 @@ class AKLocationUtility {
     }
     
     // Equirectangular approximation. Faster calculation but only good for for short distances.
-    static func shortRangeDistance(fromLocation location: AKWorldLocation, to toLocation: AKWorldLocation) -> Double {
+    public static func shortRangeDistance(fromLocation location: AKWorldLocation, to toLocation: AKWorldLocation) -> Double {
         
         // Pythagoras’ theorem
         let x = (toLocation.longitude - location.longitude) * cos((location.latitude + toLocation.latitude)/2)
@@ -122,7 +122,7 @@ class AKLocationUtility {
     }
     
     // Returns the number of degrees from due north in the range of 180 to 180
-    static func bearing(fromLocation location: AKWorldLocation, to toLocation: AKWorldLocation) -> Double {
+    public static func bearing(fromLocation location: AKWorldLocation, to toLocation: AKWorldLocation) -> Double {
         
         let y = sin(toLocation.longitude - location.longitude) * cos(toLocation.latitude)
         let x = cos(location.latitude) * sin(toLocation.latitude) -  sin(location.latitude) * cos(toLocation.latitude) * cos(toLocation.longitude - location.longitude)

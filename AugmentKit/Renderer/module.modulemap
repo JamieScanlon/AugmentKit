@@ -1,0 +1,4 @@
+module AugmentKitShader [system][extern_c] {
+    header "ShaderTypes.h"
+    export *
+}

@@ -32,6 +32,7 @@ import Foundation
 import simd
 import ModelIO
 import MetalKit
+import AugmentKitShader
 
 // MARK: - Material Data. Intermediate format sutable for serialization and transport.
 

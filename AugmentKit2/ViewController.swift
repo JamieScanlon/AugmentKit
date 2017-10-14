@@ -54,12 +54,12 @@ class ViewController: UIViewController {
             myWorld.renderer.logger = self
             
             // Setup the model that will be used for AKObject anchors
-            guard let asset = AKObject.mdlAssetFromScene(named: "ship.scn", world: myWorld) else {
+            guard let asset = AKObject.mdlAssetFromScene(named: "Pin.scn", world: myWorld) else {
                 print("ERROR: Could not load the SceneKit model")
                 return
             }
-            let anchor = AKObject(withMDLAsset: asset)
-            myWorld.setAnchor(anchor, forAnchorType: AKObject.type)
+            let anchor = AKObject(withMDLAsset: asset, at: AKWorldLocation())
+            myWorld.setAnchor(anchor, forAnchorType: AKObject.type) // TODO: Stil working on removing the need for this step.
             
             // Begin
             myWorld.begin()
@@ -92,29 +92,16 @@ class ViewController: UIViewController {
     @objc
     private func handleTap(gestureRecognize: UITapGestureRecognizer) {
         
-        guard let renderer = world?.renderer else {
-            return
-        }
-        
-        guard let currentCameraTransform = renderer.currentCameraTransform else {
-            return
-        }
-        
         guard let anchorAsset = anchorAsset else {
             return
         }
         
-        var newObject = AKObject(withMDLAsset: anchorAsset)
+        guard let currentWorldLocation = world?.currentWorldLocation else {
+            return
+        }
         
-        // Create a transform with a translation of 1 meters in front of the camera
-        // TODO: Provide some convenience methods for creating common transforms.
-        // Something like... transformOneMeterInFrontOfMe() or transform(forLatitude: Double, longitude: Double)
-        var translation = matrix_identity_float4x4
-        translation.columns.3.z = -1
-        let transform = simd_mul(currentCameraTransform, translation)
-        
-        newObject.transform = transform
-        
+        // Create a new anchor at the current locaiton
+        let newObject = AKObject(withMDLAsset: anchorAsset, at: currentWorldLocation)
         world?.add(anchor: newObject)
         
     }

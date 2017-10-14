@@ -33,7 +33,7 @@ import ModelIO
 public protocol AKAnchor {
     
     static var type: String { get }
-    var transform: matrix_float4x4 { get set }
+    var worldLocation: AKWorldLocation { get set }
     var mdlAsset: MDLAsset { get }
     
 }
@@ -51,11 +51,11 @@ public extension AKAugmentedAnchor {
     
     // This function sets the transform of this anchor given an origin location.
     // The origin location is usually the location of the camera when the AR session starts.
-    mutating func setLocation(_ location: AKWorldLocation, withOrigin originLocation: AKWorldLocation) {
-        let worldDistoance = AKLocationUtility.worldDistance(atLocation: originLocation, to: location)
-        let myTransform = matrix_identity_float4x4
-        transform = myTransform.translate(x: Float(worldDistoance.metersX), y: Float(worldDistoance.metersY), z: Float(worldDistoance.metersZ))
-    }
+//    mutating func setLocation(_ location: AKWorldLocation, withOrigin originLocation: AKWorldLocation) {
+//        let worldDistoance = AKLocationUtility.worldDistance(atLocation: originLocation, to: location)
+//        let myTransform = matrix_identity_float4x4
+//        transform = myTransform.translate(x: Float(worldDistoance.metersX), y: Float(worldDistoance.metersY), z: Float(worldDistoance.metersZ))
+//    }
     
 }
 

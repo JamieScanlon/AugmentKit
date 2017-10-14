@@ -37,11 +37,12 @@ public struct AKObject: AKAugmentedAnchor {
     public static var type: String {
         return "object"
     }
-    public var transform: matrix_float4x4 = matrix_identity_float4x4
+    public var worldLocation: AKWorldLocation
     public var mdlAsset: MDLAsset
     
-    public init(withMDLAsset asset: MDLAsset) {
+    public init(withMDLAsset asset: MDLAsset, at location: AKWorldLocation) {
         self.mdlAsset = asset
+        self.worldLocation = location
     }
     
 }

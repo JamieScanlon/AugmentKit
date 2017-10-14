@@ -146,6 +146,10 @@ public class Renderer {
     
     public func update() {
         
+        guard let commandQueue = commandQueue else {
+            return
+        }
+        
         // Wait to ensure only kMaxBuffersInFlight are getting proccessed by any stage in the Metal
         //   pipeline (App, Metal, Drivers, GPU, etc)
         let _ = inFlightSemaphore.wait(timeout: DispatchTime.distantFuture)
@@ -233,7 +237,7 @@ public class Renderer {
     
     // Metal objects
     private var defaultLibrary: MTLLibrary!
-    private var commandQueue: MTLCommandQueue!
+    private var commandQueue: MTLCommandQueue?
     private var sharedUniformBuffer: MTLBuffer!
     private var anchorUniformBuffer: MTLBuffer!
     private var materialUniformBuffer: MTLBuffer!

@@ -90,7 +90,7 @@
 		7D6E6B561F8F19C400EFC667 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		7D6E6B731F8F283C00EFC667 /* module.modulemap */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.module-map"; path = module.modulemap; sourceTree = "<group>"; };
 		7D8111EE1F12974D00DD11E9 /* MotionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionManager.swift; sourceTree = "<group>"; };
-		7D88D7A71F0AFD550009A154 /* AugmentKit2.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AugmentKit2.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7D88D7A71F0AFD550009A154 /* AugmentKit2Demo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AugmentKit2Demo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7D88D7AA1F0AFD550009A154 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		7D88D7AC1F0AFD550009A154 /* Shaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Shaders.metal; sourceTree = "<group>"; };
 		7D88D7AE1F0AFD550009A154 /* ShaderTypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ShaderTypes.h; sourceTree = "<group>"; };
@@ -208,7 +208,7 @@
 		7D88D7A81F0AFD550009A154 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				7D88D7A71F0AFD550009A154 /* AugmentKit2.app */,
+				7D88D7A71F0AFD550009A154 /* AugmentKit2Demo.app */,
 				7D6E6B471F8F19C300EFC667 /* AugmentKit.framework */,
 				7D6E6B4F1F8F19C300EFC667 /* AugmentKitTests.xctest */,
 			);
@@ -322,9 +322,9 @@
 			productReference = 7D6E6B4F1F8F19C300EFC667 /* AugmentKitTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		7D88D7A61F0AFD550009A154 /* AugmentKit2 */ = {
+		7D88D7A61F0AFD550009A154 /* AugmentKit2Demo */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 7D88D7BF1F0AFD560009A154 /* Build configuration list for PBXNativeTarget "AugmentKit2" */;
+			buildConfigurationList = 7D88D7BF1F0AFD560009A154 /* Build configuration list for PBXNativeTarget "AugmentKit2Demo" */;
 			buildPhases = (
 				7D88D7A31F0AFD550009A154 /* Sources */,
 				7D88D7A41F0AFD550009A154 /* Frameworks */,
@@ -336,9 +336,9 @@
 			dependencies = (
 				7DA9936E1F907A9A00595435 /* PBXTargetDependency */,
 			);
-			name = AugmentKit2;
+			name = AugmentKit2Demo;
 			productName = AugmentKit2;
-			productReference = 7D88D7A71F0AFD550009A154 /* AugmentKit2.app */;
+			productReference = 7D88D7A71F0AFD550009A154 /* AugmentKit2Demo.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -377,7 +377,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				7D88D7A61F0AFD550009A154 /* AugmentKit2 */,
+				7D88D7A61F0AFD550009A154 /* AugmentKit2Demo */,
 				7D6E6B461F8F19C300EFC667 /* AugmentKit */,
 				7D6E6B4E1F8F19C300EFC667 /* AugmentKitTests */,
 			);
@@ -742,7 +742,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		7D88D7BF1F0AFD560009A154 /* Build configuration list for PBXNativeTarget "AugmentKit2" */ = {
+		7D88D7BF1F0AFD560009A154 /* Build configuration list for PBXNativeTarget "AugmentKit2Demo" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				7D88D7C01F0AFD560009A154 /* Debug */,

@@ -29,6 +29,7 @@
 
 import Foundation
 import simd
+import CoreLocation
 
 // MARK: - Degree / Radian conversion
 
@@ -59,6 +60,7 @@ public class AKLocationUtility {
     // The distances are calculated at the lattitude/longitude given by atLocation. Technically it is more accurate
     // To find a latitude/longitude midway between the two points in order to do the calculation but the slight
     // sacrifce in precision is worth the increase in calculation speed.
+    /*
     public static func worldDistance(atLocation location: AKWorldLocation, to toLocation: AKWorldLocation) -> AKWorldDistance {
         
         // See: https://en.wikipedia.org/wiki/Geographic_coordinate_system
@@ -76,7 +78,7 @@ public class AKLocationUtility {
         return AKWorldDistance(metersX: x, metersY: Δy, metersZ: z)
         
     }
-    
+    */
     public static func worldLocation(from location: AKWorldLocation, translatedBy: AKWorldDistance) -> AKWorldLocation {
         
         // See: https://en.wikipedia.org/wiki/Geographic_coordinate_system
@@ -96,19 +98,15 @@ public class AKLocationUtility {
     // Uses the latitude, longitude, and elevation of a AKWorldLocation to calculate a transform of a new
     // AKWorldLocation using a reference location. The latitude, longitude, and elevation of the new AKWorldLocation
     // are the same as the provided AKWorldLocation, only the transform is different.
-    public static func updateWorldLocationtransform(of location: AKWorldLocation, usingReferenceLocation referenceLocation: AKWorldLocation) -> AKWorldLocation {
+    public static func updateWorldLocationTransform(of location: AKWorldLocation, usingReferenceLocation referenceLocation: AKWorldLocation) -> AKWorldLocation {
         
-        // See: https://en.wikipedia.org/wiki/Geographic_coordinate_system
-        let latitudeInRadians = referenceLocation.latitude.degreesToRadians()
-        let longideInRadians = referenceLocation.longitude.degreesToRadians()
-        let metersPerDegreeLatitude =  111132.92 - 559.82 * cos(2 * latitudeInRadians) + 1.175 * cos(4 * latitudeInRadians) - 0.0023 * cos(6 * latitudeInRadians)
-        let metersPerDegreeLongitude = 11412.84 * cos(latitudeInRadians) - 93.5 * cos(3 * latitudeInRadians) + 118 * cos(5 * latitudeInRadians)
-        
-        let ΔzRad = location.latitude.degreesToRadians() - latitudeInRadians
-        let ΔxRad = location.longitude.degreesToRadians() - longideInRadians
         let Δy = location.elevation - referenceLocation.elevation
-        let Δz = -1 * (ΔzRad * metersPerDegreeLatitude) // In our coordinate space, positive z is due south
-        let Δx = ΔxRad * metersPerDegreeLongitude
+        
+        let clLocation1 = CLLocation(latitude: referenceLocation.latitude, longitude: referenceLocation.longitude)
+        let ΔzLocation = CLLocation(latitude: location.latitude, longitude: referenceLocation.longitude)
+        let ΔxLocation = CLLocation(latitude: referenceLocation.latitude, longitude: location.longitude)
+        let Δz = clLocation1.distance(from: ΔzLocation)
+        let Δx = clLocation1.distance(from: ΔxLocation)
         
         let transform = referenceLocation.transform.translate(x: Float(Δx), y: Float(Δy), z: Float(Δz))
         
@@ -118,6 +116,7 @@ public class AKLocationUtility {
     
     // Uses the lattitude and longituse of the two AKWorldLocation objects to calculate distance
     // using the Haversine formula.
+    /*
     public static func distanceUsingLatLng(fromLocation location: AKWorldLocation, to toLocation: AKWorldLocation) -> Double {
         
         let φ1 = location.latitude.degreesToRadians()
@@ -132,17 +131,19 @@ public class AKLocationUtility {
         return distance
         
     }
-    
+    */
     // Uses the transform matricies of the two AKWorldLocation objects to calcualte a vector distance
+    /*
     public static func vectorDistance(fromLocation location: AKWorldLocation, to toLocation: AKWorldLocation) -> float3 {
         let Δx = toLocation.transform.columns.3.x - location.transform.columns.3.x
         let Δy = toLocation.transform.columns.3.y - location.transform.columns.3.y
         let Δz = toLocation.transform.columns.3.z - location.transform.columns.3.z
         return float3(Δx, Δy, Δz)
     }
-    
+    */
     // Uses the lattitude and longituse of the two AKWorldLocation objects to calculate distance
     // using Equirectangular approximation. Faster calculation but only good for for short distances.
+    /*
     public static func shortRangeDistanceUsingLatLng(fromLocation location: AKWorldLocation, to toLocation: AKWorldLocation) -> Double {
         
         // Pythagoras’ theorem
@@ -152,8 +153,9 @@ public class AKLocationUtility {
         return distance
         
     }
-    
+    */
     // Returns the number of degrees from due north in the range of 180 to 180
+    /*
     public static func bearing(fromLocation location: AKWorldLocation, to toLocation: AKWorldLocation) -> Double {
         
         let y = sin(toLocation.longitude - location.longitude) * cos(toLocation.latitude)
@@ -162,5 +164,5 @@ public class AKLocationUtility {
         return bearing
         
     }
-    
+    */
 }

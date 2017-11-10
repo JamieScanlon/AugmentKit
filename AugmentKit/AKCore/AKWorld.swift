@@ -190,7 +190,7 @@ public class AKWorld: NSObject {
         
     }
     
-    public func worldLocation(withLatitude latitude: Double, longitude: Double, elevation: Double = 0) -> AKWorldLocation? {
+    public func worldLocation(withLatitude latitude: Double, longitude: Double, elevation: Double?) -> AKWorldLocation? {
         
         guard let configuration = configuration else {
             return nil
@@ -204,8 +204,16 @@ public class AKWorld: NSObject {
             return nil
         }
         
-        let newLocation = AKWorldLocation(transform: matrix_identity_float4x4, latitude: latitude, longitude: longitude, elevation: elevation)
-        return AKLocationUtility.updateWorldLocationtransform(of: newLocation, usingReferenceLocation: referenceLocation)
+        let myElevation: Double = {
+            if let elevation = elevation {
+                return elevation
+            } else {
+                return referenceLocation.elevation
+            }
+        }()
+        
+        let newLocation = AKWorldLocation(transform: matrix_identity_float4x4, latitude: latitude, longitude: longitude, elevation: myElevation)
+        return AKLocationUtility.updateWorldLocationTransform(of: newLocation, usingReferenceLocation: referenceLocation)
         
     }
     

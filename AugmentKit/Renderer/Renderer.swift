@@ -59,9 +59,10 @@ public class Renderer {
     // Debugging
     public var useOldFlow = false
     public var logger: RenderDebugLogger?
-    public var orientation: UIInterfaceOrientation = .landscapeRight {
+    
+    public var orientation: UIInterfaceOrientation = .portrait {
         didSet {
-            // TODO: Refresh?
+            viewportSizeDidChange = true
         }
     }
     
@@ -913,7 +914,22 @@ public class Renderer {
             updateImagePlane(frame: currentFrame)
         }
         
-        currentCameraTransform = currentFrame.camera.transform
+        // From documentation:
+        // This transform creates a local coordinate space for the camera that is constant
+        // with respect to device orientation. In camera space, the x-axis points to the right
+        // when the device is in landscapeRight orientation—that is, the x-axis always points
+        // along the long axis of the device, from the front-facing camera toward the Home button.
+        // The y-axis points upward (with respect to landscapeRight orientation), and the z-axis
+        // points away from the device on the screen side.
+        //
+        // In order to orient the transform relative to word space, we take the camera transform
+        // and the cameras current rotation (given by the eulerAngles) and rotate the transform
+        // in the opposite direction. The result is a transform at the position of the camera
+        // but oriented along the same axes as world space.
+        let rotationX = unsafeBitCast(GLKMatrix4MakeRotation(-currentFrame.camera.eulerAngles.x, 1, 0, 0), to: simd_float4x4.self)
+        let rotationY = unsafeBitCast(GLKMatrix4MakeRotation(-currentFrame.camera.eulerAngles.y, 0, 1, 0), to: simd_float4x4.self)
+        let rotationZ = unsafeBitCast(GLKMatrix4MakeRotation(-currentFrame.camera.eulerAngles.z, 0, 0, 1), to: simd_float4x4.self)
+        currentCameraTransform = currentFrame.camera.transform * rotationX * rotationY * rotationZ
         
     }
     

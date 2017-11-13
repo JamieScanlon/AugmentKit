@@ -12,7 +12,7 @@ Another feature that AugmentKit will provide is integrating more contextual awar
 
 #### Pre-Release
 
-This project is currently on phase 2 (see goals below)
+This project is currently on phase 3 (see goals below)
 
 #### Features
 

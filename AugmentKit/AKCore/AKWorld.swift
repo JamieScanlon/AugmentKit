@@ -92,15 +92,15 @@ public class AKWorld: NSObject {
         }
         
         if configuration.usesLocation {
-            if let currentCameraPose = renderer.currentCameraTransform, let originLocation = referenceWorldLocation {
-                let worldDistance = AKWorldDistance(metersX: Double(currentCameraPose.columns.3.x), metersY: Double(currentCameraPose.columns.3.y), metersZ: Double(currentCameraPose.columns.3.z))
+            if let currentCameraPosition = renderer.currentCameraPositionTransform, let originLocation = referenceWorldLocation {
+                let worldDistance = AKWorldDistance(metersX: Double(currentCameraPosition.columns.3.x), metersY: Double(currentCameraPosition.columns.3.y), metersZ: Double(currentCameraPosition.columns.3.z))
                 return AKLocationUtility.worldLocation(from: originLocation, translatedBy: worldDistance)
             } else {
                 return nil
             }
         } else {
-            if let currentCameraPose = renderer.currentCameraTransform {
-                return AKWorldLocation(transform: currentCameraPose)
+            if let currentCameraPosition = renderer.currentCameraPositionTransform {
+                return AKWorldLocation(transform: currentCameraPosition)
             } else {
                 return nil
             }
@@ -118,18 +118,21 @@ public class AKWorld: NSObject {
         
         if configuration.usesLocation {
             if let reliableLocation = reliableWorldLocations.first {
-                // TODO: reliableLocation provides the correct translation but
+                // reliableLocation provides the correct translation but
                 // it may need to be rotated to face due north
+                let referenceWorldTransform = reliableLocation.transform.rotate(radians: Float(compassOffsetRotation), x: 0, y: 1, z: 0)
+                let referenceLocation = AKWorldLocation(transform: referenceWorldTransform, latitude: reliableLocation.latitude, longitude: reliableLocation.longitude, elevation: reliableLocation.elevation)
                 // The distance to the origin is the opposite of its translation
-                let distanceToOrigin = AKWorldDistance(metersX: Double(-reliableLocation.transform.columns.3.x), metersY: Double(-reliableLocation.transform.columns.3.y), metersZ: Double(-reliableLocation.transform.columns.3.z))
-                return AKLocationUtility.worldLocation(from: reliableLocation, translatedBy: distanceToOrigin)
+                let distanceToOrigin = AKWorldDistance(metersX: Double(-referenceWorldTransform.columns.3.x), metersY: Double(-referenceWorldTransform.columns.3.y), metersZ: Double(-referenceWorldTransform.columns.3.z))
+                return AKLocationUtility.worldLocation(from: referenceLocation, translatedBy: distanceToOrigin)
             } else {
                 return nil
             }
         } else {
-            // TODO: matrix_identity_float4x4 provides the correct translation but
+            // matrix_identity_float4x4 provides the correct translation but
             // it may need to be rotated to face due north
-            return AKWorldLocation(transform: matrix_identity_float4x4)
+            let referenceWorldTransform = matrix_identity_float4x4.rotate(radians: Float(compassOffsetRotation), x: 0, y: 1, z: 0)
+            return AKWorldLocation(transform: referenceWorldTransform)
         }
         
     }
@@ -157,6 +160,7 @@ public class AKWorld: NSObject {
             
             // Start by getting all location updates until we have our first reliable location
             NotificationCenter.default.addObserver(self, selector: #selector(AKWorld.associateLocationWithCameraPosition(notif:)), name: .locationDelegateUpdateLocationNotification, object: nil)
+            NotificationCenter.default.addObserver(self, selector: #selector(AKWorld.associateHeadingWithCameraPosition(notif:)), name: .locationDelegateMoreReliableARHeadingNotification, object: nil)
             WorldLocationManager.shared.startServices()
             
         }
@@ -229,18 +233,28 @@ public class AKWorld: NSObject {
                 didRecieveFirstLocation = false
                 // Start by receiving all location updates until we have our first reliable location
                 NotificationCenter.default.addObserver(self, selector: #selector(AKWorld.associateLocationWithCameraPosition(notif:)), name: .locationDelegateUpdateLocationNotification, object: nil)
+                NotificationCenter.default.addObserver(self, selector: #selector(AKWorld.associateHeadingWithCameraPosition(notif:)), name: .locationDelegateMoreReliableARHeadingNotification, object: nil)
                 WorldLocationManager.shared.startServices()
             } else {
                 WorldLocationManager.shared.stopServices()
                 didRecieveFirstLocation = false
                 NotificationCenter.default.removeObserver(self, name: .locationDelegateUpdateLocationNotification, object: nil)
                 NotificationCenter.default.removeObserver(self, name: .locationDelegateMoreReliableARLocationNotification, object: nil)
+                NotificationCenter.default.removeObserver(self, name: .locationDelegateMoreReliableARHeadingNotification, object: nil)
+                
             }
         }
     }
     fileprivate var anchorAsset: MDLAsset?
     fileprivate var reliableWorldLocations = [AKWorldLocation]()
+    fileprivate var reliableWorldTransformOffsetMatrix: matrix_float4x4 = matrix_identity_float4x4
     fileprivate var didRecieveFirstLocation = false
+    // The Renderer produces camera positions and rotations relative to
+    // a coordinate system where Z is parallel to the ground and Y is normal to the ground but
+    // X may be arbitrary (depending on the initial position of the camera). This offset, if
+    // applied to the currentCameraRotation of the Renderer, fixes the X axis of the
+    // coodinate system to Due east (meaning that Z is due south)
+    fileprivate var compassOffsetRotation: Double = 0
     
     @objc private func associateLocationWithCameraPosition(notif: NSNotification) {
         
@@ -248,11 +262,11 @@ public class AKWorld: NSObject {
             return
         }
         
-        guard let currentCameraPose = renderer.currentCameraTransform else {
+        guard let currentCameraPosition = renderer.currentCameraPositionTransform else {
             return
         }
         
-        let newReliableWorldLocation = AKWorldLocation(transform: currentCameraPose, latitude: location.coordinate.latitude, longitude: location.coordinate.longitude, elevation: location.altitude)
+        let newReliableWorldLocation = AKWorldLocation(transform: currentCameraPosition, latitude: location.coordinate.latitude, longitude: location.coordinate.longitude, elevation: location.altitude)
         if reliableWorldLocations.count > 100 {
             reliableWorldLocations = Array(reliableWorldLocations.dropLast(reliableWorldLocations.count - 100))
         }
@@ -265,6 +279,37 @@ public class AKWorld: NSObject {
             NotificationCenter.default.removeObserver(self, name: .locationDelegateUpdateLocationNotification, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(AKWorld.associateLocationWithCameraPosition(notif:)), name: .locationDelegateMoreReliableARLocationNotification, object: nil)
         }
+        
+        // Update camera heading. associateHeadingWithCameraPosition may not have been called
+        // after the render pipeline had a chance to initialize. Now is a good time to
+        // make sure that compassOffsetRotation has been initalized.
+        if compassOffsetRotation == 0, let mostReliableARHeading = WorldLocationManager.shared.mostReliableARHeading, let currentCameraHeading = renderer.currentCameraHeading {
+            updateCompassOffsetRotation(withHeading: mostReliableARHeading, currentCameraHeading: currentCameraHeading)
+        }
+        
+    }
+    
+    @objc private func associateHeadingWithCameraPosition(notif: NSNotification) {
+        
+        guard let heading = notif.userInfo?["heading"] as? CLHeading else {
+            return
+        }
+        
+        guard let currentCameraHeading = renderer.currentCameraHeading else {
+            return
+        }
+        
+        print("New reliable heading found: \(heading.trueHeading), accuracy: \(heading.headingAccuracy)")
+        
+        updateCompassOffsetRotation(withHeading: heading, currentCameraHeading: currentCameraHeading)
+        
+    }
+    
+    private func updateCompassOffsetRotation(withHeading heading: CLHeading, currentCameraHeading: Double) {
+        
+        let degreesFromNorth = heading.trueHeading.degreesToRadians()
+        let offsetHeading = degreesFromNorth - currentCameraHeading
+        compassOffsetRotation = offsetHeading
         
     }
     

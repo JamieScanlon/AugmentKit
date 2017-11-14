@@ -13,6 +13,7 @@ public extension Notification.Name {
     public static let locationDelegateUpdateLocationNotification = Notification.Name("com.tenthlettermade.notificaiton.LocationDelegateUpdateLocation")
     public static let locationDelegateNearObjectNotification = Notification.Name("com.tenthlettermade.notificaiton.LocationDelegateNearObjectNotification")
     public static let locationDelegateMoreReliableARLocationNotification = Notification.Name("com.tenthlettermade.notificaiton.LocationDelegateMoreReliableARLocation")
+    public static let locationDelegateMoreReliableARHeadingNotification = Notification.Name("com.tenthlettermade.notificaiton.LocationDelegateMoreReliableARHeading")
 }
 
 // MARK: - LocationManager
@@ -23,13 +24,17 @@ public protocol LocationManager {
     var serviceAvailable: Bool { get }
     var serviceStarted: Bool { get }
     var lastLocation: CLLocation? { get }
-    var lastHeading: CLLocationDirection? { get }
-    var headingAccuracy: CLLocationDegrees? { get }
+    var lastHeadingDirection: CLLocationDirection? { get }
     
     // Provides the CLLocation with the highest accuracy. This gets updated
     // With the most recent location if the most recent location has at least
     // as much accuracy as the last reading.
     var mostReliableARLocation: CLLocation? { get }
+    
+    // Provides the CLHeading with the highest accuracy. This gets updated
+    // With the most recent location if the most recent location has at least
+    // as much accuracy as the last reading.
+    var mostReliableARHeading: CLHeading? { get }
     
     // This should return the CLLocationManager.locationServicesEnabled()
     func locationServicesEnabled() -> Bool
@@ -38,9 +43,9 @@ public protocol LocationManager {
     func setServiceAvailable(_ value: Bool)
     func setServiceStarted(_ value: Bool)
     func setLastLocation(_ value: CLLocation)
-    func setLastHeading(_ value: CLLocationDirection)
-    func setHeadingAccuracy(_ value: CLLocationDegrees)
     func setMostReliableARLocation(_ value: CLLocation)
+    func setLastLocationDirection(_ value: CLLocationDirection)
+    func setMostReliableARHeading(_ value: CLHeading)
     
 }
 
@@ -226,20 +231,33 @@ public extension LocationManager {
         
     }
     
-    func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
+    // Call this in the locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) Method
+    func didUpdateHeading(_ newHeading: CLHeading) {
         
-        if newHeading.headingAccuracy >= 0 {
-            setLastHeading(newHeading.trueHeading)
+        let lastHeading: CLLocationDirection = {
+            if newHeading.headingAccuracy >= 0 {
+                return newHeading.trueHeading
+            } else {
+                return newHeading.magneticHeading
+            }
+        }()
+        
+        setLastLocationDirection(lastHeading)
+        
+        if let mostReliableARHeading = mostReliableARHeading {
+            if newHeading.headingAccuracy == mostReliableARHeading.headingAccuracy {
+                if newHeading.timestamp > mostReliableARHeading.timestamp {
+                    setMostReliableARHeading(newHeading)
+                }
+            } else if newHeading.headingAccuracy < mostReliableARHeading.headingAccuracy && newHeading.headingAccuracy > 0 {
+                setMostReliableARHeading(newHeading)
+                NotificationCenter.default.post(Notification(name: .locationDelegateMoreReliableARHeadingNotification, object: self, userInfo: ["heading": newHeading]))
+            }
         } else {
-            setLastHeading(newHeading.magneticHeading)
+            setMostReliableARHeading(newHeading)
+            NotificationCenter.default.post(Notification(name: .locationDelegateMoreReliableARHeadingNotification, object: self, userInfo: ["heading": newHeading]))
         }
         
-        setHeadingAccuracy(newHeading.headingAccuracy)
-        
-    }
-    
-    func locationManagerShouldDisplayHeadingCalibration(_ manager: CLLocationManager) -> Bool {
-        return true
     }
     
     // MARK: Private
@@ -256,27 +274,5 @@ public extension LocationManager {
         
     }
     
-}
-
-// MARK: - Convenience extensions
-
-
-
-public extension CLLocationCoordinate2D {
-//    public func coordinateWithBearing(bearing:Double, distanceMeters:Double) -> CLLocationCoordinate2D {
-//        //The numbers for earth radius may be _off_ here
-//        //but this gives a reasonably accurate result..
-//        //Any correction here is welcome.
-//        let distRadiansLat = distanceMeters.metersToLatitude() // earth radius in meters latitude
-//        let distRadiansLong = distanceMeters.metersToLongitude() // earth radius in meters longitude
-//
-//        let lat1 = self.latitude * Double.pi / 180
-//        let lon1 = self.longitude * Double.pi / 180
-//
-//        let lat2 = asin(sin(lat1) * cos(distRadiansLat) + cos(lat1) * sin(distRadiansLat) * cos(bearing))
-//        let lon2 = lon1 + atan2(sin(bearing) * sin(distRadiansLong) * cos(lat1), cos(distRadiansLong) - sin(lat1) * sin(lat2))
-//
-//        return CLLocationCoordinate2D(latitude: lat2 * 180 / Double.pi, longitude: lon2 * 180 / Double.pi)
-//    }
 }
 

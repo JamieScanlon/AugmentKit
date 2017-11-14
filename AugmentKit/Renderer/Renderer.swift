@@ -102,7 +102,19 @@ public class Renderer {
             reset()
         }
     }
-    public private(set) var currentCameraTransform: matrix_float4x4?
+    
+    // A transform matrix that represents the position of the camera in world space.
+    // There is no rotation component.
+    public private(set) var currentCameraPositionTransform: matrix_float4x4?
+    // A transform matrix that represents the rotation of the camera relative to world space.
+    // There is no postion component.
+    public var currentCameraRotation: matrix_float4x4? {
+        guard let currentCameraQuaternionRotation = currentCameraQuaternionRotation else {
+            return nil
+        }
+        return unsafeBitCast(GLKMatrix4MakeWithQuaternion(currentCameraQuaternionRotation), to: simd_float4x4.self)
+    }
+    public private(set) var currentCameraHeading: Double?
     public private(set) var lowestHorizPlaneAnchor: ARPlaneAnchor?
     
     public init(session: ARSession, metalDevice device: MTLDevice, renderDestination: RenderDestinationProvider, meshProvider: MeshProvider? = nil) {
@@ -308,6 +320,9 @@ public class Renderer {
     
     // number of frames in the anchor animation by anchor index
     private var anchorAnimationFrameCount = [Int]()
+    
+    // A Quaternion that represents the rotation of the camera relative to world space.
+    private var currentCameraQuaternionRotation: GLKQuaternion?
     
     // MARK: ARKit Session Configuration
     
@@ -926,10 +941,13 @@ public class Renderer {
         // and the cameras current rotation (given by the eulerAngles) and rotate the transform
         // in the opposite direction. The result is a transform at the position of the camera
         // but oriented along the same axes as world space.
-        let rotationX = unsafeBitCast(GLKMatrix4MakeRotation(-currentFrame.camera.eulerAngles.x, 1, 0, 0), to: simd_float4x4.self)
-        let rotationY = unsafeBitCast(GLKMatrix4MakeRotation(-currentFrame.camera.eulerAngles.y, 0, 1, 0), to: simd_float4x4.self)
-        let rotationZ = unsafeBitCast(GLKMatrix4MakeRotation(-currentFrame.camera.eulerAngles.z, 0, 0, 1), to: simd_float4x4.self)
-        currentCameraTransform = currentFrame.camera.transform * rotationX * rotationY * rotationZ
+        let cameraQuaternion = QuaternionUtilities.quaternionFromEulerAngles(pitch: currentFrame.camera.eulerAngles.x, roll: currentFrame.camera.eulerAngles.y, yaw: currentFrame.camera.eulerAngles.z)
+        let inverseCameraRotation = GLKQuaternionInvert(cameraQuaternion)
+        
+        let invertedRotationMatrix = unsafeBitCast(GLKMatrix4MakeWithQuaternion(inverseCameraRotation), to: simd_float4x4.self)
+        currentCameraPositionTransform = currentFrame.camera.transform * invertedRotationMatrix
+        currentCameraQuaternionRotation = cameraQuaternion
+        currentCameraHeading = Double(currentFrame.camera.eulerAngles.y)
         
     }
     

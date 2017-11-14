@@ -152,6 +152,9 @@ extension float4x4 {
         return unsafeBitCast(GLKMatrix4MakeLookAt(eyeX, eyeY, eyeZ, centerX, centerY, centerZ, upX, upY, upZ), to: float4x4.self)
     }
     
+    static func makeQuaternion(from: float4x4) -> GLKQuaternion {
+        return GLKQuaternionMakeWithMatrix4(unsafeBitCast(from, to: GLKMatrix4.self))
+    }
     
     func scale(x: Float, y: Float, z: Float) -> float4x4 {
         return self * float4x4.makeScale(x: x, y: y, z: z)
@@ -163,6 +166,32 @@ extension float4x4 {
     
     func translate(x: Float, y: Float, z: Float) -> float4x4 {
         return self * float4x4.makeTranslation(x: x, y: y, z: z)
+    }
+    
+    func quaternion() -> GLKQuaternion {
+        return float4x4.makeQuaternion(from: self)
+    }
+    
+}
+
+class QuaternionUtilities {
+    
+    static func quaternionFromEulerAngles(pitch: Float, roll: Float, yaw: Float) -> GLKQuaternion {
+        
+        let cy = cos(yaw * 0.5)
+        let sy = sin(yaw * 0.5)
+        let cr = cos(roll * 0.5)
+        let sr = sin(roll * 0.5)
+        let cp = cos(pitch * 0.5)
+        let sp = sin(pitch * 0.5)
+        
+        let w = cy * cr * cp + sy * sr * sp
+        let x = cy * sr * cp - sy * cr * sp
+        let y = cy * cr * sp + sy * sr * cp
+        let z = sy * cr * cp - cy * sr * sp
+        
+        return GLKQuaternionMake(x, y, z, w)
+        
     }
     
 }

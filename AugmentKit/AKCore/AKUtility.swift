@@ -101,12 +101,26 @@ public class AKLocationUtility {
     public static func updateWorldLocationTransform(of location: AKWorldLocation, usingReferenceLocation referenceLocation: AKWorldLocation) -> AKWorldLocation {
         
         let Δy = location.elevation - referenceLocation.elevation
+        let latSign: Double = {
+            if location.latitude < referenceLocation.latitude {
+                return 1
+            } else {
+                return -1
+            }
+        }()
+        let lngSign: Double = {
+            if location.longitude < referenceLocation.longitude {
+                return -1
+            } else {
+                return 1
+            }
+        }()
         
         let clLocation1 = CLLocation(latitude: referenceLocation.latitude, longitude: referenceLocation.longitude)
         let ΔzLocation = CLLocation(latitude: location.latitude, longitude: referenceLocation.longitude)
         let ΔxLocation = CLLocation(latitude: referenceLocation.latitude, longitude: location.longitude)
-        let Δz = clLocation1.distance(from: ΔzLocation)
-        let Δx = clLocation1.distance(from: ΔxLocation)
+        let Δz = latSign * clLocation1.distance(from: ΔzLocation)
+        let Δx = lngSign * clLocation1.distance(from: ΔxLocation)
         
         let transform = referenceLocation.transform.translate(x: Float(Δx), y: Float(Δy), z: Float(Δz))
         

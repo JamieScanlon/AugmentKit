@@ -16,7 +16,6 @@ public class WorldLocationManager: NSObject, LocationManager, MotionManager {
     
     public func startServices() {
         startLocationService()
-        //startTrackingCompasDirection()
     }
     
     public func stopServices() {
@@ -43,9 +42,9 @@ public class WorldLocationManager: NSObject, LocationManager, MotionManager {
     public private(set) var serviceAvailable: Bool = false
     public private(set) var serviceStarted: Bool = false
     public private(set) var lastLocation: CLLocation?
-    public private(set) var lastHeading: CLLocationDirection?
-    public private(set) var headingAccuracy: CLLocationDegrees?
     public private(set) var mostReliableARLocation: CLLocation?
+    public private(set) var lastHeadingDirection: CLLocationDirection?
+    public private(set) var mostReliableARHeading: CLHeading?
     
     public func locationServicesEnabled() -> Bool {
         return CLLocationManager.locationServicesEnabled()
@@ -63,15 +62,14 @@ public class WorldLocationManager: NSObject, LocationManager, MotionManager {
     public func setLastLocation(_ value: CLLocation) {
         lastLocation = value
     }
-    public func setLastHeading(_ value: CLLocationDirection) {
-        print(value)
-        lastHeading = value
-    }
-    public func setHeadingAccuracy(_ value: CLLocationDegrees) {
-        headingAccuracy = value
-    }
     public func setMostReliableARLocation(_ value: CLLocation) {
         mostReliableARLocation = value
+    }
+    public func setLastLocationDirection(_ value: CLLocationDirection) {
+        lastHeadingDirection = value
+    }
+    public func setMostReliableARHeading(_ value: CLHeading) {
+        mostReliableARHeading = value
     }
     
     // MARK: - MotionManager Methods
@@ -123,8 +121,12 @@ extension WorldLocationManager: CLLocationManagerDelegate {
         didEnterRegion(region)
     }
     
-   public  func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
+    public  func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
         didChangeAuthorizationStatus(status)
+    }
+    
+    public func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
+        didUpdateHeading(newHeading)
     }
     
 }

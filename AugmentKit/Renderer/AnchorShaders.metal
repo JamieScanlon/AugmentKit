@@ -24,6 +24,9 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 //
+//
+//  Shaders that render anchors in 3D space.
+//
 // References --
 // See: https://developer.apple.com/documentation/metal/advanced_techniques/lod_with_function_specialization#//apple_ref/doc/uid/TP40016233
 // Sample Code: LODwithFunctionSpecialization
@@ -280,6 +283,8 @@ fragment float4 anchorGeometryFragmentLighting(ColorInOut in [[stage_in]],
                                                         ambientOcclusionMap,
                                                         irradianceMap);
     
+    // FIXME: discard_fragment may have performance implications.
+    // see: http://metalbyexample.com/translucency-and-transparency/
     if ( parameters.baseColor.w <= 0.01f ) {
         discard_fragment();
     }

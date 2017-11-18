@@ -24,6 +24,8 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 //
+//  Shaders that render the captured image back plane
+//
 
 #include <metal_stdlib>
 using namespace metal;

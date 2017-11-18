@@ -57,7 +57,6 @@ public enum MeshType {
 public class Renderer {
     
     // Debugging
-    public var useOldFlow = false
     public var logger: RenderDebugLogger?
     
     public var orientation: UIInterfaceOrientation = .portrait {
@@ -135,16 +134,10 @@ public class Renderer {
             return
         }
         
-        if useOldFlow {
-            loadMetal()
-            loadPipeline()
-            loadAssets()
-        } else {
-            loadMetal()
-            loadAssets()
-            loadMeshesFromParser()
-            loadPipeline()
-        }
+        loadMetal()
+        loadAssets()
+        loadMeshesFromParser()
+        loadPipeline()
         
         state = .initialized
         
@@ -164,7 +157,7 @@ public class Renderer {
         }
         
         // Wait to ensure only kMaxBuffersInFlight are getting proccessed by any stage in the Metal
-        //   pipeline (App, Metal, Drivers, GPU, etc)
+        // pipeline (App, Metal, Drivers, GPU, etc)
         let _ = inFlightSemaphore.wait(timeout: DispatchTime.distantFuture)
         
         // Create a new command buffer for each renderpass to the current drawable
@@ -172,13 +165,14 @@ public class Renderer {
             commandBuffer.label = "MyCommand"
             
             // Add completion hander which signal _inFlightSemaphore when Metal and the GPU has fully
-            //   finished proccssing the commands we're encoding this frame.  This indicates when the
-            //   dynamic buffers, that we're writing to this frame, will no longer be needed by Metal
-            //   and the GPU.
+            // finished proccssing the commands we're encoding this frame.  This indicates when the
+            // dynamic buffers, that we're writing to this frame, will no longer be needed by Metal
+            // and the GPU.
+            //
             // Retain our CVMetalTextures for the duration of the rendering cycle. The MTLTextures
-            //   we use from the CVMetalTextures are not valid unless their parent CVMetalTextures
-            //   are retained. Since we may release our CVMetalTexture ivars during the rendering
-            //   cycle, we must retain them separately here.
+            // we use from the CVMetalTextures are not valid unless their parent CVMetalTextures
+            // are retained. Since we may release our CVMetalTexture ivars during the rendering
+            // cycle, we must retain them separately here.
             var textures = [capturedImageTextureY, capturedImageTextureCbCr]
             commandBuffer.addCompletedHandler{ [weak self] commandBuffer in
                 if let strongSelf = self {
@@ -257,8 +251,7 @@ public class Renderer {
     private var imagePlaneVertexBuffer: MTLBuffer!
     private var capturedImagePipelineState: MTLRenderPipelineState!
     private var capturedImageDepthState: MTLDepthStencilState!
-    private var anchorPipelineState: MTLRenderPipelineState! // Old. Single state
-    private var anchorPipelineStates = [MTLRenderPipelineState]() // New store multiple states
+    private var anchorPipelineStates = [MTLRenderPipelineState]() // Store multiple states
     private var anchorDepthState: MTLDepthStencilState!
     private var capturedImageTextureY: CVMetalTexture?
     private var capturedImageTextureCbCr: CVMetalTexture?
@@ -267,22 +260,19 @@ public class Renderer {
     private var capturedImageTextureCache: CVMetalTextureCache!
     
     // Metal vertex descriptor specifying how vertices will by laid out for input into our
-    //   anchor geometry render pipeline and how we'll layout our Model IO verticies
+    // anchor geometry render pipeline and how we'll layout our Model IO verticies
     private var geometryVertexDescriptor: MTLVertexDescriptor!
     
-    // MetalKit mesh containing vertex data and index buffer for our anchor geometry
-    private var anchorMesh: MTKMesh? // OLD
-    private var horizPlaneMesh: MTKMesh? // OLD
-    private var vertPlaneMesh: MTKMesh? // OLD
-    private var anchorMeshGPUData: MeshGPUData? // NEW
-    private var horizPlaneMeshGPUData: MeshGPUData? // NEW
-    private var vertPlaneMeshGPUData: MeshGPUData? // NEW
+    // MetalKit meshes containing vertex data and index buffer for our anchor geometry
+    private var anchorMeshGPUData: MeshGPUData?
+    private var horizPlaneMeshGPUData: MeshGPUData?
+    private var vertPlaneMeshGPUData: MeshGPUData?
     private var horizPlaneInstanceCount: Int = 0
     private var vertPlaneInstanceCount: Int = 0
     private var totalMeshTransforms = 1
     
     // Used to determine _uniformBufferStride each frame.
-    //   This is the current frame number modulo kMaxBuffersInFlight
+    // This is the current frame number modulo kMaxBuffersInFlight
     private var uniformBufferIndex: Int = 0
     
     // Offset within _sharedUniformBuffer to set for the current frame
@@ -328,16 +318,15 @@ public class Renderer {
     
     private func createNewConfiguration() -> ARWorldTrackingConfiguration {
         let configuration = ARWorldTrackingConfiguration()
-        // Setting this to gravityAndHeading aligns the the origin of the scene to compas
+        // Setting this to .gravityAndHeading aligns the the origin of the scene to compass
         // direction but it also tend to make the scene jumpy.
-//        configuration.worldAlignment = .gravityAndHeading
-        // TODO: Experiment with using gravity only and using CoreLocation to determine
-        // The origins relation to compas direction. That way we have control over when
-        // it needs to be adjusted so that the experience does not seem jumpy.
+        // AKWorld and WorkLocationManager has the ability take heading into account when
+        // creating anchors which means that we can just use the .gravity alignment
         configuration.worldAlignment = .gravity
-        if showGuides {
-            configuration.planeDetection = .horizontal
-        }
+        
+        // Enable horizontal plane detection
+        configuration.planeDetection = .horizontal
+        
         return configuration
     }
     
@@ -355,17 +344,17 @@ public class Renderer {
         renderDestination.sampleCount = 1
         
         // Calculate our uniform buffer sizes. We allocate Constants.maxBuffersInFlight instances for uniform
-        //   storage in a single buffer. This allows us to update uniforms in a ring (i.e. triple
-        //   buffer the uniforms) so that the GPU reads from one slot in the ring wil the CPU writes
-        //   to another. Anchor uniforms should be specified with a max instance count for instancing.
-        //   Also uniform storage must be aligned (to 256 bytes) to meet the requirements to be an
-        //   argument in the constant address space of our shading functions.
+        // storage in a single buffer. This allows us to update uniforms in a ring (i.e. triple
+        // buffer the uniforms) so that the GPU reads from one slot in the ring wil the CPU writes
+        // to another. Anchor uniforms should be specified with a max instance count for instancing.
+        // Also uniform storage must be aligned (to 256 bytes) to meet the requirements to be an
+        // argument in the constant address space of our shading functions.
         let sharedUniformBufferSize = Constants.alignedSharedUniformsSize * Constants.maxBuffersInFlight
         let anchorUniformBufferSize = Constants.alignedAnchorInstanceUniformsSize * Constants.maxBuffersInFlight
         let materialUniformBufferSize = Constants.alignedMaterialSize * Constants.maxBuffersInFlight
         
         // Create and allocate our uniform buffer objects. Indicate shared storage so that both the
-        //   CPU can access the buffer
+        // CPU can access the buffer
         sharedUniformBuffer = device.makeBuffer(length: sharedUniformBufferSize, options: .storageModeShared)
         sharedUniformBuffer.label = "SharedUniformBuffer"
         
@@ -457,9 +446,9 @@ public class Renderer {
         //
         
         // Create a vertex descriptor for our Metal pipeline. Specifies the layout of vertices the
-        //   pipeline should expect. The layout below keeps attributes used to calculate vertex shader
-        //   output position separate (world position, skinning, tweening weights) separate from other
-        //   attributes (texture coordinates, normals).  This generally maximizes pipeline efficiency
+        // pipeline should expect. The layout below keeps attributes used to calculate vertex shader
+        // output position separate (world position, skinning, tweening weights) separate from other
+        // attributes (texture coordinates, normals).  This generally maximizes pipeline efficiency
         
         geometryVertexDescriptor = MTLVertexDescriptor()
         
@@ -493,92 +482,45 @@ public class Renderer {
     }
     
     private func loadPipeline() {
+            
+        guard let modelParser = anchorModelParser else {
+            print("Model Perser is nil.")
+            fatalError()
+        }
         
-        if useOldFlow {
-            
-            // Old.
-            
-            let funcConstants = MetalUtilities.getFuncConstantsForDrawDataSet(meshData: nil, useMaterials: false)
-            let anchorGeometryVertexFunction: MTLFunction = {
-                do {
-                    return try defaultLibrary.makeFunction(name: "anchorGeometryVertexTransform", constantValues: funcConstants)
-                } catch let error {
-                    print("Failed to create anchor vertex and fragment functions, error \(error)")
-                    fatalError()
-                }
-            }()
-            let anchorGeometryFragmentFunction: MTLFunction = {
-                do {
-                    if useOldFlow {
-                        return try defaultLibrary.makeFunction(name: "anchorGeometryFragmentLightingSimple", constantValues: funcConstants)
-                    } else {
-                        return try defaultLibrary.makeFunction(name: "anchorGeometryFragmentLighting", constantValues: funcConstants)
-                    }
-                } catch let error {
-                    print("Failed to create anchor vertex and fragment functions, error \(error)")
-                    fatalError()
-                }
-            }()
-            
-            // Create a reusable pipeline state for rendering anchor geometry
+        guard let meshGPUData = anchorMeshGPUData else {
+            print("ERROR: No meshGPUData found when trying to load the pipeline.")
+            fatalError()
+        }
+        
+        let anchorVertexDescriptor = createMetalVertexDescriptor(withModelIOVertexDescriptor: modelParser.vertexDescriptors)
+        
+        for (drawIdx, drawData) in meshGPUData.drawData.enumerated() {
             let anchorPipelineStateDescriptor = MTLRenderPipelineDescriptor()
-            anchorPipelineStateDescriptor.label = "MyAnchorPipeline"
-            anchorPipelineStateDescriptor.sampleCount = renderDestination.sampleCount
-            anchorPipelineStateDescriptor.vertexFunction = anchorGeometryVertexFunction
-            anchorPipelineStateDescriptor.fragmentFunction = anchorGeometryFragmentFunction
-            anchorPipelineStateDescriptor.vertexDescriptor = geometryVertexDescriptor
-            anchorPipelineStateDescriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
-            anchorPipelineStateDescriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-            anchorPipelineStateDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
+            do {
+                let funcConstants = MetalUtilities.getFuncConstantsForDrawDataSet(meshData: modelParser.meshes[drawIdx], useMaterials: usesMaterials)
+                // TODO: Implement a vertex shader with puppet animation support
+//                let vertexName = (drawData.paletteStartIndex != nil) ? "vertex_skinned" : "anchorGeometryVertexTransform"
+                let vertexName = "anchorGeometryVertexTransform"
+                let fragFunc = try defaultLibrary.makeFunction(name: "anchorGeometryFragmentLighting",
+                                                               constantValues: funcConstants)
+                let vertFunc = try defaultLibrary.makeFunction(name: vertexName,
+                                                               constantValues: funcConstants)
+                anchorPipelineStateDescriptor.vertexDescriptor = anchorVertexDescriptor
+                anchorPipelineStateDescriptor.vertexFunction = vertFunc
+                anchorPipelineStateDescriptor.fragmentFunction = fragFunc
+                anchorPipelineStateDescriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
+                anchorPipelineStateDescriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
+                anchorPipelineStateDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
+                anchorPipelineStateDescriptor.sampleCount = renderDestination.sampleCount
+            } catch let error {
+                print("Failed to create pipeline state descriptor, error \(error)")
+            }
             
             do {
-                try anchorPipelineState = device.makeRenderPipelineState(descriptor: anchorPipelineStateDescriptor)
+                try anchorPipelineStates.append(device.makeRenderPipelineState(descriptor: anchorPipelineStateDescriptor))
             } catch let error {
-                print("Failed to created anchor geometry pipeline state, error \(error)")
-            }
-        } else {
-            
-            // NEW
-            
-            guard let modelParser = anchorModelParser else {
-                print("Model Perser is nil.")
-                fatalError()
-            }
-            
-            guard let meshGPUData = anchorMeshGPUData else {
-                print("ERROR: No meshGPUData found when trying to load the pipeline.")
-                fatalError()
-            }
-            
-            let anchorVertexDescriptor = createMetalVertexDescriptor(withModelIOVertexDescriptor: modelParser.vertexDescriptors)
-            
-            for (drawIdx, drawData) in meshGPUData.drawData.enumerated() {
-                let anchorPipelineStateDescriptor = MTLRenderPipelineDescriptor()
-                do {
-                    let funcConstants = MetalUtilities.getFuncConstantsForDrawDataSet(meshData: modelParser.meshes[drawIdx], useMaterials: usesMaterials)
-                    // TODO: Implement a vertex shader with puppet animation support
-                    //let vertexName = (drawData.paletteStartIndex != nil) ? "vertex_skinned" : "anchorGeometryVertexTransform"
-                    let vertexName = "anchorGeometryVertexTransform"
-                    let fragFunc = try defaultLibrary.makeFunction(name: "anchorGeometryFragmentLighting",
-                                                                   constantValues: funcConstants)
-                    let vertFunc = try defaultLibrary.makeFunction(name: vertexName,
-                                                                   constantValues: funcConstants)
-                    anchorPipelineStateDescriptor.vertexDescriptor = anchorVertexDescriptor
-                    anchorPipelineStateDescriptor.vertexFunction = vertFunc
-                    anchorPipelineStateDescriptor.fragmentFunction = fragFunc
-                    anchorPipelineStateDescriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
-                    anchorPipelineStateDescriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-                    anchorPipelineStateDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-                    anchorPipelineStateDescriptor.sampleCount = renderDestination.sampleCount
-                } catch let error {
-                    print("Failed to create pipeline state descriptor, error \(error)")
-                }
-                
-                do {
-                    try anchorPipelineStates.append(device.makeRenderPipelineState(descriptor: anchorPipelineStateDescriptor))
-                } catch let error {
-                    print("Failed to create pipeline state, error \(error)")
-                }
+                print("Failed to create pipeline state, error \(error)")
             }
         }
         
@@ -604,14 +546,14 @@ public class Renderer {
         // Create and load our assets into Metal objects including meshes and textures
         //
         
-        meshProvider.loadMesh(forType: .anchor) { [weak self] asset in
+        meshProvider.loadMesh(forType: .anchor) { asset in
             
             guard let asset = asset else {
                 fatalError("Failed to get asset from meshProvider.")
             }
             
             // Creata a Model IO vertexDescriptor so that we format/layout our model IO mesh vertices to
-            //   fit our Metal render pipeline's vertex descriptor layout
+            // fit our Metal render pipeline's vertex descriptor layout
             let vertexDescriptor = MTKModelIOVertexDescriptorFromMetal(geometryVertexDescriptor)
             
             // Indicate how each Metal vertex descriptor attribute maps to each ModelIO attribute
@@ -619,35 +561,17 @@ public class Renderer {
             (vertexDescriptor.attributes[Int(kVertexAttributeTexcoord.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributeTextureCoordinate
             (vertexDescriptor.attributes[Int(kVertexAttributeNormal.rawValue)] as! MDLVertexAttribute).name   = MDLVertexAttributeNormal
             
-            if useOldFlow {
-                
-                guard let mesh = asset.object(at: 0).children[0].children[0] as? MDLMesh else {
-                    fatalError("Failed to get mesh from asset.")
-                }
-                
-                // Perform the format/relayout of mesh vertices by setting the new vertex descriptor in our
-                //   Model IO mesh
-                mesh.vertexDescriptor = vertexDescriptor
-                
-                // Create a MetalKit mesh (and submeshes) backed by Metal buffers
-                do {
-                    try self?.anchorMesh = MTKMesh(mesh: mesh, device: device)
-                } catch let error {
-                    print("Error creating MetalKit mesh from MDLMesh, error \(error)")
-                }
-            } else {
-                // Load meshes into mode parser
-                anchorModelParser = ModelParser(asset: asset, vertexDescriptor: vertexDescriptor)
-            }
+            // Load meshes into mode parser
+            anchorModelParser = ModelParser(asset: asset, vertexDescriptor: vertexDescriptor)
             
             // TODO: Figure out a way to load a new mesh per anchor.
             
         }
         
-        meshProvider.loadMesh(forType: .horizPlane) { [weak self] asset in
+        meshProvider.loadMesh(forType: .horizPlane) { asset in
             
             // Creata a Model IO vertexDescriptor so that we format/layout our model IO mesh vertices to
-            //   fit our Metal render pipeline's vertex descriptor layout
+            // fit our Metal render pipeline's vertex descriptor layout
             let vertexDescriptor = MTKModelIOVertexDescriptorFromMetal(geometryVertexDescriptor)
             
             // Indicate how each Metal vertex descriptor attribute maps to each ModelIO attribute
@@ -655,74 +579,38 @@ public class Renderer {
             (vertexDescriptor.attributes[Int(kVertexAttributeTexcoord.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributeTextureCoordinate
             (vertexDescriptor.attributes[Int(kVertexAttributeNormal.rawValue)] as! MDLVertexAttribute).name   = MDLVertexAttributeNormal
             
-            if useOldFlow {
-                
-                let myMesh: MDLMesh = {
-                    if let asset = asset, let mesh = asset.object(at: 0).children[0].children[0] as? MDLMesh {
-                        return mesh
-                    } else {
-                        
-                        // Create a MetalKit mesh buffer allocator so that ModelIO will load mesh data directly into
-                        //   Metal buffers accessible by the GPU
-                        let metalAllocator = MTKMeshBufferAllocator(device: device)
-                        
-                        // Use ModelIO to create a box mesh as our object
-                        let mesh = MDLMesh(planeWithExtent: vector3(1, 0, 1), segments: vector2(1, 1), geometryType: .triangles, allocator: metalAllocator)
-                        if let submesh = mesh.submeshes?.firstObject as? MDLSubmesh {
-                            let scatteringFunction = MDLScatteringFunction()
-                            submesh.material = MDLMaterial(name: "plane_grid", scatteringFunction: scatteringFunction)
-                        }
-                        return mesh
-                    }
-                }()
-                
-                // Perform the format/relayout of mesh vertices by setting the new vertex descriptor in our
-                //   Model IO mesh
-                myMesh.vertexDescriptor = vertexDescriptor
-                
-                // Create a MetalKit mesh (and submeshes) backed by Metal buffers
-                do {
-                    try self?.horizPlaneMesh = MTKMesh(mesh: myMesh, device: device)
-                } catch let error {
-                    print("Error creating MetalKit mesh from MDLMesh, error \(error)")
-                }
-                
+            if let asset = asset {
+                horizPlaneModelParser = ModelParser(asset: asset, vertexDescriptor: vertexDescriptor)
             } else {
+            
+                // Create a MetalKit mesh buffer allocator so that ModelIO will load mesh data directly into
+                // Metal buffers accessible by the GPU
+                let metalAllocator = MTKMeshBufferAllocator(device: device)
                 
-                if let asset = asset {
-                    horizPlaneModelParser = ModelParser(asset: asset, vertexDescriptor: vertexDescriptor)
-                } else {
-                
-                    // Create a MetalKit mesh buffer allocator so that ModelIO will load mesh data directly into
-                    //   Metal buffers accessible by the GPU
-                    let metalAllocator = MTKMeshBufferAllocator(device: device)
-                    
-                    let mesh = MDLMesh(planeWithExtent: vector3(1, 0, 1), segments: vector2(1, 1), geometryType: .triangles, allocator: metalAllocator)
-                    if let submesh = mesh.submeshes?.firstObject as? MDLSubmesh {
-                        let scatteringFunction = MDLPhysicallyPlausibleScatteringFunction()
-                        scatteringFunction.baseColor.textureSamplerValue = MDLTextureSampler()
-                        scatteringFunction.baseColor.textureSamplerValue?.texture = MDLTexture(named: "plane_grid.png")
-                        submesh.material = MDLMaterial(name: "Grid", scatteringFunction: scatteringFunction)
+                let mesh = MDLMesh(planeWithExtent: vector3(1, 0, 1), segments: vector2(1, 1), geometryType: .triangles, allocator: metalAllocator)
+                if let submesh = mesh.submeshes?.firstObject as? MDLSubmesh {
+                    let scatteringFunction = MDLPhysicallyPlausibleScatteringFunction()
+                    scatteringFunction.baseColor.textureSamplerValue = MDLTextureSampler()
+                    scatteringFunction.baseColor.textureSamplerValue?.texture = MDLTexture(named: "plane_grid.png")
+                    submesh.material = MDLMaterial(name: "Grid", scatteringFunction: scatteringFunction)
 //                        let gridAssetURL = Bundle.main.url(forResource: "plane_grid", withExtension: ".png")
-                    }
-                    let asset = MDLAsset(bufferAllocator: metalAllocator)
-                    asset.add(mesh)
-                    horizPlaneModelParser = ModelParser(asset: asset, vertexDescriptor: vertexDescriptor)
-                    
                 }
+                let asset = MDLAsset(bufferAllocator: metalAllocator)
+                asset.add(mesh)
+                horizPlaneModelParser = ModelParser(asset: asset, vertexDescriptor: vertexDescriptor)
                 
             }
             
         }
         
-        meshProvider.loadMesh(forType: .vertPlane) { [weak self] asset in
+        meshProvider.loadMesh(forType: .vertPlane) { asset in
             
             guard let asset = asset else {
                 return
             }
             
             // Creata a Model IO vertexDescriptor so that we format/layout our model IO mesh vertices to
-            //   fit our Metal render pipeline's vertex descriptor layout
+            // fit our Metal render pipeline's vertex descriptor layout
             let vertexDescriptor = MTKModelIOVertexDescriptorFromMetal(geometryVertexDescriptor)
             
             // Indicate how each Metal vertex descriptor attribute maps to each ModelIO attribute
@@ -730,26 +618,8 @@ public class Renderer {
             (vertexDescriptor.attributes[Int(kVertexAttributeTexcoord.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributeTextureCoordinate
             (vertexDescriptor.attributes[Int(kVertexAttributeNormal.rawValue)] as! MDLVertexAttribute).name   = MDLVertexAttributeNormal
             
-            if useOldFlow {
-                
-                guard let mesh = asset.object(at: 0).children[0].children[0] as? MDLMesh else {
-                    fatalError("Failed to get mesh from asset.")
-                }
-                
-                // Perform the format/relayout of mesh vertices by setting the new vertex descriptor in our
-                //   Model IO mesh
-                mesh.vertexDescriptor = vertexDescriptor
-                
-                // Create a MetalKit mesh (and submeshes) backed by Metal buffers
-                do {
-                    try self?.vertPlaneMesh = MTKMesh(mesh: mesh, device: device)
-                } catch let error {
-                    print("Error creating MetalKit mesh from MDLMesh, error \(error)")
-                }
-            } else {
-                // Load meshes into mode parser
-                vertPlaneModelParser = ModelParser(asset: asset, vertexDescriptor: vertexDescriptor)
-            }
+            // Load meshes into mode parser
+            vertPlaneModelParser = ModelParser(asset: asset, vertexDescriptor: vertexDescriptor)
             
         }
         
@@ -978,8 +848,6 @@ public class Renderer {
         let directionalLightColor: vector_float3 = vector3(0.6, 0.6, 0.6)
         uniforms.pointee.directionalLightColor = directionalLightColor * ambientIntensity
         
-        //uniforms.pointee.materialShininess = 30
-        
     }
     
     private func updateAnchors(frame: ARFrame) {
@@ -1018,8 +886,7 @@ public class Renderer {
             var coordinateSpaceTransform = matrix_identity_float4x4
             coordinateSpaceTransform.columns.2.z = -1.0
             
-            // NEW.
-            if let modelParser = anchorModelParser, !useOldFlow, !(anchor is ARPlaneAnchor) {
+            if let modelParser = anchorModelParser, !(anchor is ARPlaneAnchor) {
                 
                 // Apply the world transform (as defined in the imported model) if applicable
                 let anchorIndex = index - horizPlaneInstanceCount - vertPlaneInstanceCount
@@ -1127,62 +994,29 @@ public class Renderer {
         // Set render command encoder state
         renderEncoder.setCullMode(.back)
         
-        if useOldFlow {
+        guard let meshGPUData = anchorMeshGPUData else {
+            print("Error: meshGPUData not available a draw time. Aborting")
+            return
+        }
+        
+        for (drawDataIdx, drawData) in meshGPUData.drawData.enumerated() {
             
-            // OLD
-            
-            guard let anchorMesh = anchorMesh else {
-                return
-            }
-            
-            renderEncoder.setRenderPipelineState(anchorPipelineState)
-            renderEncoder.setDepthStencilState(anchorDepthState)
-            
-            // Set any buffers fed into our render pipeline
-            renderEncoder.setVertexBuffer(anchorUniformBuffer, offset: anchorUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
-            
-            // Set mesh's vertex buffers
-            for bufferIndex in 0..<anchorMesh.vertexBuffers.count {
-                let vertexBuffer = anchorMesh.vertexBuffers[bufferIndex]
-                renderEncoder.setVertexBuffer(vertexBuffer.buffer, offset: vertexBuffer.offset, index:bufferIndex)
-            }
-            
-            // Draw each submesh of our mesh
-            for submesh in anchorMesh.submeshes {
-                renderEncoder.drawIndexedPrimitives(type: submesh.primitiveType, indexCount: submesh.indexCount, indexType: submesh.indexType, indexBuffer: submesh.indexBuffer.buffer, indexBufferOffset: submesh.indexBuffer.offset, instanceCount: anchorInstanceCount + horizPlaneInstanceCount + vertPlaneInstanceCount)
-            }
- 
-        } else {
-            
-            // NEW.
-            
-            guard let meshGPUData = anchorMeshGPUData else {
-                print("Error: meshGPUData not available a draw time. Aborting")
-                return
-            }
-            
-            for (drawDataIdx, drawData) in meshGPUData.drawData.enumerated() {
+            if drawDataIdx < anchorPipelineStates.count {
+                renderEncoder.setRenderPipelineState(anchorPipelineStates[drawDataIdx])
+                renderEncoder.setDepthStencilState(anchorDepthState)
                 
-                if drawDataIdx < anchorPipelineStates.count {
-                    renderEncoder.setRenderPipelineState(anchorPipelineStates[drawDataIdx])
-                    renderEncoder.setDepthStencilState(anchorDepthState)
-                    
-                    // Set any buffers fed into our render pipeline
-                    renderEncoder.setVertexBuffer(anchorUniformBuffer, offset: anchorUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
-                    
-                    var mutableDrawData = drawData
-                    mutableDrawData.instCount = anchorInstanceCount
-                    
-                    // Set the mesh's vertex data buffers
-                    encode(meshGPUData: meshGPUData, fromDrawData: mutableDrawData, with: renderEncoder)
-                    
-                }
+                // Set any buffers fed into our render pipeline
+                renderEncoder.setVertexBuffer(anchorUniformBuffer, offset: anchorUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
+                
+                var mutableDrawData = drawData
+                mutableDrawData.instCount = anchorInstanceCount
+                
+                // Set the mesh's vertex data buffers
+                encode(meshGPUData: meshGPUData, fromDrawData: mutableDrawData, with: renderEncoder)
                 
             }
             
         }
-        
-        // Common
         
         renderEncoder.popDebugGroup()
         
@@ -1206,60 +1040,27 @@ public class Renderer {
         // Set render command encoder state
         renderEncoder.setCullMode(.back)
         
-        if useOldFlow {
-            
-            // OLD
+        guard let meshGPUData = horizPlaneMeshGPUData else {
+            print("Error: meshGPUData not available a draw time. Aborting")
+            return
+        }
         
-            guard let horizPlaneMesh = horizPlaneMesh else {
-                return
-            }
+        for (drawDataIdx, drawData) in meshGPUData.drawData.enumerated() {
             
-            renderEncoder.setRenderPipelineState(anchorPipelineState)
-            renderEncoder.setDepthStencilState(anchorDepthState)
-            
-            // Set any buffers fed into our render pipeline
-            renderEncoder.setVertexBuffer(anchorUniformBuffer, offset: anchorUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
-            renderEncoder.setVertexBuffer(sharedUniformBuffer, offset: sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
-            renderEncoder.setFragmentBuffer(sharedUniformBuffer, offset: sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
-            
-            // Set mesh's vertex buffers
-            for bufferIndex in 0..<horizPlaneMesh.vertexBuffers.count {
-                let vertexBuffer = horizPlaneMesh.vertexBuffers[bufferIndex]
-                renderEncoder.setVertexBuffer(vertexBuffer.buffer, offset: vertexBuffer.offset, index:bufferIndex)
-            }
-            
-            // Draw each submesh of our mesh
-            for submesh in horizPlaneMesh.submeshes {
-                renderEncoder.drawIndexedPrimitives(type: submesh.primitiveType, indexCount: submesh.indexCount, indexType: submesh.indexType, indexBuffer: submesh.indexBuffer.buffer, indexBufferOffset: submesh.indexBuffer.offset, instanceCount: horizPlaneInstanceCount)
-            }
-            
-        } else {
-            
-            // NEW.
-            
-            guard let meshGPUData = horizPlaneMeshGPUData else {
-                print("Error: meshGPUData not available a draw time. Aborting")
-                return
-            }
-            
-            for (drawDataIdx, drawData) in meshGPUData.drawData.enumerated() {
+            if drawDataIdx < anchorPipelineStates.count {
+                renderEncoder.setRenderPipelineState(anchorPipelineStates[drawDataIdx])
+                renderEncoder.setDepthStencilState(anchorDepthState)
                 
-                if drawDataIdx < anchorPipelineStates.count {
-                    renderEncoder.setRenderPipelineState(anchorPipelineStates[drawDataIdx])
-                    renderEncoder.setDepthStencilState(anchorDepthState)
-                    
-                    // Set any buffers fed into our render pipeline
-                    renderEncoder.setVertexBuffer(anchorUniformBuffer, offset: anchorUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
-                    renderEncoder.setVertexBuffer(sharedUniformBuffer, offset: sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
-                    renderEncoder.setFragmentBuffer(sharedUniformBuffer, offset: sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
-                    
-                    var mutableDrawData = drawData
-                    mutableDrawData.instCount = horizPlaneInstanceCount + vertPlaneInstanceCount
-                    
-                    // Set the mesh's vertex data buffers
-                    encode(meshGPUData: meshGPUData, fromDrawData: mutableDrawData, with: renderEncoder)
-                    
-                }
+                // Set any buffers fed into our render pipeline
+                renderEncoder.setVertexBuffer(anchorUniformBuffer, offset: anchorUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
+                renderEncoder.setVertexBuffer(sharedUniformBuffer, offset: sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
+                renderEncoder.setFragmentBuffer(sharedUniformBuffer, offset: sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
+                
+                var mutableDrawData = drawData
+                mutableDrawData.instCount = horizPlaneInstanceCount + vertPlaneInstanceCount
+                
+                // Set the mesh's vertex data buffers
+                encode(meshGPUData: meshGPUData, fromDrawData: mutableDrawData, with: renderEncoder)
                 
             }
             
@@ -1284,26 +1085,28 @@ public class Renderer {
             let submeshData = drawData.subData[drawDataSubIndex]
             
             // Sets the weight of values sampled from a texture vs value from a material uniform
-            //   for a transition between quality levels
-            //submeshData.computeTextureWeights(for: currentQualityLevel, with: globalMapWeight)
+            // for a transition between quality levels
+//            submeshData.computeTextureWeights(for: currentQualityLevel, with: globalMapWeight)
             
             let idxCount = Int(submeshData.idxCount)
             let idxType = submeshData.idxType
             let ibOffset = drawData.ibStartIdx
             let indexBuffer = meshGPUData.indexBuffers[ibOffset + drawDataSubIndex]
             var materialUniforms = submeshData.materialUniforms
-            let materialBuffer = submeshData.materialBuffer
             
             // Set textures based off material flags
             encodeTextures(with: meshGPUData, renderEncoder: renderEncoder, subData: submeshData)
             
             // Set Material
             // FIXME: Using a buffer is not working. I think the buffer is set up wrong.
-            //if let materialBuffer = materialBuffer {
-            //    renderEncoder.setFragmentBuffer(materialBuffer, offset: materialUniformBufferOffset, index: Int(kBufferIndexMaterialUniforms.rawValue))
-            //} else {
-                renderEncoder.setFragmentBytes(&materialUniforms, length: Constants.alignedMaterialSize, index: Int(kBufferIndexMaterialUniforms.rawValue))
-            //}
+//            let materialBuffer = submeshData.materialBuffer
+//            if let materialBuffer = materialBuffer {
+//                renderEncoder.setFragmentBuffer(materialBuffer, offset: materialUniformBufferOffset, index: Int(kBufferIndexMaterialUniforms.rawValue))
+//            } else {
+//                renderEncoder.setFragmentBytes(&materialUniforms, length: Constants.alignedMaterialSize, index: Int(kBufferIndexMaterialUniforms.rawValue))
+//            }
+            
+            renderEncoder.setFragmentBytes(&materialUniforms, length: Constants.alignedMaterialSize, index: Int(kBufferIndexMaterialUniforms.rawValue))
             
             renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: idxCount, indexType: idxType,
                                                 indexBuffer: indexBuffer, indexBufferOffset: 0,

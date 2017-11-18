@@ -53,18 +53,6 @@ constant float PI = 3.1415926535897932384626433832795;
 
 // MARK: - Structs
 
-// MARK: Image Capture Vertex In
-struct ImageVertex {
-    float2 position [[attribute(kVertexAttributePosition)]];
-    float2 texCoord [[attribute(kVertexAttributeTexcoord)]];
-};
-
-// MARK: Image Capture Vertex Out / Fragment In
-struct ImageColorInOut {
-    float4 position [[position]];
-    float2 texCoord;
-};
-
 // MARK: Ancors Vertex In
 // Per-vertex inputs fed by vertex buffer laid out with MTLVertexDescriptor in Metal API
 struct Vertex {
@@ -229,44 +217,6 @@ LightingParameters calculateParameters(ColorInOut in,
     
 }
 
-// MARK: - Frame Capure Shaders
-
-// MARK: Captured image vertex function
-vertex ImageColorInOut capturedImageVertexTransform(ImageVertex in [[stage_in]]) {
-    ImageColorInOut out;
-    
-    // Pass through the image vertex's position
-    out.position = float4(in.position, 0.0, 1.0);
-    
-    // Pass through the texture coordinate
-    out.texCoord = in.texCoord;
-    
-    return out;
-}
-
-// MARK: Captured image fragment function
-fragment float4 capturedImageFragmentShader(ImageColorInOut in [[stage_in]],
-                                            texture2d<float, access::sample> capturedImageTextureY [[ texture(kTextureIndexY) ]],
-                                            texture2d<float, access::sample> capturedImageTextureCbCr [[ texture(kTextureIndexCbCr) ]]) {
-    
-    constexpr sampler colorSampler(mip_filter::linear,
-                                   mag_filter::linear,
-                                   min_filter::linear);
-    
-    const float4x4 ycbcrToRGBTransform = float4x4(
-        float4(+1.0000f, +1.0000f, +1.0000f, +0.0000f),
-        float4(+0.0000f, -0.3441f, +1.7720f, +0.0000f),
-        float4(+1.4020f, -0.7141f, +0.0000f, +0.0000f),
-        float4(-0.7010f, +0.5291f, -0.8860f, +1.0000f)
-    );
-    
-    // Sample Y and CbCr textures to get the YCbCr color at the given texture coordinate
-    float4 ycbcr = float4(capturedImageTextureY.sample(colorSampler, in.texCoord).r, capturedImageTextureCbCr.sample(colorSampler, in.texCoord).rg, 1.0);
-    
-    // Return converted RGB color
-    return ycbcrToRGBTransform * ycbcr;
-}
-
 // MARK: - Anchor Shaders
 
 // MARK: Anchor geometry vertex function
@@ -353,58 +303,5 @@ fragment float4 anchorGeometryFragmentLighting(ColorInOut in [[stage_in]],
     
     return final_color;
     
-}
-
-// MARK: Simple anchor geometry fragment function (no material support)
-
-fragment float4 anchorGeometryFragmentLightingSimple(ColorInOut in [[stage_in]],
-                                               constant SharedUniforms &uniforms [[ buffer(kBufferIndexSharedUniforms) ]]) {
-    
-    float3 normal = float3(in.normal);
-    
-    // Calculate the contribution of the directional light as a sum of diffuse and specular terms
-    float3 directionalContribution = float3(0);
-    {
-        // Light falls off based on how closely aligned the surface normal is to the light direction
-        float nDotL = saturate(dot(normal, -uniforms.directionalLightDirection));
-        
-        // The diffuse term is then the product of the light color, the surface material
-        // reflectance, and the falloff
-        float3 diffuseTerm = uniforms.directionalLightColor * nDotL;
-        
-        // Apply specular lighting...
-        
-        // 1) Calculate the halfway vector between the light direction and the direction they eye is looking
-        float3 halfwayVector = normalize(-uniforms.directionalLightDirection - float3(in.eyePosition));
-        
-        // 2) Calculate the reflection angle between our reflection vector and the eye's direction
-        float reflectionAngle = saturate(dot(normal, halfwayVector));
-        
-        // 3) Calculate the specular intensity by multiplying our reflection angle with our object's
-        //    shininess
-        float specularIntensity = saturate(powr(reflectionAngle, 30));
-        
-        // 4) Obtain the specular term by multiplying the intensity by our light's color
-        float3 specularTerm = uniforms.directionalLightColor * specularIntensity;
-        
-        // Calculate total contribution from this light is the sum of the diffuse and specular values
-        directionalContribution = diffuseTerm + specularTerm;
-    }
-    
-    // The ambient contribution, which is an approximation for global, indirect lighting, is
-    // the product of the ambient light intensity multiplied by the material's reflectance
-    float3 ambientContribution = uniforms.ambientLightColor;
-    
-    // Now that we have the contributions our light sources in the scene, we sum them together
-    // to get the fragment's lighting value
-    float3 lightContributions = ambientContribution + directionalContribution;
-    
-    // We compute the final color by multiplying the sample from our color maps by the fragment's
-    // lighting value
-    float4 color = float4(lightContributions, 1.0);
-    
-    // We use the color we just computed and the alpha channel of our
-    // colorMap for this fragment's alpha value
-    return color;
 }
 

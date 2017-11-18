@@ -61,6 +61,9 @@ class ViewController: UIViewController {
             let anchor = AKObject(withMDLAsset: asset, at: AKWorldLocation())
             myWorld.setAnchor(anchor, forAnchorType: AKObject.type) // TODO: Stil working on removing the need for this step.
             
+            // Set the initial orientation
+            myWorld.renderer.orientation = UIApplication.shared.statusBarOrientation
+            
             // Begin
             myWorld.begin()
             
@@ -87,6 +90,17 @@ class ViewController: UIViewController {
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
         // Release any cached data, images, etc that aren't in use.
+    }
+    
+    override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
+        
+        super.viewWillTransition(to: size, with: coordinator)
+        
+        world?.renderer.drawRectResized(size: size)
+        coordinator.animate(alongsideTransition: nil) { [weak self](context) in
+            self?.world?.renderer.orientation = UIApplication.shared.statusBarOrientation
+        }
+        
     }
     
     @objc

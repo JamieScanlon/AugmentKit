@@ -12,7 +12,7 @@
 		7D6E6B551F8F19C300EFC667 /* AugmentKitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D6E6B541F8F19C300EFC667 /* AugmentKitTests.swift */; };
 		7D6E6B571F8F19C400EFC667 /* AugmentKit.h in Headers */ = {isa = PBXBuildFile; fileRef = 7D6E6B491F8F19C300EFC667 /* AugmentKit.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		7D6E6B5E1F8F1C9600EFC667 /* AKAnchorSceneKitExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D3EAC131F7EEDCA0076635C /* AKAnchorSceneKitExtensions.swift */; };
-		7D6E6B5F1F8F1C9D00EFC667 /* Shaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = 7D88D7AC1F0AFD550009A154 /* Shaders.metal */; };
+		7D6E6B5F1F8F1C9D00EFC667 /* AnchorShaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = 7D88D7AC1F0AFD550009A154 /* AnchorShaders.metal */; };
 		7D6E6B611F8F1CA400EFC667 /* Renderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D88D7AF1F0AFD550009A154 /* Renderer.swift */; };
 		7D6E6B621F8F1CBC00EFC667 /* AKGroundLayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D3EAC091F7EA6120076635C /* AKGroundLayer.swift */; };
 		7D6E6B631F8F1CBC00EFC667 /* AKAnchor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D3EAC0B1F7EA6790076635C /* AKAnchor.swift */; };
@@ -40,6 +40,7 @@
 		7DBA369C1F7AE0AE0006310A /* plane_grid.png in Resources */ = {isa = PBXBuildFile; fileRef = 7DBA369B1F7AE0AD0006310A /* plane_grid.png */; };
 		7DBA36A11F7C1AA10006310A /* ship.scn in Resources */ = {isa = PBXBuildFile; fileRef = 7DBA36A01F7C1A310006310A /* ship.scn */; };
 		7DBA36A21F7C1AA50006310A /* texture.png in Resources */ = {isa = PBXBuildFile; fileRef = 7DBA369F1F7C1A310006310A /* texture.png */; };
+		7DFCF6031FC08CD300E8A560 /* ImageCaptureShaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = 7DFCF6021FC08CD300E8A560 /* ImageCaptureShaders.metal */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -92,7 +93,7 @@
 		7D8111EE1F12974D00DD11E9 /* MotionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionManager.swift; sourceTree = "<group>"; };
 		7D88D7A71F0AFD550009A154 /* AugmentKit2Demo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AugmentKit2Demo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7D88D7AA1F0AFD550009A154 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
-		7D88D7AC1F0AFD550009A154 /* Shaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Shaders.metal; sourceTree = "<group>"; };
+		7D88D7AC1F0AFD550009A154 /* AnchorShaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = AnchorShaders.metal; sourceTree = "<group>"; };
 		7D88D7AE1F0AFD550009A154 /* ShaderTypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ShaderTypes.h; sourceTree = "<group>"; };
 		7D88D7AF1F0AFD550009A154 /* Renderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Renderer.swift; sourceTree = "<group>"; };
 		7D88D7B11F0AFD550009A154 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
@@ -111,6 +112,7 @@
 		7DBA369B1F7AE0AD0006310A /* plane_grid.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = plane_grid.png; sourceTree = "<group>"; };
 		7DBA369F1F7C1A310006310A /* texture.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = texture.png; sourceTree = "<group>"; };
 		7DBA36A01F7C1A310006310A /* ship.scn */ = {isa = PBXFileReference; lastKnownFileType = file.bplist; path = ship.scn; sourceTree = "<group>"; };
+		7DFCF6021FC08CD300E8A560 /* ImageCaptureShaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = ImageCaptureShaders.metal; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -156,9 +158,10 @@
 			isa = PBXGroup;
 			children = (
 				7D6E6B731F8F283C00EFC667 /* module.modulemap */,
-				7D88D7AC1F0AFD550009A154 /* Shaders.metal */,
+				7D88D7AC1F0AFD550009A154 /* AnchorShaders.metal */,
 				7D88D7AE1F0AFD550009A154 /* ShaderTypes.h */,
 				7D88D7AF1F0AFD550009A154 /* Renderer.swift */,
+				7DFCF6021FC08CD300E8A560 /* ImageCaptureShaders.metal */,
 			);
 			path = Renderer;
 			sourceTree = "<group>";
@@ -424,7 +427,7 @@
 				7D6E6B6E1F8F1CDB00EFC667 /* LocalStoreManager.swift in Sources */,
 				7D6E6B6F1F8F1CDB00EFC667 /* ErrorManager.swift in Sources */,
 				7D6E6B6D1F8F1CDB00EFC667 /* MotionManager.swift in Sources */,
-				7D6E6B5F1F8F1C9D00EFC667 /* Shaders.metal in Sources */,
+				7D6E6B5F1F8F1C9D00EFC667 /* AnchorShaders.metal in Sources */,
 				7D6E6B631F8F1CBC00EFC667 /* AKAnchor.swift in Sources */,
 				7D6E6B661F8F1CBC00EFC667 /* AKUtility.swift in Sources */,
 				7D6E6B711F8F1CDB00EFC667 /* DeviceManager.swift in Sources */,
@@ -438,6 +441,7 @@
 				7D6E6B681F8F1CC300EFC667 /* ModelIOTools.swift in Sources */,
 				7D6E6B691F8F1CC300EFC667 /* MeshData.swift in Sources */,
 				7D6E6B6C1F8F1CDB00EFC667 /* LocationManager.swift in Sources */,
+				7DFCF6031FC08CD300E8A560 /* ImageCaptureShaders.metal in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

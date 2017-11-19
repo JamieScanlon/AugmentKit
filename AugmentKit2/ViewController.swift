@@ -126,7 +126,7 @@ class ViewController: UIViewController {
 
 extension ViewController: RenderDebugLogger {
     
-    func updatedAnchors(count: Int, numAnchors: Int, numPlanes: Int) {
-        debugInfoAnchorCounts?.text = "Total Anchor Count: \(count) - User: \(numAnchors), planes: \(numPlanes)"
+    func updatedAnchors(count: Int, numAnchors: Int, numPlanes: Int, numTrackingPoints: Int) {
+        debugInfoAnchorCounts?.text = "Total Anchor Count: \(count) - User: \(numAnchors), planes: \(numPlanes), points: \(numTrackingPoints)"
     }
 }

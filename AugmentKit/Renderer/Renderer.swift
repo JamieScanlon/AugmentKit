@@ -41,7 +41,7 @@ public protocol RenderDestinationProvider {
 }
 
 public protocol RenderDebugLogger {
-    func updatedAnchors(count: Int, numAnchors: Int, numPlanes: Int)
+    func updatedAnchors(count: Int, numAnchors: Int, numPlanes: Int, numTrackingPoints: Int)
 }
 
 public protocol MeshProvider {
@@ -68,6 +68,7 @@ public class Renderer {
     public enum Constants {
         static let maxBuffersInFlight = 3
         static let maxAnchorInstanceCount = 64
+        static let maxTrackingPointCount = 1024
         
         // Captured Image Plane
         static let imagePlaneVertexData: [Float] = [
@@ -81,6 +82,7 @@ public class Renderer {
         static let alignedSharedUniformsSize = (MemoryLayout<SharedUniforms>.stride & ~0xFF) + 0x100
         static let alignedMaterialSize = (MemoryLayout<MaterialUniforms>.stride & ~0xFF) + 0x100
         static let alignedAnchorInstanceUniformsSize = ((MemoryLayout<AnchorInstanceUniforms>.stride * Constants.maxAnchorInstanceCount) & ~0xFF) + 0x100
+        static let alignedTrackingPointDataSize = ((MemoryLayout<float3>.stride * Constants.maxTrackingPointCount) & ~0xFF) + 0x100
     }
     
     public enum RendererState {
@@ -191,7 +193,8 @@ public class Renderer {
                 drawCapturedImage(renderEncoder: renderEncoder)
                 drawSharedUniforms(renderEncoder: renderEncoder)
                 drawAnchors(renderEncoder: renderEncoder)
-                drawGuides(renderEncoder: renderEncoder)
+                drawPlanes(renderEncoder: renderEncoder)
+                drawTrackingPoints(renderEncoder: renderEncoder)
                 
                 // We're done encoding commands
                 renderEncoder.endEncoding()
@@ -245,23 +248,26 @@ public class Renderer {
     // Metal objects
     private var defaultLibrary: MTLLibrary!
     private var commandQueue: MTLCommandQueue?
-    private var sharedUniformBuffer: MTLBuffer!
-    private var anchorUniformBuffer: MTLBuffer!
-    private var materialUniformBuffer: MTLBuffer!
-    private var imagePlaneVertexBuffer: MTLBuffer!
-    private var capturedImagePipelineState: MTLRenderPipelineState!
-    private var capturedImageDepthState: MTLDepthStencilState!
+    private var sharedUniformBuffer: MTLBuffer?
+    private var anchorUniformBuffer: MTLBuffer?
+    private var materialUniformBuffer: MTLBuffer?
+    private var imagePlaneVertexBuffer: MTLBuffer?
+    private var capturedImagePipelineState: MTLRenderPipelineState?
+    private var capturedImageDepthState: MTLDepthStencilState?
     private var anchorPipelineStates = [MTLRenderPipelineState]() // Store multiple states
-    private var anchorDepthState: MTLDepthStencilState!
+    private var anchorDepthState: MTLDepthStencilState?
     private var capturedImageTextureY: CVMetalTexture?
     private var capturedImageTextureCbCr: CVMetalTexture?
+    private var trackingPointDataBuffer: MTLBuffer?
+    private var trackingPointPipelineState: MTLRenderPipelineState?
+    private var trackingPointDepthState: MTLDepthStencilState?
     
     // Captured image texture cache
-    private var capturedImageTextureCache: CVMetalTextureCache!
+    private var capturedImageTextureCache: CVMetalTextureCache?
     
     // Metal vertex descriptor specifying how vertices will by laid out for input into our
     // anchor geometry render pipeline and how we'll layout our Model IO verticies
-    private var geometryVertexDescriptor: MTLVertexDescriptor!
+    private var geometryVertexDescriptor: MTLVertexDescriptor?
     
     // MetalKit meshes containing vertex data and index buffer for our anchor geometry
     private var anchorMeshGPUData: MeshGPUData?
@@ -284,17 +290,26 @@ public class Renderer {
     // Offset within _materialUniformBuffer to set for the current frame
     private var materialUniformBufferOffset: Int = 0
     
+    // Offset within trackingPointDataBuffer to set for the current frame
+    private var trackingPointDataBufferOffset: Int = 0
+    
     // Addresses to write shared uniforms to each frame
-    private var sharedUniformBufferAddress: UnsafeMutableRawPointer!
+    private var sharedUniformBufferAddress: UnsafeMutableRawPointer?
     
     // Addresses to write anchor uniforms to each frame
-    private var anchorUniformBufferAddress: UnsafeMutableRawPointer!
+    private var anchorUniformBufferAddress: UnsafeMutableRawPointer?
     
     // Addresses to write anchor uniforms to each frame
-    private var materialUniformBufferAddress: UnsafeMutableRawPointer!
+    private var materialUniformBufferAddress: UnsafeMutableRawPointer?
+    
+    // Addresses to write anchor uniforms to each frame
+    private var trackingPointDataBufferAddress: UnsafeMutableRawPointer?
     
     // The number of anchor instances to render
     private var anchorInstanceCount: Int = 0
+    
+    // The number of tracking points to render
+    private var trackingPointCount: Int = 0
     
     // The current viewport size
     private var viewportSize: CGSize = CGSize()
@@ -352,17 +367,21 @@ public class Renderer {
         let sharedUniformBufferSize = Constants.alignedSharedUniformsSize * Constants.maxBuffersInFlight
         let anchorUniformBufferSize = Constants.alignedAnchorInstanceUniformsSize * Constants.maxBuffersInFlight
         let materialUniformBufferSize = Constants.alignedMaterialSize * Constants.maxBuffersInFlight
+        let trackingPointDataBufferSize = Constants.alignedTrackingPointDataSize * Constants.maxBuffersInFlight
         
         // Create and allocate our uniform buffer objects. Indicate shared storage so that both the
         // CPU can access the buffer
         sharedUniformBuffer = device.makeBuffer(length: sharedUniformBufferSize, options: .storageModeShared)
-        sharedUniformBuffer.label = "SharedUniformBuffer"
+        sharedUniformBuffer?.label = "SharedUniformBuffer"
         
         anchorUniformBuffer = device.makeBuffer(length: anchorUniformBufferSize, options: .storageModeShared)
-        anchorUniformBuffer.label = "AnchorUniformBuffer"
+        anchorUniformBuffer?.label = "AnchorUniformBuffer"
         
         materialUniformBuffer = device.makeBuffer(length: materialUniformBufferSize, options: .storageModeShared)
-        materialUniformBuffer.label = "MaterialUniformBuffer"
+        materialUniformBuffer?.label = "MaterialUniformBuffer"
+        
+        trackingPointDataBuffer = device.makeBuffer(length: trackingPointDataBufferSize, options: .storageModeShared)
+        trackingPointDataBuffer?.label = "TrackingPointDataBuffer"
         
         // Load the default metal library file which contains all of the compiled .metal files
         guard let libraryFile = Bundle(for: Renderer.self).path(forResource: "default", ofType: "metallib") else {
@@ -384,7 +403,7 @@ public class Renderer {
         // Create a vertex buffer with our image plane vertex data.
         let imagePlaneVertexDataCount = Constants.imagePlaneVertexData.count * MemoryLayout<Float>.size
         imagePlaneVertexBuffer = device.makeBuffer(bytes: Constants.imagePlaneVertexData, length: imagePlaneVertexDataCount, options: [])
-        imagePlaneVertexBuffer.label = "ImagePlaneVertexBuffer"
+        imagePlaneVertexBuffer?.label = "ImagePlaneVertexBuffer"
         
         guard let capturedImageVertexTransform = defaultLibrary.makeFunction(name: "capturedImageVertexTransform") else {
             fatalError("failed to create the capturedImageVertexTransform function")
@@ -453,31 +472,87 @@ public class Renderer {
         geometryVertexDescriptor = MTLVertexDescriptor()
         
         // Positions.
-        geometryVertexDescriptor.attributes[0].format = .float3
-        geometryVertexDescriptor.attributes[0].offset = 0
-        geometryVertexDescriptor.attributes[0].bufferIndex = Int(kBufferIndexMeshPositions.rawValue)
+        geometryVertexDescriptor?.attributes[0].format = .float3
+        geometryVertexDescriptor?.attributes[0].offset = 0
+        geometryVertexDescriptor?.attributes[0].bufferIndex = Int(kBufferIndexMeshPositions.rawValue)
         
         // Texture coordinates.
-        geometryVertexDescriptor.attributes[1].format = .float2
-        geometryVertexDescriptor.attributes[1].offset = 0
-        geometryVertexDescriptor.attributes[1].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
+        geometryVertexDescriptor?.attributes[1].format = .float2
+        geometryVertexDescriptor?.attributes[1].offset = 0
+        geometryVertexDescriptor?.attributes[1].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
         
         // Normals.
-        geometryVertexDescriptor.attributes[2].format = .float3
-        geometryVertexDescriptor.attributes[2].offset = 8
-        geometryVertexDescriptor.attributes[2].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
+        geometryVertexDescriptor?.attributes[2].format = .float3
+        geometryVertexDescriptor?.attributes[2].offset = 8
+        geometryVertexDescriptor?.attributes[2].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
         
         // TODO: JointIndices and JointWeights for Puppet animations
         
         // Position Buffer Layout
-        geometryVertexDescriptor.layouts[0].stride = 12
-        geometryVertexDescriptor.layouts[0].stepRate = 1
-        geometryVertexDescriptor.layouts[0].stepFunction = .perVertex
+        geometryVertexDescriptor?.layouts[0].stride = 12
+        geometryVertexDescriptor?.layouts[0].stepRate = 1
+        geometryVertexDescriptor?.layouts[0].stepFunction = .perVertex
         
         // Generic Attribute Buffer Layout
-        geometryVertexDescriptor.layouts[1].stride = 20
-        geometryVertexDescriptor.layouts[1].stepRate = 1
-        geometryVertexDescriptor.layouts[1].stepFunction = .perVertex
+        geometryVertexDescriptor?.layouts[1].stride = 20
+        geometryVertexDescriptor?.layouts[1].stepRate = 1
+        geometryVertexDescriptor?.layouts[1].stepFunction = .perVertex
+        
+        //
+        // Tracking Points
+        //
+        
+        guard let pointVertexShader = defaultLibrary.makeFunction(name: "pointVertexShader") else {
+            fatalError("failed to create the pointVertexShader function")
+        }
+        guard let pointFragmentShader = defaultLibrary.makeFunction(name: "pointFragmentShader") else {
+            fatalError("failed to create the pointFragmentShader function")
+        }
+        
+        // Create a vertex descriptor for our image plane vertex buffer
+        let trackingPointVertexDescriptor = MTLVertexDescriptor()
+        
+        // Positions
+        trackingPointVertexDescriptor.attributes[0].format = .float4
+        trackingPointVertexDescriptor.attributes[0].offset = 0
+        trackingPointVertexDescriptor.attributes[0].bufferIndex = Int(kBufferIndexTrackingPointData.rawValue)
+        
+        // Color
+        trackingPointVertexDescriptor.attributes[5].format = .float4
+        trackingPointVertexDescriptor.attributes[5].offset = 16
+        trackingPointVertexDescriptor.attributes[5].bufferIndex = Int(kBufferIndexTrackingPointData.rawValue)
+        
+        // Buffer Layout
+        trackingPointVertexDescriptor.layouts[Int(kBufferIndexTrackingPointData.rawValue)].stride = 32
+        trackingPointVertexDescriptor.layouts[Int(kBufferIndexTrackingPointData.rawValue)].stepRate = 1
+        trackingPointVertexDescriptor.layouts[Int(kBufferIndexTrackingPointData.rawValue)].stepFunction = .perVertex
+        
+        let trackingPointPipelineStateDescriptor = MTLRenderPipelineDescriptor()
+        trackingPointPipelineStateDescriptor.label = "TrackingPointPipeline"
+        trackingPointPipelineStateDescriptor.vertexFunction = pointVertexShader
+        trackingPointPipelineStateDescriptor.fragmentFunction = pointFragmentShader
+        trackingPointPipelineStateDescriptor.vertexDescriptor = trackingPointVertexDescriptor
+        trackingPointPipelineStateDescriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
+        trackingPointPipelineStateDescriptor.colorAttachments[0].isBlendingEnabled = true
+        trackingPointPipelineStateDescriptor.colorAttachments[0].destinationRGBBlendFactor = .one
+        trackingPointPipelineStateDescriptor.colorAttachments[0].destinationAlphaBlendFactor = .one
+        trackingPointPipelineStateDescriptor.colorAttachments[0].rgbBlendOperation = .add
+        trackingPointPipelineStateDescriptor.colorAttachments[0].alphaBlendOperation = .add
+        trackingPointPipelineStateDescriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
+        trackingPointPipelineStateDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
+        trackingPointPipelineStateDescriptor.sampleCount = renderDestination.sampleCount
+        
+        do {
+            try trackingPointPipelineState = device.makeRenderPipelineState(descriptor: trackingPointPipelineStateDescriptor)
+        } catch let error {
+            print("Failed to create tracking point pipeline state, error \(error)")
+            fatalError()
+        }
+        
+        let trackingPointDepthStateDescriptor = MTLDepthStencilDescriptor()
+        trackingPointDepthStateDescriptor.depthCompareFunction = .always
+        trackingPointDepthStateDescriptor.isDepthWriteEnabled = false
+        trackingPointDepthState = device.makeDepthStencilState(descriptor: trackingPointDepthStateDescriptor)
         
     }
     
@@ -539,7 +614,8 @@ public class Renderer {
     private func loadAssets() {
         
         guard let meshProvider = meshProvider else {
-            fatalError("MeshProvider not found.")
+            print("Serious Error - Mesh Provider not found.")
+            return
         }
         
         //
@@ -549,7 +625,13 @@ public class Renderer {
         meshProvider.loadMesh(forType: .anchor) { asset in
             
             guard let asset = asset else {
-                fatalError("Failed to get asset from meshProvider.")
+                print("Serious Error - Failed to get asset from meshProvider.")
+                return
+            }
+            
+            guard let geometryVertexDescriptor = geometryVertexDescriptor else {
+                print("Serious Error - Geometry Vertex Descriptor is nil.")
+                return
             }
             
             // Creata a Model IO vertexDescriptor so that we format/layout our model IO mesh vertices to
@@ -569,6 +651,11 @@ public class Renderer {
         }
         
         meshProvider.loadMesh(forType: .horizPlane) { asset in
+            
+            guard let geometryVertexDescriptor = geometryVertexDescriptor else {
+                print("Serious Error - Geometry Vertex Descriptor is nil.")
+                return
+            }
             
             // Creata a Model IO vertexDescriptor so that we format/layout our model IO mesh vertices to
             // fit our Metal render pipeline's vertex descriptor layout
@@ -606,6 +693,11 @@ public class Renderer {
         meshProvider.loadMesh(forType: .vertPlane) { asset in
             
             guard let asset = asset else {
+                return
+            }
+            
+            guard let geometryVertexDescriptor = geometryVertexDescriptor else {
+                print("Serious Error - Geometry Vertex Descriptor is nil.")
                 return
             }
             
@@ -705,8 +797,15 @@ public class Renderer {
                 subData.materialUniforms = usesMaterials ? MetalUtilities.convertToMaterialUniform(from: meshData.materials[subIndex])
                     : MaterialUniforms()
                 if usesMaterials {
+                    
+                    guard let materialUniformBuffer = materialUniformBuffer else {
+                        print("Serious Error - Material Uniform Buffer is nil")
+                        return myGPUData
+                    }
+                    
                     MetalUtilities.convertMaterialBuffer(from: meshData.materials[subIndex], with: materialUniformBuffer, offset: materialUniformBufferOffset)
                     subData.materialBuffer = materialUniformBuffer
+                    
                 }
                 subData.baseColorTexIdx = usesMaterials ? meshData.materials[subIndex].baseColor.1 : nil
                 subData.normalTexIdx = usesMaterials ? meshData.materials[subIndex].normalMap : nil
@@ -776,10 +875,12 @@ public class Renderer {
         sharedUniformBufferOffset = Constants.alignedSharedUniformsSize * uniformBufferIndex
         anchorUniformBufferOffset = Constants.alignedAnchorInstanceUniformsSize * uniformBufferIndex
         materialUniformBufferOffset = Constants.alignedMaterialSize * uniformBufferIndex
+        trackingPointDataBufferOffset = Constants.alignedTrackingPointDataSize * uniformBufferIndex
         
-        sharedUniformBufferAddress = sharedUniformBuffer.contents().advanced(by: sharedUniformBufferOffset)
-        anchorUniformBufferAddress = anchorUniformBuffer.contents().advanced(by: anchorUniformBufferOffset)
-        materialUniformBufferAddress = materialUniformBuffer.contents().advanced(by: materialUniformBufferOffset)
+        sharedUniformBufferAddress = sharedUniformBuffer?.contents().advanced(by: sharedUniformBufferOffset)
+        anchorUniformBufferAddress = anchorUniformBuffer?.contents().advanced(by: anchorUniformBufferOffset)
+        materialUniformBufferAddress = materialUniformBuffer?.contents().advanced(by: materialUniformBufferOffset)
+        trackingPointDataBufferAddress = trackingPointDataBuffer?.contents().advanced(by: trackingPointDataBufferOffset)
         
     }
     
@@ -792,6 +893,7 @@ public class Renderer {
         
         updateSharedUniforms(frame: currentFrame)
         updateAnchors(frame: currentFrame)
+        updateTrackingPoints(frame: currentFrame)
         updateCapturedImageTextures(frame: currentFrame)
         
         if viewportSizeDidChange {
@@ -826,10 +928,10 @@ public class Renderer {
     // Update the shared uniforms of the frame
     private func updateSharedUniforms(frame: ARFrame) {
         
-        let uniforms = sharedUniformBufferAddress.assumingMemoryBound(to: SharedUniforms.self)
+        let uniforms = sharedUniformBufferAddress?.assumingMemoryBound(to: SharedUniforms.self)
         
-        uniforms.pointee.viewMatrix = frame.camera.viewMatrix(for: orientation)
-        uniforms.pointee.projectionMatrix = frame.camera.projectionMatrix(for: orientation, viewportSize: viewportSize, zNear: 0.001, zFar: 1000)
+        uniforms?.pointee.viewMatrix = frame.camera.viewMatrix(for: orientation)
+        uniforms?.pointee.projectionMatrix = frame.camera.projectionMatrix(for: orientation, viewportSize: viewportSize, zNear: 0.001, zFar: 1000)
         
         // Set up lighting for the scene using the ambient intensity if provided
         var ambientIntensity: Float = 1.0
@@ -839,14 +941,14 @@ public class Renderer {
         }
         
         let ambientLightColor: vector_float3 = vector3(0.5, 0.5, 0.5)
-        uniforms.pointee.ambientLightColor = ambientLightColor * ambientIntensity
+        uniforms?.pointee.ambientLightColor = ambientLightColor * ambientIntensity
         
         var directionalLightDirection : vector_float3 = vector3(0.0, 0.0, -1.0)
         directionalLightDirection = simd_normalize(directionalLightDirection)
-        uniforms.pointee.directionalLightDirection = directionalLightDirection
+        uniforms?.pointee.directionalLightDirection = directionalLightDirection
         
         let directionalLightColor: vector_float3 = vector3(0.6, 0.6, 0.6)
-        uniforms.pointee.directionalLightColor = directionalLightColor * ambientIntensity
+        uniforms?.pointee.directionalLightColor = directionalLightColor * ambientIntensity
         
     }
     
@@ -903,12 +1005,39 @@ public class Renderer {
                 modelMatrix = modelMatrix.translate(x: -plane.center.x/2.0, y: -plane.center.y/2.0, z: -plane.center.z/2.0)
             }
 
-            let anchorUniforms = anchorUniformBufferAddress.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: index)
-            anchorUniforms.pointee.modelMatrix = modelMatrix
+            let anchorUniforms = anchorUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: index)
+            anchorUniforms?.pointee.modelMatrix = modelMatrix
             
         }
         
-        logger?.updatedAnchors(count: frame.anchors.count, numAnchors: anchorInstanceCount, numPlanes: horizPlaneInstanceCount)
+        logger?.updatedAnchors(count: frame.anchors.count, numAnchors: anchorInstanceCount, numPlanes: horizPlaneInstanceCount, numTrackingPoints: trackingPointCount)
+        
+    }
+    
+    private func updateTrackingPoints(frame: ARFrame) {
+        
+        trackingPointCount = 0
+        
+        guard let rawFeaturePoints = frame.rawFeaturePoints else {
+            return
+        }
+        
+        for index in 0..<rawFeaturePoints.points.count {
+            
+            if index >= Constants.maxTrackingPointCount {
+                break
+            }
+            
+            let point = rawFeaturePoints.points[index]
+            let trackingPointData = trackingPointDataBufferAddress?.assumingMemoryBound(to: float4.self).advanced(by: index)
+            trackingPointData?.pointee = vector4(point, 1.0)
+            
+            trackingPointCount += 1
+            
+            if trackingPointCount > Constants.maxTrackingPointCount {
+                break
+            }
+        }
         
     }
     
@@ -932,20 +1061,27 @@ public class Renderer {
         // Update the texture coordinates of our image plane to aspect fill the viewport
         let displayToCameraTransform = frame.displayTransform(for: orientation, viewportSize: viewportSize).inverted()
         
-        let vertexData = imagePlaneVertexBuffer.contents().assumingMemoryBound(to: Float.self)
-        for index in 0...3 {
-            let textureCoordIndex = 4 * index + 2
-            let textureCoord = CGPoint(x: CGFloat(Constants.imagePlaneVertexData[textureCoordIndex]), y: CGFloat(Constants.imagePlaneVertexData[textureCoordIndex + 1]))
-            let transformedCoord = textureCoord.applying(displayToCameraTransform)
-            vertexData[textureCoordIndex] = Float(transformedCoord.x)
-            vertexData[textureCoordIndex + 1] = Float(transformedCoord.y)
+        if let vertexData = imagePlaneVertexBuffer?.contents().assumingMemoryBound(to: Float.self) {
+            for index in 0...3 {
+                let textureCoordIndex = 4 * index + 2
+                let textureCoord = CGPoint(x: CGFloat(Constants.imagePlaneVertexData[textureCoordIndex]), y: CGFloat(Constants.imagePlaneVertexData[textureCoordIndex + 1]))
+                let transformedCoord = textureCoord.applying(displayToCameraTransform)
+                vertexData[textureCoordIndex] = Float(transformedCoord.x)
+                vertexData[textureCoordIndex + 1] = Float(transformedCoord.y)
+            }
         }
     }
     
     // MARK: Drawing
     
     private func drawCapturedImage(renderEncoder: MTLRenderCommandEncoder) {
+        
         guard let textureY = capturedImageTextureY, let textureCbCr = capturedImageTextureCbCr else {
+            return
+        }
+        
+        guard let capturedImagePipelineState = capturedImagePipelineState else {
+            print("Serious Error - Captured Image Pipeline State ids nil")
             return
         }
         
@@ -1022,7 +1158,7 @@ public class Renderer {
         
     }
     
-    private func drawGuides(renderEncoder: MTLRenderCommandEncoder) {
+    private func drawPlanes(renderEncoder: MTLRenderCommandEncoder) {
         
         guard horizPlaneInstanceCount > 0 else {
             return
@@ -1035,7 +1171,7 @@ public class Renderer {
         }
         
         // Push a debug group allowing us to identify render commands in the GPU Frame Capture tool
-        renderEncoder.pushDebugGroup("Draw Guides")
+        renderEncoder.pushDebugGroup("Draw Planes")
         
         // Set render command encoder state
         renderEncoder.setCullMode(.back)
@@ -1065,6 +1201,32 @@ public class Renderer {
             }
             
         }
+        
+        renderEncoder.popDebugGroup()
+        
+    }
+    
+    private func drawTrackingPoints(renderEncoder: MTLRenderCommandEncoder) {
+        
+        guard showGuides else {
+            return
+        }
+        
+        guard let trackingPointPipelineState = trackingPointPipelineState else {
+            return
+        }
+        
+        guard trackingPointCount > 0 else {
+            return
+        }
+        
+        // Push a debug group allowing us to identify render commands in the GPU Frame Capture tool
+        renderEncoder.pushDebugGroup("Draw Tracking Points")
+        
+        renderEncoder.setRenderPipelineState(trackingPointPipelineState)
+        renderEncoder.setVertexBuffer(trackingPointDataBuffer, offset: trackingPointDataBufferOffset, index: Int(kBufferIndexTrackingPointData.rawValue))
+        renderEncoder.setVertexBuffer(sharedUniformBuffer, offset: sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
+        renderEncoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: trackingPointCount)
         
         renderEncoder.popDebugGroup()
         
@@ -1154,6 +1316,12 @@ public class Renderer {
     }
     
     private func createTexture(fromPixelBuffer pixelBuffer: CVPixelBuffer, pixelFormat: MTLPixelFormat, planeIndex: Int) -> CVMetalTexture? {
+        
+        guard let capturedImageTextureCache = capturedImageTextureCache else {
+            print("Serious Error - Cptured Image Texture Cache is nil")
+            return nil
+        }
+        
         let width = CVPixelBufferGetWidthOfPlane(pixelBuffer, planeIndex)
         let height = CVPixelBufferGetHeightOfPlane(pixelBuffer, planeIndex)
         

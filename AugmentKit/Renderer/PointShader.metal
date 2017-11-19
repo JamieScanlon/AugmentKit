@@ -38,7 +38,7 @@ using namespace metal;
 // Include header shared between this Metal shader code and C code executing Metal API commands
 #import "ShaderTypes.h"
 
-#define POINT_SIZE 5.0
+#define POINT_SIZE 20.0
 #define MAX_RANGE  10.0
 
 struct PointVertexIn {
@@ -62,13 +62,14 @@ vertex PointInOut pointVertexShader(PointVertexIn in [[stage_in]],
     float4 eyePosition = sharedUniforms.viewMatrix * in.position;
     
     out.position = position;
-    float distance = min(distance(position, eyePosition), MAX_RANGE);
+    float dist = distance(position, eyePosition);
+    float distance = min(dist, MAX_RANGE);
     float normalizedDistance = (1.0 - (distance / MAX_RANGE));
     float size = POINT_SIZE * normalizedDistance;
     out.pointSize = size;
     
     // Change color intensity according to distance
-    out.color = float4(in.color.r * normalizedDistance, in.color.g * normalizedDistance, in.color.b * normalizedDistance, in.color.w * normalizedDistance);
+    out.color = float4(1.0, 1.0, 1.0, 1.0);//float4(in.color.r * normalizedDistance, in.color.g * normalizedDistance, in.color.b * normalizedDistance, in.color.w * normalizedDistance);
     
     return out;
     

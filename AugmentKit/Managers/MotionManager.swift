@@ -36,7 +36,6 @@ public extension MotionManager {
                 // TODO: Log errors
             } else if let motion = deviceMotion {
                 let heading = self.headingCorrectedForTilt(withMotion: motion, viewPort: self.viewPort)
-                print(heading)
             }
         }
     }

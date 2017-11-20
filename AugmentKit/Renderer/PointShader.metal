@@ -38,8 +38,8 @@ using namespace metal;
 // Include header shared between this Metal shader code and C code executing Metal API commands
 #import "ShaderTypes.h"
 
-#define POINT_SIZE 20.0
-#define MAX_RANGE  10.0
+#define POINT_SIZE 10.0
+#define MAX_RANGE  3.0
 
 struct PointVertexIn {
     float4 position [[attribute(kVertexAttributePosition)]];
@@ -50,7 +50,7 @@ struct PointInOut {
     float4 position [[position]];
     float4 color;
     float pointSize [[point_size]]; // Required when using MTLPrimitiveType.point see: https://developer.apple.com/documentation/metal/mtlprimitivetype
-    float2 pointCoord [[point_coord]];
+//    float2 pointCoord [[point_coord]];
 };
 
 vertex PointInOut pointVertexShader(PointVertexIn in [[stage_in]],
@@ -58,26 +58,38 @@ vertex PointInOut pointVertexShader(PointVertexIn in [[stage_in]],
 
     PointInOut out;
     
-    float4 position = sharedUniforms.projectionMatrix * in.position;
+    // Transform the point's orientation from world space to camera space.
     float4 eyePosition = sharedUniforms.viewMatrix * in.position;
     
+    // Transform the point's orientation from camera (eye) space to clip (view) space.
+    float4 position = sharedUniforms.projectionMatrix * eyePosition;
+    
     out.position = position;
-    float dist = distance(position, eyePosition);
+    
+    // Find the distance between the point and the camera (eye)
+    float dist = distance(in.position, eyePosition);
+    
+    // Set a max rander for rendering
     float distance = min(dist, MAX_RANGE);
+    
+    // Normalize the distance as a value from 0.0 (eye) to 1.0 (MAX_RANGE)
     float normalizedDistance = (1.0 - (distance / MAX_RANGE));
+    
+    // Use the normalized distance to scale the point. Smaller points ar further.
     float size = POINT_SIZE * normalizedDistance;
+    
     out.pointSize = size;
     
-    // Change color intensity according to distance
-    out.color = float4(1.0, 1.0, 1.0, 1.0);//float4(in.color.r * normalizedDistance, in.color.g * normalizedDistance, in.color.b * normalizedDistance, in.color.w * normalizedDistance);
+    // Change color intensity according to the normalized distance. Further points are dimmer.
+    out.color = float4(1.0, 1.0, 1.0, normalizedDistance);
     
     return out;
     
 }
 
-fragment float4 pointFragmentShader(PointInOut in [[stage_in]]) {
+fragment float4 pointFragmentShader(PointInOut in [[stage_in]], float2 pointCoord [[point_coord]]) {
     
-    float radiusFromPointCenter = distance(float2(0.5f), in.pointCoord);
+    float radiusFromPointCenter = distance(float2(0.5f), pointCoord);
     if (radiusFromPointCenter > 0.5) {
         discard_fragment();
     }

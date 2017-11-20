@@ -165,11 +165,6 @@ public extension LocationManager {
             NotificationCenter.default.post(Notification(name: .locationDelegateMoreReliableARLocationNotification, object: self, userInfo: ["location": mostRecentLocation]))
         }
         
-        
-//        let archivedLocationDict: [String: Any] = ["location": mostRecentLocation, "updated": Date()]
-//        let archivedLocationData = NSKeyedArchiver.archivedData(withRootObject: archivedLocationDict)
-//        localStoreManager?.setLastKnownLocationData(archivedLocationData)
-        print("INFO: latitude \(mostRecentLocation.coordinate.latitude), longitude \(mostRecentLocation.coordinate.longitude)")
         NotificationCenter.default.post(Notification(name: .locationDelegateUpdateLocationNotification, object: self, userInfo: ["location": mostRecentLocation]))
         
     }

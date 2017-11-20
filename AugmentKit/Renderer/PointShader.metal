@@ -81,7 +81,7 @@ vertex PointInOut pointVertexShader(PointVertexIn in [[stage_in]],
     out.pointSize = size;
     
     // Change color intensity according to the normalized distance. Further points are dimmer.
-    out.color = float4(1.0, 1.0, 1.0, normalizedDistance);
+    out.color = float4(in.color.r * normalizedDistance, in.color.g * normalizedDistance, in.color.b * normalizedDistance, in.color.a * normalizedDistance);
     
     return out;
     

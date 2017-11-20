@@ -1028,9 +1028,18 @@ public class Renderer {
                 break
             }
             
+            /**
+             * Memory layout of struct PointVertexIn struct:
+             *  float4 position
+             *  float4 color
+             */
+            
             let point = rawFeaturePoints.points[index]
-            let trackingPointData = trackingPointDataBufferAddress?.assumingMemoryBound(to: float4.self).advanced(by: index)
+            let trackingPointData = trackingPointDataBufferAddress?.assumingMemoryBound(to: float4.self).advanced(by: index * 2)
             trackingPointData?.pointee = vector4(point, 1.0)
+            
+            let colorData = trackingPointDataBufferAddress?.assumingMemoryBound(to: float4.self).advanced(by: index * 2 + 1)
+            colorData?.pointee = vector4(0.5, 1.0, 1.0, 1.0) // Light blue
             
             trackingPointCount += 1
             

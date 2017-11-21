@@ -159,12 +159,10 @@
 		7D3EAC0D1F7EA7E40076635C /* Renderer */ = {
 			isa = PBXGroup;
 			children = (
+				7D5FDA2D1FC404A400BAE104 /* Shaders */,
 				7D6E6B731F8F283C00EFC667 /* module.modulemap */,
-				7D88D7AC1F0AFD550009A154 /* AnchorShaders.metal */,
 				7D88D7AE1F0AFD550009A154 /* ShaderTypes.h */,
 				7D88D7AF1F0AFD550009A154 /* Renderer.swift */,
-				7DFCF6021FC08CD300E8A560 /* ImageCaptureShaders.metal */,
-				7DFCF6041FC096A900E8A560 /* PointShader.metal */,
 			);
 			path = Renderer;
 			sourceTree = "<group>";
@@ -175,6 +173,16 @@
 				7D3EAC131F7EEDCA0076635C /* AKAnchorSceneKitExtensions.swift */,
 			);
 			path = "SceneKit Extensions";
+			sourceTree = "<group>";
+		};
+		7D5FDA2D1FC404A400BAE104 /* Shaders */ = {
+			isa = PBXGroup;
+			children = (
+				7D88D7AC1F0AFD550009A154 /* AnchorShaders.metal */,
+				7DFCF6021FC08CD300E8A560 /* ImageCaptureShaders.metal */,
+				7DFCF6041FC096A900E8A560 /* PointShader.metal */,
+			);
+			path = Shaders;
 			sourceTree = "<group>";
 		};
 		7D6E6B481F8F19C300EFC667 /* AugmentKit */ = {

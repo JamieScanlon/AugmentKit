@@ -31,7 +31,7 @@
 using namespace metal;
 
 // Include header shared between this Metal shader code and C code executing Metal API commands
-#import "ShaderTypes.h"
+#import "../ShaderTypes.h"
 
 // MARK: - Structs
 

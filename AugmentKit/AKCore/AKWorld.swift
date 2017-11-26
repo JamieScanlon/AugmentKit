@@ -137,6 +137,23 @@ public class AKWorld: NSObject {
         
     }
     
+    public var estimatedGroundPlane: matrix_float4x4? {
+        
+        guard let lowestPlane = renderer.lowestHorizPlaneAnchor else {
+            return nil
+        }
+        
+        let currentLocation = WorldLocationManager.shared.lastLocation
+        
+        if let currentLocation = currentLocation {
+            let metersToGround = Float((currentLocation.floor?.level ?? 0) * 3)
+            return lowestPlane.transform.translate(x: 0, y: -metersToGround, z: 0)
+        } else {
+            return lowestPlane.transform
+        }
+        
+    }
+    
     public init(renderDestination: MTKView, configuration: AKWorldConfiguration = AKWorldConfiguration()) {
         
         self.renderDestination = renderDestination

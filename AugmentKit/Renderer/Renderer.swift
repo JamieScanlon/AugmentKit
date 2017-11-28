@@ -318,14 +318,29 @@ public class Renderer {
     
     // MARK: - Anchors
     
-    public func add(anchor: AKAugmentedAnchor) {
+    public func add(akAnchor: AKAugmentedAnchor) {
+        
+        let anchorType = type(of: akAnchor).type
         
         // Resgister the MDLAsset with the mesh provider.
-        meshProvider?.registerMesh(anchor.mdlAsset, forObjectType: AKObject.type)
+        meshProvider?.registerMesh(akAnchor.mdlAsset, forObjectType: anchorType)
         
         // Add a new anchor to the session
-        let anchor = ARAnchor(transform: anchor.worldLocation.transform)
-        session.add(anchor: anchor)
+        let arAnchor = ARAnchor(transform: akAnchor.worldLocation.transform)
+        
+        // Keep track of the anchor's UUID bucketed by the AKAnchor.type
+        // This will be used to associate individual anchors with AKAnchor.type's,
+        // then associate AKAnchor.type's with meshes.
+        if let uuidSet = anchorIdentifiersForType[anchorType] {
+            var mutableUUIDSet = uuidSet
+            mutableUUIDSet.insert(arAnchor.identifier)
+            anchorIdentifiersForType[anchorType] = mutableUUIDSet
+        } else {
+            let uuidSet = Set([arAnchor.identifier])
+            anchorIdentifiersForType[anchorType] = uuidSet
+        }
+        
+        session.add(anchor: arAnchor)
         
     }
     
@@ -334,33 +349,32 @@ public class Renderer {
     private var hasUninitializedModules = false
     private var renderDestination: RenderDestinationProvider
     private let inFlightSemaphore = DispatchSemaphore(value: Constants.maxBuffersInFlight)
+    // Used to determine _uniformBufferStride each frame.
+    // This is the current frame number modulo kMaxBuffersInFlight
+    private var uniformBufferIndex: Int = 0
+    // A Quaternion that represents the rotation of the camera relative to world space.
+    private var currentCameraQuaternionRotation: GLKQuaternion?
     
     // Modules
     private var renderModules: [RenderModule] = [CameraPlaneRenderModule()]
-    private var sharedModulesForModule: [String: [SharedRenderModule]] = [:]
+    private var sharedModulesForModule = [String: [SharedRenderModule]]()
     private var cameraRenderModule: CameraPlaneRenderModule?
     private var sharedBuffersRenderModule: SharedBuffersRenderModule?
     private var anchorsRenderModule: AnchorsRenderModule?
     private var surfacesRenderModule: SurfacesRenderModule?
     private var trackingPointRenderModule: TrackingPointsRenderModule?
     
-    // The current viewport size
+    // Viewport
     private var viewportSize: CGSize = CGSize()
-    
-    // Flag for viewport size changes
     private var viewportSizeDidChange: Bool = false
-    
-    // A Quaternion that represents the rotation of the camera relative to world space.
-    private var currentCameraQuaternionRotation: GLKQuaternion?
     
     // Metal objects
     private let textureLoader: MTKTextureLoader
-    private var defaultLibrary: MTLLibrary!
+    private var defaultLibrary: MTLLibrary?
     private var commandQueue: MTLCommandQueue?
     
-    // Used to determine _uniformBufferStride each frame.
-    // This is the current frame number modulo kMaxBuffersInFlight
-    private var uniformBufferIndex: Int = 0
+    // Anchors
+    private var anchorIdentifiersForType = [String: Set<UUID>]()
     
     // MARK: ARKit Session Configuration
     

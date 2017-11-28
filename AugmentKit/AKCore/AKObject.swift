@@ -39,6 +39,7 @@ public struct AKObject: AKAugmentedAnchor {
     }
     public var worldLocation: AKWorldLocation
     public var mdlAsset: MDLAsset
+    public var identifier: UUID?
     
     public init(withMDLAsset asset: MDLAsset, at location: AKWorldLocation) {
         self.mdlAsset = asset

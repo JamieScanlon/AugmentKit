@@ -19,7 +19,7 @@ class AKMeshProvider: MeshProvider {
     
     public func loadMesh(forObjectType type: String, completion: (MDLAsset?) -> Void) {
         
-        if let anchorAsset = meshesByType[AKObject.type] {
+        if let anchorAsset = meshesByType[type] {
             completion(anchorAsset)
         } else {
             print("Warning - Failed to find an MDLAsset for type: \(type).")

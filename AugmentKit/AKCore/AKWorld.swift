@@ -190,7 +190,7 @@ public class AKWorld: NSObject {
     }
     
     public func add(anchor: AKAugmentedAnchor) {
-        renderer.add(anchor: anchor)
+        renderer.add(akAnchor: anchor)
     }
     
     public func worldLocation(withLatitude latitude: Double, longitude: Double, elevation: Double?) -> AKWorldLocation? {

@@ -30,6 +30,7 @@ import ARKit
 import AugmentKitShader
 import MetalKit
 
+// TODO: Veritical Surface support
 class SurfacesRenderModule: RenderModule {
     
     static var identifier = "SurfacesRenderModule"
@@ -79,12 +80,6 @@ class SurfacesRenderModule: RenderModule {
     
     func loadAssets(fromMeshProvider meshProvider: MeshProvider?, textureLoader aTextureLoader: MTKTextureLoader, completion: (() -> Void)) {
         
-        guard let meshProvider = meshProvider else {
-            print("Serious Error - Mesh Provider not found.")
-            completion()
-            return
-        }
-        
         textureLoader = aTextureLoader
         
         guard let device = device else {
@@ -93,62 +88,16 @@ class SurfacesRenderModule: RenderModule {
             return
         }
         
-        //
-        // Create and load our assets into Metal objects including meshes and textures
-        //
+        // Create a MetalKit mesh buffer allocator so that ModelIO will load mesh data directly into
+        // Metal buffers accessible by the GPU
+        let metalAllocator = MTKMeshBufferAllocator(device: device)
         
-        meshProvider.loadMesh(forType: .horizPlane) { [weak self] asset in
-            
-            if let asset = asset {
-                self?.meshAsset = asset
-            } else {
-                
-                // Create a MetalKit mesh buffer allocator so that ModelIO will load mesh data directly into
-                // Metal buffers accessible by the GPU
-                let metalAllocator = MTKMeshBufferAllocator(device: device)
-                
-                let mesh = MDLMesh(planeWithExtent: vector3(1, 0, 1), segments: vector2(1, 1), geometryType: .triangles, allocator: metalAllocator)
-                if let submesh = mesh.submeshes?.firstObject as? MDLSubmesh {
-                    let scatteringFunction = MDLPhysicallyPlausibleScatteringFunction()
-                    scatteringFunction.baseColor.textureSamplerValue = MDLTextureSampler()
-                    scatteringFunction.baseColor.textureSamplerValue?.texture = MDLTexture(named: "plane_grid.png")
-                    submesh.material = MDLMaterial(name: "Grid", scatteringFunction: scatteringFunction)
-                    //                        let gridAssetURL = Bundle.main.url(forResource: "plane_grid", withExtension: ".png")
-                }
-                let asset = MDLAsset(bufferAllocator: metalAllocator)
-                asset.add(mesh)
-                self?.meshAsset = asset
-                
-            }
-            
-            completion()
-            
-        }
+        let mesh = MDLMesh(planeWithExtent: vector3(1, 0, 1), segments: vector2(1, 1), geometryType: .triangles, allocator: metalAllocator)
+        let asset = MDLAsset(bufferAllocator: metalAllocator)
+        asset.add(mesh)
+        meshAsset = asset
         
-//        meshProvider.loadMesh(forType: .vertPlane) { asset in
-//
-//            guard let asset = asset else {
-//                return
-//            }
-//
-//            guard let geometryVertexDescriptor = geometryVertexDescriptor else {
-//                print("Serious Error - Geometry Vertex Descriptor is nil.")
-//                return
-//            }
-//
-//            // Creata a Model IO vertexDescriptor so that we format/layout our model IO mesh vertices to
-//            // fit our Metal render pipeline's vertex descriptor layout
-//            let vertexDescriptor = MTKModelIOVertexDescriptorFromMetal(geometryVertexDescriptor)
-//
-//            // Indicate how each Metal vertex descriptor attribute maps to each ModelIO attribute
-//            (vertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributePosition
-//            (vertexDescriptor.attributes[Int(kVertexAttributeTexcoord.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributeTextureCoordinate
-//            (vertexDescriptor.attributes[Int(kVertexAttributeNormal.rawValue)] as! MDLVertexAttribute).name   = MDLVertexAttributeNormal
-//
-//            // Load meshes into mode parser
-//            vertPlaneModelParser = ModelParser(asset: asset, vertexDescriptor: vertexDescriptor)
-//
-//        }
+        completion()
         
     }
     

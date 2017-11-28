@@ -45,13 +45,8 @@ public protocol RenderDebugLogger {
 }
 
 public protocol MeshProvider {
-    func loadMesh(forType: MeshType, completion: (MDLAsset?) -> Void)
-}
-
-public enum MeshType {
-    case anchor
-    case horizPlane
-    case vertPlane
+    func registerMesh(_ mdlAsset: MDLAsset, forObjectType type: String)
+    func loadMesh(forObjectType: String, completion: (MDLAsset?) -> Void)
 }
 
 public struct ViewportProperies {
@@ -85,7 +80,8 @@ public class Renderer {
     public private(set) var state: RendererState = .uninitialized
     public let session: ARSession
     public let device: MTLDevice
-    public var meshProvider: MeshProvider?
+    
+    public var meshProvider: MeshProvider? = AKMeshProvider.sharedInstance
     
     // Guide Meshes for debugging
     public var showGuides = false {
@@ -121,17 +117,21 @@ public class Renderer {
     public private(set) var currentCameraHeading: Double?
     public private(set) var lowestHorizPlaneAnchor: ARPlaneAnchor?
     
-    public init(session: ARSession, metalDevice device: MTLDevice, renderDestination: RenderDestinationProvider, meshProvider: MeshProvider? = nil) {
+    public init(session: ARSession, metalDevice device: MTLDevice, renderDestination: RenderDestinationProvider) {
         self.session = session
         self.device = device
         self.renderDestination = renderDestination
         self.textureLoader = MTKTextureLoader(device: device)
-        if let provider = meshProvider {
-            self.meshProvider = provider
-        }
     }
     
-    // MARK: Inititialization
+    // MARK: - Viewport changes
+    
+    public func drawRectResized(size: CGSize) {
+        viewportSize = size
+        viewportSizeDidChange = true
+    }
+    
+    // MARK: - Lifecycle
     
     public func initialize() {
         
@@ -153,15 +153,6 @@ public class Renderer {
         state = .initialized
         
     }
-    
-    // MARK: Viewport changes
-    
-    public func drawRectResized(size: CGSize) {
-        viewportSize = size
-        viewportSizeDidChange = true
-    }
-    
-    // MARK: Lifecycle
     
     public func run() {
         guard state != .uninitialized else {
@@ -322,6 +313,19 @@ public class Renderer {
         }
         
         logger?.updatedAnchors(count: currentFrame.anchors.count, numAnchors: anchorsRenderModule?.anchorInstanceCount ?? 0, numPlanes: surfacesRenderModule?.surfaceInstanceCount ?? 0, numTrackingPoints: trackingPointRenderModule?.trackingPointCount ?? 0)
+        
+    }
+    
+    // MARK: - Anchors
+    
+    public func add(anchor: AKAugmentedAnchor) {
+        
+        // Resgister the MDLAsset with the mesh provider.
+        meshProvider?.registerMesh(anchor.mdlAsset, forObjectType: AKObject.type)
+        
+        // Add a new anchor to the session
+        let anchor = ARAnchor(transform: anchor.worldLocation.transform)
+        session.add(anchor: anchor)
         
     }
     

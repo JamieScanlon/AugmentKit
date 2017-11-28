@@ -46,6 +46,7 @@
 		7DBA369C1F7AE0AE0006310A /* plane_grid.png in Resources */ = {isa = PBXBuildFile; fileRef = 7DBA369B1F7AE0AD0006310A /* plane_grid.png */; };
 		7DBA36A11F7C1AA10006310A /* ship.scn in Resources */ = {isa = PBXBuildFile; fileRef = 7DBA36A01F7C1A310006310A /* ship.scn */; };
 		7DBA36A21F7C1AA50006310A /* texture.png in Resources */ = {isa = PBXBuildFile; fileRef = 7DBA369F1F7C1A310006310A /* texture.png */; };
+		7DF697EB1FCD26F500292F66 /* AKMeshProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF697EA1FCD26F500292F66 /* AKMeshProvider.swift */; };
 		7DFCF6031FC08CD300E8A560 /* ImageCaptureShaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = 7DFCF6021FC08CD300E8A560 /* ImageCaptureShaders.metal */; };
 		7DFCF6051FC096A900E8A560 /* PointShader.metal in Sources */ = {isa = PBXBuildFile; fileRef = 7DFCF6041FC096A900E8A560 /* PointShader.metal */; };
 /* End PBXBuildFile section */
@@ -125,6 +126,7 @@
 		7DBA369B1F7AE0AD0006310A /* plane_grid.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = plane_grid.png; sourceTree = "<group>"; };
 		7DBA369F1F7C1A310006310A /* texture.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = texture.png; sourceTree = "<group>"; };
 		7DBA36A01F7C1A310006310A /* ship.scn */ = {isa = PBXFileReference; lastKnownFileType = file.bplist; path = ship.scn; sourceTree = "<group>"; };
+		7DF697EA1FCD26F500292F66 /* AKMeshProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKMeshProvider.swift; sourceTree = "<group>"; };
 		7DFCF6021FC08CD300E8A560 /* ImageCaptureShaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = ImageCaptureShaders.metal; sourceTree = "<group>"; };
 		7DFCF6041FC096A900E8A560 /* PointShader.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = PointShader.metal; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -164,6 +166,7 @@
 				7D3EAC0E1F7EA8440076635C /* AKWorld.swift */,
 				7D3EAC101F7ED05B0076635C /* AKObject.swift */,
 				7D3E48891F88C1C800814875 /* AKUtility.swift */,
+				7DF697EA1FCD26F500292F66 /* AKMeshProvider.swift */,
 			);
 			path = AKCore;
 			sourceTree = "<group>";
@@ -484,6 +487,7 @@
 				7D6E6B691F8F1CC300EFC667 /* MeshData.swift in Sources */,
 				7D5FDA3E1FC9FB4400BAE104 /* Renderer.swift in Sources */,
 				7D6E6B6C1F8F1CDB00EFC667 /* LocationManager.swift in Sources */,
+				7DF697EB1FCD26F500292F66 /* AKMeshProvider.swift in Sources */,
 				7DFCF6031FC08CD300E8A560 /* ImageCaptureShaders.metal in Sources */,
 				7DFCF6051FC096A900E8A560 /* PointShader.metal in Sources */,
 			);

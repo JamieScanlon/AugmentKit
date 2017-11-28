@@ -169,7 +169,6 @@ public class AKWorld: NSObject {
         
         self.renderDestination.device = self.device
         self.renderer.drawRectResized(size: renderDestination.bounds.size)
-        self.renderer.meshProvider = self
         self.session.delegate = self
         self.renderDestination.delegate = self
         
@@ -185,30 +184,13 @@ public class AKWorld: NSObject {
         
     }
     
-    // Initializes an anchor's assets with the renderer. Should be called befaor begin()
-    // TODO: Remove this funciton. Right now the renderer needs all MLDAssets provided up front
-    // but eventually, they should be loaded as they are needed so just calling
-    // add(anchor: AKAugmentedAnchor will be suffiecient.
-    public func setAnchor(_ anchor: AKAnchor, forAnchorType type: String) {
-        switch type {
-        case AKObject.type:
-            anchorAsset = anchor.mdlAsset
-        default:
-            return
-        }
-    }
-    
     public func begin() {
         renderer.initialize()
         renderer.reset()
     }
     
     public func add(anchor: AKAugmentedAnchor) {
-        
-        // Add a new anchor to the session
-        let anchor = ARAnchor(transform: anchor.worldLocation.transform)
-        session.add(anchor: anchor)
-        
+        renderer.add(anchor: anchor)
     }
     
     public func worldLocation(withLatitude latitude: Double, longitude: Double, elevation: Double?) -> AKWorldLocation? {
@@ -364,31 +346,6 @@ extension AKWorld: ARSessionDelegate {
         // Reset tracking and/or remove existing anchors if consistent tracking is required
     }
     
-}
-
-// MARK: - MeshProvider
-
-extension AKWorld: MeshProvider {
-    
-    public func loadMesh(forType type: MeshType, completion: (MDLAsset?) -> Void) {
-        
-        switch type {
-        case .anchor:
-            if let anchorAsset = anchorAsset {
-                completion(anchorAsset)
-            } else {
-                fatalError("Failed to find an anchor model.")
-            }
-        case .horizPlane:
-            // Use the default guide
-            completion(nil)
-        case .vertPlane:
-            completion(nil)
-        }
-        
-        
-        
-    }
 }
 
 // MARK: - RenderDestinationProvider

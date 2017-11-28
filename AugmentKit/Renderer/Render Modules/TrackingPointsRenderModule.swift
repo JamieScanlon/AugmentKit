@@ -227,7 +227,7 @@ class TrackingPointsRenderModule: RenderModule {
     // MARK: - Private
     
     private enum Constants {
-        static let maxTrackingPointCount = 1024
+        static let maxTrackingPointCount = 256
         static let alignedTrackingPointDataSize = ((MemoryLayout<float3>.stride * maxTrackingPointCount) & ~0xFF) + 0x100
     }
     

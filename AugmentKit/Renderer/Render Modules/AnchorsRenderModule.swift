@@ -30,6 +30,7 @@ import ARKit
 import AugmentKitShader
 import MetalKit
 
+// TODO: Support having different meshes for each AKObject type
 class AnchorsRenderModule: RenderModule {
     
     static var identifier = "AnchorsRenderModule"
@@ -91,7 +92,7 @@ class AnchorsRenderModule: RenderModule {
         // Create and load our assets into Metal objects including meshes and textures
         //
         
-        meshProvider.loadMesh(forType: .anchor) { [weak self] asset in
+        meshProvider.loadMesh(forObjectType: AKObject.type) { [weak self] asset in
             
             guard let asset = asset else {
                 print("Serious Error - Failed to get asset from meshProvider.")

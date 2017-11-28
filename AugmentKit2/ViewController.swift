@@ -58,8 +58,7 @@ class ViewController: UIViewController {
                 print("ERROR: Could not load the SceneKit model")
                 return
             }
-            let anchor = AKObject(withMDLAsset: asset, at: AKWorldLocation())
-            myWorld.setAnchor(anchor, forAnchorType: AKObject.type) // TODO: Stil working on removing the need for this step.
+            anchorAsset = asset
             
             // Set the initial orientation
             myWorld.renderer.orientation = UIApplication.shared.statusBarOrientation
@@ -68,7 +67,6 @@ class ViewController: UIViewController {
             myWorld.begin()
             
             world = myWorld
-            anchorAsset = asset
             
         }
         

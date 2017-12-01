@@ -27,6 +27,10 @@
 //
 //  This class parses an MDLAsset suitable to be serialized to disk or to be passed directly to the renderer.
 //
+//  Based heavily on "From Art to Engine with Model I/O" WWDC 2017 talk.
+//  https://developer.apple.com/videos/play/wwdc2017/610/
+//  Sample Code: https://developer.apple.com/sample-code/wwdc/2017/ModelIO-from-MDLAsset-to-Game-Engine.zip
+//
 
 import Foundation
 import ModelIO

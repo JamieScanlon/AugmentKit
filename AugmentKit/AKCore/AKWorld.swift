@@ -44,9 +44,9 @@ public struct AKWorldConfiguration {
     }
 }
 
-// A data structure that combines an absolute position (latitude, longitude, and elevation)
-// with a relative postion (transform) that ties locations in the real world to locations
-// in AR space.
+//  A data structure that combines an absolute position (latitude, longitude, and elevation)
+//  with a relative postion (transform) that ties locations in the real world to locations
+//  in AR space.
 public struct AKWorldLocation {
     public var latitude: Double = 0
     public var longitude: Double = 0
@@ -62,6 +62,7 @@ public struct AKWorldLocation {
     
 }
 
+//  A data structure that represents the distance in meters between tow points in world space.
 public struct AKWorldDistance {
     public var metersX: Double
     public var metersY: Double
@@ -77,6 +78,13 @@ public struct AKWorldDistance {
         self.distance2D = planarDistance
         self.distance3D = sqrt(planarDistance * planarDistance + metersY * metersY)
     }
+}
+
+//  A data structure that represents a position relative to another reference
+//  position in world space.
+public struct AKRelativePosition {
+    public var referenceTransform: matrix_float4x4 = matrix_identity_float4x4
+    public var transform: matrix_float4x4 = matrix_identity_float4x4
 }
 
 public class AKWorld: NSObject {

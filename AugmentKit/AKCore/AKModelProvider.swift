@@ -1,6 +1,6 @@
 //
-//  AKAnchorSceneKitExtensions.swift
-//  AugmentKit2
+//  AKModelProvider.swift
+//  AugmentKit
 //
 //  MIT License
 //
@@ -24,47 +24,36 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 //
-//
-//  Extensions for loading a model from SceneKit so it can be used as an anchor.
-//  This can be excluded if SceneKit is not being used.
-//
 
 import Foundation
-import SceneKit.ModelIO
-import MetalKit
+import ModelIO
 
-public extension AKAnchor {
+public protocol ModelProvider {
+    func registerModel(_ model: AKModel, forObjectType type: String)
+    func loadModel(forObjectType type: String, completion: (AKModel?) -> Void)
+}
+
+public class AKModelProvider: ModelProvider {
     
-    public static func mdlAssetFromScene(named: String, world: AKWorld) -> MDLAsset? {
+    static let sharedInstance = AKModelProvider()
     
-        guard let scene = SCNScene(named: named) else {
-            return nil
+    public func registerModel(_ model: AKModel, forObjectType type: String) {
+        modelsByType[type] = model
+    }
+    
+    public func loadModel(forObjectType type: String, completion: (AKModel?) -> Void) {
+        
+        if let anchorAsset = modelsByType[type] {
+            completion(anchorAsset)
+        } else {
+            print("Warning - Failed to find an AKModle for type: \(type).")
+            completion(nil)
         }
         
-        return Self.mdlAssetFromScene(scene, world: world)
-        
     }
     
-    public static func mdlAssetFromScene(withURL url: URL, world: AKWorld) -> MDLAsset? {
-        
-        do {
-            let scene = try SCNScene(url: url, options: nil)
-            return Self.mdlAssetFromScene(scene, world: world)
-        } catch {
-            return nil
-        }
-        
-    }
+    // MARK: - Private
     
-    public static func mdlAssetFromScene(_ scene: SCNScene, world: AKWorld) -> MDLAsset {
-        
-        // Create a MetalKit mesh buffer allocator so that ModelIO will load mesh data directly into
-        //   Metal buffers accessible by the GPU
-        let metalAllocator = MTKMeshBufferAllocator(device: world.device)
-        
-        let asset = MDLAsset(scnScene: scene, bufferAllocator: metalAllocator)
-        return asset
-        
-    }
+    private var modelsByType = [String: AKModel]()
     
 }

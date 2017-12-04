@@ -36,7 +36,7 @@ import AugmentKitShader
 
 // MARK: - Material Data. Intermediate format sutable for serialization and transport.
 
-struct Material {
+public struct Material {
     var baseColor: (float3?, Int?) = (float3(1, 1, 1), nil)
     var metallic: (Float?, Int?) = (0, nil)
     var roughness: (Float?, Int?) = (0, nil)
@@ -47,7 +47,7 @@ struct Material {
 
 // MARK: - Mesh Data that will be converted into GPU Data
 
-struct MeshData {
+public struct MeshData {
     var vbCount = 0
     var vbStartIdx = 0
     var ibStartIdx = 0
@@ -58,7 +58,7 @@ struct MeshData {
 
 // MARK: - Data that will be submitted to the GPU
 
-struct DrawSubData {
+public struct DrawSubData {
     var idxCount = 0
     var idxType = MTLIndexType.uint16
     var baseColorTexIdx: Int?
@@ -100,7 +100,7 @@ struct DrawSubData {
     }
 }
 
-struct DrawData {
+public struct DrawData {
     var vbCount = 0
     var vbStartIdx = 0
     var ibStartIdx = 0
@@ -111,7 +111,7 @@ struct DrawData {
     var subData = [DrawSubData]()
 }
 
-struct MeshGPUData {
+public struct MeshGPUData {
     var vtxBuffers = [MTLBuffer]()
     var indexBuffers = [MTLBuffer]()
     var textures = [MTLTexture?]()
@@ -120,8 +120,8 @@ struct MeshGPUData {
 
 // MARK: - Puppet Animation (Not currently supported by renderer)
 
-/// Describes how a mesh is bound to a skeleton
-struct SkinData: JointPathRemappable {
+//  Describes how a mesh is bound to a skeleton
+public struct SkinData: JointPathRemappable {
     var jointPaths = [String]()
     
     var skinToSkeletonMap = [Int]()
@@ -129,8 +129,8 @@ struct SkinData: JointPathRemappable {
     var animationIndex: Int?
 }
 
-/// Stores skeleton data as well as its time-sampled animation
-struct AnimatedSkeleton: JointPathRemappable {
+//  Stores skeleton data as well as its time-sampled animation
+public struct AnimatedSkeleton: JointPathRemappable {
     var jointPaths = [String]()
     
     var parentIndices = [Int?]()

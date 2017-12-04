@@ -39,11 +39,11 @@ public struct AKGroundLayer: AKAnchor {
         return "groundLayer"
     }
     public var worldLocation: AKWorldLocation
-    public var mdlAsset: MDLAsset
+    public var model: AKModel
     public var identifier: UUID?
     
-    public init(withMDLAsset asset: MDLAsset, at location: AKWorldLocation) {
-        self.mdlAsset = asset
+    public init(withAKModel model: AKModel, at location: AKWorldLocation) {
+        self.model = model
         self.worldLocation = location
     }
     

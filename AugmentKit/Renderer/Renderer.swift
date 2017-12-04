@@ -44,11 +44,6 @@ public protocol RenderDebugLogger {
     func updatedAnchors(count: Int, numAnchors: Int, numPlanes: Int, numTrackingPoints: Int)
 }
 
-public protocol MeshProvider {
-    func registerMesh(_ mdlAsset: MDLAsset, forObjectType type: String)
-    func loadMesh(forObjectType: String, completion: (MDLAsset?) -> Void)
-}
-
 public struct ViewportProperies {
     var orientation: UIInterfaceOrientation
     var viewportSize: CGSize
@@ -81,9 +76,9 @@ public class Renderer {
     public let session: ARSession
     public let device: MTLDevice
     
-    public var meshProvider: MeshProvider? = AKMeshProvider.sharedInstance
+    public var modelProvider: ModelProvider? = AKModelProvider.sharedInstance
     
-    // Guide Meshes for debugging
+    // Guides for debugging
     public var showGuides = false {
         didSet {
             if showGuides {
@@ -322,15 +317,15 @@ public class Renderer {
         
         let anchorType = type(of: akAnchor).type
         
-        // Resgister the MDLAsset with the mesh provider.
-        meshProvider?.registerMesh(akAnchor.mdlAsset, forObjectType: anchorType)
+        // Resgister the AKModel with the model provider.
+        modelProvider?.registerModel(akAnchor.model, forObjectType: anchorType)
         
         // Add a new anchor to the session
         let arAnchor = ARAnchor(transform: akAnchor.worldLocation.transform)
         
         // Keep track of the anchor's UUID bucketed by the AKAnchor.type
         // This will be used to associate individual anchors with AKAnchor.type's,
-        // then associate AKAnchor.type's with meshes.
+        // then associate AKAnchor.type's with models.
         if let uuidSet = anchorIdentifiersForType[anchorType] {
             var mutableUUIDSet = uuidSet
             mutableUUIDSet.insert(arAnchor.identifier)
@@ -521,7 +516,7 @@ public class Renderer {
                 module.initializeBuffers(withDevice: device, maxInFlightBuffers: Constants.maxBuffersInFlight)
                 
                 // Load the assets
-                module.loadAssets(fromMeshProvider: meshProvider, textureLoader: textureLoader, completion: { [weak self] in
+                module.loadAssets(fromModelProvider: modelProvider, textureLoader: textureLoader, completion: { [weak self] in
                     if let defaultLibrary = self?.defaultLibrary, let renderDestination = self?.renderDestination {
                         module.loadPipeline(withMetalLibrary: defaultLibrary, renderDestination: renderDestination)
                     }

@@ -34,7 +34,7 @@ import AugmentKit
 class ViewController: UIViewController {
     
     var world: AKWorld?
-    var anchorAsset: MDLAsset?
+    var anchorModel: AKModel?
     
     @IBOutlet var debugInfoAnchorCounts: UILabel?
     
@@ -54,11 +54,11 @@ class ViewController: UIViewController {
             myWorld.renderer.logger = self
             
             // Setup the model that will be used for AKObject anchors
-            guard let asset = AKObject.mdlAssetFromScene(named: "Pin.scn", world: myWorld) else {
+            guard let asset = AKSceneKitUtils.mdlAssetFromScene(named: "Pin.scn", world: myWorld) else {
                 print("ERROR: Could not load the SceneKit model")
                 return
             }
-            anchorAsset = asset
+            anchorModel = AKMDLAssetModel(asset: asset)
             
             // Set the initial orientation
             myWorld.renderer.orientation = UIApplication.shared.statusBarOrientation
@@ -104,7 +104,7 @@ class ViewController: UIViewController {
     @objc
     private func handleTap(gestureRecognize: UITapGestureRecognizer) {
         
-        guard let anchorAsset = anchorAsset else {
+        guard let anchorModel = anchorModel else {
             return
         }
         
@@ -113,7 +113,7 @@ class ViewController: UIViewController {
         }
         
         // Create a new anchor at the current locaiton
-        let newObject = AKObject(withMDLAsset: anchorAsset, at: currentWorldLocation)
+        let newObject = AKObject(withAKModel: anchorModel, at: currentWorldLocation)
         world?.add(anchor: newObject)
         
     }

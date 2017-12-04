@@ -64,7 +64,8 @@ extension MDLAsset {
             // the path count is greater than 2 otherwise return the child itself
             if child.name == pathArray[1] {
                 if pathArray.count > 2 {
-                    return child.atPath(path.substring(from: path.index(pathArray[1].endIndex, offsetBy: 3)))
+                    let startIndex = path.index(pathArray[1].endIndex, offsetBy: 3)
+                    return child.atPath(String(path[startIndex...]))
                 } else {
                     return child
                 }

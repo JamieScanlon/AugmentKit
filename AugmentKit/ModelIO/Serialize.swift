@@ -25,7 +25,7 @@
 //  SOFTWARE.
 //
 //
-//  This class ads NSCoding extensions for serializing and deserializing Models.
+//  This class ads NSCoding extensions for serializing and deserializing AKModels.
 //
 //  Based heavily on "From Art to Engine with Model I/O" WWDC 2017 talk.
 //  https://developer.apple.com/videos/play/wwdc2017/610/
@@ -37,16 +37,16 @@ import ModelIO
 
 // MARK: - ModelSerializer
 
-extension ModelParser {
+extension AKModel {
     
     func serialize(toFilePath filePath: String) {
         
         // Serialize data.
-        NSKeyedArchiver.archiveRootObject(ModelParser.CodingWrapper(scene: self), toFile: filePath)
+        NSKeyedArchiver.archiveRootObject(AKModelCodingWrapper(model: self), toFile: filePath)
         
     }
     
-    static func deserialize(fromFilePath filePath: String) -> ModelParser? {
+    static func deserialize(fromFilePath filePath: String) -> AKModel? {
         
         let url = URL(fileURLWithPath: filePath)
         
@@ -54,7 +54,7 @@ extension ModelParser {
             return nil
         }
         
-        return NSKeyedUnarchiver.unarchiveObject(with: data) as? ModelParser
+        return NSKeyedUnarchiver.unarchiveObject(with: data) as? AKModel
         
     }
     
@@ -232,96 +232,92 @@ extension SkinData {
     }
 }
 
-extension ModelParser {
+//  Adds NSCoding support to AKModel
+class AKModelCodingWrapper: NSObject, NSCoding {
     
-    //  Adds NSCoding support to Baker
-    @objc(BakerCodingWrapper)
-    class CodingWrapper: NSObject, NSCoding {
-
-        var scene: ModelParser?
-
-        init(scene: ModelParser) {
-            self.scene = scene
-            self.scene?.nodeNames = scene.nodeNames
-            self.scene?.localTransforms = scene.localTransforms
-            self.scene?.worldTransforms = scene.worldTransforms
-            self.scene?.parentIndices = scene.parentIndices
-            self.scene?.meshNodeIndices = scene.meshNodeIndices
-            self.scene?.vertexDescriptors = scene.vertexDescriptors
-            self.scene?.vertexBuffers = scene.vertexBuffers
-            self.scene?.indexBuffers = scene.indexBuffers
-            self.scene?.meshes = scene.meshes
-            self.scene?.texturePaths = scene.texturePaths
-            self.scene?.instanceCount = scene.instanceCount
-            self.scene?.sampleTimes = scene.sampleTimes
-            self.scene?.localTransformAnimations = scene.localTransformAnimations
-            self.scene?.worldTransformAnimations = scene.worldTransformAnimations
-            self.scene?.localTransformAnimationIndices = scene.localTransformAnimationIndices
-            self.scene?.worldTransformAnimationIndices = scene.worldTransformAnimationIndices
-            // -- add skinning
-            self.scene?.meshSkinIndices = scene.meshSkinIndices
-            self.scene?.skins = scene.skins
-            self.scene?.skeletonAnimations = scene.skeletonAnimations
-        }
-
-        required init?(coder aDecoder: NSCoder) {
-            let scene = ModelParser()
-
-            scene.texturePaths = aDecoder.decodeObject(forKey: "texturePaths") as? [String] ?? []
-            scene.nodeNames = aDecoder.decodeObject(forKey: "nodeNames") as? [String] ?? []
-            scene.localTransforms = aDecoder.decodePODArray(forKey: "localTransforms")
-            scene.worldTransforms = aDecoder.decodePODArray(forKey: "worldTransforms")
-            scene.parentIndices = aDecoder.decodePODArray(forKey: "parentIndices")
-            scene.meshNodeIndices = aDecoder.decodePODArray(forKey: "meshNodeIndices")
-            scene.meshSkinIndices = aDecoder.decodePODArray(forKey: "meshSkinIndices")
-            scene.instanceCount = aDecoder.decodePODArray(forKey: "instanceCount")
-            scene.sampleTimes = aDecoder.decodePODArray(forKey: "sampleTimes")
-            scene.localTransformAnimations = aDecoder.decodeArrayOfPODArrays(forKey: "localTransformAnimations")
-            scene.worldTransformAnimations = aDecoder.decodeArrayOfPODArrays(forKey: "worldTransformAnimations")
-            scene.localTransformAnimationIndices = aDecoder.decodePODArray(forKey: "localTransformAnimationIndices")
-            scene.worldTransformAnimationIndices = aDecoder.decodePODArray(forKey: "worldTransformAnimationIndices")
-
-            let skeletonAnimationWrappers = aDecoder.decodeObject(forKey: "skeletonAnimations")
-                as? [AnimatedSkeleton.CodingWrapper] ?? []
-            scene.skeletonAnimations = skeletonAnimationWrappers.map { $0.data! }
-
-            let skinWrappers = aDecoder.decodeObject(forKey: "skins") as? [SkinData.CodingWrapper] ?? []
-            scene.skins = skinWrappers.map { $0.data! }
-
-            let vertexDescriptorWrappers = aDecoder.decodeObject(forKey: "vertexDescriptors")
-                as? [MDLVertexDescriptor.CodingWrapper] ?? []
-            scene.vertexDescriptors = vertexDescriptorWrappers.map { $0.data! }
-
-            scene.vertexBuffers = aDecoder.decodeObject(forKey: "vertexBuffers") as? [Data] ?? []
-            scene.indexBuffers = aDecoder.decodeObject(forKey: "indexBuffers") as? [Data] ?? []
-
-            let meshWrappers = aDecoder.decodeObject(forKey: "meshes") as? [MeshData.CodingWrapper] ?? []
-            scene.meshes = meshWrappers.map { $0.data! }
-
-            self.scene = scene
-        }
-
-        func encode(with aCoder: NSCoder) {
-            aCoder.encode(scene!.texturePaths, forKey: "texturePaths")
-            aCoder.encode(scene!.nodeNames, forKey: "nodeNames")
-            aCoder.encodePODArray(scene!.localTransforms, forKey: "localTransforms")
-            aCoder.encodePODArray(scene!.worldTransforms, forKey: "worldTransforms")
-            aCoder.encodePODArray(scene!.parentIndices, forKey: "parentIndices")
-            aCoder.encodePODArray(scene!.meshNodeIndices, forKey: "meshNodeIndices")
-            aCoder.encodePODArray(scene!.meshSkinIndices, forKey: "meshSkinIndices")
-            aCoder.encodePODArray(scene!.instanceCount, forKey: "instanceCount")
-            aCoder.encodePODArray(scene!.sampleTimes, forKey: "sampleTimes")
-            aCoder.encodeArrayOfPODArrays(scene!.localTransformAnimations, forKey: "localTransformAnimations")
-            aCoder.encodeArrayOfPODArrays(scene!.worldTransformAnimations, forKey: "worldTransformAnimations")
-            aCoder.encodePODArray(scene!.localTransformAnimationIndices, forKey: "localTransformAnimationIndices")
-            aCoder.encodePODArray(scene!.worldTransformAnimationIndices, forKey: "worldTransformAnimationIndices")
-            aCoder.encode(scene!.skeletonAnimations.map(AnimatedSkeleton.CodingWrapper.init), forKey: "skeletonAnimations")
-            aCoder.encode(scene!.skins.map { SkinData.CodingWrapper($0) }, forKey: "skins")
-            aCoder.encode(scene!.vertexDescriptors.map(MDLVertexDescriptor.CodingWrapper.init), forKey: "vertexDescriptors")
-            aCoder.encode(scene!.vertexBuffers, forKey: "vertexBuffers")
-            aCoder.encode(scene!.indexBuffers, forKey: "indexBuffers")
-            aCoder.encode(scene!.meshes.map(MeshData.CodingWrapper.init), forKey: "meshes")
-        }
+    var model: AKModel?
+    
+    init(model: AKModel) {
+        self.model = model
+        self.model?.nodeNames = model.nodeNames
+        self.model?.localTransforms = model.localTransforms
+        self.model?.worldTransforms = model.worldTransforms
+        self.model?.parentIndices = model.parentIndices
+        self.model?.meshNodeIndices = model.meshNodeIndices
+        self.model?.vertexDescriptors = model.vertexDescriptors
+        self.model?.vertexBuffers = model.vertexBuffers
+        self.model?.indexBuffers = model.indexBuffers
+        self.model?.meshes = model.meshes
+        self.model?.texturePaths = model.texturePaths
+        self.model?.instanceCount = model.instanceCount
+        self.model?.sampleTimes = model.sampleTimes
+        self.model?.localTransformAnimations = model.localTransformAnimations
+        self.model?.worldTransformAnimations = model.worldTransformAnimations
+        self.model?.localTransformAnimationIndices = model.localTransformAnimationIndices
+        self.model?.worldTransformAnimationIndices = model.worldTransformAnimationIndices
+        // -- add skinning
+        self.model?.meshSkinIndices = model.meshSkinIndices
+        self.model?.skins = model.skins
+        self.model?.skeletonAnimations = model.skeletonAnimations
+    }
+    
+    required init?(coder aDecoder: NSCoder) {
+        let model = AKSimpleModel()
+        
+        model.texturePaths = aDecoder.decodeObject(forKey: "texturePaths") as? [String] ?? []
+        model.nodeNames = aDecoder.decodeObject(forKey: "nodeNames") as? [String] ?? []
+        model.localTransforms = aDecoder.decodePODArray(forKey: "localTransforms")
+        model.worldTransforms = aDecoder.decodePODArray(forKey: "worldTransforms")
+        model.parentIndices = aDecoder.decodePODArray(forKey: "parentIndices")
+        model.meshNodeIndices = aDecoder.decodePODArray(forKey: "meshNodeIndices")
+        model.meshSkinIndices = aDecoder.decodePODArray(forKey: "meshSkinIndices")
+        model.instanceCount = aDecoder.decodePODArray(forKey: "instanceCount")
+        model.sampleTimes = aDecoder.decodePODArray(forKey: "sampleTimes")
+        model.localTransformAnimations = aDecoder.decodeArrayOfPODArrays(forKey: "localTransformAnimations")
+        model.worldTransformAnimations = aDecoder.decodeArrayOfPODArrays(forKey: "worldTransformAnimations")
+        model.localTransformAnimationIndices = aDecoder.decodePODArray(forKey: "localTransformAnimationIndices")
+        model.worldTransformAnimationIndices = aDecoder.decodePODArray(forKey: "worldTransformAnimationIndices")
+        
+        let skeletonAnimationWrappers = aDecoder.decodeObject(forKey: "skeletonAnimations")
+            as? [AnimatedSkeleton.CodingWrapper] ?? []
+        model.skeletonAnimations = skeletonAnimationWrappers.map { $0.data! }
+        
+        let skinWrappers = aDecoder.decodeObject(forKey: "skins") as? [SkinData.CodingWrapper] ?? []
+        model.skins = skinWrappers.map { $0.data! }
+        
+        let vertexDescriptorWrappers = aDecoder.decodeObject(forKey: "vertexDescriptors")
+            as? [MDLVertexDescriptor.CodingWrapper] ?? []
+        model.vertexDescriptors = vertexDescriptorWrappers.map { $0.data! }
+        
+        model.vertexBuffers = aDecoder.decodeObject(forKey: "vertexBuffers") as? [Data] ?? []
+        model.indexBuffers = aDecoder.decodeObject(forKey: "indexBuffers") as? [Data] ?? []
+        
+        let meshWrappers = aDecoder.decodeObject(forKey: "meshes") as? [MeshData.CodingWrapper] ?? []
+        model.meshes = meshWrappers.map { $0.data! }
+        
+        self.model = model
+    }
+    
+    func encode(with aCoder: NSCoder) {
+        aCoder.encode(model!.texturePaths, forKey: "texturePaths")
+        aCoder.encode(model!.nodeNames, forKey: "nodeNames")
+        aCoder.encodePODArray(model!.localTransforms, forKey: "localTransforms")
+        aCoder.encodePODArray(model!.worldTransforms, forKey: "worldTransforms")
+        aCoder.encodePODArray(model!.parentIndices, forKey: "parentIndices")
+        aCoder.encodePODArray(model!.meshNodeIndices, forKey: "meshNodeIndices")
+        aCoder.encodePODArray(model!.meshSkinIndices, forKey: "meshSkinIndices")
+        aCoder.encodePODArray(model!.instanceCount, forKey: "instanceCount")
+        aCoder.encodePODArray(model!.sampleTimes, forKey: "sampleTimes")
+        aCoder.encodeArrayOfPODArrays(model!.localTransformAnimations, forKey: "localTransformAnimations")
+        aCoder.encodeArrayOfPODArrays(model!.worldTransformAnimations, forKey: "worldTransformAnimations")
+        aCoder.encodePODArray(model!.localTransformAnimationIndices, forKey: "localTransformAnimationIndices")
+        aCoder.encodePODArray(model!.worldTransformAnimationIndices, forKey: "worldTransformAnimationIndices")
+        aCoder.encode(model!.skeletonAnimations.map(AnimatedSkeleton.CodingWrapper.init), forKey: "skeletonAnimations")
+        aCoder.encode(model!.skins.map { SkinData.CodingWrapper($0) }, forKey: "skins")
+        aCoder.encode(model!.vertexDescriptors.map(MDLVertexDescriptor.CodingWrapper.init), forKey: "vertexDescriptors")
+        aCoder.encode(model!.vertexBuffers, forKey: "vertexBuffers")
+        aCoder.encode(model!.indexBuffers, forKey: "indexBuffers")
+        aCoder.encode(model!.meshes.map(MeshData.CodingWrapper.init), forKey: "meshes")
     }
 }
 

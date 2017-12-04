@@ -78,7 +78,7 @@ class SurfacesRenderModule: RenderModule {
         
     }
     
-    func loadAssets(fromMeshProvider meshProvider: MeshProvider?, textureLoader aTextureLoader: MTKTextureLoader, completion: (() -> Void)) {
+    func loadAssets(fromModelProvider: ModelProvider?, textureLoader aTextureLoader: MTKTextureLoader, completion: (() -> Void)) {
         
         textureLoader = aTextureLoader
         
@@ -95,7 +95,9 @@ class SurfacesRenderModule: RenderModule {
         let mesh = MDLMesh(planeWithExtent: vector3(1, 0, 1), segments: vector2(1, 1), geometryType: .triangles, allocator: metalAllocator)
         let asset = MDLAsset(bufferAllocator: metalAllocator)
         asset.add(mesh)
-        meshAsset = asset
+        
+        let mySurfaceModel = AKMDLAssetModel(asset: asset)
+        surfaceModel = mySurfaceModel
         
         completion()
         
@@ -108,76 +110,23 @@ class SurfacesRenderModule: RenderModule {
             return
         }
         
-        guard let asset = meshAsset else {
-            print("Serious Error - MDLAsset not found")
+        guard let surfaceModel = surfaceModel else {
+            print("Serious Error - surfaceModel not found")
             return
         }
         
-        // Create a vertex descriptor for our Metal pipeline. Specifies the layout of vertices the
-        // pipeline should expect. The layout below keeps attributes used to calculate vertex shader
-        // output position separate (world position, skinning, tweening weights) separate from other
-        // attributes (texture coordinates, normals).  This generally maximizes pipeline efficiency
-        
-        geometryVertexDescriptor = MTLVertexDescriptor()
-        
-        // Positions.
-        geometryVertexDescriptor?.attributes[0].format = .float3
-        geometryVertexDescriptor?.attributes[0].offset = 0
-        geometryVertexDescriptor?.attributes[0].bufferIndex = Int(kBufferIndexMeshPositions.rawValue)
-        
-        // Texture coordinates.
-        geometryVertexDescriptor?.attributes[1].format = .float2
-        geometryVertexDescriptor?.attributes[1].offset = 0
-        geometryVertexDescriptor?.attributes[1].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
-        
-        // Normals.
-        geometryVertexDescriptor?.attributes[2].format = .float3
-        geometryVertexDescriptor?.attributes[2].offset = 8
-        geometryVertexDescriptor?.attributes[2].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
-        
-        // Position Buffer Layout
-        geometryVertexDescriptor?.layouts[0].stride = 12
-        geometryVertexDescriptor?.layouts[0].stepRate = 1
-        geometryVertexDescriptor?.layouts[0].stepFunction = .perVertex
-        
-        // Generic Attribute Buffer Layout
-        geometryVertexDescriptor?.layouts[1].stride = 20
-        geometryVertexDescriptor?.layouts[1].stepRate = 1
-        geometryVertexDescriptor?.layouts[1].stepFunction = .perVertex
-        
-        guard let geometryVertexDescriptor = geometryVertexDescriptor else {
-            print("Serious Error - Geometry Vertex Descriptor is nil.")
-            return
-        }
-        
-        // Creata a Model IO vertexDescriptor so that we format/layout our model IO mesh vertices to
-        // fit our Metal render pipeline's vertex descriptor layout
-        let vertexDescriptor = MTKModelIOVertexDescriptorFromMetal(geometryVertexDescriptor)
-        
-        // Indicate how each Metal vertex descriptor attribute maps to each ModelIO attribute
-        (vertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributePosition
-        (vertexDescriptor.attributes[Int(kVertexAttributeTexcoord.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributeTextureCoordinate
-        (vertexDescriptor.attributes[Int(kVertexAttributeNormal.rawValue)] as! MDLVertexAttribute).name   = MDLVertexAttributeNormal
-        
-        surfaceModelParser = ModelParser(asset: asset, vertexDescriptor: vertexDescriptor)
-        
-        guard let modelParser = surfaceModelParser else {
-            print("Serious Error - Model Parser not found when attempting to load meshes.")
-            return
-        }
-        
-        if modelParser.meshNodeIndices.count > 1 {
+        if surfaceModel.meshNodeIndices.count > 1 {
             print("WARNING: More than one mesh was found. Currently only one mesh per anchor is supported.")
         }
         
-        surfaceMeshGPUData = meshData(from: modelParser)
+        surfaceMeshGPUData = meshData(from: surfaceModel)
         
         guard let meshGPUData = surfaceMeshGPUData else {
             print("Serious Error - ERROR: No meshGPUData found when trying to load the pipeline.")
             return
         }
         
-        guard let surfaceVertexDescriptor = createMetalVertexDescriptor(withModelIOVertexDescriptor: modelParser.vertexDescriptors) else {
+        guard let surfaceVertexDescriptor = createMetalVertexDescriptor(withModelIOVertexDescriptor: surfaceModel.vertexDescriptors) else {
             print("Serious Error - Failed to create a MetalKit vertex descriptor from ModelIO.")
             return
         }
@@ -185,7 +134,7 @@ class SurfacesRenderModule: RenderModule {
         for (drawIdx, drawData) in meshGPUData.drawData.enumerated() {
             let surfacePipelineStateDescriptor = MTLRenderPipelineDescriptor()
             do {
-                let funcConstants = MetalUtilities.getFuncConstantsForDrawDataSet(meshData: modelParser.meshes[drawIdx], useMaterials: usesMaterials)
+                let funcConstants = MetalUtilities.getFuncConstantsForDrawDataSet(meshData: surfaceModel.meshes[drawIdx], useMaterials: usesMaterials)
                 // TODO: Implement a vertex shader with puppet animation support
                 //                let vertexName = (drawData.paletteStartIndex != nil) ? "vertex_skinned" : "anchorGeometryVertexTransform"
                 let vertexName = "anchorGeometryVertexTransform"
@@ -275,12 +224,12 @@ class SurfacesRenderModule: RenderModule {
             var coordinateSpaceTransform = matrix_identity_float4x4
             coordinateSpaceTransform.columns.2.z = -1.0
             
-            if let modelParser = surfaceModelParser {
+            if let model = surfaceModel {
                 
                 // Apply the world transform (as defined in the imported model) if applicable
                 let surfaceIndex = surfaceInstanceCount - 1
-                if let modelParserIndex = modelParserIndex(in: modelParser, fromSurfaceIndex: surfaceIndex), modelParserIndex < modelParser.worldTransforms.count {
-                    let worldTransform = modelParser.worldTransforms[modelParserIndex]
+                if let modelIndex = modelIndex(in: model, fromSurfaceIndex: surfaceIndex), modelIndex < model.worldTransforms.count {
+                    let worldTransform = model.worldTransforms[modelIndex]
                     coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
                 }
                 
@@ -367,17 +316,12 @@ class SurfacesRenderModule: RenderModule {
     }
     
     private var device: MTLDevice?
-    private var meshAsset: MDLAsset?
     private var textureLoader: MTKTextureLoader?
-    private var surfaceModelParser: ModelParser?
+    private var surfaceModel: AKModel?
     private var surfaceUniformBuffer: MTLBuffer?
     private var materialUniformBuffer: MTLBuffer?
     private var surfacePipelineStates = [MTLRenderPipelineState]() // Store multiple states
     private var surfaceDepthState: MTLDepthStencilState?
-    
-    // Metal vertex descriptor specifying how vertices will by laid out for input into our
-    // surface geometry render pipeline and how we'll layout our Model IO verticies
-    private var geometryVertexDescriptor: MTLVertexDescriptor?
     
     // MetalKit meshes containing vertex data and index buffer for our surface geometry
     private var surfaceMeshGPUData: MeshGPUData?
@@ -406,12 +350,12 @@ class SurfacesRenderModule: RenderModule {
         return mtlVertexDescriptor
     }
     
-    private func meshData(from aModelParser: ModelParser) -> MeshGPUData {
+    private func meshData(from aModel: AKModel) -> MeshGPUData {
         
         var myGPUData = MeshGPUData()
         
         // Create Vertex Buffers
-        for vtxBuffer in aModelParser.vertexBuffers {
+        for vtxBuffer in aModel.vertexBuffers {
             vtxBuffer.withUnsafeBytes { (bytes: UnsafePointer<UInt8>) in
                 guard let aVTXBuffer = device?.makeBuffer(bytes: bytes, length: vtxBuffer.count, options: .storageModeShared) else {
                     fatalError("Failed to create a buffer from the device.")
@@ -422,7 +366,7 @@ class SurfacesRenderModule: RenderModule {
         }
         
         // Create Index Buffers
-        for idxBuffer in aModelParser.indexBuffers {
+        for idxBuffer in aModel.indexBuffers {
             idxBuffer.withUnsafeBytes { (bytes: UnsafePointer<UInt8>) in
                 guard let aIDXBuffer = device?.makeBuffer(bytes: bytes, length: idxBuffer.count, options: .storageModeShared) else {
                     fatalError("Failed to create a buffer from the device.")
@@ -432,24 +376,24 @@ class SurfacesRenderModule: RenderModule {
         }
         
         // Create Texture Buffers
-        for texturePath in aModelParser.texturePaths {
+        for texturePath in aModel.texturePaths {
             myGPUData.textures.append(createMTLTexture(fromAssetPath: texturePath))
         }
         
         // Encode the data in the meshes as DrawData objects and store them in the MeshGPUData
         var instStartIdx = 0
         var paletteStartIdx = 0
-        for (meshIdx, meshData) in aModelParser.meshes.enumerated() {
+        for (meshIdx, meshData) in aModel.meshes.enumerated() {
             
             var drawData = DrawData()
             drawData.vbCount = meshData.vbCount
             drawData.vbStartIdx = meshData.vbStartIdx
             drawData.ibStartIdx = meshData.ibStartIdx
-            drawData.instCount = !aModelParser.instanceCount.isEmpty ? aModelParser.instanceCount[meshIdx] : 1
+            drawData.instCount = !aModel.instanceCount.isEmpty ? aModel.instanceCount[meshIdx] : 1
             drawData.instBufferStartIdx = instStartIdx
-            if !aModelParser.meshSkinIndices.isEmpty,
-                let paletteIndex = aModelParser.meshSkinIndices[instStartIdx] {
-                drawData.paletteSize = aModelParser.skins[paletteIndex].jointPaths.count
+            if !aModel.meshSkinIndices.isEmpty,
+                let paletteIndex = aModel.meshSkinIndices[instStartIdx] {
+                drawData.paletteSize = aModel.skins[paletteIndex].jointPaths.count
                 drawData.paletteStartIndex = paletteStartIdx
                 paletteStartIdx += drawData.paletteSize * drawData.instCount
             }
@@ -521,9 +465,9 @@ class SurfacesRenderModule: RenderModule {
         return nil
     }
     
-    private func modelParserIndex(in modelParser: ModelParser, fromSurfaceIndex surfaceIndex: Int) -> Int? {
-        if surfaceIndex < modelParser.meshNodeIndices.count, surfaceIndex >= 0 {
-            return modelParser.meshNodeIndices[surfaceIndex]
+    private func modelIndex(in model: AKModel, fromSurfaceIndex surfaceIndex: Int) -> Int? {
+        if surfaceIndex < model.meshNodeIndices.count, surfaceIndex >= 0 {
+            return model.meshNodeIndices[surfaceIndex]
         } else {
             return nil
         }

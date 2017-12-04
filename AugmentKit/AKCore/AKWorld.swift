@@ -252,7 +252,7 @@ public class AKWorld: NSObject {
             }
         }
     }
-    fileprivate var anchorAsset: MDLAsset?
+    
     fileprivate var reliableWorldLocations = [AKWorldLocation]()
     fileprivate var reliableWorldTransformOffsetMatrix: matrix_float4x4 = matrix_identity_float4x4
     fileprivate var didRecieveFirstLocation = false

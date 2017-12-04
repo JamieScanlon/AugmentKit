@@ -1,5 +1,5 @@
 //
-//  ModelParser.swift
+//  AKMDLAssetModel.swift
 //  AugmentKit2
 //
 //  MIT License
@@ -25,7 +25,8 @@
 //  SOFTWARE.
 //
 //
-//  This class parses an MDLAsset suitable to be serialized to disk or to be passed directly to the renderer.
+//  This class that impements AKModel and can parse an MDLAsset so that it is
+//  suitable to be serialized to disk or to be passed directly to the renderer.
 //
 //  Based heavily on "From Art to Engine with Model I/O" WWDC 2017 talk.
 //  https://developer.apple.com/videos/play/wwdc2017/610/
@@ -33,41 +34,50 @@
 //
 
 import Foundation
+import AugmentKitShader
+import Metal
+import MetalKit
 import ModelIO
 
-class ModelParser {
-    let jointRootID = "root"
+// MARK: - AKMDLAssetModel
 
-    var nodeNames = [String]()
-    var texturePaths = [String]()
+public class AKMDLAssetModel: AKModel {
+    
+    public var jointRootID = "root"
+
+    public var nodeNames = [String]()
+    public var texturePaths = [String]()
 
     // Transform for a node at a given index
-    var localTransforms = [matrix_float4x4]()
+    public var localTransforms = [matrix_float4x4]()
     // Combined transform of all the parent nodes of a node at a given index
-    var worldTransforms = [matrix_float4x4]()
-    var parentIndices = [Int?]()
-    var meshNodeIndices = [Int]()
-    var meshSkinIndices = [Int?]()
-    var instanceCount = [Int]()
+    public var worldTransforms = [matrix_float4x4]()
+    public var parentIndices = [Int?]()
+    public var meshNodeIndices = [Int]()
+    public var meshSkinIndices = [Int?]()
+    public var instanceCount = [Int]()
 
-    var vertexDescriptors = [MDLVertexDescriptor]()
-    var vertexBuffers = [Data]()
-    var indexBuffers = [Data]()
+    public var vertexDescriptors = [MDLVertexDescriptor]()
+    public var vertexBuffers = [Data]()
+    public var indexBuffers = [Data]()
 
-    var meshes = [MeshData]()
-    var skins = [SkinData]()
+    public var meshes = [MeshData]()
+    public var skins = [SkinData]()
 
-    var sampleTimes = [Double]()
-    var localTransformAnimations = [[matrix_float4x4]]()
-    var worldTransformAnimations = [[matrix_float4x4]]()
-    var localTransformAnimationIndices = [Int?]()
-    var worldTransformAnimationIndices = [Int?]()
+    public var sampleTimes = [Double]()
+    public var localTransformAnimations = [[matrix_float4x4]]()
+    public var worldTransformAnimations = [[matrix_float4x4]]()
+    public var localTransformAnimationIndices = [Int?]()
+    public var worldTransformAnimationIndices = [Int?]()
 
-    var skeletonAnimations = [AnimatedSkeleton]()
+    public var skeletonAnimations = [AnimatedSkeleton]()
+    
+    // MARK: - Init
 
-    init() {}
+    public init() {}
 
-    init(asset: MDLAsset, vertexDescriptor: MDLVertexDescriptor? = nil) {
+    public init(asset: MDLAsset) {
+        let vertexDescriptor = AKMDLAssetModel.newVertexDescriptor()
         sampleTimes = ModelIOTools.sampleTimeInterval(start: asset.startTime, end: asset.endTime, frameInterval: 1.0 / 60.0)
         storeAllMeshesInSceneGraph(with: asset, vertexDescriptor: vertexDescriptor)
         flattenSceneGraphHierarchy(with: asset)

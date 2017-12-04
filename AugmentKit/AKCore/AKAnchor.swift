@@ -34,14 +34,14 @@ import ModelIO
 //  be a rendered augmented object like a virtual sign or piece of furniture, or it may
 //  be a non-rendered reference geomentry that is used as meta information about the
 //  AR world like a 2D plane might represent a table top or a wall.
-//  The object's geometry is defiened by the `mdlAsset` Metal Asset property and may
+//  The object's geometry is defiened by the `model` property and may
 //  contain animation therefore the geomentry it does not always have to represent a rigid body.
 //  AKGeometricEntity does not contain any position information so it does not mean
 //  anything by itself in the context of the AKWorld. It does serve as a base protocol
 //  for more meaningful Types like AKAnchor and AKTracker.
 public protocol AKGeometricEntity {
     static var type: String { get }
-    var mdlAsset: MDLAsset { get }
+    var model: AKModel { get }
     var identifier: UUID? { get }
 }
 
@@ -49,7 +49,7 @@ public protocol AKGeometricEntity {
 
 //  An AKAnchor is a geometrical object 'anchored' to a location. The object itself may
 //  have animation but its position is esstntially fixed in space.
-//  The object's geometry is defiened by the `mdlAsset` Metal Asset property.
+//  The object's geometry is defiened by the `model` property.
 //  The objects position in the world is defined by the worldLocation property.
 public protocol AKAnchor: AKGeometricEntity {
     
@@ -78,7 +78,7 @@ public protocol AKRealAnchor: AKAnchor {
 
 //  An AKTracker is a geometrical object that tracks another moving object or position.
 //  The objects position is not fixed in world space but is relative.
-//  The object's geometry is defiened by the `mdlAsset` Metal Asset property.
+//  The object's geometry is defiened by the `model` property.
 //  The objects position in the world is defined by the worldLocation property.
 public protocol AKTracker: AKGeometricEntity {
     

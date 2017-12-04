@@ -67,9 +67,8 @@ class TrackingPointsRenderModule: RenderModule {
         
     }
     
-    // Load the mesh data from the Mesh Provider and asynchrnonously return a ModelParser object
-    // through a completion handler.
-    func loadAssets(fromMeshProvider: MeshProvider?, textureLoader: MTKTextureLoader, completion: (() -> Void)) {
+    // Load the data from the Model Provider.
+    func loadAssets(fromModelProvider: ModelProvider?, textureLoader: MTKTextureLoader, completion: (() -> Void)) {
         completion()
     }
     

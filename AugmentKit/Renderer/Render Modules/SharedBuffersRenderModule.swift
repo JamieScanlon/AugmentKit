@@ -67,7 +67,7 @@ class SharedBuffersRenderModule: SharedRenderModule {
         
     }
     
-    func loadAssets(fromMeshProvider: MeshProvider?, textureLoader: MTKTextureLoader, completion: (() -> Void)) {
+    func loadAssets(fromModelProvider: ModelProvider?, textureLoader: MTKTextureLoader, completion: (() -> Void)) {
         completion()
     }
     

@@ -35,31 +35,6 @@
 import Foundation
 import ModelIO
 
-// MARK: - ModelSerializer
-
-extension AKModel {
-    
-    func serialize(toFilePath filePath: String) {
-        
-        // Serialize data.
-        NSKeyedArchiver.archiveRootObject(AKModelCodingWrapper(model: self), toFile: filePath)
-        
-    }
-    
-    static func deserialize(fromFilePath filePath: String) -> AKModel? {
-        
-        let url = URL(fileURLWithPath: filePath)
-        
-        guard let data = try? Data(contentsOf: url) else {
-            return nil
-        }
-        
-        return NSKeyedUnarchiver.unarchiveObject(with: data) as? AKModel
-        
-    }
-    
-}
-
 // MARK: - NSCoder Extensions
 
 extension MDLVertexAttribute {

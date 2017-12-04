@@ -119,6 +119,7 @@ extension AKModel {
     
 }
 
+//  A Basic implementation of the protocol
 public class AKSimpleModel: AKModel {
     
     public var jointRootID: String = String()
@@ -141,5 +142,78 @@ public class AKSimpleModel: AKModel {
     public var localTransformAnimationIndices: [Int?] = [Int?]()
     public var worldTransformAnimationIndices: [Int?] = [Int?]()
     public var skeletonAnimations: [AnimatedSkeleton] = [AnimatedSkeleton]()
+    
+}
+
+//  An implementation of AKModel where the model can be loaded from a Data object
+//  that was generated using `akcltool` either directly or by file path
+public class AKDataModel: AKModel {
+    
+    public var jointRootID: String = String()
+    public var nodeNames: [String] = [String]()
+    public var texturePaths: [String] = [String]()
+    public var localTransforms: [matrix_float4x4] = [matrix_float4x4]()
+    public var worldTransforms: [matrix_float4x4] = [matrix_float4x4]()
+    public var parentIndices: [Int?] = [Int?]()
+    public var meshNodeIndices: [Int] = [Int]()
+    public var meshSkinIndices: [Int?] = [Int?]()
+    public var instanceCount: [Int] = [Int]()
+    public var vertexDescriptors: [MDLVertexDescriptor] = [MDLVertexDescriptor]()
+    public var vertexBuffers: [Data] = [Data]()
+    public var indexBuffers: [Data] = [Data]()
+    public var meshes: [MeshData] = [MeshData]()
+    public var skins: [SkinData] = [SkinData]()
+    public var sampleTimes: [Double] = [Double]()
+    public var localTransformAnimations: [[matrix_float4x4]] = [[matrix_float4x4]]()
+    public var worldTransformAnimations: [[matrix_float4x4]] = [[matrix_float4x4]]()
+    public var localTransformAnimationIndices: [Int?] = [Int?]()
+    public var worldTransformAnimationIndices: [Int?] = [Int?]()
+    public var skeletonAnimations: [AnimatedSkeleton] = [AnimatedSkeleton]()
+    
+    // MARK: - Init
+    
+    public init() {}
+    
+    public convenience init(filePath: String) {
+        
+        let url = URL(fileURLWithPath: filePath)
+        
+        guard let data = try? Data(contentsOf: url) else {
+            self.init()
+            return
+        }
+        
+        self.init(data: data)
+        
+    }
+    
+    public init(data: Data) {
+        
+        guard let aModel = NSKeyedUnarchiver.unarchiveObject(with: data) as? AKModel else {
+            return
+        }
+        
+        self.jointRootID = aModel.jointRootID
+        self.nodeNames = aModel.nodeNames
+        self.texturePaths = aModel.texturePaths
+        self.localTransforms = aModel.localTransforms
+        self.worldTransforms = aModel.worldTransforms
+        self.parentIndices = aModel.parentIndices
+        self.meshNodeIndices = aModel.meshNodeIndices
+        self.meshSkinIndices = aModel.meshSkinIndices
+        self.instanceCount = aModel.instanceCount
+        self.vertexDescriptors = aModel.vertexDescriptors
+        self.vertexBuffers = aModel.vertexBuffers
+        self.indexBuffers = aModel.indexBuffers
+        self.meshes = aModel.meshes
+        self.skins = aModel.skins
+        self.sampleTimes = aModel.sampleTimes
+        self.localTransformAnimations = aModel.localTransformAnimations
+        self.worldTransformAnimations = aModel.worldTransformAnimations
+        self.localTransformAnimationIndices = aModel.localTransformAnimationIndices
+        self.worldTransformAnimationIndices = aModel.worldTransformAnimationIndices
+        self.skeletonAnimations = aModel.skeletonAnimations
+        
+    }
     
 }

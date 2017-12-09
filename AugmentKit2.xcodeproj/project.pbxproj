@@ -9,6 +9,13 @@
 /* Begin PBXBuildFile section */
 		7D1B6F0D1F29851E00AB035D /* Pin.scn in Resources */ = {isa = PBXBuildFile; fileRef = 7D1B6F0C1F2983DA00AB035D /* Pin.scn */; };
 		7D282F141FD11DE700D00B86 /* Serialize.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D282F131FD11DE600D00B86 /* Serialize.swift */; };
+		7D5EEC1E1FDC5EDD00E3FE91 /* Pin.scn in Resources */ = {isa = PBXBuildFile; fileRef = 7D1B6F0C1F2983DA00AB035D /* Pin.scn */; };
+		7D5EEC1F1FDC628D00E3FE91 /* AKModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DE0C2A81FD46E5E0043FA5F /* AKModel.swift */; };
+		7D5EEC201FDC629400E3FE91 /* Serialize.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D282F131FD11DE600D00B86 /* Serialize.swift */; };
+		7D5EEC211FDC629600E3FE91 /* AKMDLAssetModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D1B6F081F23B2B200AB035D /* AKMDLAssetModel.swift */; };
+		7D5EEC221FDC629800E3FE91 /* ModelIOTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DB396AF1F1AFDD30003019B /* ModelIOTools.swift */; };
+		7D5EEC231FDC629B00E3FE91 /* MeshData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DB396AD1F1AFD860003019B /* MeshData.swift */; };
+		7D5EEC241FDC629E00E3FE91 /* MetalUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DB396AB1F1AFBFB0003019B /* MetalUtilities.swift */; };
 		7D5FDA321FC72AAE00BAE104 /* RenderModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D5FDA311FC72AAE00BAE104 /* RenderModule.swift */; };
 		7D5FDA341FC7333200BAE104 /* SharedBuffersRenderModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D5FDA331FC7333200BAE104 /* SharedBuffersRenderModule.swift */; };
 		7D5FDA361FC73AD000BAE104 /* CameraPlaneRenderModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D5FDA351FC73AD000BAE104 /* CameraPlaneRenderModule.swift */; };
@@ -44,6 +51,11 @@
 		7D88D7BA1F0AFD560009A154 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 7D88D7B81F0AFD560009A154 /* LaunchScreen.storyboard */; };
 		7DA9936B1F907A9A00595435 /* AugmentKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7D6E6B471F8F19C300EFC667 /* AugmentKit.framework */; };
 		7DA9936C1F907A9A00595435 /* AugmentKit.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 7D6E6B471F8F19C300EFC667 /* AugmentKit.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		7DB2C4E61FDC588F00B355A2 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DB2C4E51FDC588F00B355A2 /* AppDelegate.swift */; };
+		7DB2C4E81FDC588F00B355A2 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DB2C4E71FDC588F00B355A2 /* ViewController.swift */; };
+		7DB2C4EB1FDC588F00B355A2 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 7DB2C4E91FDC588F00B355A2 /* Main.storyboard */; };
+		7DB2C4ED1FDC588F00B355A2 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7DB2C4EC1FDC588F00B355A2 /* Assets.xcassets */; };
+		7DB2C4F01FDC588F00B355A2 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 7DB2C4EE1FDC588F00B355A2 /* LaunchScreen.storyboard */; };
 		7DBA369C1F7AE0AE0006310A /* plane_grid.png in Resources */ = {isa = PBXBuildFile; fileRef = 7DBA369B1F7AE0AD0006310A /* plane_grid.png */; };
 		7DBA36A11F7C1AA10006310A /* ship.scn in Resources */ = {isa = PBXBuildFile; fileRef = 7DBA36A01F7C1A310006310A /* ship.scn */; };
 		7DBA36A21F7C1AA50006310A /* texture.png in Resources */ = {isa = PBXBuildFile; fileRef = 7DBA369F1F7C1A310006310A /* texture.png */; };
@@ -140,6 +152,17 @@
 		7D88D7CB1F0C2B0A0009A154 /* LocalStoreManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocalStoreManager.swift; path = AugmentKit/Managers/LocalStoreManager.swift; sourceTree = SOURCE_ROOT; };
 		7D88D7CD1F0C51CD0009A154 /* ErrorManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ErrorManager.swift; path = AugmentKit/Managers/ErrorManager.swift; sourceTree = SOURCE_ROOT; };
 		7D88D7CF1F0C53590009A154 /* WorldLocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WorldLocationManager.swift; path = AugmentKit/Managers/WorldLocationManager.swift; sourceTree = SOURCE_ROOT; };
+		7DB2C4E31FDC588F00B355A2 /* AugmentKitCLTools.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AugmentKitCLTools.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7DB2C4E51FDC588F00B355A2 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		7DB2C4E71FDC588F00B355A2 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
+		7DB2C4EA1FDC588F00B355A2 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
+		7DB2C4EC1FDC588F00B355A2 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		7DB2C4EF1FDC588F00B355A2 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
+		7DB2C4F11FDC588F00B355A2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		7DB2C4FA1FDC589000B355A2 /* AugmentKitCLToolsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AugmentKitCLToolsTests.swift; sourceTree = "<group>"; };
+		7DB2C4FC1FDC589000B355A2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		7DB2C5051FDC589000B355A2 /* AugmentKitCLToolsUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AugmentKitCLToolsUITests.swift; sourceTree = "<group>"; };
+		7DB2C5071FDC589000B355A2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		7DB396A91F1A96350003019B /* DeviceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceManager.swift; sourceTree = "<group>"; };
 		7DB396AB1F1AFBFB0003019B /* MetalUtilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalUtilities.swift; sourceTree = "<group>"; };
 		7DB396AD1F1AFD860003019B /* MeshData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshData.swift; sourceTree = "<group>"; };
@@ -178,6 +201,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				7DA9936B1F907A9A00595435 /* AugmentKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7DB2C4E01FDC588F00B355A2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -278,6 +308,9 @@
 				7D6E6B481F8F19C300EFC667 /* AugmentKit */,
 				7D6E6B531F8F19C300EFC667 /* AugmentKitTests */,
 				7DE0C2991FD3DF6E0043FA5F /* akcltool */,
+				7DB2C4E41FDC588F00B355A2 /* AugmentKitCLTools */,
+				7DB2C4F91FDC589000B355A2 /* AugmentKitCLToolsTests */,
+				7DB2C5041FDC589000B355A2 /* AugmentKitCLToolsUITests */,
 				7D88D7A81F0AFD550009A154 /* Products */,
 				7DA993691F9078AA00595435 /* Frameworks */,
 			);
@@ -290,6 +323,7 @@
 				7D6E6B471F8F19C300EFC667 /* AugmentKit.framework */,
 				7D6E6B4F1F8F19C300EFC667 /* AugmentKitTests.xctest */,
 				7DE0C2981FD3DF6D0043FA5F /* akcltool */,
+				7DB2C4E31FDC588F00B355A2 /* AugmentKitCLTools.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -326,6 +360,37 @@
 			children = (
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		7DB2C4E41FDC588F00B355A2 /* AugmentKitCLTools */ = {
+			isa = PBXGroup;
+			children = (
+				7DB2C4E51FDC588F00B355A2 /* AppDelegate.swift */,
+				7DB2C4E71FDC588F00B355A2 /* ViewController.swift */,
+				7DB2C4E91FDC588F00B355A2 /* Main.storyboard */,
+				7DB2C4EC1FDC588F00B355A2 /* Assets.xcassets */,
+				7DB2C4EE1FDC588F00B355A2 /* LaunchScreen.storyboard */,
+				7DB2C4F11FDC588F00B355A2 /* Info.plist */,
+			);
+			path = AugmentKitCLTools;
+			sourceTree = "<group>";
+		};
+		7DB2C4F91FDC589000B355A2 /* AugmentKitCLToolsTests */ = {
+			isa = PBXGroup;
+			children = (
+				7DB2C4FA1FDC589000B355A2 /* AugmentKitCLToolsTests.swift */,
+				7DB2C4FC1FDC589000B355A2 /* Info.plist */,
+			);
+			path = AugmentKitCLToolsTests;
+			sourceTree = "<group>";
+		};
+		7DB2C5041FDC589000B355A2 /* AugmentKitCLToolsUITests */ = {
+			isa = PBXGroup;
+			children = (
+				7DB2C5051FDC589000B355A2 /* AugmentKitCLToolsUITests.swift */,
+				7DB2C5071FDC589000B355A2 /* Info.plist */,
+			);
+			path = AugmentKitCLToolsUITests;
 			sourceTree = "<group>";
 		};
 		7DB396B11F1AFDDB0003019B /* ModelIO */ = {
@@ -431,6 +496,23 @@
 			productReference = 7D88D7A71F0AFD550009A154 /* AugmentKit2Demo.app */;
 			productType = "com.apple.product-type.application";
 		};
+		7DB2C4E21FDC588F00B355A2 /* AugmentKitCLTools */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7DB2C50E1FDC589000B355A2 /* Build configuration list for PBXNativeTarget "AugmentKitCLTools" */;
+			buildPhases = (
+				7DB2C4DF1FDC588F00B355A2 /* Sources */,
+				7DB2C4E01FDC588F00B355A2 /* Frameworks */,
+				7DB2C4E11FDC588F00B355A2 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = AugmentKitCLTools;
+			productName = AugmentKitCLTools;
+			productReference = 7DB2C4E31FDC588F00B355A2 /* AugmentKitCLTools.app */;
+			productType = "com.apple.product-type.application";
+		};
 		7DE0C2971FD3DF6D0043FA5F /* akcltool */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 7DE0C29E1FD3DF6E0043FA5F /* Build configuration list for PBXNativeTarget "akcltool" */;
@@ -454,7 +536,7 @@
 		7D88D79F1F0AFD550009A154 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastSwiftUpdateCheck = 0910;
+				LastSwiftUpdateCheck = 0920;
 				LastUpgradeCheck = 0900;
 				ORGANIZATIONNAME = TenthLetterMade;
 				TargetAttributes = {
@@ -468,6 +550,10 @@
 					};
 					7D88D7A61F0AFD550009A154 = {
 						CreatedOnToolsVersion = 9.0;
+					};
+					7DB2C4E21FDC588F00B355A2 = {
+						CreatedOnToolsVersion = 9.2;
+						ProvisioningStyle = Automatic;
 					};
 					7DE0C2971FD3DF6D0043FA5F = {
 						CreatedOnToolsVersion = 9.1;
@@ -492,6 +578,7 @@
 				7D6E6B461F8F19C300EFC667 /* AugmentKit */,
 				7D6E6B4E1F8F19C300EFC667 /* AugmentKitTests */,
 				7DE0C2971FD3DF6D0043FA5F /* akcltool */,
+				7DB2C4E21FDC588F00B355A2 /* AugmentKitCLTools */,
 			);
 		};
 /* End PBXProject section */
@@ -522,6 +609,17 @@
 				7DBA369C1F7AE0AE0006310A /* plane_grid.png in Resources */,
 				7D88D7B71F0AFD560009A154 /* Assets.xcassets in Resources */,
 				7D88D7B51F0AFD550009A154 /* Main.storyboard in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7DB2C4E11FDC588F00B355A2 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7D5EEC1E1FDC5EDD00E3FE91 /* Pin.scn in Resources */,
+				7DB2C4F01FDC588F00B355A2 /* LaunchScreen.storyboard in Resources */,
+				7DB2C4ED1FDC588F00B355A2 /* Assets.xcassets in Resources */,
+				7DB2C4EB1FDC588F00B355A2 /* Main.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -581,6 +679,21 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		7DB2C4DF1FDC588F00B355A2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7D5EEC231FDC629B00E3FE91 /* MeshData.swift in Sources */,
+				7D5EEC1F1FDC628D00E3FE91 /* AKModel.swift in Sources */,
+				7D5EEC221FDC629800E3FE91 /* ModelIOTools.swift in Sources */,
+				7DB2C4E81FDC588F00B355A2 /* ViewController.swift in Sources */,
+				7D5EEC201FDC629400E3FE91 /* Serialize.swift in Sources */,
+				7D5EEC211FDC629600E3FE91 /* AKMDLAssetModel.swift in Sources */,
+				7D5EEC241FDC629E00E3FE91 /* MetalUtilities.swift in Sources */,
+				7DB2C4E61FDC588F00B355A2 /* AppDelegate.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		7DE0C2941FD3DF6D0043FA5F /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -625,6 +738,22 @@
 			isa = PBXVariantGroup;
 			children = (
 				7D88D7B91F0AFD560009A154 /* Base */,
+			);
+			name = LaunchScreen.storyboard;
+			sourceTree = "<group>";
+		};
+		7DB2C4E91FDC588F00B355A2 /* Main.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				7DB2C4EA1FDC588F00B355A2 /* Base */,
+			);
+			name = Main.storyboard;
+			sourceTree = "<group>";
+		};
+		7DB2C4EE1FDC588F00B355A2 /* LaunchScreen.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				7DB2C4EF1FDC588F00B355A2 /* Base */,
 			);
 			name = LaunchScreen.storyboard;
 			sourceTree = "<group>";
@@ -851,6 +980,40 @@
 			};
 			name = Release;
 		};
+		7DB2C5081FDC589000B355A2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 3XDE7T392Z;
+				INFOPLIST_FILE = AugmentKitCLTools/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 11.2;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = com.tenthlettermade.AugmentKitCLTools;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/AugmentKit/Renderer/**";
+				SWIFT_VERSION = 4.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		7DB2C5091FDC589000B355A2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 3XDE7T392Z;
+				INFOPLIST_FILE = AugmentKitCLTools/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 11.2;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = com.tenthlettermade.AugmentKitCLTools;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/AugmentKit/Renderer/**";
+				SWIFT_VERSION = 4.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		7DE0C29C1FD3DF6E0043FA5F /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -914,6 +1077,15 @@
 			buildConfigurations = (
 				7D88D7C01F0AFD560009A154 /* Debug */,
 				7D88D7C11F0AFD560009A154 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		7DB2C50E1FDC589000B355A2 /* Build configuration list for PBXNativeTarget "AugmentKitCLTools" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7DB2C5081FDC589000B355A2 /* Debug */,
+				7DB2C5091FDC589000B355A2 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

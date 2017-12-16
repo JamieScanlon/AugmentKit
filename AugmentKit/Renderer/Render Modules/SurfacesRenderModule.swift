@@ -344,6 +344,10 @@ class SurfacesRenderModule: RenderModule {
     private var surfaceAnimationFrameCount = [Int]()
     
     private func createMetalVertexDescriptor(withModelIOVertexDescriptor vtxDesc: [MDLVertexDescriptor]) -> MTLVertexDescriptor? {
+        guard !vtxDesc.isEmpty else {
+            print("WARNING: No Vertex Descriptors found!")
+            return nil
+        }
         guard let mtlVertexDescriptor = MTKMetalVertexDescriptorFromModelIO(vtxDesc[0]) else {
             return nil
         }

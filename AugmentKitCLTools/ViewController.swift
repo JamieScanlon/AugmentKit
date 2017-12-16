@@ -25,6 +25,8 @@ class ViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        print("Documents directory: \(documentsDirectory)")
+        
         guard let originalFileURL = Bundle.main.url(forResource: "Pin", withExtension: "scn") else {
             print("Pin.scn file not found in bundle")
             return
@@ -59,7 +61,27 @@ class ViewController: UIViewController {
         deserializeAndPrint(withURL: url)
     }
     
-//    fileprivate var model: AKModel?
+    @IBAction func shareRawDataFile(sender: UIButton) {
+        let url = documentsDirectory.appendingPathComponent("model.dat")
+        let activityVC = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+        activityVC.popoverPresentationController?.sourceView = sender
+        present(activityVC, animated: true, completion: nil)
+    }
+    
+    @IBAction func shareArchive(sender: UIButton) {
+        
+        guard let zipFilePath = zipFilePath else {
+            print("No Archive Found")
+            return
+        }
+        
+        let activityVC = UIActivityViewController(activityItems: [zipFilePath], applicationActivities: nil)
+        activityVC.popoverPresentationController?.sourceView = sender
+        present(activityVC, animated: true, completion: nil)
+        
+    }
+    
+    fileprivate var zipFilePath: URL?
     
     fileprivate func serializeMDLAsset(withURL url: URL) {
         
@@ -82,12 +104,23 @@ class ViewController: UIViewController {
         
         // Load meshes into the model
         let model = AKMDLAssetModel(asset: asset)
+        let dataFileURL = url.deletingLastPathComponent().appendingPathComponent("model.dat")
+        NSKeyedArchiver.archiveRootObject(AKModelCodingWrapper(model: model), toFile: dataFileURL.path)
         
-        NSKeyedArchiver.archiveRootObject(AKModelCodingWrapper(model: model), toFile: url.deletingLastPathComponent().appendingPathComponent("model.dat").path)
+        do {
+//            let unzipDirectory = try Zip.quickUnzipFile(filePath) // Unzip
+            zipFilePath = try Zip.quickZipFiles([dataFileURL], fileName: "AKModelArchive") // Zip
+        }
+        catch {
+            print("Something went wrong")
+        }
+        
         
     }
     
     fileprivate func deserializeAndPrint(withURL url: URL) {
+        
+        print("Deserializing file at \(url)")
         
         guard let data = try? Data(contentsOf: url) else {
             print("File not found. \(url.absoluteString)")

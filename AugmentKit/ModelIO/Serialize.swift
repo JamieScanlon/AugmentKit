@@ -208,11 +208,11 @@ extension SkinData {
 }
 
 //  Adds NSCoding support to AKModel
-class AKModelCodingWrapper: NSObject, NSCoding {
+public class AKModelCodingWrapper: NSObject, NSCoding {
     
-    var model: AKModel?
+    public var model: AKModel?
     
-    init(model: AKModel) {
+    public init(model: AKModel) {
         self.model = model
         self.model?.nodeNames = model.nodeNames
         self.model?.localTransforms = model.localTransforms
@@ -236,7 +236,7 @@ class AKModelCodingWrapper: NSObject, NSCoding {
         self.model?.skeletonAnimations = model.skeletonAnimations
     }
     
-    required init?(coder aDecoder: NSCoder) {
+    public required init?(coder aDecoder: NSCoder) {
         let model = AKSimpleModel()
         
         model.texturePaths = aDecoder.decodeObject(forKey: "texturePaths") as? [String] ?? []
@@ -273,7 +273,7 @@ class AKModelCodingWrapper: NSObject, NSCoding {
         self.model = model
     }
     
-    func encode(with aCoder: NSCoder) {
+    public func encode(with aCoder: NSCoder) {
         aCoder.encode(model!.texturePaths, forKey: "texturePaths")
         aCoder.encode(model!.nodeNames, forKey: "nodeNames")
         aCoder.encodePODArray(model!.localTransforms, forKey: "localTransforms")

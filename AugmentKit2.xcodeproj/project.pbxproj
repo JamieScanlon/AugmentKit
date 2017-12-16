@@ -69,6 +69,18 @@
 		7DE0C2A71FD3E0C40043FA5F /* MetalUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DB396AB1F1AFBFB0003019B /* MetalUtilities.swift */; };
 		7DE0C2A91FD46E5E0043FA5F /* AKModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DE0C2A81FD46E5E0043FA5F /* AKModel.swift */; };
 		7DE0C2AA1FD476FA0043FA5F /* AKModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DE0C2A81FD46E5E0043FA5F /* AKModel.swift */; };
+		7DF098A41FDDA3B9004A92AA /* unzip.c in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098961FDDA3B9004A92AA /* unzip.c */; };
+		7DF098A51FDDA3B9004A92AA /* zip.c in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098971FDDA3B9004A92AA /* zip.c */; };
+		7DF098A61FDDA3B9004A92AA /* ioapi.c in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098981FDDA3B9004A92AA /* ioapi.c */; };
+		7DF098A71FDDA3B9004A92AA /* QuickZip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF0989E1FDDA3B9004A92AA /* QuickZip.swift */; };
+		7DF098A91FDDA3B9004A92AA /* Zip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098A11FDDA3B9004A92AA /* Zip.swift */; };
+		7DF098AB1FDDA3F6004A92AA /* ZipUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098941FDDA3B9004A92AA /* ZipUtilities.swift */; };
+		7DF098AC1FDDA3FB004A92AA /* ZipUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098941FDDA3B9004A92AA /* ZipUtilities.swift */; };
+		7DF098AD1FDDA3FE004A92AA /* QuickZip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF0989E1FDDA3B9004A92AA /* QuickZip.swift */; };
+		7DF098AE1FDDA404004A92AA /* Zip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098A11FDDA3B9004A92AA /* Zip.swift */; };
+		7DF098AF1FDDA40D004A92AA /* unzip.c in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098961FDDA3B9004A92AA /* unzip.c */; };
+		7DF098B01FDDA411004A92AA /* zip.c in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098971FDDA3B9004A92AA /* zip.c */; };
+		7DF098B11FDDA414004A92AA /* ioapi.c in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098981FDDA3B9004A92AA /* ioapi.c */; };
 		7DF697EB1FCD26F500292F66 /* AKModelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF697EA1FCD26F500292F66 /* AKModelProvider.swift */; };
 		7DFCF6031FC08CD300E8A560 /* ImageCaptureShaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = 7DFCF6021FC08CD300E8A560 /* ImageCaptureShaders.metal */; };
 		7DFCF6051FC096A900E8A560 /* PointShader.metal in Sources */ = {isa = PBXBuildFile; fileRef = 7DFCF6041FC096A900E8A560 /* PointShader.metal */; };
@@ -159,10 +171,6 @@
 		7DB2C4EC1FDC588F00B355A2 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		7DB2C4EF1FDC588F00B355A2 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		7DB2C4F11FDC588F00B355A2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		7DB2C4FA1FDC589000B355A2 /* AugmentKitCLToolsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AugmentKitCLToolsTests.swift; sourceTree = "<group>"; };
-		7DB2C4FC1FDC589000B355A2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		7DB2C5051FDC589000B355A2 /* AugmentKitCLToolsUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AugmentKitCLToolsUITests.swift; sourceTree = "<group>"; };
-		7DB2C5071FDC589000B355A2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		7DB396A91F1A96350003019B /* DeviceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceManager.swift; sourceTree = "<group>"; };
 		7DB396AB1F1AFBFB0003019B /* MetalUtilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalUtilities.swift; sourceTree = "<group>"; };
 		7DB396AD1F1AFD860003019B /* MeshData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshData.swift; sourceTree = "<group>"; };
@@ -175,6 +183,18 @@
 		7DE0C29F1FD3DFC50043FA5F /* AugmentKitCLTools.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AugmentKitCLTools.swift; sourceTree = "<group>"; };
 		7DE0C2A01FD3DFC50043FA5F /* ConsoleIO.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ConsoleIO.swift; sourceTree = "<group>"; };
 		7DE0C2A81FD46E5E0043FA5F /* AKModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKModel.swift; sourceTree = "<group>"; };
+		7DF098941FDDA3B9004A92AA /* ZipUtilities.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ZipUtilities.swift; sourceTree = "<group>"; };
+		7DF098961FDDA3B9004A92AA /* unzip.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = unzip.c; sourceTree = "<group>"; };
+		7DF098971FDDA3B9004A92AA /* zip.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = zip.c; sourceTree = "<group>"; };
+		7DF098981FDDA3B9004A92AA /* ioapi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ioapi.c; sourceTree = "<group>"; };
+		7DF098991FDDA3B9004A92AA /* crypt.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = crypt.h; sourceTree = "<group>"; };
+		7DF0989A1FDDA3B9004A92AA /* zip.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = zip.h; sourceTree = "<group>"; };
+		7DF0989B1FDDA3B9004A92AA /* unzip.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = unzip.h; sourceTree = "<group>"; };
+		7DF0989C1FDDA3B9004A92AA /* module.modulemap */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = "sourcecode.module-map"; path = module.modulemap; sourceTree = "<group>"; };
+		7DF0989D1FDDA3B9004A92AA /* ioapi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ioapi.h; sourceTree = "<group>"; };
+		7DF0989E1FDDA3B9004A92AA /* QuickZip.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = QuickZip.swift; sourceTree = "<group>"; };
+		7DF098A01FDDA3B9004A92AA /* Zip.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Zip.h; sourceTree = "<group>"; };
+		7DF098A11FDDA3B9004A92AA /* Zip.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Zip.swift; sourceTree = "<group>"; };
 		7DF697EA1FCD26F500292F66 /* AKModelProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKModelProvider.swift; sourceTree = "<group>"; };
 		7DFCF6021FC08CD300E8A560 /* ImageCaptureShaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = ImageCaptureShaders.metal; sourceTree = "<group>"; };
 		7DFCF6041FC096A900E8A560 /* PointShader.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = PointShader.metal; sourceTree = "<group>"; };
@@ -304,13 +324,12 @@
 		7D88D79E1F0AFD550009A154 = {
 			isa = PBXGroup;
 			children = (
+				7DF098921FDDA349004A92AA /* Libraries */,
 				7D88D7A91F0AFD550009A154 /* AugmentKit2 */,
 				7D6E6B481F8F19C300EFC667 /* AugmentKit */,
 				7D6E6B531F8F19C300EFC667 /* AugmentKitTests */,
 				7DE0C2991FD3DF6E0043FA5F /* akcltool */,
 				7DB2C4E41FDC588F00B355A2 /* AugmentKitCLTools */,
-				7DB2C4F91FDC589000B355A2 /* AugmentKitCLToolsTests */,
-				7DB2C5041FDC589000B355A2 /* AugmentKitCLToolsUITests */,
 				7D88D7A81F0AFD550009A154 /* Products */,
 				7DA993691F9078AA00595435 /* Frameworks */,
 			);
@@ -375,24 +394,6 @@
 			path = AugmentKitCLTools;
 			sourceTree = "<group>";
 		};
-		7DB2C4F91FDC589000B355A2 /* AugmentKitCLToolsTests */ = {
-			isa = PBXGroup;
-			children = (
-				7DB2C4FA1FDC589000B355A2 /* AugmentKitCLToolsTests.swift */,
-				7DB2C4FC1FDC589000B355A2 /* Info.plist */,
-			);
-			path = AugmentKitCLToolsTests;
-			sourceTree = "<group>";
-		};
-		7DB2C5041FDC589000B355A2 /* AugmentKitCLToolsUITests */ = {
-			isa = PBXGroup;
-			children = (
-				7DB2C5051FDC589000B355A2 /* AugmentKitCLToolsUITests.swift */,
-				7DB2C5071FDC589000B355A2 /* Info.plist */,
-			);
-			path = AugmentKitCLToolsUITests;
-			sourceTree = "<group>";
-		};
 		7DB396B11F1AFDDB0003019B /* ModelIO */ = {
 			isa = PBXGroup;
 			children = (
@@ -424,6 +425,41 @@
 				7DE0C29A1FD3DF6E0043FA5F /* main.swift */,
 			);
 			path = akcltool;
+			sourceTree = "<group>";
+		};
+		7DF098921FDDA349004A92AA /* Libraries */ = {
+			isa = PBXGroup;
+			children = (
+				7DF098931FDDA3B9004A92AA /* Zip */,
+			);
+			path = Libraries;
+			sourceTree = "<group>";
+		};
+		7DF098931FDDA3B9004A92AA /* Zip */ = {
+			isa = PBXGroup;
+			children = (
+				7DF098941FDDA3B9004A92AA /* ZipUtilities.swift */,
+				7DF098951FDDA3B9004A92AA /* minizip */,
+				7DF0989E1FDDA3B9004A92AA /* QuickZip.swift */,
+				7DF098A01FDDA3B9004A92AA /* Zip.h */,
+				7DF098A11FDDA3B9004A92AA /* Zip.swift */,
+			);
+			path = Zip;
+			sourceTree = "<group>";
+		};
+		7DF098951FDDA3B9004A92AA /* minizip */ = {
+			isa = PBXGroup;
+			children = (
+				7DF098961FDDA3B9004A92AA /* unzip.c */,
+				7DF098971FDDA3B9004A92AA /* zip.c */,
+				7DF098981FDDA3B9004A92AA /* ioapi.c */,
+				7DF098991FDDA3B9004A92AA /* crypt.h */,
+				7DF0989A1FDDA3B9004A92AA /* zip.h */,
+				7DF0989B1FDDA3B9004A92AA /* unzip.h */,
+				7DF0989C1FDDA3B9004A92AA /* module.modulemap */,
+				7DF0989D1FDDA3B9004A92AA /* ioapi.h */,
+			);
+			path = minizip;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -674,8 +710,14 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7DF098A61FDDA3B9004A92AA /* ioapi.c in Sources */,
 				7D88D7B21F0AFD550009A154 /* ViewController.swift in Sources */,
+				7DF098A41FDDA3B9004A92AA /* unzip.c in Sources */,
+				7DF098A71FDDA3B9004A92AA /* QuickZip.swift in Sources */,
+				7DF098AC1FDDA3FB004A92AA /* ZipUtilities.swift in Sources */,
+				7DF098A51FDDA3B9004A92AA /* zip.c in Sources */,
 				7D88D7AB1F0AFD550009A154 /* AppDelegate.swift in Sources */,
+				7DF098A91FDDA3B9004A92AA /* Zip.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -687,8 +729,14 @@
 				7D5EEC1F1FDC628D00E3FE91 /* AKModel.swift in Sources */,
 				7D5EEC221FDC629800E3FE91 /* ModelIOTools.swift in Sources */,
 				7DB2C4E81FDC588F00B355A2 /* ViewController.swift in Sources */,
+				7DF098AE1FDDA404004A92AA /* Zip.swift in Sources */,
 				7D5EEC201FDC629400E3FE91 /* Serialize.swift in Sources */,
+				7DF098B11FDDA414004A92AA /* ioapi.c in Sources */,
+				7DF098AF1FDDA40D004A92AA /* unzip.c in Sources */,
 				7D5EEC211FDC629600E3FE91 /* AKMDLAssetModel.swift in Sources */,
+				7DF098AB1FDDA3F6004A92AA /* ZipUtilities.swift in Sources */,
+				7DF098AD1FDDA3FE004A92AA /* QuickZip.swift in Sources */,
+				7DF098B01FDDA411004A92AA /* zip.c in Sources */,
 				7D5EEC241FDC629E00E3FE91 /* MetalUtilities.swift in Sources */,
 				7DB2C4E61FDC588F00B355A2 /* AppDelegate.swift in Sources */,
 			);
@@ -960,6 +1008,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = com.tenthlettermade.AugmentKit2;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_INCLUDE_PATHS = "${SRCROOT}/Libraries/Zip/minizip/**";
 				SWIFT_VERSION = 4.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -975,6 +1024,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = com.tenthlettermade.AugmentKit2;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_INCLUDE_PATHS = "${SRCROOT}/Libraries/Zip/minizip/**";
 				SWIFT_VERSION = 4.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -991,7 +1041,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = com.tenthlettermade.AugmentKitCLTools;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/AugmentKit/Renderer/**";
+				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/AugmentKit/Renderer/** ${SRCROOT}/Libraries/Zip/minizip/**";
 				SWIFT_VERSION = 4.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -1008,7 +1058,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = com.tenthlettermade.AugmentKitCLTools;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/AugmentKit/Renderer/**";
+				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/AugmentKit/Renderer/** ${SRCROOT}/Libraries/Zip/minizip/**";
 				SWIFT_VERSION = 4.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};

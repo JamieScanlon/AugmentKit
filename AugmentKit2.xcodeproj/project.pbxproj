@@ -59,6 +59,14 @@
 		7DBA369C1F7AE0AE0006310A /* plane_grid.png in Resources */ = {isa = PBXBuildFile; fileRef = 7DBA369B1F7AE0AD0006310A /* plane_grid.png */; };
 		7DBA36A11F7C1AA10006310A /* ship.scn in Resources */ = {isa = PBXBuildFile; fileRef = 7DBA36A01F7C1A310006310A /* ship.scn */; };
 		7DBA36A21F7C1AA50006310A /* texture.png in Resources */ = {isa = PBXBuildFile; fileRef = 7DBA369F1F7C1A310006310A /* texture.png */; };
+		7DC785CC1FE6537D00F82FA4 /* AKArchivedModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DC785CB1FE6537D00F82FA4 /* AKArchivedModel.swift */; };
+		7DC785CD1FE654F300F82FA4 /* ZipUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098941FDDA3B9004A92AA /* ZipUtilities.swift */; };
+		7DC785CE1FE654F800F82FA4 /* QuickZip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF0989E1FDDA3B9004A92AA /* QuickZip.swift */; };
+		7DC785CF1FE654FE00F82FA4 /* Zip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098A11FDDA3B9004A92AA /* Zip.swift */; };
+		7DC785D11FE655C100F82FA4 /* AKRemoteArchivedModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DC785D01FE655C100F82FA4 /* AKRemoteArchivedModel.swift */; };
+		7DC785D21FE662F600F82FA4 /* unzip.c in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098961FDDA3B9004A92AA /* unzip.c */; };
+		7DC785D31FE662FB00F82FA4 /* zip.c in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098971FDDA3B9004A92AA /* zip.c */; };
+		7DC785D41FE6630000F82FA4 /* ioapi.c in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098981FDDA3B9004A92AA /* ioapi.c */; };
 		7DE0C29B1FD3DF6E0043FA5F /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DE0C29A1FD3DF6E0043FA5F /* main.swift */; };
 		7DE0C2A11FD3DFC60043FA5F /* AugmentKitCLTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DE0C29F1FD3DFC50043FA5F /* AugmentKitCLTools.swift */; };
 		7DE0C2A21FD3DFC60043FA5F /* ConsoleIO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DE0C2A01FD3DFC50043FA5F /* ConsoleIO.swift */; };
@@ -69,18 +77,6 @@
 		7DE0C2A71FD3E0C40043FA5F /* MetalUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DB396AB1F1AFBFB0003019B /* MetalUtilities.swift */; };
 		7DE0C2A91FD46E5E0043FA5F /* AKModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DE0C2A81FD46E5E0043FA5F /* AKModel.swift */; };
 		7DE0C2AA1FD476FA0043FA5F /* AKModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DE0C2A81FD46E5E0043FA5F /* AKModel.swift */; };
-		7DF098A41FDDA3B9004A92AA /* unzip.c in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098961FDDA3B9004A92AA /* unzip.c */; };
-		7DF098A51FDDA3B9004A92AA /* zip.c in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098971FDDA3B9004A92AA /* zip.c */; };
-		7DF098A61FDDA3B9004A92AA /* ioapi.c in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098981FDDA3B9004A92AA /* ioapi.c */; };
-		7DF098A71FDDA3B9004A92AA /* QuickZip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF0989E1FDDA3B9004A92AA /* QuickZip.swift */; };
-		7DF098A91FDDA3B9004A92AA /* Zip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098A11FDDA3B9004A92AA /* Zip.swift */; };
-		7DF098AB1FDDA3F6004A92AA /* ZipUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098941FDDA3B9004A92AA /* ZipUtilities.swift */; };
-		7DF098AC1FDDA3FB004A92AA /* ZipUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098941FDDA3B9004A92AA /* ZipUtilities.swift */; };
-		7DF098AD1FDDA3FE004A92AA /* QuickZip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF0989E1FDDA3B9004A92AA /* QuickZip.swift */; };
-		7DF098AE1FDDA404004A92AA /* Zip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098A11FDDA3B9004A92AA /* Zip.swift */; };
-		7DF098AF1FDDA40D004A92AA /* unzip.c in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098961FDDA3B9004A92AA /* unzip.c */; };
-		7DF098B01FDDA411004A92AA /* zip.c in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098971FDDA3B9004A92AA /* zip.c */; };
-		7DF098B11FDDA414004A92AA /* ioapi.c in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098981FDDA3B9004A92AA /* ioapi.c */; };
 		7DF697EB1FCD26F500292F66 /* AKModelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF697EA1FCD26F500292F66 /* AKModelProvider.swift */; };
 		7DFCF6031FC08CD300E8A560 /* ImageCaptureShaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = 7DFCF6021FC08CD300E8A560 /* ImageCaptureShaders.metal */; };
 		7DFCF6051FC096A900E8A560 /* PointShader.metal in Sources */ = {isa = PBXBuildFile; fileRef = 7DFCF6041FC096A900E8A560 /* PointShader.metal */; };
@@ -178,6 +174,8 @@
 		7DBA369B1F7AE0AD0006310A /* plane_grid.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = plane_grid.png; sourceTree = "<group>"; };
 		7DBA369F1F7C1A310006310A /* texture.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = texture.png; sourceTree = "<group>"; };
 		7DBA36A01F7C1A310006310A /* ship.scn */ = {isa = PBXFileReference; lastKnownFileType = file.bplist; path = ship.scn; sourceTree = "<group>"; };
+		7DC785CB1FE6537D00F82FA4 /* AKArchivedModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKArchivedModel.swift; sourceTree = "<group>"; };
+		7DC785D01FE655C100F82FA4 /* AKRemoteArchivedModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKRemoteArchivedModel.swift; sourceTree = "<group>"; };
 		7DE0C2981FD3DF6D0043FA5F /* akcltool */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = akcltool; sourceTree = BUILT_PRODUCTS_DIR; };
 		7DE0C29A1FD3DF6E0043FA5F /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		7DE0C29F1FD3DFC50043FA5F /* AugmentKitCLTools.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AugmentKitCLTools.swift; sourceTree = "<group>"; };
@@ -398,10 +396,12 @@
 			isa = PBXGroup;
 			children = (
 				7D282F131FD11DE600D00B86 /* Serialize.swift */,
-				7D1B6F081F23B2B200AB035D /* AKMDLAssetModel.swift */,
 				7DB396AF1F1AFDD30003019B /* ModelIOTools.swift */,
 				7DB396AD1F1AFD860003019B /* MeshData.swift */,
 				7DB396AB1F1AFBFB0003019B /* MetalUtilities.swift */,
+				7D1B6F081F23B2B200AB035D /* AKMDLAssetModel.swift */,
+				7DC785CB1FE6537D00F82FA4 /* AKArchivedModel.swift */,
+				7DC785D01FE655C100F82FA4 /* AKRemoteArchivedModel.swift */,
 			);
 			path = ModelIO;
 			sourceTree = "<group>";
@@ -667,12 +667,15 @@
 			buildActionMask = 2147483647;
 			files = (
 				7D6E6B671F8F1CC300EFC667 /* AKMDLAssetModel.swift in Sources */,
+				7DC785D21FE662F600F82FA4 /* unzip.c in Sources */,
 				7D6E6B6E1F8F1CDB00EFC667 /* LocalStoreManager.swift in Sources */,
 				7D6E6B6F1F8F1CDB00EFC667 /* ErrorManager.swift in Sources */,
 				7D6E6B6D1F8F1CDB00EFC667 /* MotionManager.swift in Sources */,
 				7D6E6B5F1F8F1C9D00EFC667 /* AnchorShaders.metal in Sources */,
+				7DC785CC1FE6537D00F82FA4 /* AKArchivedModel.swift in Sources */,
 				7D6E6B631F8F1CBC00EFC667 /* AKAnchor.swift in Sources */,
 				7D6E6B661F8F1CBC00EFC667 /* AKUtility.swift in Sources */,
+				7DC785CD1FE654F300F82FA4 /* ZipUtilities.swift in Sources */,
 				7D6E6B711F8F1CDB00EFC667 /* DeviceManager.swift in Sources */,
 				7D5FDA381FC7431500BAE104 /* AnchorsRenderModule.swift in Sources */,
 				7DE0C2A91FD46E5E0043FA5F /* AKModel.swift in Sources */,
@@ -683,14 +686,19 @@
 				7D6E6B651F8F1CBC00EFC667 /* AKObject.swift in Sources */,
 				7D6E6B6A1F8F1CC300EFC667 /* MetalUtilities.swift in Sources */,
 				7D6E6B621F8F1CBC00EFC667 /* AKGroundLayer.swift in Sources */,
+				7DC785D11FE655C100F82FA4 /* AKRemoteArchivedModel.swift in Sources */,
+				7DC785D31FE662FB00F82FA4 /* zip.c in Sources */,
 				7D5FDA3C1FC9E70E00BAE104 /* SurfacesRenderModule.swift in Sources */,
 				7D6E6B5E1F8F1C9600EFC667 /* AKSceneKitUtils.swift in Sources */,
 				7D6E6B681F8F1CC300EFC667 /* ModelIOTools.swift in Sources */,
 				7D5FDA321FC72AAE00BAE104 /* RenderModule.swift in Sources */,
 				7D5FDA3A1FC9CFA400BAE104 /* TrackingPointsRenderModule.swift in Sources */,
 				7D6E6B691F8F1CC300EFC667 /* MeshData.swift in Sources */,
+				7DC785CE1FE654F800F82FA4 /* QuickZip.swift in Sources */,
+				7DC785CF1FE654FE00F82FA4 /* Zip.swift in Sources */,
 				7D282F141FD11DE700D00B86 /* Serialize.swift in Sources */,
 				7D5FDA3E1FC9FB4400BAE104 /* Renderer.swift in Sources */,
+				7DC785D41FE6630000F82FA4 /* ioapi.c in Sources */,
 				7D6E6B6C1F8F1CDB00EFC667 /* LocationManager.swift in Sources */,
 				7DF697EB1FCD26F500292F66 /* AKModelProvider.swift in Sources */,
 				7DFCF6031FC08CD300E8A560 /* ImageCaptureShaders.metal in Sources */,
@@ -710,14 +718,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				7DF098A61FDDA3B9004A92AA /* ioapi.c in Sources */,
 				7D88D7B21F0AFD550009A154 /* ViewController.swift in Sources */,
-				7DF098A41FDDA3B9004A92AA /* unzip.c in Sources */,
-				7DF098A71FDDA3B9004A92AA /* QuickZip.swift in Sources */,
-				7DF098AC1FDDA3FB004A92AA /* ZipUtilities.swift in Sources */,
-				7DF098A51FDDA3B9004A92AA /* zip.c in Sources */,
 				7D88D7AB1F0AFD550009A154 /* AppDelegate.swift in Sources */,
-				7DF098A91FDDA3B9004A92AA /* Zip.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -729,14 +731,8 @@
 				7D5EEC1F1FDC628D00E3FE91 /* AKModel.swift in Sources */,
 				7D5EEC221FDC629800E3FE91 /* ModelIOTools.swift in Sources */,
 				7DB2C4E81FDC588F00B355A2 /* ViewController.swift in Sources */,
-				7DF098AE1FDDA404004A92AA /* Zip.swift in Sources */,
 				7D5EEC201FDC629400E3FE91 /* Serialize.swift in Sources */,
-				7DF098B11FDDA414004A92AA /* ioapi.c in Sources */,
-				7DF098AF1FDDA40D004A92AA /* unzip.c in Sources */,
 				7D5EEC211FDC629600E3FE91 /* AKMDLAssetModel.swift in Sources */,
-				7DF098AB1FDDA3F6004A92AA /* ZipUtilities.swift in Sources */,
-				7DF098AD1FDDA3FE004A92AA /* QuickZip.swift in Sources */,
-				7DF098B01FDDA411004A92AA /* zip.c in Sources */,
 				7D5EEC241FDC629E00E3FE91 /* MetalUtilities.swift in Sources */,
 				7DB2C4E61FDC588F00B355A2 /* AppDelegate.swift in Sources */,
 			);
@@ -827,7 +823,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.tenthlettermade.AugmentKit;
 				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
 				SKIP_INSTALL = YES;
-				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/AugmentKit/Renderer/**";
+				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/AugmentKit/Renderer/** ${SRCROOT}/Libraries/Zip/minizip/**";
 				SWIFT_VERSION = 4.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
@@ -853,7 +849,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.tenthlettermade.AugmentKit;
 				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
 				SKIP_INSTALL = YES;
-				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/AugmentKit/Renderer/**";
+				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/AugmentKit/Renderer/** ${SRCROOT}/Libraries/Zip/minizip/**";
 				SWIFT_VERSION = 4.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
@@ -1008,7 +1004,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = com.tenthlettermade.AugmentKit2;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_INCLUDE_PATHS = "${SRCROOT}/Libraries/Zip/minizip/**";
+				SWIFT_INCLUDE_PATHS = "";
 				SWIFT_VERSION = 4.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -1024,7 +1020,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = com.tenthlettermade.AugmentKit2;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_INCLUDE_PATHS = "${SRCROOT}/Libraries/Zip/minizip/**";
+				SWIFT_INCLUDE_PATHS = "";
 				SWIFT_VERSION = 4.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -1041,7 +1037,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = com.tenthlettermade.AugmentKitCLTools;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/AugmentKit/Renderer/** ${SRCROOT}/Libraries/Zip/minizip/**";
+				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/AugmentKit/Renderer/**";
 				SWIFT_VERSION = 4.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -1058,7 +1054,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = com.tenthlettermade.AugmentKitCLTools;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/AugmentKit/Renderer/** ${SRCROOT}/Libraries/Zip/minizip/**";
+				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/AugmentKit/Renderer/**";
 				SWIFT_VERSION = 4.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};

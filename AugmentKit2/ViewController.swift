@@ -115,69 +115,15 @@ class ViewController: UIViewController {
     
     // MARK: - Private
     
-    fileprivate var documentsDirectory: URL {
-        return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).last!
-    }
     fileprivate func loadAnchorModel() {
         
-        // If the model has already been loaded and saved to the documents directory
-        // just unarchive it.
-        guard !FileManager.default.fileExists(atPath: documentsDirectory.appendingPathComponent("archivedModel").appendingPathComponent("model.dat").path) else {
-            unarchiveAnchorModel(withFilePath: documentsDirectory.appendingPathComponent("archivedModel").appendingPathComponent("model.dat"))
-            return
-        }
+        let url = URL(string: "https://s3-us-west-2.amazonaws.com/com.tenthlettermade.public/PinAKModelArchive.zip")!
         
         //
         // Download a zipped Model
         //
         
-        if FileManager.default.fileExists(atPath: documentsDirectory.appendingPathComponent("archivedModel").path) {
-            try? FileManager.default.removeItem(atPath: documentsDirectory.appendingPathComponent("archivedModel").path)
-        }
-        
-        guard let modelArchiveRemoteURL = URL(string: "https://s3-us-west-2.amazonaws.com/com.tenthlettermade.public/PinAKModelArchive.zip") else {
-            print("Invalid URL: 'https://s3-us-west-2.amazonaws.com/com.tenthlettermade.public/PinAKModelArchive.zip'")
-            return
-        }
-        
-        let sessionConfig = URLSessionConfiguration.default
-        let session = URLSession(configuration: sessionConfig)
-        var request = URLRequest(url: modelArchiveRemoteURL)
-        request.httpMethod = "GET"
-        
-        let modelArchiveLocalURL = documentsDirectory.appendingPathComponent("archivedModel.zip")
-        
-        let task = session.downloadTask(with: request) { [weak self] (tempLocalUrl, response, error) in
-            if let tempLocalUrl = tempLocalUrl, error == nil {
-                // Success
-                if let statusCode = (response as? HTTPURLResponse)?.statusCode {
-                    print("Success: \(statusCode)")
-                }
-                
-                do {
-                    if FileManager.default.fileExists(atPath: modelArchiveLocalURL.path) {
-                        try FileManager.default.removeItem(atPath: modelArchiveLocalURL.path)
-                    }
-                    try FileManager.default.copyItem(at: tempLocalUrl, to: modelArchiveLocalURL)
-                    let unzipDirectory = try Zip.quickUnzipFile(modelArchiveLocalURL)
-                    self?.unarchiveAnchorModel(withFilePath: unzipDirectory.appendingPathComponent("model.dat"))
-                } catch {
-                    print("Could not unzip the archived model at \(modelArchiveLocalURL.absoluteString) : \(error.localizedDescription)")
-                }
-                
-            } else {
-                if let error = error {
-                    print("Failure: \(error.localizedDescription)")
-                } else if let tempLocalUrl = tempLocalUrl {
-                    print("Failure: url: \(tempLocalUrl.absoluteString)")
-                } else {
-                    print("Failure")
-                }
-            }
-            
-            
-        }
-        task.resume()
+        anchorModel = AKRemoteArchivedModel(remoteURL: url)
         
         //
         // Get a Model from the app bundle
@@ -191,32 +137,6 @@ class ViewController: UIViewController {
 //
 //        anchorModel = AKMDLAssetModel(asset: asset)
         
-    }
-    
-    fileprivate func unarchiveAnchorModel(withFilePath filePath: URL) {
-        
-        guard let data = try? Data(contentsOf: filePath) else {
-            print("File not found. \(filePath.absoluteString)")
-            return
-        }
-        
-        // This is a litle hacky but... When the AKModelCodingWrapper is archived from the
-        // AugmentKitCLTools target, it gets prepended with the module name so we have
-        // to map it back to a class in this module.
-        NSKeyedUnarchiver.setClass(AKModelCodingWrapper.self, forClassName: "AugmentKitCLTools.AKModelCodingWrapper")
-        
-        if let wrapper = NSKeyedUnarchiver.unarchiveObject(with: data) as? AKModelCodingWrapper {
-            
-            guard let archivedModel = wrapper.model else {
-                print("AKModel is empty.")
-                return
-            }
-            
-            anchorModel = archivedModel
-            
-        } else {
-            print("Data file at \(filePath.absoluteString) is not an AKModelCodingWrapper")
-        }
     }
     
 }

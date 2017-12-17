@@ -34,8 +34,91 @@
 
 import Foundation
 import ModelIO
+import SceneKit.ModelIO
 
-// MARK: - NSCoder Extensions
+// MARK: - SerializeUtil
+
+public class SerializeUtil {
+    
+    //  Loads a ModelIO compatible model file at the given file url and converts it to a AKModel
+    //  archives it as a zip file, and returns the URL to the new archived model. When unarchived
+    //  the zip will contain a file called `model.dat` which can be used to reconstitute the
+    //  AKModel object. You may choose to provide your own file name but the resulting file will
+    //  always end in the `.dat` extension. You may also choose to specify a directory wher the
+    //  zip archive will be created. If you don't specify a directory it will use the same
+    //  directory that the MDLAsset is located in.
+    static public func serializeMDLAsset(withFileURL url: URL, toDirectory directory: URL? = nil, withResultingFileName fileName: String = "model") -> URL? {
+        
+        var error: NSError?
+        let myAsset: MDLAsset? = {
+            if url.pathExtension == "scn" {
+                guard let scene = try? SCNScene(url: url, options: nil) else {
+                    return nil
+                }
+                return MDLAsset(scnScene: scene)
+            } else {
+                return MDLAsset(url: url, vertexDescriptor: AKSimpleModel.newVertexDescriptor(), bufferAllocator: nil, preserveTopology: false, error: &error)
+            }
+        }()
+        
+        guard let asset = myAsset, error == nil else {
+            print("SerializeUtil: Serious Error. Model file not found at \(url.path)")
+            return nil
+        }
+        
+        // Load meshes into the model
+        let model = AKMDLAssetModel(asset: asset)
+        let dataFileURL: URL = {
+            if let directory = directory {
+                return directory.appendingPathComponent("\(fileName).dat")
+            } else {
+                // Same directory as original file
+                return url.deletingLastPathComponent().appendingPathComponent("\(fileName).dat")
+            }
+        }()
+        
+        NSKeyedArchiver.archiveRootObject(AKModelCodingWrapper(model: model), toFile: dataFileURL.path)
+        
+        guard let zipFilePath = try? Zip.quickZipFiles([dataFileURL], fileName: "\(fileName)-Archive") else {
+            print("SerializeUtil: Serious Error. Could not archive the model file at \(dataFileURL.path)")
+            return nil
+        }
+        
+        try? FileManager.default.removeItem(atPath: dataFileURL.path)
+        
+        return zipFilePath
+        
+    }
+    
+    static public func unarchiveModel(withFilePath filePath: URL) -> AKModel? {
+        
+        guard let data = try? Data(contentsOf: filePath) else {
+            print("SerializeUtil: Serious Error. File not found at \(filePath.path)")
+            return nil
+        }
+        
+        // This is a litle hacky but... When the AKModelCodingWrapper is archived from the
+        // AugmentKitCLTools target, it gets prepended with the module name so we have
+        // to map it back to a class in this module.
+        NSKeyedUnarchiver.setClass(AKModelCodingWrapper.self, forClassName: "AugmentKitCLTools.AKModelCodingWrapper")
+        
+        guard let wrapper = NSKeyedUnarchiver.unarchiveObject(with: data) as? AKModelCodingWrapper else {
+            print("SerializeUtil: Serious Error. Data file at \(filePath.path) is not an AKModelCodingWrapper object.")
+            return nil
+        }
+        
+        guard let model = wrapper.model else {
+            print("SerializeUtil: Serious Error. AKModel is empty.")
+            return nil
+        }
+        
+        return model
+        
+    }
+    
+}
+
+// MARK: - MDLVertexAttribute NSCoder Extensions
 
 extension MDLVertexAttribute {
     
@@ -71,6 +154,8 @@ extension MDLVertexAttribute {
     }
 }
 
+// MARK: - MDLVertexDescriptor NSCoder Extensions
+
 extension MDLVertexDescriptor {
     
     //  Adds NSCoding support to MDLVertexDescriptor
@@ -105,6 +190,8 @@ extension MDLVertexDescriptor {
     }
 }
 
+// MARK: - MeshData NSCoder Extensions
+
 extension MeshData {
     
     //  Adds NSCoding support to MeshData
@@ -138,6 +225,8 @@ extension MeshData {
     }
 }
 
+// MARK: - AnimatedSkeleton NSCoder Extensions
+
 extension AnimatedSkeleton {
     
     //  Adds NSCoding support to AnimatedSkeleton
@@ -168,6 +257,8 @@ extension AnimatedSkeleton {
         }
     }
 }
+
+// MARK: - SkinData NSCoder Extensions
 
 extension SkinData {
     
@@ -207,7 +298,8 @@ extension SkinData {
     }
 }
 
-//  Adds NSCoding support to AKModel
+// MARK: - AKModelCodingWrapper
+//  An NSCoding compatible wrapper for AKModel
 public class AKModelCodingWrapper: NSObject, NSCoding {
     
     public var model: AKModel?
@@ -296,6 +388,7 @@ public class AKModelCodingWrapper: NSObject, NSCoding {
     }
 }
 
+// MARK: - NSCoder extensions
 // Convenience methods for working with plain old data types.
 extension NSCoder {
     func data<T>(for array: [T]) -> Data {

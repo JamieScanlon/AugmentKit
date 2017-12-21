@@ -31,7 +31,7 @@ This project is currently on phase 3 (see goals below)
 1. Integrate with CoreLocation to provide the ability to tie a point (3D transform) in AR space to a point (latitude, longitude, elevation) in real world space.
 1. Ability to serialize, store, transmit, and load anchors (including 3D meshes) in world space.
 1. More primatives, including tracking anchors that follow users, and paths that can be used to draw line paths in 3D world space.
----
+
 #### _Stretch Goals_
 
 * Use veritcal plane detection to achieve a spacial fingerprint of the local area.

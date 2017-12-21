@@ -28,10 +28,14 @@ This project is currently on phase 3 (see goals below)
 #### Project Goals
 
 1. Use ARKit and Metal for plane detection and anchor tracking. Load and render complex models from ModelIO to use as anchors
-2. Integrate with CoreLocation to provide the ability to tie a point (3D transform) in AR space to a point (latitude, longitude, elevation) in real world space.
-3. Ability to serialize, store, transmit, and load anchors (including 3D meshes) in world space.
-4. Use veritcal plane detection to achieve a spacial fingerprint of the local area.
-5. Ability to serialize, store, transmit and load spacial fingerprints and associate them to anchors in order to achieve another way in which the real world can be locked to the AR world.
+1. Integrate with CoreLocation to provide the ability to tie a point (3D transform) in AR space to a point (latitude, longitude, elevation) in real world space.
+1. Ability to serialize, store, transmit, and load anchors (including 3D meshes) in world space.
+1. More primatives, including tracking anchors that follow users, and paths that can be used to draw line paths in 3D world space.
+---
+_Stretch Goals_
+---
+1. Use veritcal plane detection to achieve a spacial fingerprint of the local area.
+1. Ability to serialize, store, transmit and load spacial fingerprints and associate them to anchors in order to achieve another way in which the real world can be locked to the AR world.
 
 ### History
 

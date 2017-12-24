@@ -36,6 +36,8 @@ import Metal
 import MetalKit
 import CoreLocation
 
+// MARK: - AKWorldConfiguration
+
 public struct AKWorldConfiguration {
     public var usesLocation = true
     
@@ -43,6 +45,8 @@ public struct AKWorldConfiguration {
         
     }
 }
+
+// MARK: - AKWorldLocation
 
 //  A data structure that combines an absolute position (latitude, longitude, and elevation)
 //  with a relative postion (transform) that ties locations in the real world to locations
@@ -62,6 +66,8 @@ public struct AKWorldLocation {
     
 }
 
+// MARK: - AKWorldDistance
+
 //  A data structure that represents the distance in meters between tow points in world space.
 public struct AKWorldDistance {
     public var metersX: Double
@@ -80,12 +86,42 @@ public struct AKWorldDistance {
     }
 }
 
+// MARK: - AKRelativePosition
 //  A data structure that represents a position relative to another reference
 //  position in world space.
-public struct AKRelativePosition {
-    public var referenceTransform: matrix_float4x4 = matrix_identity_float4x4
-    public var transform: matrix_float4x4 = matrix_identity_float4x4
+public class AKRelativePosition {
+    public var parentPosition: AKRelativePosition?
+    public private(set) var referenceTransform: matrix_float4x4 = matrix_identity_float4x4
+    public var transform: matrix_float4x4 = matrix_identity_float4x4 {
+        didSet {
+            _transformHasChanged = true
+        }
+    }
+    public var transformHasChanged: Bool {
+        return _transformHasChanged || (parentPosition?.transformHasChanged == true)
+    }
+    
+    public init(withTransform transform: matrix_float4x4, relativeTo parentPosition: AKRelativePosition? = nil) {
+        self.transform = transform
+        self.parentPosition = parentPosition
+        updateTransforms()
+    }
+    
+    public func updateTransforms() {
+        if let parentPosition = parentPosition, parentPosition.transformHasChanged == true {
+            parentPosition.updateTransforms()
+            referenceTransform = parentPosition.referenceTransform * parentPosition.transform
+        }
+        _transformHasChanged = false
+    }
+    
+    // MARK: Private
+    
+    private var _transformHasChanged = false
+    
 }
+
+// MARK: - AKWorld
 
 public class AKWorld: NSObject {
     
@@ -93,13 +129,11 @@ public class AKWorld: NSObject {
     public let renderer: Renderer
     public let device: MTLDevice
     public let renderDestination: MTKView
+    
+    //  Returns the current location in world space of the user (technically the user's device)
     public var currentWorldLocation: AKWorldLocation? {
         
-        guard let configuration = configuration else {
-            return nil
-        }
-        
-        if configuration.usesLocation {
+        if configuration?.usesLocation == true {
             if let currentCameraPosition = renderer.currentCameraPositionTransform, let originLocation = referenceWorldLocation {
                 let worldDistance = AKWorldDistance(metersX: Double(currentCameraPosition.columns.3.x), metersY: Double(currentCameraPosition.columns.3.y), metersZ: Double(currentCameraPosition.columns.3.z))
                 return AKLocationUtility.worldLocation(from: originLocation, translatedBy: worldDistance)
@@ -120,11 +154,7 @@ public class AKWorld: NSObject {
     // A location that represents the origin of the AR world's reference space.
     public var referenceWorldLocation: AKWorldLocation? {
         
-        guard let configuration = configuration else {
-            return nil
-        }
-        
-        if configuration.usesLocation {
+        if configuration?.usesLocation == true {
             if let reliableLocation = reliableWorldLocations.first {
                 // reliableLocation provides the correct translation but
                 // it may need to be rotated to face due north
@@ -145,20 +175,32 @@ public class AKWorld: NSObject {
         
     }
     
-    public var estimatedGroundPlane: matrix_float4x4? {
+    public var estimatedGroundLayer: AKGroundLayerAnchor {
         
-        guard let lowestPlane = renderer.lowestHorizPlaneAnchor else {
-            return nil
-        }
+        let currentLocation: CLLocation = {
+            if let aLocation = WorldLocationManager.shared.lastLocation {
+                return aLocation
+            } else {
+                let coordinate = CLLocationCoordinate2DMake(0, 0)
+                return CLLocation(coordinate: coordinate, altitude: 0, horizontalAccuracy: 0, verticalAccuracy: 0, timestamp: Date())
+            }
+        }()
         
-        let currentLocation = WorldLocationManager.shared.lastLocation
+        let groundTransform: matrix_float4x4 = {
+            
+            if let lowestPlane = renderer.lowestHorizPlaneAnchor {
+                let metersToGround = Float((currentLocation.floor?.level ?? 0) * 3)
+                return lowestPlane.transform.translate(x: 0, y: -metersToGround, z: 0)
+            } else {
+                let identity = matrix_identity_float4x4
+                return identity.translate(x: 0, y: -3, z: 0)
+            }
+            
+        }()
         
-        if let currentLocation = currentLocation {
-            let metersToGround = Float((currentLocation.floor?.level ?? 0) * 3)
-            return lowestPlane.transform.translate(x: 0, y: -metersToGround, z: 0)
-        } else {
-            return lowestPlane.transform
-        }
+        let worldLocation = AKWorldLocation(transform: groundTransform, latitude: currentLocation.coordinate.latitude, longitude: currentLocation.coordinate.longitude, elevation: currentLocation.altitude)
+        let groundLayer = AKGroundLayerAnchor(at: worldLocation)
+        return groundLayer
         
     }
     
@@ -199,6 +241,10 @@ public class AKWorld: NSObject {
     
     public func add(anchor: AKAugmentedAnchor) {
         renderer.add(akAnchor: anchor)
+    }
+    
+    public func add(tracker: AKAugmentedTracker) {
+        renderer.add(akTracker: tracker)
     }
     
     public func worldLocation(withLatitude latitude: Double, longitude: Double, elevation: Double?) -> AKWorldLocation? {

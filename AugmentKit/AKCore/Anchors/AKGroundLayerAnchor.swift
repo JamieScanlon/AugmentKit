@@ -1,5 +1,5 @@
 //
-//  AKGroundLayer.swift
+//  AKGroundLayerAnchor.swift
 //  AugmentKit2
 //
 //  MIT License
@@ -31,9 +31,10 @@
 //
 
 import Foundation
+import MetalKit
 import ModelIO
 
-public struct AKGroundLayer: AKAnchor {
+public struct AKGroundLayerAnchor: AKAnchor {
     
     public static var type: String {
         return "groundLayer"
@@ -42,9 +43,17 @@ public struct AKGroundLayer: AKAnchor {
     public var model: AKModel
     public var identifier: UUID?
     
-    public init(withAKModel model: AKModel, at location: AKWorldLocation) {
-        self.model = model
+    public init(at location: AKWorldLocation, withAllocator metalAllocator: MTKMeshBufferAllocator? = nil) {
+        
+        let mesh = MDLMesh(planeWithExtent: vector3(1, 0, 1), segments: vector2(1, 1), geometryType: .triangles, allocator: metalAllocator)
+        let asset = MDLAsset(bufferAllocator: metalAllocator)
+        asset.add(mesh)
+        
+        let mySurfaceModel = AKMDLAssetModel(asset: asset)
+        
+        self.model = mySurfaceModel
         self.worldLocation = location
+        
     }
     
 }

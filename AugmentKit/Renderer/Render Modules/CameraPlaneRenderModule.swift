@@ -175,6 +175,10 @@ class CameraPlaneRenderModule: RenderModule {
         
     }
     
+    func updateBuffers(withTrackers: [AKAugmentedTracker], viewportProperties: ViewportProperies) {
+        // Do Nothing
+    }
+    
     func draw(withRenderEncoder renderEncoder: MTLRenderCommandEncoder, sharedModules: [SharedRenderModule]?) {
         
         guard let textureY = capturedImageTextureY, let textureCbCr = capturedImageTextureCbCr else {

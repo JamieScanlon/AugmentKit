@@ -1,5 +1,5 @@
 //
-//  SurfacesRenderModule.swift
+//  TrackersRenderModule.swift
 //  AugmentKit
 //
 //  MIT License
@@ -30,30 +30,25 @@ import ARKit
 import AugmentKitShader
 import MetalKit
 
-// TODO: Veritical Surface support
-class SurfacesRenderModule: RenderModule {
+class TrackersRenderModule: RenderModule {
     
-    static var identifier = "SurfacesRenderModule"
+    static var identifier = "TrackersRenderModule"
     
     //
     // Setup
     //
     
     var moduleIdentifier: String {
-        return SurfacesRenderModule.identifier
+        return TrackersRenderModule.identifier
     }
     var renderLayer: Int {
-        return 2
+        return 3
     }
     var isInitialized: Bool = false
     var sharedModuleIdentifiers: [String]? = [SharedBuffersRenderModule.identifier]
     
-    // The number of surface instances to render
-    private(set) var surfaceInstanceCount: Int = 0
-    
-    // Then indexes of the surface in the ARFrame.anchors array which contain
-    // actual anchors as well as surfaces
-    private(set) var surfaceIndexes = [Int]()
+    // The number of tracker instances to render
+    private(set) var trackerInstanceCount: Int = 0
     
     func initializeBuffers(withDevice aDevice: MTLDevice, maxInFlightBuffers: Int) {
         
@@ -62,44 +57,51 @@ class SurfacesRenderModule: RenderModule {
         // Calculate our uniform buffer sizes. We allocate Constants.maxBuffersInFlight instances for uniform
         // storage in a single buffer. This allows us to update uniforms in a ring (i.e. triple
         // buffer the uniforms) so that the GPU reads from one slot in the ring wil the CPU writes
-        // to another. Surface uniforms should be specified with a max instance count for instancing.
+        // to another. Tracker uniforms should be specified with a max instance count for instancing.
         // Also uniform storage must be aligned (to 256 bytes) to meet the requirements to be an
         // argument in the constant address space of our shading functions.
-        let surfaceUniformBufferSize = Constants.alignedSurfaceInstanceUniformsSize * maxInFlightBuffers
+        let trackerUniformBufferSize = Constants.alignedTrackerInstanceUniformsSize * maxInFlightBuffers
         let materialUniformBufferSize = Constants.alignedMaterialSize * maxInFlightBuffers
         
         // Create and allocate our uniform buffer objects. Indicate shared storage so that both the
         // CPU can access the buffer
-        surfaceUniformBuffer = device?.makeBuffer(length: surfaceUniformBufferSize, options: .storageModeShared)
-        surfaceUniformBuffer?.label = "SurfaceUniformBuffer"
+        trackerUniformBuffer = device?.makeBuffer(length: trackerUniformBufferSize, options: .storageModeShared)
+        trackerUniformBuffer?.label = "TrackerUniformBuffer"
         
         materialUniformBuffer = device?.makeBuffer(length: materialUniformBufferSize, options: .storageModeShared)
         materialUniformBuffer?.label = "MaterialUniformBuffer"
         
     }
     
-    func loadAssets(fromModelProvider: ModelProvider?, textureLoader aTextureLoader: MTKTextureLoader, completion: (() -> Void)) {
+    func loadAssets(fromModelProvider modelProvider: ModelProvider?, textureLoader aTextureLoader: MTKTextureLoader, completion: (() -> Void)) {
         
-        textureLoader = aTextureLoader
-        
-        guard let device = device else {
-            print("Serious Error - device not found")
+        guard let modelProvider = modelProvider else {
+            print("Serious Error - Model Provider not found.")
             completion()
             return
         }
         
-        // Create a MetalKit mesh buffer allocator so that ModelIO will load mesh data directly into
-        // Metal buffers accessible by the GPU
-        let metalAllocator = MTKMeshBufferAllocator(device: device)
+        textureLoader = aTextureLoader
         
-        let mesh = MDLMesh(planeWithExtent: vector3(1, 0, 1), segments: vector2(1, 1), geometryType: .triangles, allocator: metalAllocator)
-        let asset = MDLAsset(bufferAllocator: metalAllocator)
-        asset.add(mesh)
+        //
+        // Create and load our models
+        //
         
-        let mySurfaceModel = AKMDLAssetModel(asset: asset)
-        surfaceModel = mySurfaceModel
-        
-        completion()
+        modelProvider.loadModel(forObjectType: AKUserTracker.type) { [weak self] model in
+            
+            guard let model = model else {
+                print("Serious Error - Failed to get model from modelProvider.")
+                completion()
+                return
+            }
+            
+            self?.trackerModel = model
+            
+            // TODO: Figure out a way to load a new model per tracker.
+            
+            completion()
+            
+        }
         
     }
     
@@ -110,58 +112,58 @@ class SurfacesRenderModule: RenderModule {
             return
         }
         
-        guard let surfaceModel = surfaceModel else {
-            print("Serious Error - surfaceModel not found")
+        guard let trackerModel = trackerModel else {
+            print("Serious Error - trackerModel not found")
             return
         }
         
-        if surfaceModel.meshNodeIndices.count > 1 {
-            print("WARNING: More than one mesh was found. Currently only one mesh per anchor is supported.")
+        if trackerModel.meshNodeIndices.count > 1 {
+            print("WARNING: More than one mesh was found. Currently only one mesh per tracker is supported.")
         }
         
-        surfaceMeshGPUData = meshData(from: surfaceModel)
+        trackerMeshGPUData = meshData(from: trackerModel)
         
-        guard let meshGPUData = surfaceMeshGPUData else {
+        guard let meshGPUData = trackerMeshGPUData else {
             print("Serious Error - ERROR: No meshGPUData found when trying to load the pipeline.")
             return
         }
         
-        guard let surfaceVertexDescriptor = createMetalVertexDescriptor(withModelIOVertexDescriptor: surfaceModel.vertexDescriptors) else {
+        guard let trackerVertexDescriptor = createMetalVertexDescriptor(withModelIOVertexDescriptor: trackerModel.vertexDescriptors) else {
             print("Serious Error - Failed to create a MetalKit vertex descriptor from ModelIO.")
             return
         }
         
         for (drawIdx, drawData) in meshGPUData.drawData.enumerated() {
-            let surfacePipelineStateDescriptor = MTLRenderPipelineDescriptor()
+            let trackerPipelineStateDescriptor = MTLRenderPipelineDescriptor()
             do {
-                let funcConstants = MetalUtilities.getFuncConstantsForDrawDataSet(meshData: surfaceModel.meshes[drawIdx], useMaterials: usesMaterials)
+                let funcConstants = MetalUtilities.getFuncConstantsForDrawDataSet(meshData: trackerModel.meshes[drawIdx], useMaterials: usesMaterials)
                 // TODO: Implement a vertex shader with puppet animation support
-                //                let vertexName = (drawData.paletteStartIndex != nil) ? "vertex_skinned" : "anchorGeometryVertexTransform"
+                //                let vertexName = (drawData.paletteStartIndex != nil) ? "vertex_skinned" : "trackerGeometryVertexTransform"
                 let vertexName = "anchorGeometryVertexTransform"
                 let fragFunc = try metalLibrary.makeFunction(name: "anchorGeometryFragmentLighting", constantValues: funcConstants)
                 let vertFunc = try metalLibrary.makeFunction(name: vertexName, constantValues: funcConstants)
-                surfacePipelineStateDescriptor.vertexDescriptor = surfaceVertexDescriptor
-                surfacePipelineStateDescriptor.vertexFunction = vertFunc
-                surfacePipelineStateDescriptor.fragmentFunction = fragFunc
-                surfacePipelineStateDescriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
-                surfacePipelineStateDescriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-                surfacePipelineStateDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-                surfacePipelineStateDescriptor.sampleCount = renderDestination.sampleCount
+                trackerPipelineStateDescriptor.vertexDescriptor = trackerVertexDescriptor
+                trackerPipelineStateDescriptor.vertexFunction = vertFunc
+                trackerPipelineStateDescriptor.fragmentFunction = fragFunc
+                trackerPipelineStateDescriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
+                trackerPipelineStateDescriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
+                trackerPipelineStateDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
+                trackerPipelineStateDescriptor.sampleCount = renderDestination.sampleCount
             } catch let error {
                 print("Failed to create pipeline state descriptor, error \(error)")
             }
             
             do {
-                try surfacePipelineStates.append(device.makeRenderPipelineState(descriptor: surfacePipelineStateDescriptor))
+                try trackerPipelineStates.append(device.makeRenderPipelineState(descriptor: trackerPipelineStateDescriptor))
             } catch let error {
                 print("Failed to create pipeline state, error \(error)")
             }
         }
         
-        let surfaceDepthStateDescriptor = MTLDepthStencilDescriptor()
-        surfaceDepthStateDescriptor.depthCompareFunction = .less
-        surfaceDepthStateDescriptor.isDepthWriteEnabled = true
-        surfaceDepthState = device.makeDepthStencilState(descriptor: surfaceDepthStateDescriptor)
+        let trackerDepthStateDescriptor = MTLDepthStencilDescriptor()
+        trackerDepthStateDescriptor.depthCompareFunction = .less
+        trackerDepthStateDescriptor.isDepthWriteEnabled = true
+        trackerDepthState = device.makeDepthStencilState(descriptor: trackerDepthStateDescriptor)
         
         isInitialized = true
         
@@ -173,50 +175,30 @@ class SurfacesRenderModule: RenderModule {
     
     func updateBufferState(withBufferIndex bufferIndex: Int) {
         
-        surfaceUniformBufferOffset = Constants.alignedSurfaceInstanceUniformsSize * bufferIndex
+        trackerUniformBufferOffset = Constants.alignedTrackerInstanceUniformsSize * bufferIndex
         materialUniformBufferOffset = Constants.alignedMaterialSize * bufferIndex
         
-        surfaceUniformBufferAddress = surfaceUniformBuffer?.contents().advanced(by: surfaceUniformBufferOffset)
+        trackerUniformBufferAddress = trackerUniformBuffer?.contents().advanced(by: trackerUniformBufferOffset)
         materialUniformBufferAddress = materialUniformBuffer?.contents().advanced(by: materialUniformBufferOffset)
         
     }
     
     func updateBuffers(withARFrame frame: ARFrame, viewportProperties: ViewportProperies) {
+        // Do Nothing
+    }
+    
+    func updateBuffers(withTrackers trackers: [AKAugmentedTracker], viewportProperties: ViewportProperies) {
         
-        // Update the anchor uniform buffer with transforms of the current frame's anchors
-        surfaceInstanceCount = 0
-        surfaceIndexes = []
-        var anchorInstanceCount = 0
-        var vertPlaneInstanceCount = 0
+        // Update the tracker uniform buffer with transforms of the current frame's trackers
+        trackerInstanceCount = 0
         
-        for index in 0..<frame.anchors.count {
+        for index in 0..<trackers.count {
             
-            let anchor = frame.anchors[index]
-            var isSurface = false
+            let tracker = trackers[index]
+            trackerInstanceCount += 1
             
-            if let plane = anchor as? ARPlaneAnchor {
-                if plane.alignment == .horizontal {
-                    surfaceInstanceCount += 1
-                    surfaceIndexes.append(index)
-                    isSurface = true
-                } else {
-                    // TODO: Vertical surface support
-                    vertPlaneInstanceCount += 1
-                }
-            } else {
-                anchorInstanceCount += 1
-            }
-            
-            guard isSurface else {
-                continue
-            }
-            
-            guard surfaceInstanceCount > 0 else {
-                continue
-            }
-            
-            if surfaceInstanceCount > Constants.maxSurfaceInstanceCount {
-                surfaceInstanceCount = Constants.maxSurfaceInstanceCount
+            if trackerInstanceCount > Constants.maxTrackerInstanceCount {
+                trackerInstanceCount = Constants.maxTrackerInstanceCount
                 break
             }
             
@@ -224,24 +206,20 @@ class SurfacesRenderModule: RenderModule {
             var coordinateSpaceTransform = matrix_identity_float4x4
             coordinateSpaceTransform.columns.2.z = -1.0
             
-            if let model = surfaceModel {
+            if let model = trackerModel {
                 
                 // Apply the world transform (as defined in the imported model) if applicable
-                let surfaceIndex = surfaceInstanceCount - 1
-                if let modelIndex = modelIndex(in: model, fromSurfaceIndex: surfaceIndex), modelIndex < model.worldTransforms.count {
+                let trackerIndex = trackerInstanceCount - 1
+                if let modelIndex = modelIndex(in: model, fromTrackerIndex: trackerIndex), modelIndex < model.worldTransforms.count {
                     let worldTransform = model.worldTransforms[modelIndex]
                     coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
                 }
                 
-                var modelMatrix = anchor.transform * coordinateSpaceTransform
-                if let plane = anchor as? ARPlaneAnchor {
-                    modelMatrix = modelMatrix.scale(x: plane.extent.x, y: plane.extent.y, z: plane.extent.z)
-                    modelMatrix = modelMatrix.translate(x: -plane.center.x/2.0, y: -plane.center.y/2.0, z: -plane.center.z/2.0)
-                }
+                // Apply the transform of the tracker relative to the reference transform
+                let modelMatrix = tracker.position.referenceTransform * tracker.position.transform * coordinateSpaceTransform
                 
-                // Surfaces use the same uniform struct as anchors
-                let surfaceUniforms = surfaceUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: surfaceIndex)
-                surfaceUniforms?.pointee.modelMatrix = modelMatrix
+                let trackerUniforms = trackerUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: trackerIndex)
+                trackerUniforms?.pointee.modelMatrix = modelMatrix
                 
             }
             
@@ -249,23 +227,19 @@ class SurfacesRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withTrackers: [AKAugmentedTracker], viewportProperties: ViewportProperies) {
-        // Do Nothing
-    }
-    
     func draw(withRenderEncoder renderEncoder: MTLRenderCommandEncoder, sharedModules: [SharedRenderModule]?) {
         
-        guard surfaceInstanceCount > 0 else {
+        guard trackerInstanceCount > 0 else {
             return
         }
         
         // Push a debug group allowing us to identify render commands in the GPU Frame Capture tool
-        renderEncoder.pushDebugGroup("Draw Surfaces")
+        renderEncoder.pushDebugGroup("Draw Anchors")
         
         // Set render command encoder state
         renderEncoder.setCullMode(.back)
         
-        guard let meshGPUData = surfaceMeshGPUData else {
+        guard let meshGPUData = trackerMeshGPUData else {
             print("Error: meshGPUData not available a draw time. Aborting")
             return
         }
@@ -283,15 +257,15 @@ class SurfacesRenderModule: RenderModule {
         
         for (drawDataIdx, drawData) in meshGPUData.drawData.enumerated() {
             
-            if drawDataIdx < surfacePipelineStates.count {
-                renderEncoder.setRenderPipelineState(surfacePipelineStates[drawDataIdx])
-                renderEncoder.setDepthStencilState(surfaceDepthState)
+            if drawDataIdx < trackerPipelineStates.count {
+                renderEncoder.setRenderPipelineState(trackerPipelineStates[drawDataIdx])
+                renderEncoder.setDepthStencilState(trackerDepthState)
                 
                 // Set any buffers fed into our render pipeline
-                renderEncoder.setVertexBuffer(surfaceUniformBuffer, offset: surfaceUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
+                renderEncoder.setVertexBuffer(trackerUniformBuffer, offset: trackerUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
                 
                 var mutableDrawData = drawData
-                mutableDrawData.instCount = surfaceInstanceCount
+                mutableDrawData.instCount = trackerInstanceCount
                 
                 // Set the mesh's vertex data buffers
                 encode(meshGPUData: meshGPUData, fromDrawData: mutableDrawData, with: renderEncoder)
@@ -312,40 +286,39 @@ class SurfacesRenderModule: RenderModule {
     
     private enum Constants {
         
-        static let maxSurfaceInstanceCount = 64
+        static let maxTrackerInstanceCount = 64
         static let alignedMaterialSize = (MemoryLayout<MaterialUniforms>.stride & ~0xFF) + 0x100
-        // Surfaces use the same uniform struct as anchors
-        static let alignedSurfaceInstanceUniformsSize = ((MemoryLayout<AnchorInstanceUniforms>.stride * Constants.maxSurfaceInstanceCount) & ~0xFF) + 0x100
+        static let alignedTrackerInstanceUniformsSize = ((MemoryLayout<AnchorInstanceUniforms>.stride * Constants.maxTrackerInstanceCount) & ~0xFF) + 0x100
         
     }
     
     private var device: MTLDevice?
     private var textureLoader: MTKTextureLoader?
-    private var surfaceModel: AKModel?
-    private var surfaceUniformBuffer: MTLBuffer?
+    private var trackerModel: AKModel?
+    private var trackerUniformBuffer: MTLBuffer?
     private var materialUniformBuffer: MTLBuffer?
-    private var surfacePipelineStates = [MTLRenderPipelineState]() // Store multiple states
-    private var surfaceDepthState: MTLDepthStencilState?
+    private var trackerPipelineStates = [MTLRenderPipelineState]() // Store multiple states
+    private var trackerDepthState: MTLDepthStencilState?
     
-    // MetalKit meshes containing vertex data and index buffer for our surface geometry
-    private var surfaceMeshGPUData: MeshGPUData?
+    // MetalKit meshes containing vertex data and index buffer for our tracker geometry
+    private var trackerMeshGPUData: MeshGPUData?
     
-    // Offset within surfaceUniformBuffer to set for the current frame
-    private var surfaceUniformBufferOffset: Int = 0
+    // Offset within trackerUniformBuffer to set for the current frame
+    private var trackerUniformBufferOffset: Int = 0
     
     // Offset within materialUniformBuffer to set for the current frame
     private var materialUniformBufferOffset: Int = 0
     
-    // Addresses to write surface uniforms to each frame
-    private var surfaceUniformBufferAddress: UnsafeMutableRawPointer?
+    // Addresses to write tracker uniforms to each frame
+    private var trackerUniformBufferAddress: UnsafeMutableRawPointer?
     
-    // Addresses to write surface uniforms to each frame
+    // Addresses to write tracker uniforms to each frame
     private var materialUniformBufferAddress: UnsafeMutableRawPointer?
     
     private var usesMaterials = false
     
-    // number of frames in the surface animation by surface index
-    private var surfaceAnimationFrameCount = [Int]()
+    // number of frames in the tracker animation by tracker index
+    private var trackerAnimationFrameCount = [Int]()
     
     private func createMetalVertexDescriptor(withModelIOVertexDescriptor vtxDesc: [MDLVertexDescriptor]) -> MTLVertexDescriptor? {
         guard !vtxDesc.isEmpty else {
@@ -473,9 +446,9 @@ class SurfacesRenderModule: RenderModule {
         return nil
     }
     
-    private func modelIndex(in model: AKModel, fromSurfaceIndex surfaceIndex: Int) -> Int? {
-        if surfaceIndex < model.meshNodeIndices.count, surfaceIndex >= 0 {
-            return model.meshNodeIndices[surfaceIndex]
+    private func modelIndex(in model: AKModel, fromTrackerIndex trackerIndex: Int) -> Int? {
+        if trackerIndex < model.meshNodeIndices.count, trackerIndex >= 0 {
+            return model.meshNodeIndices[trackerIndex]
         } else {
             return nil
         }

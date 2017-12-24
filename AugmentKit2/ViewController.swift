@@ -46,7 +46,7 @@ class ViewController: UIViewController {
             
             view.backgroundColor = UIColor.clear
             
-            let worldConfiguration = AKWorldConfiguration(usesLocation: false) // Turn locaion off for now because it's not fully implemented yet.
+            let worldConfiguration = AKWorldConfiguration(usesLocation: true)
             let myWorld = AKWorld(renderDestination: view, configuration: worldConfiguration)
             
             // Debugging
@@ -62,6 +62,15 @@ class ViewController: UIViewController {
             world = myWorld
             
             loadAnchorModel()
+            
+            // Add a user tracking anchor.
+            let metalAllocator = MTKMeshBufferAllocator(device: myWorld.device)
+            let mesh = MDLMesh(planeWithExtent: vector3(1, 0, 1), segments: vector2(1, 1), geometryType: .triangles, allocator: metalAllocator)
+            let asset = MDLAsset(bufferAllocator: metalAllocator)
+            asset.add(mesh)
+            let myUserTrackerModel = AKMDLAssetModel(asset: asset)
+            let userTracker = AKUserTracker(withModel: myUserTrackerModel)
+            myWorld.add(tracker: userTracker)
             
         }
         

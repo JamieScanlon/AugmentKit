@@ -188,6 +188,47 @@ public class Renderer {
         let surfaceAnchors = currentFrame.anchors.filter({$0 is ARPlaneAnchor}) as! [ARPlaneAnchor]
         let normalAnchors = currentFrame.anchors.filter({!($0 is ARPlaneAnchor)})
         
+        // Update current camera position and heading
+        //
+        // From documentation:
+        // This transform creates a local coordinate space for the camera that is constant
+        // with respect to device orientation. In camera space, the x-axis points to the right
+        // when the device is in landscapeRight orientation—that is, the x-axis always points
+        // along the long axis of the device, from the front-facing camera toward the Home button.
+        // The y-axis points upward (with respect to landscapeRight orientation), and the z-axis
+        // points away from the device on the screen side.
+        //
+        // In order to orient the transform relative to word space, we take the camera transform
+        // and the cameras current rotation (given by the eulerAngles) and rotate the transform
+        // in the opposite direction. The result is a transform at the position of the camera
+        // but oriented along the same axes as world space.
+        let cameraQuaternion = QuaternionUtilities.quaternionFromEulerAngles(pitch: currentFrame.camera.eulerAngles.x, roll: currentFrame.camera.eulerAngles.y, yaw: currentFrame.camera.eulerAngles.z)
+        let inverseCameraRotation = GLKQuaternionInvert(cameraQuaternion)
+        
+        let invertedRotationMatrix = unsafeBitCast(GLKMatrix4MakeWithQuaternion(inverseCameraRotation), to: simd_float4x4.self)
+        currentCameraPositionTransform = currentFrame.camera.transform * invertedRotationMatrix
+        currentCameraQuaternionRotation = cameraQuaternion
+        currentCameraHeading = Double(currentFrame.camera.eulerAngles.y)
+        
+        // Update the lowest surface plane
+        for index in 0..<surfaceAnchors.count {
+            let plane = surfaceAnchors[index]
+            if plane.alignment == .horizontal {
+                // Keep track of the lowest horizontal plane. This can be assumed to be the ground.
+                if lowestHorizPlaneAnchor != nil {
+                    if plane.transform.columns.1.y < lowestHorizPlaneAnchor?.transform.columns.1.y ?? 0 {
+                        lowestHorizPlaneAnchor = plane
+                    }
+                } else {
+                    lowestHorizPlaneAnchor = plane
+                }
+            }
+        }
+        
+        //
+        // Initialize Modules
+        //
+        
         // Add surface modules for rendering if necessary
         if surfacesRenderModule == nil && showGuides && surfaceAnchors.count > 0  {
             addModule(forModuelIdentifier: SurfacesRenderModule.identifier)
@@ -198,7 +239,28 @@ public class Renderer {
             addModule(forModuelIdentifier: AnchorsRenderModule.identifier)
         }
         
+        // Add tracker modules if nescessary
+        if trackersRenderModule == nil && trackers.count > 0 {
+            addModule(forModuelIdentifier: TrackersRenderModule.identifier)
+        }
+        
         initializeModules()
+        
+        //
+        // Update positions
+        //
+        
+        // Calculate updates to trackers relative position
+        for tracker in trackers {
+            if let userTracker = tracker as? AKUserTracker {
+                userTracker.position.transform = currentCameraPositionTransform ?? matrix_identity_float4x4
+            }
+            tracker.position.updateTransforms()
+        }
+        
+        //
+        // Encode Cammand Buffer
+        //
         
         // Wait to ensure only kMaxBuffersInFlight are getting proccessed by any stage in the Metal
         // pipeline (App, Metal, Drivers, GPU, etc)
@@ -237,6 +299,7 @@ public class Renderer {
             for module in renderModules {
                 if module.isInitialized {
                     module.updateBuffers(withARFrame: currentFrame, viewportProperties: viewportProperties)
+                    module.updateBuffers(withTrackers: trackers, viewportProperties: viewportProperties)
                 }
             }
             
@@ -270,49 +333,13 @@ public class Renderer {
             viewportSizeDidChange = false
         }
         
-        // Update current camera position and heading
-        //
-        // From documentation:
-        // This transform creates a local coordinate space for the camera that is constant
-        // with respect to device orientation. In camera space, the x-axis points to the right
-        // when the device is in landscapeRight orientation—that is, the x-axis always points
-        // along the long axis of the device, from the front-facing camera toward the Home button.
-        // The y-axis points upward (with respect to landscapeRight orientation), and the z-axis
-        // points away from the device on the screen side.
-        //
-        // In order to orient the transform relative to word space, we take the camera transform
-        // and the cameras current rotation (given by the eulerAngles) and rotate the transform
-        // in the opposite direction. The result is a transform at the position of the camera
-        // but oriented along the same axes as world space.
-        let cameraQuaternion = QuaternionUtilities.quaternionFromEulerAngles(pitch: currentFrame.camera.eulerAngles.x, roll: currentFrame.camera.eulerAngles.y, yaw: currentFrame.camera.eulerAngles.z)
-        let inverseCameraRotation = GLKQuaternionInvert(cameraQuaternion)
-        
-        let invertedRotationMatrix = unsafeBitCast(GLKMatrix4MakeWithQuaternion(inverseCameraRotation), to: simd_float4x4.self)
-        currentCameraPositionTransform = currentFrame.camera.transform * invertedRotationMatrix
-        currentCameraQuaternionRotation = cameraQuaternion
-        currentCameraHeading = Double(currentFrame.camera.eulerAngles.y)
-        
-        // Update the lowest surface plane
-        for index in 0..<surfaceAnchors.count {
-            let plane = surfaceAnchors[index]
-            if plane.alignment == .horizontal {
-                // Keep track of the lowest horizontal plane. This can be assumed to be the ground.
-                if lowestHorizPlaneAnchor != nil {
-                    if plane.transform.columns.1.y < lowestHorizPlaneAnchor?.transform.columns.1.y ?? 0 {
-                        lowestHorizPlaneAnchor = plane
-                    }
-                } else {
-                    lowestHorizPlaneAnchor = plane
-                }
-            }
-        }
-        
         logger?.updatedAnchors(count: currentFrame.anchors.count, numAnchors: anchorsRenderModule?.anchorInstanceCount ?? 0, numPlanes: surfacesRenderModule?.surfaceInstanceCount ?? 0, numTrackingPoints: trackingPointRenderModule?.trackingPointCount ?? 0)
         
     }
     
     // MARK: - Anchors
     
+    //  Add a new AKAugmentedAnchor to the AR world
     public func add(akAnchor: AKAugmentedAnchor) {
         
         let anchorType = type(of: akAnchor).type
@@ -339,6 +366,18 @@ public class Renderer {
         
     }
     
+    //  Add a new AKAugmentedTracker to the AR world
+    public func add(akTracker: AKAugmentedTracker) {
+        
+        let anchorType = type(of: akTracker).type
+        
+        // Resgister the AKModel with the model provider.
+        modelProvider?.registerModel(akTracker.model, forObjectType: anchorType)
+        
+        trackers.append(akTracker)
+        
+    }
+    
     // MARK: - Private
     
     private var hasUninitializedModules = false
@@ -356,6 +395,7 @@ public class Renderer {
     private var cameraRenderModule: CameraPlaneRenderModule?
     private var sharedBuffersRenderModule: SharedBuffersRenderModule?
     private var anchorsRenderModule: AnchorsRenderModule?
+    private var trackersRenderModule: TrackersRenderModule?
     private var surfacesRenderModule: SurfacesRenderModule?
     private var trackingPointRenderModule: TrackingPointsRenderModule?
     
@@ -368,8 +408,9 @@ public class Renderer {
     private var defaultLibrary: MTLLibrary?
     private var commandQueue: MTLCommandQueue?
     
-    // Anchors
+    // Keeping track of Anchors / Trackers
     private var anchorIdentifiersForType = [String: Set<UUID>]()
+    private var trackers = [AKAugmentedTracker]()
     
     // MARK: ARKit Session Configuration
     
@@ -447,6 +488,13 @@ public class Renderer {
             if anchorsRenderModule == nil {
                 let newSharedModule = AnchorsRenderModule()
                 anchorsRenderModule = newSharedModule
+                renderModules.append(newSharedModule)
+                hasUninitializedModules = true
+            }
+        case TrackersRenderModule.identifier:
+            if trackersRenderModule == nil {
+                let newSharedModule = TrackersRenderModule()
+                trackersRenderModule = newSharedModule
                 renderModules.append(newSharedModule)
                 hasUninitializedModules = true
             }

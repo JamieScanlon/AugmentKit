@@ -60,8 +60,11 @@ protocol RenderModule {
     // The buffer index is the index into the ring on in flight buffers
     func updateBufferState(withBufferIndex: Int)
     
-    // Update the buffer data
+    // Update the buffer data for anchors
     func updateBuffers(withARFrame: ARFrame, viewportProperties: ViewportProperies)
+    
+    // Update the buffer data for trackers
+    func updateBuffers(withTrackers: [AKAugmentedTracker], viewportProperties: ViewportProperies)
     
     // Update the render encoder for the draw call. At the end of this method it is expected that
     // drawPrimatives or drawIndexedPrimatives is called.

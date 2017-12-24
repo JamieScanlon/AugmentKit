@@ -100,7 +100,7 @@ class AnchorsRenderModule: RenderModule {
                 return
             }
             
-            anchorModel = model
+            self?.anchorModel = model
             
             // TODO: Figure out a way to load a new model per anchor.
             
@@ -252,6 +252,10 @@ class AnchorsRenderModule: RenderModule {
             
         }
         
+    }
+    
+    func updateBuffers(withTrackers: [AKAugmentedTracker], viewportProperties: ViewportProperies) {
+        // Do Nothing
     }
     
     func draw(withRenderEncoder renderEncoder: MTLRenderCommandEncoder, sharedModules: [SharedRenderModule]?) {

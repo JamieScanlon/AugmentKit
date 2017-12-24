@@ -33,7 +33,7 @@ import simd
 
 class TrackingPointsRenderModule: RenderModule {
     
-    static var identifier = "SurfacesRenderModule"
+    static var identifier = "TrackingPointsRenderModule"
     
     //
     // Setup
@@ -187,6 +187,10 @@ class TrackingPointsRenderModule: RenderModule {
             }
         }
         
+    }
+    
+    func updateBuffers(withTrackers: [AKAugmentedTracker], viewportProperties: ViewportProperies) {
+        // Do Nothing
     }
     
     // Update the render encoder for the draw call

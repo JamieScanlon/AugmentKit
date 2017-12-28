@@ -253,7 +253,8 @@ public class Renderer {
         // Calculate updates to trackers relative position
         for tracker in trackers {
             if let userTracker = tracker as? AKUserTracker {
-                userTracker.position.transform = currentCameraPositionTransform ?? matrix_identity_float4x4
+                let cameraPositionTransform = currentCameraPositionTransform ?? matrix_identity_float4x4
+                userTracker.position.parentPosition?.transform = cameraPositionTransform
             }
             tracker.position.updateTransforms()
         }

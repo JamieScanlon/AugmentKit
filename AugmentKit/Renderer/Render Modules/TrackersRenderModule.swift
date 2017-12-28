@@ -42,7 +42,7 @@ class TrackersRenderModule: RenderModule {
         return TrackersRenderModule.identifier
     }
     var renderLayer: Int {
-        return 3
+        return 5
     }
     var isInitialized: Bool = false
     var sharedModuleIdentifiers: [String]? = [SharedBuffersRenderModule.identifier]
@@ -234,7 +234,7 @@ class TrackersRenderModule: RenderModule {
         }
         
         // Push a debug group allowing us to identify render commands in the GPU Frame Capture tool
-        renderEncoder.pushDebugGroup("Draw Anchors")
+        renderEncoder.pushDebugGroup("Draw Trackers")
         
         // Set render command encoder state
         renderEncoder.setCullMode(.back)

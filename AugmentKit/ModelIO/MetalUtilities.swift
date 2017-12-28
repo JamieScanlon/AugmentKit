@@ -122,53 +122,53 @@ class MetalUtilities {
 
 // MARK: - float4x4
 
-extension float4x4 {
+public extension float4x4 {
     
-    static func makeScale(x: Float, y: Float, z: Float) -> float4x4 {
+    public static func makeScale(x: Float, y: Float, z: Float) -> float4x4 {
         return unsafeBitCast(GLKMatrix4MakeScale(x, y, z), to: float4x4.self)
     }
     
-    static func makeRotate(radians: Float, x: Float, y: Float, z: Float) -> float4x4 {
+    public static func makeRotate(radians: Float, x: Float, y: Float, z: Float) -> float4x4 {
         return unsafeBitCast(GLKMatrix4MakeRotation(radians, x, y, z), to: float4x4.self)
     }
     
-    static func makeTranslation(x: Float, y: Float, z: Float) -> float4x4 {
+    public static func makeTranslation(x: Float, y: Float, z: Float) -> float4x4 {
         return unsafeBitCast(GLKMatrix4MakeTranslation(x, y, z), to: float4x4.self)
     }
     
-    static func makePerspective(fovyRadians: Float, aspect: Float, nearZ: Float, farZ: Float) -> float4x4 {
+    public static func makePerspective(fovyRadians: Float, aspect: Float, nearZ: Float, farZ: Float) -> float4x4 {
         return unsafeBitCast(GLKMatrix4MakePerspective(fovyRadians, aspect, nearZ, farZ), to: float4x4.self)
     }
     
-    static func makeFrustum(left: Float, right: Float, bottom: Float, top: Float, nearZ: Float, farZ: Float) -> float4x4 {
+    public static func makeFrustum(left: Float, right: Float, bottom: Float, top: Float, nearZ: Float, farZ: Float) -> float4x4 {
         return unsafeBitCast(GLKMatrix4MakeFrustum(left, right, bottom, top, nearZ, farZ), to: float4x4.self)
     }
     
-    static func makeOrtho(left: Float, right: Float, bottom: Float, top: Float, nearZ: Float, farZ: Float) -> float4x4 {
+    public static func makeOrtho(left: Float, right: Float, bottom: Float, top: Float, nearZ: Float, farZ: Float) -> float4x4 {
         return unsafeBitCast(GLKMatrix4MakeOrtho(left, right, bottom, top, nearZ, farZ), to: float4x4.self)
     }
     
-    static func makeLookAt(eyeX: Float, eyeY: Float, eyeZ: Float, centerX: Float, centerY: Float, centerZ: Float, upX: Float, upY: Float, upZ: Float) -> float4x4 {
+    public static func makeLookAt(eyeX: Float, eyeY: Float, eyeZ: Float, centerX: Float, centerY: Float, centerZ: Float, upX: Float, upY: Float, upZ: Float) -> float4x4 {
         return unsafeBitCast(GLKMatrix4MakeLookAt(eyeX, eyeY, eyeZ, centerX, centerY, centerZ, upX, upY, upZ), to: float4x4.self)
     }
     
-    static func makeQuaternion(from: float4x4) -> GLKQuaternion {
+    public static func makeQuaternion(from: float4x4) -> GLKQuaternion {
         return GLKQuaternionMakeWithMatrix4(unsafeBitCast(from, to: GLKMatrix4.self))
     }
     
-    func scale(x: Float, y: Float, z: Float) -> float4x4 {
+    public func scale(x: Float, y: Float, z: Float) -> float4x4 {
         return self * float4x4.makeScale(x: x, y: y, z: z)
     }
     
-    func rotate(radians: Float, x: Float, y: Float, z: Float) -> float4x4 {
+    public func rotate(radians: Float, x: Float, y: Float, z: Float) -> float4x4 {
         return self * float4x4.makeRotate(radians: radians, x: x, y: y, z: z)
     }
     
-    func translate(x: Float, y: Float, z: Float) -> float4x4 {
+    public func translate(x: Float, y: Float, z: Float) -> float4x4 {
         return self * float4x4.makeTranslation(x: x, y: y, z: z)
     }
     
-    func quaternion() -> GLKQuaternion {
+    public func quaternion() -> GLKQuaternion {
         return float4x4.makeQuaternion(from: self)
     }
     

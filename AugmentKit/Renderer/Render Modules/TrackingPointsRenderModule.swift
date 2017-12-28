@@ -43,7 +43,7 @@ class TrackingPointsRenderModule: RenderModule {
         return TrackingPointsRenderModule.identifier
     }
     var renderLayer: Int {
-        return 4
+        return Int.max
     }
     var isInitialized: Bool = false
     var sharedModuleIdentifiers: [String]? = [SharedBuffersRenderModule.identifier]

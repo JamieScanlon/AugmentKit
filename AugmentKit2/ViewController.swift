@@ -50,7 +50,7 @@ class ViewController: UIViewController {
             let myWorld = AKWorld(renderDestination: view, configuration: worldConfiguration)
             
             // Debugging
-            myWorld.renderer.showGuides = true
+            myWorld.renderer.showGuides = false
             myWorld.renderer.logger = self
             
             // Set the initial orientation
@@ -69,7 +69,8 @@ class ViewController: UIViewController {
             let asset = MDLAsset(bufferAllocator: metalAllocator)
             asset.add(mesh)
             let myUserTrackerModel = AKMDLAssetModel(asset: asset)
-            let userTracker = AKUserTracker(withModel: myUserTrackerModel)
+            let offsetTransform = matrix_identity_float4x4.translate(x: 0, y: -3, z: 0)
+            let userTracker = AKUserTracker(withModel: myUserTrackerModel, withUserRelativeTransform: offsetTransform)
             myWorld.add(tracker: userTracker)
             
         }

@@ -133,7 +133,10 @@ class ViewController: UIViewController {
         // Download a zipped Model
         //
         
-        anchorModel = AKRemoteArchivedModel(remoteURL: url)
+        let remoteModel = AKRemoteArchivedModel(remoteURL: url)
+        remoteModel.compressor = Compressor()
+        anchorModel = remoteModel
+        
         
         //
         // Get a Model from the app bundle
@@ -157,5 +160,31 @@ extension ViewController: RenderDebugLogger {
     
     func updatedAnchors(count: Int, numAnchors: Int, numPlanes: Int, numTrackingPoints: Int) {
         debugInfoAnchorCounts?.text = "Total Anchor Count: \(count) - User: \(numAnchors), planes: \(numPlanes), points: \(numTrackingPoints)"
+    }
+}
+
+// MARK: - Model Compressor
+
+class Compressor: ModelCompressor {
+    
+    func zipModel(withFileURLs fileURLs: [URL], toDestinationFilePath destinationFilePath: String) -> URL? {
+        
+        guard let zipFileURL = try? Zip.quickZipFiles(fileURLs, fileName: destinationFilePath) else {
+            print("SerializeUtil: Serious Error. Could not archive the model file at \(fileURLs.first?.path ?? "nil")")
+            return nil
+        }
+        
+        return zipFileURL
+        
+    }
+    
+    func unzipModel(withFileURL filePath: URL) -> URL? {
+        do {
+            let unzipDirectory = try Zip.quickUnzipFile(filePath)
+            return unzipDirectory
+        } catch {
+            print(error.localizedDescription)
+            return nil
+        }
     }
 }

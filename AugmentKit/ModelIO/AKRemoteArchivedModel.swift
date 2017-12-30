@@ -61,6 +61,8 @@ public class AKRemoteArchivedModel: AKModel {
     
     public var status: AKRemoteArchivedModel.Status = .uninitilized
     
+    public var compressor: ModelCompressor?
+    
     public init() {}
     
     public init(remoteURL url: URL) {
@@ -162,7 +164,14 @@ public class AKRemoteArchivedModel: AKModel {
                         try FileManager.default.removeItem(atPath: modelArchiveLocalURL.path)
                     }
                     try FileManager.default.copyItem(at: tempLocalUrl, to: modelArchiveLocalURL)
-                    let unzipDirectory = try Zip.quickUnzipFile(modelArchiveLocalURL)
+                    guard let unzipDirectory = self?.compressor?.unzipModel(withFileURL: modelArchiveLocalURL) else {
+                        print("AKRemoteArchivedModel: Serious Error. Could not unzip the archived model at \(modelArchiveLocalURL.path)")
+                        self?.status = .error
+                        if let completion = completion {
+                            completion(nil, error)
+                        }
+                        return
+                    }
                     self?.status = .ready
                     if let completion = completion {
                         if FileManager.default.fileExists(atPath: unzipDirectory.appendingPathComponent("\(fileName).dat").path) {

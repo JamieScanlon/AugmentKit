@@ -9,6 +9,10 @@
 /* Begin PBXBuildFile section */
 		7D1B6F0D1F29851E00AB035D /* Pin.scn in Resources */ = {isa = PBXBuildFile; fileRef = 7D1B6F0C1F2983DA00AB035D /* Pin.scn */; };
 		7D282F141FD11DE700D00B86 /* Serialize.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D282F131FD11DE600D00B86 /* Serialize.swift */; };
+		7D3263771FF7FB490040375C /* ZipUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098941FDDA3B9004A92AA /* ZipUtilities.swift */; };
+		7D3263781FF7FB4D0040375C /* QuickZip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF0989E1FDDA3B9004A92AA /* QuickZip.swift */; };
+		7D3263791FF7FB530040375C /* Zip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098A11FDDA3B9004A92AA /* Zip.swift */; };
+		7D32637B1FF7FBFA0040375C /* ModelCompressor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D32637A1FF7FBFA0040375C /* ModelCompressor.swift */; };
 		7D5EEC1E1FDC5EDD00E3FE91 /* Pin.scn in Resources */ = {isa = PBXBuildFile; fileRef = 7D1B6F0C1F2983DA00AB035D /* Pin.scn */; };
 		7D5EEC1F1FDC628D00E3FE91 /* AKModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DE0C2A81FD46E5E0043FA5F /* AKModel.swift */; };
 		7D5EEC201FDC629400E3FE91 /* Serialize.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D282F131FD11DE600D00B86 /* Serialize.swift */; };
@@ -61,9 +65,6 @@
 		7DBA36A11F7C1AA10006310A /* ship.scn in Resources */ = {isa = PBXBuildFile; fileRef = 7DBA36A01F7C1A310006310A /* ship.scn */; };
 		7DBA36A21F7C1AA50006310A /* texture.png in Resources */ = {isa = PBXBuildFile; fileRef = 7DBA369F1F7C1A310006310A /* texture.png */; };
 		7DC785CC1FE6537D00F82FA4 /* AKArchivedModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DC785CB1FE6537D00F82FA4 /* AKArchivedModel.swift */; };
-		7DC785CD1FE654F300F82FA4 /* ZipUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098941FDDA3B9004A92AA /* ZipUtilities.swift */; };
-		7DC785CE1FE654F800F82FA4 /* QuickZip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF0989E1FDDA3B9004A92AA /* QuickZip.swift */; };
-		7DC785CF1FE654FE00F82FA4 /* Zip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098A11FDDA3B9004A92AA /* Zip.swift */; };
 		7DC785D11FE655C100F82FA4 /* AKRemoteArchivedModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DC785D01FE655C100F82FA4 /* AKRemoteArchivedModel.swift */; };
 		7DC785D21FE662F600F82FA4 /* unzip.c in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098961FDDA3B9004A92AA /* unzip.c */; };
 		7DC785D31FE662FB00F82FA4 /* zip.c in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098971FDDA3B9004A92AA /* zip.c */; };
@@ -128,6 +129,7 @@
 		7D1B6F081F23B2B200AB035D /* AKMDLAssetModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKMDLAssetModel.swift; sourceTree = "<group>"; };
 		7D1B6F0C1F2983DA00AB035D /* Pin.scn */ = {isa = PBXFileReference; lastKnownFileType = file.bplist; path = Pin.scn; sourceTree = "<group>"; };
 		7D282F131FD11DE600D00B86 /* Serialize.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Serialize.swift; sourceTree = "<group>"; };
+		7D32637A1FF7FBFA0040375C /* ModelCompressor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelCompressor.swift; sourceTree = "<group>"; };
 		7D3E48891F88C1C800814875 /* AKUtility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKUtility.swift; sourceTree = "<group>"; };
 		7D3EAC091F7EA6120076635C /* AKGroundLayerAnchor.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AKGroundLayerAnchor.swift; sourceTree = "<group>"; };
 		7D3EAC0B1F7EA6790076635C /* AKAnchor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKAnchor.swift; sourceTree = "<group>"; };
@@ -416,6 +418,7 @@
 				7D1B6F081F23B2B200AB035D /* AKMDLAssetModel.swift */,
 				7DC785CB1FE6537D00F82FA4 /* AKArchivedModel.swift */,
 				7DC785D01FE655C100F82FA4 /* AKRemoteArchivedModel.swift */,
+				7D32637A1FF7FBFA0040375C /* ModelCompressor.swift */,
 			);
 			path = ModelIO;
 			sourceTree = "<group>";
@@ -689,10 +692,10 @@
 				7DC785CC1FE6537D00F82FA4 /* AKArchivedModel.swift in Sources */,
 				7D6E6B631F8F1CBC00EFC667 /* AKAnchor.swift in Sources */,
 				7D6E6B661F8F1CBC00EFC667 /* AKUtility.swift in Sources */,
-				7DC785CD1FE654F300F82FA4 /* ZipUtilities.swift in Sources */,
 				7D6E6B711F8F1CDB00EFC667 /* DeviceManager.swift in Sources */,
 				7D5FDA381FC7431500BAE104 /* AnchorsRenderModule.swift in Sources */,
 				7DE0C2A91FD46E5E0043FA5F /* AKModel.swift in Sources */,
+				7D32637B1FF7FBFA0040375C /* ModelCompressor.swift in Sources */,
 				7D5FDA341FC7333200BAE104 /* SharedBuffersRenderModule.swift in Sources */,
 				7D5FDA361FC73AD000BAE104 /* CameraPlaneRenderModule.swift in Sources */,
 				7D6E6B701F8F1CDB00EFC667 /* WorldLocationManager.swift in Sources */,
@@ -709,8 +712,6 @@
 				7D5FDA3A1FC9CFA400BAE104 /* TrackingPointsRenderModule.swift in Sources */,
 				7D6E6B691F8F1CC300EFC667 /* MeshData.swift in Sources */,
 				7D640AEA1FF0174200B35A5A /* AKUserTracker.swift in Sources */,
-				7DC785CE1FE654F800F82FA4 /* QuickZip.swift in Sources */,
-				7DC785CF1FE654FE00F82FA4 /* Zip.swift in Sources */,
 				7DC785D71FED819C00F82FA4 /* TrackersRenderModule.swift in Sources */,
 				7D282F141FD11DE700D00B86 /* Serialize.swift in Sources */,
 				7D5FDA3E1FC9FB4400BAE104 /* Renderer.swift in Sources */,
@@ -734,7 +735,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7D3263771FF7FB490040375C /* ZipUtilities.swift in Sources */,
+				7D3263781FF7FB4D0040375C /* QuickZip.swift in Sources */,
 				7D88D7B21F0AFD550009A154 /* ViewController.swift in Sources */,
+				7D3263791FF7FB530040375C /* Zip.swift in Sources */,
 				7D88D7AB1F0AFD550009A154 /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -839,7 +843,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.tenthlettermade.AugmentKit;
 				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
 				SKIP_INSTALL = YES;
-				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/AugmentKit/Renderer/** ${SRCROOT}/Libraries/Zip/minizip/**";
+				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/AugmentKit/Renderer/**";
 				SWIFT_VERSION = 4.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
@@ -865,7 +869,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.tenthlettermade.AugmentKit;
 				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
 				SKIP_INSTALL = YES;
-				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/AugmentKit/Renderer/** ${SRCROOT}/Libraries/Zip/minizip/**";
+				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/AugmentKit/Renderer/**";
 				SWIFT_VERSION = 4.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
@@ -1020,7 +1024,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = com.tenthlettermade.AugmentKit2;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_INCLUDE_PATHS = "";
+				SWIFT_INCLUDE_PATHS = "${SRCROOT}/Libraries/Zip/minizip";
 				SWIFT_VERSION = 4.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -1036,7 +1040,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = com.tenthlettermade.AugmentKit2;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_INCLUDE_PATHS = "";
+				SWIFT_INCLUDE_PATHS = "${SRCROOT}/Libraries/Zip/minizip";
 				SWIFT_VERSION = 4.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};

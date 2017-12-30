@@ -47,7 +47,7 @@ public class SerializeUtil {
     //  always end in the `.dat` extension. You may also choose to specify a directory wher the
     //  zip archive will be created. If you don't specify a directory it will use the same
     //  directory that the MDLAsset is located in.
-    static public func serializeMDLAsset(withFileURL url: URL, toDirectory directory: URL? = nil, withResultingFileName fileName: String = "model") -> URL? {
+    static public func serializeMDLAsset(usingCompressor compressor: ModelCompressor, withFileURL url: URL, toDirectory directory: URL? = nil, withResultingFileName fileName: String = "model") -> URL? {
         
         var error: NSError?
         let myAsset: MDLAsset? = {
@@ -79,7 +79,7 @@ public class SerializeUtil {
         
         NSKeyedArchiver.archiveRootObject(AKModelCodingWrapper(model: model), toFile: dataFileURL.path)
         
-        guard let zipFilePath = try? Zip.quickZipFiles([dataFileURL], fileName: "\(fileName)-Archive") else {
+        guard let zipFilePath = try? compressor.zipModel(withFileURLs: [dataFileURL], toDestinationFilePath: "\(fileName)-Archive") else {
             print("SerializeUtil: Serious Error. Could not archive the model file at \(dataFileURL.path)")
             return nil
         }

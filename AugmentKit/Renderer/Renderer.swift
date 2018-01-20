@@ -78,7 +78,9 @@ public class Renderer {
     
     public var modelProvider: ModelProvider? = AKModelProvider.sharedInstance
     
-    // Guides for debugging
+    // Guides for debugging. Turning this on will show the tracking points used by
+    // ARKit as well as detected horizontal surfaces. Setting this to true will
+    // affect performance.
     public var showGuides = false {
         didSet {
             if showGuides {
@@ -198,15 +200,15 @@ public class Renderer {
         // The y-axis points upward (with respect to landscapeRight orientation), and the z-axis
         // points away from the device on the screen side.
         //
-        // In order to orient the transform relative to word space, we take the camera transform
+        // In order to orient the transform relative to world space, we take the camera transform
         // and the cameras current rotation (given by the eulerAngles) and rotate the transform
         // in the opposite direction. The result is a transform at the position of the camera
         // but oriented along the same axes as world space.
-        let cameraQuaternion = QuaternionUtilities.quaternionFromEulerAngles(pitch: currentFrame.camera.eulerAngles.x, roll: currentFrame.camera.eulerAngles.y, yaw: currentFrame.camera.eulerAngles.z)
-        let inverseCameraRotation = GLKQuaternionInvert(cameraQuaternion)
-        
-        let invertedRotationMatrix = unsafeBitCast(GLKMatrix4MakeWithQuaternion(inverseCameraRotation), to: simd_float4x4.self)
-        currentCameraPositionTransform = currentFrame.camera.transform * invertedRotationMatrix
+        let eulerAngles = QuaternionUtilities.EulerAngles(roll: currentFrame.camera.eulerAngles.z, pitch: currentFrame.camera.eulerAngles.x, yaw: currentFrame.camera.eulerAngles.y)
+        let cameraQuaternion = QuaternionUtilities.quaternionFromEulerAngles(eulerAngles: eulerAngles)
+        var positionOnlyTransform = matrix_identity_float4x4
+        positionOnlyTransform = positionOnlyTransform.translate(x: currentFrame.camera.transform.columns.3.x, y: currentFrame.camera.transform.columns.3.y, z: currentFrame.camera.transform.columns.3.z)
+        currentCameraPositionTransform = positionOnlyTransform
         currentCameraQuaternionRotation = cameraQuaternion
         currentCameraHeading = Double(currentFrame.camera.eulerAngles.y)
         
@@ -249,6 +251,41 @@ public class Renderer {
         //
         // Update positions
         //
+        
+//        func normalize(_ angle: Float, forMinimalRotationTo ref: Float) -> Float {
+//            // Normalize angle in steps of 90 degrees such that the rotation to the other angle is minimal
+//            var normalized = angle
+//            while abs(normalized - ref) > Float.pi / 4 {
+//                if angle > ref {
+//                    normalized -= Float.pi / 2
+//                } else {
+//                    normalized += Float.pi / 2
+//                }
+//            }
+//            return normalized
+//        }
+        
+//        let aRotation: Float = {
+//            // Correct y rotation of camera square
+//            let tilt = abs(currentFrame.camera.eulerAngles.x)
+//            let threshold1: Float = Float.pi / 2 * 0.65
+//            let threshold2: Float = Float.pi / 2 * 0.75
+//            let yaw = atan2f(currentFrame.camera.transform.columns.0.x, currentFrame.camera.transform.columns.1.x)
+//            var angle: Float = 0
+//
+//            switch tilt {
+//            case 0..<threshold1:
+//                angle = currentFrame.camera.eulerAngles.y
+//            case threshold1..<threshold2:
+//                let relativeInRange = abs((tilt - threshold1) / (threshold2 - threshold1))
+//                let normalizedY = normalize(currentFrame.camera.eulerAngles.y, forMinimalRotationTo: yaw)
+//                angle = normalizedY * (1 - relativeInRange) + yaw * relativeInRange
+//            default:
+//                angle = yaw
+//            }
+//            return angle
+//
+//        }()
         
         // Calculate updates to trackers relative position
         for tracker in trackers {

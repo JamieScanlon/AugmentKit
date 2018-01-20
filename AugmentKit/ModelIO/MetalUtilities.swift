@@ -176,23 +176,60 @@ public extension float4x4 {
 
 class QuaternionUtilities {
     
-    static func quaternionFromEulerAngles(pitch: Float, roll: Float, yaw: Float) -> GLKQuaternion {
+    struct EulerAngles {
+        var roll: Float
+        var pitch: Float
+        var yaw: Float
+    }
+    
+    static func quaternionFromEulerAngles(eulerAngles: EulerAngles) -> GLKQuaternion {
         
-        let cy = cos(yaw * 0.5)
-        let sy = sin(yaw * 0.5)
-        let cr = cos(roll * 0.5)
-        let sr = sin(roll * 0.5)
-        let cp = cos(pitch * 0.5)
-        let sp = sin(pitch * 0.5)
+        // This is taken from https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
+        // but on that example they use a different coordinate system. In this implementation
+        // pitch, roll, and yaw have been translated to our coordinate system.
         
-        let w = cy * cr * cp + sy * sr * sp
-        let x = cy * sr * cp - sy * cr * sp
-        let y = cy * cr * sp + sy * sr * cp
-        let z = sy * cr * cp - cy * sr * sp
+        let cy = cos(eulerAngles.yaw * 0.5)
+        let sy = sin(eulerAngles.yaw * 0.5)
+        let cr = cos(eulerAngles.roll * 0.5)
+        let sr = sin(eulerAngles.roll * 0.5)
+        let cp = cos(eulerAngles.pitch * 0.5)
+        let sp = sin(eulerAngles.pitch * 0.5)
+        
+        let w = cr * cy * cp + sr * sy * sp
+        let x = cr * sy * cp - sr * cy * sp
+        let y = cr * cy * sp + sr * sy * cp
+        let z = sr * cy * cp - cr * sy * sp
         
         return GLKQuaternionMake(x, y, z, w)
         
     }
+    
+//    static func quaternionToEulerAngle(quaternion: GLKQuaternion) -> EulerAngles {
+//        
+//        // roll (x-axis rotation)
+//        let sinr = 2 * (quaternion.w * quaternion.x + quaternion.y * quaternion.z)
+//        let cosr = 1 - 2 * (quaternion.x * quaternion.x + quaternion.y * quaternion.y)
+//        let roll = atan2(sinr, cosr)
+//        
+//        // pitch (y-axis rotation)
+//        let sinp = 2 * (quaternion.w * quaternion.y - quaternion.z * quaternion.x)
+//        let pitch: Float = {
+//            if fabs(sinp) >= 1 {
+//                return copysign(Float.pi / 2, sinp) // use 90 degrees if out of range
+//            } else {
+//                return asin(sinp)
+//            }
+//        }()
+//        
+//        
+//        // yaw (z-axis rotation)
+//        let siny = 2 * (quaternion.w * quaternion.z + quaternion.x * quaternion.y)
+//        let cosy = 1 - 2 * (quaternion.y * quaternion.y + quaternion.z * quaternion.z)
+//        let yaw = atan2(siny, cosy)
+//        
+//        return EulerAngles(roll: roll, pitch: pitch, yaw: yaw)
+//        
+//    }
     
 }
 

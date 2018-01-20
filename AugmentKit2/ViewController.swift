@@ -64,14 +64,13 @@ class ViewController: UIViewController {
             loadAnchorModel()
             
             // Add a user tracking anchor.
-            let metalAllocator = MTKMeshBufferAllocator(device: myWorld.device)
-            let mesh = MDLMesh(planeWithExtent: vector3(1, 0, 1), segments: vector2(1, 1), geometryType: .triangles, allocator: metalAllocator)
-            let asset = MDLAsset(bufferAllocator: metalAllocator)
-            asset.add(mesh)
-            let myUserTrackerModel = AKMDLAssetModel(asset: asset)
-            let offsetTransform = matrix_identity_float4x4.translate(x: 0, y: -3, z: 0)
-            let userTracker = AKUserTracker(withModel: myUserTrackerModel, withUserRelativeTransform: offsetTransform)
-            myWorld.add(tracker: userTracker)
+            if let asset = MDLAssetTools.assetFromImage(withName: "compass.png") {
+                let myUserTrackerModel = AKMDLAssetModel(asset: asset)
+                // Position it 3 meters down from the camera
+                let offsetTransform = matrix_identity_float4x4.translate(x: 0, y: -3, z: 0)
+                let userTracker = AKUserTracker(withModel: myUserTrackerModel, withUserRelativeTransform: offsetTransform)
+                myWorld.add(tracker: userTracker)
+            }
             
         }
         

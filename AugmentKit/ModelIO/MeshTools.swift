@@ -31,9 +31,12 @@
 import Foundation
 import ModelIO
 
+// MARK: - MDLAsset extesntions
+
 extension MDLAsset {
-    /// Pretty-print MDLAsset's scene graph
-    func printAsset() {
+    
+    //  Pretty-print MDLAsset's scene graph
+    public func printAsset() {
         func printSubgraph(object: MDLObject, indent: Int = 0) {
             print(String(repeating: " ", count: indent), object.name, object)
 
@@ -47,7 +50,7 @@ extension MDLAsset {
         }
     }
 
-    /// Find an MDLObject by its path from MDLAsset level
+    //  Find an MDLObject by its path from MDLAsset level
     func objectAtPath(_ path: String) -> MDLObject? {
         // pathArray[] is always ""
         let pathArray = path.components(separatedBy: "/")
@@ -76,15 +79,77 @@ extension MDLAsset {
     }
 }
 
-/// Protocol for remapping joint paths (e.g. between a skeleton's complete joint list
-/// and the the subset bound to a particular mesh)
+// MARK: - MDLAssetTools
+
+//  Tools for creating ModelIO objects
+public class MDLAssetTools {
+    
+    public enum ResourceError: Error {
+        case notFound
+    }
+    
+    public static func assetFromImage(withName name: String, extension fileExtension: String = "", allocator: MDLMeshBufferAllocator? = nil) -> MDLAsset? {
+        
+        let mesh = MDLMesh(planeWithExtent: vector3(1, 0, 1), segments: vector2(1, 1), geometryType: .triangles, allocator: allocator)
+        let scatteringFunction = MDLScatteringFunction()
+        let material = MDLMaterial(name: "baseMaterial", scatteringFunction: scatteringFunction)
+        
+        let fullFileName: String = {
+            if !fileExtension.isEmpty {
+                return "\(name).\(fileExtension)"
+            } else {
+                return name
+            }
+        }()
+        do {
+            try setTextureProperties(material: material, textures: [
+                .baseColor: fullFileName,
+//                .specular:"specular.png",
+//                .emission:"illumination.png"
+                ]
+            )
+        } catch {
+            return nil
+        }
+        
+        for submesh in mesh.submeshes!  {
+            if let submesh = submesh as? MDLSubmesh {
+                submesh.material = material
+            }
+        }
+        let asset = MDLAsset(bufferAllocator: allocator)
+        asset.add(mesh)
+        
+        return asset
+        
+    }
+    
+    public static func setTextureProperties(material: MDLMaterial, textures: [MDLMaterialSemantic:String]) throws {
+        for (key,value) in textures {
+            guard let url = Bundle.main.url(forResource: value, withExtension: "") else {
+                throw ResourceError.notFound
+            }
+            let property = MDLMaterialProperty(name:value, semantic: key, url: url)
+            material.setProperty(property)
+        }
+    }
+    
+}
+
+// MARK: - JointPathRemappable
+
+//  Protocol for remapping joint paths (e.g. between a skeleton's complete joint list
+//  and the the subset bound to a particular mesh)
 protocol JointPathRemappable {
     var jointPaths: [String] { get }
 }
 
+// MARK: - ModelIOTools
+
+//  Tools for parsing ModelIO objects
 class ModelIOTools {
 
-    /// Compute an index map from all elements of A.jointPaths to the corresponding paths in B.jointPaths
+    //  Compute an index map from all elements of A.jointPaths to the corresponding paths in B.jointPaths
     static func mapJoints<A: JointPathRemappable, B: JointPathRemappable>(from src: A, to dst: B) -> [Int] {
         let dstJointPaths = dst.jointPaths
         return src.jointPaths.flatMap { srcJointPath in
@@ -96,7 +161,7 @@ class ModelIOTools {
         }
     }
 
-    /// Count the element count of the subgraph rooted at object.
+    //  Count the element count of the subgraph rooted at object.
     static func subGraphCount(_ object: MDLObject) -> Int {
         var elementCount: Int = 1 // counting us ...
         let childCount = object.children.count
@@ -107,8 +172,8 @@ class ModelIOTools {
         return elementCount
     }
 
-    /// Traverse an MDLAsset's scene graph and run a closure on each element,
-    /// passing on each element's flattened node index as well as its parent's index
+    //  Traverse an MDLAsset's scene graph and run a closure on each element,
+    //  passing on each element's flattened node index as well as its parent's index
     static func walkSceneGraph(in asset: MDLAsset, perNodeBody: (MDLObject, Int, Int?) -> Void) {
         func walkGraph(in object: MDLObject, currentIndex: inout Int, parentIndex: Int?, perNodeBody: (MDLObject, Int, Int?) -> Void) {
             perNodeBody(object, currentIndex, parentIndex)
@@ -131,8 +196,8 @@ class ModelIOTools {
         }
     }
 
-    /// Traverse thescene graph rooted at object and run a closure on each element,
-    /// passing on each element's flattened node index as well as its parent's index
+    //  Traverse thescene graph rooted at object and run a closure on each element,
+    //  passing on each element's flattened node index as well as its parent's index
     static func walkSceneGraph(rootAt object: MDLObject, perNodeBody: (MDLObject, Int, Int?) -> Void) {
         var currentIndex = 0
 
@@ -154,8 +219,8 @@ class ModelIOTools {
         walkGraph(object: object, currentIndex: &currentIndex, parentIndex: nil, perNodeBody: perNodeBody)
     }
 
-    // Traverse an MDLAsset's masters list and run a closure on each element
-    // Model I/O supports instancing. These are the master objects that the instances refer to.
+    //  Traverse an MDLAsset's masters list and run a closure on each element
+    //  Model I/O supports instancing. These are the master objects that the instances refer to.
     static func walkMasters(in asset: MDLAsset, perNodeBody: (MDLObject) -> Void) {
         func walkGraph(in object: MDLObject, perNodeBody: (MDLObject) -> Void) {
             perNodeBody(object)
@@ -170,7 +235,7 @@ class ModelIOTools {
         }
     }
 
-    /// Return the number of active vertex buffers in an MDLMesh
+    //  Return the number of active vertex buffers in an MDLMesh
     static func getVertexBufferCount(_ mdlMesh: MDLMesh) -> Int {
         var vbCount = 0
         for layout in mdlMesh.vertexDescriptor.layouts {
@@ -184,9 +249,10 @@ class ModelIOTools {
         return vbCount
     }
 
-    /// Find the index of the (first) MDLMesh in MDLAsset.masters that an MDLObject.instance points to
+    //  Find the index of the (first) MDLMesh in MDLAsset.masters that an MDLObject.instance points to
     static func findMasterIndex(_ masterMeshes: [MDLMesh], _ instance: MDLObject) -> Int? {
-        /// find first MDLMesh in MDLObject hierarchy
+        
+        //  find first MDLMesh in MDLObject hierarchy
         func findFirstMesh(_ object: MDLObject) -> MDLMesh? {
             if let object = object as? MDLMesh {
                 return object
@@ -204,8 +270,8 @@ class ModelIOTools {
         return nil
     }
 
-    /// Sort all mesh instances by mesh index, and return a permutation which groups together
-    /// all instances of all particular mesh
+    //  Sort all mesh instances by mesh index, and return a permutation which groups together
+    //  all instances of all particular mesh
     static func sortedMeshIndexPermutation(_ instanceMeshIndices: [Int]) -> ([Int], [Int]) {
         let permutation = (0..<instanceMeshIndices.count).sorted { instanceMeshIndices[$0] < instanceMeshIndices[$1] }
 
@@ -223,7 +289,7 @@ class ModelIOTools {
         return (permutation, instanceCounts)
     }
 
-    /// Append the asset url to all texture paths
+    //  Append the asset url to all texture paths
     static func fixupPaths(_ asset: MDLAsset, _ texturePaths: inout [String]) {
         guard let assetURL = asset.url else { return }
 
@@ -231,7 +297,7 @@ class ModelIOTools {
         texturePaths = texturePaths.map { assetRelativeURL.appendingPathComponent($0).absoluteString }
     }
 
-    /// Find the shortest subpath containing a rootIdentifier (used to find a e.g. skeleton's root path)
+    //  Find the shortest subpath containing a rootIdentifier (used to find a e.g. skeleton's root path)
     static func findShortestPath(in path: String, containing rootIdentifier: String) -> String? {
         var result = ""
         let pathArray = path.components(separatedBy: "/")
@@ -245,24 +311,24 @@ class ModelIOTools {
         return nil
     }
 
-    /// Get a float3 property from an MDLMaterialProperty
+    //  Get a float3 property from an MDLMaterialProperty
     static func getMaterialFloat3Value(_ materialProperty: MDLMaterialProperty) -> float3 {
         return materialProperty.float3Value
     }
 
-    /// Get a float property from an MDLMaterialProperty
+    //  Get a float property from an MDLMaterialProperty
     static func getMaterialFloatValue(_ materialProperty: MDLMaterialProperty) -> Float {
         return materialProperty.floatValue
     }
 
-    /// Uniformly sample a time interval
+    //  Uniformly sample a time interval
     static func sampleTimeInterval(start startTime: TimeInterval, end endTime: TimeInterval,
                             frameInterval: TimeInterval) -> [TimeInterval] {
         let count = Int( (endTime - startTime) / frameInterval )
         return (0..<count).map { startTime + TimeInterval($0) * frameInterval }
     }
     
-    // Find the largest index of time stamp <= key
+    //  Find the largest index of time stamp <= key
     static func lowerBoundKeyframeIndex(_ lhs: [Double], key: Double) -> Int? {
         guard let lhsFirst = lhs.first else {
             return nil

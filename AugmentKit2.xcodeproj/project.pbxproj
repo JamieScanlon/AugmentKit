@@ -17,7 +17,7 @@
 		7D5EEC1F1FDC628D00E3FE91 /* AKModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DE0C2A81FD46E5E0043FA5F /* AKModel.swift */; };
 		7D5EEC201FDC629400E3FE91 /* Serialize.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D282F131FD11DE600D00B86 /* Serialize.swift */; };
 		7D5EEC211FDC629600E3FE91 /* AKMDLAssetModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D1B6F081F23B2B200AB035D /* AKMDLAssetModel.swift */; };
-		7D5EEC221FDC629800E3FE91 /* ModelIOTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DB396AF1F1AFDD30003019B /* ModelIOTools.swift */; };
+		7D5EEC221FDC629800E3FE91 /* MeshTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DB396AF1F1AFDD30003019B /* MeshTools.swift */; };
 		7D5EEC231FDC629B00E3FE91 /* MeshData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DB396AD1F1AFD860003019B /* MeshData.swift */; };
 		7D5EEC241FDC629E00E3FE91 /* MetalUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DB396AB1F1AFBFB0003019B /* MetalUtilities.swift */; };
 		7D5FDA321FC72AAE00BAE104 /* RenderModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D5FDA311FC72AAE00BAE104 /* RenderModule.swift */; };
@@ -39,7 +39,7 @@
 		7D6E6B651F8F1CBC00EFC667 /* AKObject.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D3EAC101F7ED05B0076635C /* AKObject.swift */; };
 		7D6E6B661F8F1CBC00EFC667 /* AKUtility.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D3E48891F88C1C800814875 /* AKUtility.swift */; };
 		7D6E6B671F8F1CC300EFC667 /* AKMDLAssetModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D1B6F081F23B2B200AB035D /* AKMDLAssetModel.swift */; };
-		7D6E6B681F8F1CC300EFC667 /* ModelIOTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DB396AF1F1AFDD30003019B /* ModelIOTools.swift */; };
+		7D6E6B681F8F1CC300EFC667 /* MeshTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DB396AF1F1AFDD30003019B /* MeshTools.swift */; };
 		7D6E6B691F8F1CC300EFC667 /* MeshData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DB396AD1F1AFD860003019B /* MeshData.swift */; };
 		7D6E6B6A1F8F1CC300EFC667 /* MetalUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DB396AB1F1AFBFB0003019B /* MetalUtilities.swift */; };
 		7D6E6B6C1F8F1CDB00EFC667 /* LocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D88D7C61F0C07960009A154 /* LocationManager.swift */; };
@@ -54,6 +54,7 @@
 		7D88D7B51F0AFD550009A154 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 7D88D7B31F0AFD550009A154 /* Main.storyboard */; };
 		7D88D7B71F0AFD560009A154 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7D88D7B61F0AFD560009A154 /* Assets.xcassets */; };
 		7D88D7BA1F0AFD560009A154 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 7D88D7B81F0AFD560009A154 /* LaunchScreen.storyboard */; };
+		7D8A0A7E2013A4B9006CAAAD /* compass.png in Resources */ = {isa = PBXBuildFile; fileRef = 7D8A0A7D2013A4B8006CAAAD /* compass.png */; };
 		7DA9936B1F907A9A00595435 /* AugmentKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7D6E6B471F8F19C300EFC667 /* AugmentKit.framework */; };
 		7DA9936C1F907A9A00595435 /* AugmentKit.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 7D6E6B471F8F19C300EFC667 /* AugmentKit.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		7DB2C4E61FDC588F00B355A2 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DB2C4E51FDC588F00B355A2 /* AppDelegate.swift */; };
@@ -76,7 +77,7 @@
 		7DE0C2A31FD3E0850043FA5F /* AKMDLAssetModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D1B6F081F23B2B200AB035D /* AKMDLAssetModel.swift */; };
 		7DE0C2A41FD3E0AB0043FA5F /* Serialize.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D282F131FD11DE600D00B86 /* Serialize.swift */; };
 		7DE0C2A51FD3E0AF0043FA5F /* MeshData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DB396AD1F1AFD860003019B /* MeshData.swift */; };
-		7DE0C2A61FD3E0B30043FA5F /* ModelIOTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DB396AF1F1AFDD30003019B /* ModelIOTools.swift */; };
+		7DE0C2A61FD3E0B30043FA5F /* MeshTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DB396AF1F1AFDD30003019B /* MeshTools.swift */; };
 		7DE0C2A71FD3E0C40043FA5F /* MetalUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DB396AB1F1AFBFB0003019B /* MetalUtilities.swift */; };
 		7DE0C2A91FD46E5E0043FA5F /* AKModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DE0C2A81FD46E5E0043FA5F /* AKModel.swift */; };
 		7DE0C2AA1FD476FA0043FA5F /* AKModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DE0C2A81FD46E5E0043FA5F /* AKModel.swift */; };
@@ -165,6 +166,7 @@
 		7D88D7CB1F0C2B0A0009A154 /* LocalStoreManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocalStoreManager.swift; path = AugmentKit/Managers/LocalStoreManager.swift; sourceTree = SOURCE_ROOT; };
 		7D88D7CD1F0C51CD0009A154 /* ErrorManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ErrorManager.swift; path = AugmentKit/Managers/ErrorManager.swift; sourceTree = SOURCE_ROOT; };
 		7D88D7CF1F0C53590009A154 /* WorldLocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WorldLocationManager.swift; path = AugmentKit/Managers/WorldLocationManager.swift; sourceTree = SOURCE_ROOT; };
+		7D8A0A7D2013A4B8006CAAAD /* compass.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = compass.png; sourceTree = "<group>"; };
 		7DB2C4E31FDC588F00B355A2 /* AugmentKitCLTools.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AugmentKitCLTools.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7DB2C4E51FDC588F00B355A2 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		7DB2C4E71FDC588F00B355A2 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
@@ -175,7 +177,7 @@
 		7DB396A91F1A96350003019B /* DeviceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceManager.swift; sourceTree = "<group>"; };
 		7DB396AB1F1AFBFB0003019B /* MetalUtilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalUtilities.swift; sourceTree = "<group>"; };
 		7DB396AD1F1AFD860003019B /* MeshData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshData.swift; sourceTree = "<group>"; };
-		7DB396AF1F1AFDD30003019B /* ModelIOTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelIOTools.swift; sourceTree = "<group>"; };
+		7DB396AF1F1AFDD30003019B /* MeshTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshTools.swift; sourceTree = "<group>"; };
 		7DBA369B1F7AE0AD0006310A /* plane_grid.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = plane_grid.png; sourceTree = "<group>"; };
 		7DBA369F1F7C1A310006310A /* texture.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = texture.png; sourceTree = "<group>"; };
 		7DBA36A01F7C1A310006310A /* ship.scn */ = {isa = PBXFileReference; lastKnownFileType = file.bplist; path = ship.scn; sourceTree = "<group>"; };
@@ -412,7 +414,7 @@
 			isa = PBXGroup;
 			children = (
 				7D282F131FD11DE600D00B86 /* Serialize.swift */,
-				7DB396AF1F1AFDD30003019B /* ModelIOTools.swift */,
+				7DB396AF1F1AFDD30003019B /* MeshTools.swift */,
 				7DB396AD1F1AFD860003019B /* MeshData.swift */,
 				7DB396AB1F1AFBFB0003019B /* MetalUtilities.swift */,
 				7D1B6F081F23B2B200AB035D /* AKMDLAssetModel.swift */,
@@ -426,6 +428,7 @@
 		7DBA369E1F7C1A180006310A /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				7D8A0A7D2013A4B8006CAAAD /* compass.png */,
 				7DBA36A01F7C1A310006310A /* ship.scn */,
 				7DBA369F1F7C1A310006310A /* texture.png */,
 				7DBA369B1F7AE0AD0006310A /* plane_grid.png */,
@@ -658,6 +661,7 @@
 				7D1B6F0D1F29851E00AB035D /* Pin.scn in Resources */,
 				7DBA36A21F7C1AA50006310A /* texture.png in Resources */,
 				7D88D7BA1F0AFD560009A154 /* LaunchScreen.storyboard in Resources */,
+				7D8A0A7E2013A4B9006CAAAD /* compass.png in Resources */,
 				7DBA36A11F7C1AA10006310A /* ship.scn in Resources */,
 				7DBA369C1F7AE0AE0006310A /* plane_grid.png in Resources */,
 				7D88D7B71F0AFD560009A154 /* Assets.xcassets in Resources */,
@@ -707,7 +711,7 @@
 				7DC785D31FE662FB00F82FA4 /* zip.c in Sources */,
 				7D5FDA3C1FC9E70E00BAE104 /* SurfacesRenderModule.swift in Sources */,
 				7D6E6B5E1F8F1C9600EFC667 /* AKSceneKitUtils.swift in Sources */,
-				7D6E6B681F8F1CC300EFC667 /* ModelIOTools.swift in Sources */,
+				7D6E6B681F8F1CC300EFC667 /* MeshTools.swift in Sources */,
 				7D5FDA321FC72AAE00BAE104 /* RenderModule.swift in Sources */,
 				7D5FDA3A1FC9CFA400BAE104 /* TrackingPointsRenderModule.swift in Sources */,
 				7D6E6B691F8F1CC300EFC667 /* MeshData.swift in Sources */,
@@ -749,7 +753,7 @@
 			files = (
 				7D5EEC231FDC629B00E3FE91 /* MeshData.swift in Sources */,
 				7D5EEC1F1FDC628D00E3FE91 /* AKModel.swift in Sources */,
-				7D5EEC221FDC629800E3FE91 /* ModelIOTools.swift in Sources */,
+				7D5EEC221FDC629800E3FE91 /* MeshTools.swift in Sources */,
 				7DB2C4E81FDC588F00B355A2 /* ViewController.swift in Sources */,
 				7D5EEC201FDC629400E3FE91 /* Serialize.swift in Sources */,
 				7D5EEC211FDC629600E3FE91 /* AKMDLAssetModel.swift in Sources */,
@@ -764,7 +768,7 @@
 			files = (
 				7DE0C2AA1FD476FA0043FA5F /* AKModel.swift in Sources */,
 				7DE0C2A51FD3E0AF0043FA5F /* MeshData.swift in Sources */,
-				7DE0C2A61FD3E0B30043FA5F /* ModelIOTools.swift in Sources */,
+				7DE0C2A61FD3E0B30043FA5F /* MeshTools.swift in Sources */,
 				7DE0C2A21FD3DFC60043FA5F /* ConsoleIO.swift in Sources */,
 				7DE0C29B1FD3DF6E0043FA5F /* main.swift in Sources */,
 				7DE0C2A31FD3E0850043FA5F /* AKMDLAssetModel.swift in Sources */,

@@ -297,6 +297,14 @@ public class AKMDLAssetModel: AKModel {
                             texturePaths.append(path)
                             result.textureIndex = index
                         }
+                    } else if let path = property.urlValue?.absoluteString {
+                        if let index = texturePaths.index(of: path) {
+                            result.textureIndex = index
+                        } else {
+                            let index = texturePaths.count
+                            texturePaths.append(path)
+                            result.textureIndex = index
+                        }
                     } else {
                         result.textureIndex = nil
                     }

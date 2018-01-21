@@ -54,9 +54,9 @@
 		7D88D7B51F0AFD550009A154 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 7D88D7B31F0AFD550009A154 /* Main.storyboard */; };
 		7D88D7B71F0AFD560009A154 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7D88D7B61F0AFD560009A154 /* Assets.xcassets */; };
 		7D88D7BA1F0AFD560009A154 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 7D88D7B81F0AFD560009A154 /* LaunchScreen.storyboard */; };
-		7D8A0A7E2013A4B9006CAAAD /* compass.png in Resources */ = {isa = PBXBuildFile; fileRef = 7D8A0A7D2013A4B8006CAAAD /* compass.png */; };
 		7D8A0A802013D058006CAAAD /* AKRelativePosiiton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D8A0A7F2013D058006CAAAD /* AKRelativePosiiton.swift */; };
 		7D8A0A822013D143006CAAAD /* AKHeading.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D8A0A812013D143006CAAAD /* AKHeading.swift */; };
+		7D8A0A85201514F0006CAAAD /* compass_512.png in Resources */ = {isa = PBXBuildFile; fileRef = 7D8A0A8320150EAD006CAAAD /* compass_512.png */; };
 		7DA9936B1F907A9A00595435 /* AugmentKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7D6E6B471F8F19C300EFC667 /* AugmentKit.framework */; };
 		7DA9936C1F907A9A00595435 /* AugmentKit.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 7D6E6B471F8F19C300EFC667 /* AugmentKit.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		7DB2C4E61FDC588F00B355A2 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DB2C4E51FDC588F00B355A2 /* AppDelegate.swift */; };
@@ -168,9 +168,9 @@
 		7D88D7CB1F0C2B0A0009A154 /* LocalStoreManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocalStoreManager.swift; path = AugmentKit/Managers/LocalStoreManager.swift; sourceTree = SOURCE_ROOT; };
 		7D88D7CD1F0C51CD0009A154 /* ErrorManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ErrorManager.swift; path = AugmentKit/Managers/ErrorManager.swift; sourceTree = SOURCE_ROOT; };
 		7D88D7CF1F0C53590009A154 /* WorldLocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WorldLocationManager.swift; path = AugmentKit/Managers/WorldLocationManager.swift; sourceTree = SOURCE_ROOT; };
-		7D8A0A7D2013A4B8006CAAAD /* compass.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = compass.png; sourceTree = "<group>"; };
 		7D8A0A7F2013D058006CAAAD /* AKRelativePosiiton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKRelativePosiiton.swift; sourceTree = "<group>"; };
 		7D8A0A812013D143006CAAAD /* AKHeading.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKHeading.swift; sourceTree = "<group>"; };
+		7D8A0A8320150EAD006CAAAD /* compass_512.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = compass_512.png; sourceTree = "<group>"; };
 		7DB2C4E31FDC588F00B355A2 /* AugmentKitCLTools.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AugmentKitCLTools.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7DB2C4E51FDC588F00B355A2 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		7DB2C4E71FDC588F00B355A2 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
@@ -434,7 +434,7 @@
 		7DBA369E1F7C1A180006310A /* Models */ = {
 			isa = PBXGroup;
 			children = (
-				7D8A0A7D2013A4B8006CAAAD /* compass.png */,
+				7D8A0A8320150EAD006CAAAD /* compass_512.png */,
 				7DBA36A01F7C1A310006310A /* ship.scn */,
 				7DBA369F1F7C1A310006310A /* texture.png */,
 				7DBA369B1F7AE0AD0006310A /* plane_grid.png */,
@@ -667,11 +667,11 @@
 				7D1B6F0D1F29851E00AB035D /* Pin.scn in Resources */,
 				7DBA36A21F7C1AA50006310A /* texture.png in Resources */,
 				7D88D7BA1F0AFD560009A154 /* LaunchScreen.storyboard in Resources */,
-				7D8A0A7E2013A4B9006CAAAD /* compass.png in Resources */,
 				7DBA36A11F7C1AA10006310A /* ship.scn in Resources */,
 				7DBA369C1F7AE0AE0006310A /* plane_grid.png in Resources */,
 				7D88D7B71F0AFD560009A154 /* Assets.xcassets in Resources */,
 				7D88D7B51F0AFD550009A154 /* Main.storyboard in Resources */,
+				7D8A0A85201514F0006CAAAD /* compass_512.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

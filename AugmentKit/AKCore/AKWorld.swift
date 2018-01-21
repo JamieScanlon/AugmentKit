@@ -86,41 +86,6 @@ public struct AKWorldDistance {
     }
 }
 
-// MARK: - AKRelativePosition
-//  A data structure that represents a position relative to another reference
-//  position in world space.
-public class AKRelativePosition {
-    public var parentPosition: AKRelativePosition?
-    public private(set) var referenceTransform: matrix_float4x4 = matrix_identity_float4x4
-    public var transform: matrix_float4x4 = matrix_identity_float4x4 {
-        didSet {
-            _transformHasChanged = true
-        }
-    }
-    public var transformHasChanged: Bool {
-        return _transformHasChanged || (parentPosition?.transformHasChanged == true)
-    }
-    
-    public init(withTransform transform: matrix_float4x4, relativeTo parentPosition: AKRelativePosition? = nil) {
-        self.transform = transform
-        self.parentPosition = parentPosition
-        updateTransforms()
-    }
-    
-    public func updateTransforms() {
-        if let parentPosition = parentPosition, parentPosition.transformHasChanged == true {
-            parentPosition.updateTransforms()
-            referenceTransform = parentPosition.referenceTransform * parentPosition.transform
-        }
-        _transformHasChanged = false
-    }
-    
-    // MARK: Private
-    
-    private var _transformHasChanged = false
-    
-}
-
 // MARK: - AKWorld
 
 public class AKWorld: NSObject {

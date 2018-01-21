@@ -55,6 +55,8 @@
 		7D88D7B71F0AFD560009A154 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7D88D7B61F0AFD560009A154 /* Assets.xcassets */; };
 		7D88D7BA1F0AFD560009A154 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 7D88D7B81F0AFD560009A154 /* LaunchScreen.storyboard */; };
 		7D8A0A7E2013A4B9006CAAAD /* compass.png in Resources */ = {isa = PBXBuildFile; fileRef = 7D8A0A7D2013A4B8006CAAAD /* compass.png */; };
+		7D8A0A802013D058006CAAAD /* AKRelativePosiiton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D8A0A7F2013D058006CAAAD /* AKRelativePosiiton.swift */; };
+		7D8A0A822013D143006CAAAD /* AKHeading.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D8A0A812013D143006CAAAD /* AKHeading.swift */; };
 		7DA9936B1F907A9A00595435 /* AugmentKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7D6E6B471F8F19C300EFC667 /* AugmentKit.framework */; };
 		7DA9936C1F907A9A00595435 /* AugmentKit.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 7D6E6B471F8F19C300EFC667 /* AugmentKit.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		7DB2C4E61FDC588F00B355A2 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DB2C4E51FDC588F00B355A2 /* AppDelegate.swift */; };
@@ -167,6 +169,8 @@
 		7D88D7CD1F0C51CD0009A154 /* ErrorManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ErrorManager.swift; path = AugmentKit/Managers/ErrorManager.swift; sourceTree = SOURCE_ROOT; };
 		7D88D7CF1F0C53590009A154 /* WorldLocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WorldLocationManager.swift; path = AugmentKit/Managers/WorldLocationManager.swift; sourceTree = SOURCE_ROOT; };
 		7D8A0A7D2013A4B8006CAAAD /* compass.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = compass.png; sourceTree = "<group>"; };
+		7D8A0A7F2013D058006CAAAD /* AKRelativePosiiton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKRelativePosiiton.swift; sourceTree = "<group>"; };
+		7D8A0A812013D143006CAAAD /* AKHeading.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKHeading.swift; sourceTree = "<group>"; };
 		7DB2C4E31FDC588F00B355A2 /* AugmentKitCLTools.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AugmentKitCLTools.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7DB2C4E51FDC588F00B355A2 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		7DB2C4E71FDC588F00B355A2 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
@@ -310,6 +314,8 @@
 				7D3EAC091F7EA6120076635C /* AKGroundLayerAnchor.swift */,
 				7D3EAC0B1F7EA6790076635C /* AKAnchor.swift */,
 				7D640AE91FF0174200B35A5A /* AKUserTracker.swift */,
+				7D8A0A7F2013D058006CAAAD /* AKRelativePosiiton.swift */,
+				7D8A0A812013D143006CAAAD /* AKHeading.swift */,
 			);
 			path = Anchors;
 			sourceTree = "<group>";
@@ -687,10 +693,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7D8A0A822013D143006CAAAD /* AKHeading.swift in Sources */,
 				7D6E6B671F8F1CC300EFC667 /* AKMDLAssetModel.swift in Sources */,
 				7DC785D21FE662F600F82FA4 /* unzip.c in Sources */,
 				7D6E6B6E1F8F1CDB00EFC667 /* LocalStoreManager.swift in Sources */,
 				7D6E6B6F1F8F1CDB00EFC667 /* ErrorManager.swift in Sources */,
+				7D8A0A802013D058006CAAAD /* AKRelativePosiiton.swift in Sources */,
 				7D6E6B6D1F8F1CDB00EFC667 /* MotionManager.swift in Sources */,
 				7D6E6B5F1F8F1C9D00EFC667 /* AnchorShaders.metal in Sources */,
 				7DC785CC1FE6537D00F82FA4 /* AKArchivedModel.swift in Sources */,

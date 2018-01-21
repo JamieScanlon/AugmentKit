@@ -204,32 +204,32 @@ class QuaternionUtilities {
         
     }
     
-//    static func quaternionToEulerAngle(quaternion: GLKQuaternion) -> EulerAngles {
-//        
-//        // roll (x-axis rotation)
-//        let sinr = 2 * (quaternion.w * quaternion.x + quaternion.y * quaternion.z)
-//        let cosr = 1 - 2 * (quaternion.x * quaternion.x + quaternion.y * quaternion.y)
-//        let roll = atan2(sinr, cosr)
-//        
-//        // pitch (y-axis rotation)
-//        let sinp = 2 * (quaternion.w * quaternion.y - quaternion.z * quaternion.x)
-//        let pitch: Float = {
-//            if fabs(sinp) >= 1 {
-//                return copysign(Float.pi / 2, sinp) // use 90 degrees if out of range
-//            } else {
-//                return asin(sinp)
-//            }
-//        }()
-//        
-//        
-//        // yaw (z-axis rotation)
-//        let siny = 2 * (quaternion.w * quaternion.z + quaternion.x * quaternion.y)
-//        let cosy = 1 - 2 * (quaternion.y * quaternion.y + quaternion.z * quaternion.z)
-//        let yaw = atan2(siny, cosy)
-//        
-//        return EulerAngles(roll: roll, pitch: pitch, yaw: yaw)
-//        
-//    }
+    static func quaternionToEulerAngle(quaternion: GLKQuaternion) -> EulerAngles {
+        
+        // (z-axis rotation)
+        let siny = 2 * (quaternion.w * quaternion.x + quaternion.y * quaternion.z)
+        let cosy = 1 - 2 * (quaternion.x * quaternion.x + quaternion.y * quaternion.y)
+        let roll = atan2(siny, cosy)
+        
+        // (y-axis rotation)
+        let sinp = 2 * (quaternion.w * quaternion.y - quaternion.z * quaternion.x)
+        let yaw: Float = {
+            if fabs(sinp) >= 1 {
+                return copysign(Float.pi / 2, sinp) // use 90 degrees if out of range
+            } else {
+                return asin(sinp)
+            }
+        }()
+        
+        
+        // (x-axis rotation)
+        let sinr = 2 * (quaternion.w * quaternion.z + quaternion.x * quaternion.y)
+        let cosr = 1 - 2 * (quaternion.y * quaternion.y + quaternion.z * quaternion.z)
+        let pitch = atan2(sinr, cosr)
+        
+        return EulerAngles(roll: roll, pitch: pitch, yaw: yaw)
+        
+    }
     
 }
 

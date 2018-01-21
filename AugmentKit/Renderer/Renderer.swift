@@ -291,7 +291,7 @@ public class Renderer {
         for tracker in trackers {
             if let userTracker = tracker as? AKUserTracker {
                 let cameraPositionTransform = currentCameraPositionTransform ?? matrix_identity_float4x4
-                userTracker.position.parentPosition?.transform = cameraPositionTransform
+                userTracker.userPosition?.transform = cameraPositionTransform
             }
             tracker.position.updateTransforms()
         }

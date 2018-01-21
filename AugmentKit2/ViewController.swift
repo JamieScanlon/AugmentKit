@@ -69,6 +69,7 @@ class ViewController: UIViewController {
                 // Position it 3 meters down from the camera
                 let offsetTransform = matrix_identity_float4x4.translate(x: 0, y: -3, z: 0)
                 let userTracker = AKUserTracker(withModel: myUserTrackerModel, withUserRelativeTransform: offsetTransform)
+                userTracker.position.heading = AKWorldHeading(withWorld: myWorld, worldHeadingType: .north)
                 myWorld.add(tracker: userTracker)
             }
             

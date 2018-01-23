@@ -92,12 +92,10 @@ class SurfacesRenderModule: RenderModule {
         // Metal buffers accessible by the GPU
         let metalAllocator = MTKMeshBufferAllocator(device: device)
         
-        let mesh = MDLMesh(planeWithExtent: vector3(1, 0, 1), segments: vector2(1, 1), geometryType: .triangles, allocator: metalAllocator)
-        let asset = MDLAsset(bufferAllocator: metalAllocator)
-        asset.add(mesh)
-        
-        let mySurfaceModel = AKMDLAssetModel(asset: asset)
-        surfaceModel = mySurfaceModel
+        if let asset = MDLAssetTools.assetFromImage(withName: "plane_grid", extension: "png", allocator: metalAllocator) {
+            let mySurfaceModel = AKMDLAssetModel(asset: asset)
+            surfaceModel = mySurfaceModel
+        }
         
         completion()
         

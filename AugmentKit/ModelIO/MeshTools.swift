@@ -90,10 +90,6 @@ public class MDLAssetTools {
     
     public static func assetFromImage(withName name: String, extension fileExtension: String = "", allocator: MDLMeshBufferAllocator? = nil) -> MDLAsset? {
         
-        let mesh = MDLMesh(planeWithExtent: vector3(1, 0, 1), segments: vector2(1, 1), geometryType: .triangles, allocator: allocator)
-        let scatteringFunction = MDLScatteringFunction()
-        let material = MDLMaterial(name: "baseMaterial", scatteringFunction: scatteringFunction)
-        
         let fullFileName: String = {
             if !fileExtension.isEmpty {
                 return "\(name).\(fileExtension)"
@@ -101,16 +97,51 @@ public class MDLAssetTools {
                 return name
             }
         }()
-        do {
-            try setTextureProperties(material: material, textures: [
-                .baseColor: fullFileName,
-//                .specular:"specular.png",
-//                .emission:"illumination.png"
-                ]
-            )
-        } catch {
+        
+        return assetFromImage(withBaseColorFileName: fullFileName, specularFileName: nil, emissionFileName: nil, allocator: allocator)
+        
+    }
+    
+    public static func assetFromImage(withBaseColorFileName baseColorFileName: String, specularFileName: String? = nil, emissionFileName: String? = nil, allocator: MDLMeshBufferAllocator? = nil) -> MDLAsset? {
+        
+        guard let baseColorFileURL = Bundle.main.url(forResource: baseColorFileName, withExtension: "") else {
+            print("WARNING: (MDLAssetTools) Could not find the image asset with file name: \(baseColorFileName)")
             return nil
         }
+        
+        let aspectRatio: Float = {
+            if let image = UIImage(contentsOfFile: baseColorFileURL.path) {
+                return Float(image.size.width / image.size.height)
+            } else {
+                return 1
+            }
+        }()
+        let extent: vector_float3 = {
+            if aspectRatio > 1 {
+                return vector3(1, 0, 1/aspectRatio)
+            } else if aspectRatio < 1 {
+                return vector3(aspectRatio, 0, 1)
+            } else {
+                return vector3(1, 0, 1)
+            }
+        }()
+        
+        let mesh = MDLMesh(planeWithExtent: extent, segments: vector2(1, 1), geometryType: .triangles, allocator: allocator)
+        let scatteringFunction = MDLScatteringFunction()
+        let material = MDLMaterial(name: "baseMaterial", scatteringFunction: scatteringFunction)
+        
+        let textues: [MDLMaterialSemantic: URL] = {
+            var myTextures = [MDLMaterialSemantic.baseColor: baseColorFileURL]
+            if let specularFileName = specularFileName, let specularFileURL = Bundle.main.url(forResource: specularFileName, withExtension: "") {
+                myTextures[MDLMaterialSemantic.specular] = specularFileURL
+            }
+            if let emissionFileName = emissionFileName, let emissionFileURL = Bundle.main.url(forResource: emissionFileName, withExtension: "") {
+                myTextures[MDLMaterialSemantic.emission] = emissionFileURL
+            }
+            return myTextures
+        }()
+        
+        setTextureProperties(material: material, textures: textues)
         
         for submesh in mesh.submeshes!  {
             if let submesh = submesh as? MDLSubmesh {
@@ -124,11 +155,9 @@ public class MDLAssetTools {
         
     }
     
-    public static func setTextureProperties(material: MDLMaterial, textures: [MDLMaterialSemantic:String]) throws {
-        for (key,value) in textures {
-            guard let url = Bundle.main.url(forResource: value, withExtension: "") else {
-                throw ResourceError.notFound
-            }
+    public static func setTextureProperties(material: MDLMaterial, textures: [MDLMaterialSemantic: URL]) {
+        for (key, url) in textures {
+            let value = url.lastPathComponent
             let property = MDLMaterialProperty(name:value, semantic: key, url: url)
             material.setProperty(property)
         }

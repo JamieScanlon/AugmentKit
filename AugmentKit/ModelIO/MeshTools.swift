@@ -84,11 +84,10 @@ extension MDLAsset {
 //  Tools for creating ModelIO objects
 public class MDLAssetTools {
     
-    public enum ResourceError: Error {
-        case notFound
-    }
-    
-    public static func assetFromImage(withName name: String, extension fileExtension: String = "", allocator: MDLMeshBufferAllocator? = nil) -> MDLAsset? {
+    //  Creates a horizontal surface in the x-z plane with a material based on a base color texture file.
+    //  The aspect ratio of the surface matches the aspect ratio of the base color image and the largest dimemsion
+    //  is given by the scale argument (defaults to 1)
+    public static func assetFromImage(withName name: String, extension fileExtension: String = "", scale: Float = 1, allocator: MDLMeshBufferAllocator? = nil) -> MDLAsset? {
         
         let fullFileName: String = {
             if !fileExtension.isEmpty {
@@ -98,11 +97,14 @@ public class MDLAssetTools {
             }
         }()
         
-        return assetFromImage(withBaseColorFileName: fullFileName, specularFileName: nil, emissionFileName: nil, allocator: allocator)
+        return assetFromImage(withBaseColorFileName: fullFileName, specularFileName: nil, emissionFileName: nil, scale: scale, allocator: allocator)
         
     }
     
-    public static func assetFromImage(withBaseColorFileName baseColorFileName: String, specularFileName: String? = nil, emissionFileName: String? = nil, allocator: MDLMeshBufferAllocator? = nil) -> MDLAsset? {
+    //  Creates a horizontal surface in the x-z plane with a material based on base color, spectacular, and emmision texture files.
+    //  The aspect ratio of the surface matches the aspect ratio of the base color image and the largest dimemsion
+    //  is given by the scale argument (defaults to 1)
+    public static func assetFromImage(withBaseColorFileName baseColorFileName: String, specularFileName: String? = nil, emissionFileName: String? = nil, scale: Float = 1, allocator: MDLMeshBufferAllocator? = nil) -> MDLAsset? {
         
         guard let baseColorFileURL = Bundle.main.url(forResource: baseColorFileName, withExtension: "") else {
             print("WARNING: (MDLAssetTools) Could not find the image asset with file name: \(baseColorFileName)")
@@ -118,11 +120,11 @@ public class MDLAssetTools {
         }()
         let extent: vector_float3 = {
             if aspectRatio > 1 {
-                return vector3(1, 0, 1/aspectRatio)
+                return vector3(scale, 0, scale/aspectRatio)
             } else if aspectRatio < 1 {
-                return vector3(aspectRatio, 0, 1)
+                return vector3(aspectRatio, 0, scale)
             } else {
-                return vector3(1, 0, 1)
+                return vector3(scale, 0, scale)
             }
         }()
         

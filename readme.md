@@ -14,7 +14,7 @@ Another feature that AugmentKit will provide is integrating more contextual awar
 
 ##### Location based anchors
 
-![](media/augmentkit-location-anchors.gif)
+![](media/augmentkit-location-anchor.gif)
 
 ##### Direction aware anchors
 

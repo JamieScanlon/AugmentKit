@@ -10,6 +10,16 @@ If you are developing a game, and especially if you already have some knowledge 
 
 Another feature that AugmentKit will provide is integrating more contextual awareness into ARKit. ARKit just deals with tracking the _relative_ position of objects (anchors) in 3D space. But chances are that more sophisticated AR apps are want to integrate things like location awareness and compass direction so that two people running two instances of the app will be able to see and share the same objects, or somebody can 'save' and object in world space and come back to see it days later.
 
+### What Can AugmentKit Do?
+
+##### Location based anchors
+
+##### Direction aware anchors
+
+##### Load and render serialized 3D anchors over the wire
+
+##### Custom render engine
+
 #### Pre-Release
 
 This project is currently on phase 4 (see goals below)

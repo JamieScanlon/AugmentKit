@@ -14,7 +14,11 @@ Another feature that AugmentKit will provide is integrating more contextual awar
 
 ##### Location based anchors
 
+![](https://media.giphy.com/media/3o6nUZNMxlEx8Kc1hu/giphy.gif)
+
 ##### Direction aware anchors
+
+![](https://media.giphy.com/media/3o6nV1OQ9vUYkp2SxG/giphy.gif)
 
 ##### Load and render serialized 3D anchors over the wire
 

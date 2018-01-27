@@ -12,17 +12,17 @@ Another feature that AugmentKit will provide is integrating more contextual awar
 
 ### What Can AugmentKit Do?
 
-##### Location based anchors
+* ##### Location based anchors
 
-![](media/augmentkit-location-anchors.gif)
+![](media/augmentkit-location-anchor.gif)
 
-##### Direction aware anchors
+* ##### Direction aware anchors
 
 ![](media/augmentkit-compass.gif)
 
-##### Load and render serialized 3D anchors over the wire
+* ##### Load and render serialized 3D anchors over the wire
 
-##### Custom render engine
+* ##### Custom render engine
 
 #### Pre-Release
 

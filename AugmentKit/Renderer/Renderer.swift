@@ -79,7 +79,7 @@ public class Renderer {
     public var modelProvider: ModelProvider? = AKModelProvider.sharedInstance
     
     // Guides for debugging. Turning this on will show the tracking points used by
-    // ARKit as well as detected horizontal surfaces. Setting this to true will
+    // ARKit as well as detected surfaces. Setting this to true will
     // affect performance.
     public var showGuides = false {
         didSet {

@@ -185,22 +185,16 @@ class SurfacesRenderModule: RenderModule {
         surfaceInstanceCount = 0
         surfaceIndexes = []
         var anchorInstanceCount = 0
-        var vertPlaneInstanceCount = 0
         
         for index in 0..<frame.anchors.count {
             
             let anchor = frame.anchors[index]
             var isSurface = false
             
-            if let plane = anchor as? ARPlaneAnchor {
-                if plane.alignment == .horizontal {
-                    surfaceInstanceCount += 1
-                    surfaceIndexes.append(index)
-                    isSurface = true
-                } else {
-                    // TODO: Vertical surface support
-                    vertPlaneInstanceCount += 1
-                }
+            if let _ = anchor as? ARPlaneAnchor {
+                surfaceInstanceCount += 1
+                surfaceIndexes.append(index)
+                isSurface = true
             } else {
                 anchorInstanceCount += 1
             }
@@ -233,8 +227,14 @@ class SurfacesRenderModule: RenderModule {
                 
                 var modelMatrix = anchor.transform * coordinateSpaceTransform
                 if let plane = anchor as? ARPlaneAnchor {
+                    if plane.alignment == .horizontal {
+                        // Do Nothing
+                    } else {
+                        modelMatrix = modelMatrix.rotate(radians: Float.pi, x: 1, y: 0, z: 0)
+                    }
                     modelMatrix = modelMatrix.scale(x: plane.extent.x, y: plane.extent.y, z: plane.extent.z)
                     modelMatrix = modelMatrix.translate(x: -plane.center.x/2.0, y: -plane.center.y/2.0, z: -plane.center.z/2.0)
+                    
                 }
                 
                 // Surfaces use the same uniform struct as anchors

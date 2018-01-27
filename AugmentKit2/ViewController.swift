@@ -50,7 +50,7 @@ class ViewController: UIViewController {
             let myWorld = AKWorld(renderDestination: view, configuration: worldConfiguration)
             
             // Debugging
-            myWorld.renderer.showGuides = false // Change to `true` to enable rendering of tracking points and horizontal planes.
+            myWorld.renderer.showGuides = false // Change to `true` to enable rendering of tracking points and surface planes.
             myWorld.renderer.logger = self
             
             // Set the initial orientation

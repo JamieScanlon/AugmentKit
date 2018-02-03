@@ -246,6 +246,11 @@ public class Renderer {
             addModule(forModuelIdentifier: TrackersRenderModule.identifier)
         }
         
+        // Add paths modules if nescessary
+        if pathsRenderModule == nil && paths.count > 0 {
+            addModule(forModuelIdentifier: PathsRenderModule.identifier)
+        }
+        
         initializeModules()
         
         //
@@ -338,6 +343,7 @@ public class Renderer {
                 if module.isInitialized {
                     module.updateBuffers(withARFrame: currentFrame, viewportProperties: viewportProperties)
                     module.updateBuffers(withTrackers: trackers, viewportProperties: viewportProperties)
+                    module.updateBuffers(withPaths: paths, viewportProperties: viewportProperties)
                 }
             }
             
@@ -387,16 +393,20 @@ public class Renderer {
         
         // Add a new anchor to the session
         let arAnchor = ARAnchor(transform: akAnchor.worldLocation.transform)
+        let identifier = arAnchor.identifier
+        var mutableAnchor = akAnchor
+        mutableAnchor.setIdentiier(identifier)
+        augmentedAnchors.append(mutableAnchor)
         
         // Keep track of the anchor's UUID bucketed by the AKAnchor.type
         // This will be used to associate individual anchors with AKAnchor.type's,
         // then associate AKAnchor.type's with models.
         if let uuidSet = anchorIdentifiersForType[anchorType] {
             var mutableUUIDSet = uuidSet
-            mutableUUIDSet.insert(arAnchor.identifier)
+            mutableUUIDSet.insert(identifier)
             anchorIdentifiersForType[anchorType] = mutableUUIDSet
         } else {
-            let uuidSet = Set([arAnchor.identifier])
+            let uuidSet = Set([identifier])
             anchorIdentifiersForType[anchorType] = uuidSet
         }
         
@@ -413,6 +423,41 @@ public class Renderer {
         modelProvider?.registerModel(akTracker.model, forObjectType: anchorType)
         
         trackers.append(akTracker)
+        
+    }
+    
+    //  Add a new AKAugmentedTracker to the AR world
+    public func addPath(withAnchors anchors: [AKAugmentedAnchor], identifier: UUID) {
+        
+        paths[identifier] = anchors
+        for anchor in anchors {
+            
+            let anchorType = type(of: anchor).type
+            
+            // Resgister the AKModel with the model provider.
+            modelProvider?.registerModel(anchor.model, forObjectType: anchorType)
+            
+            // Add a new anchor to the session
+            let arAnchor = ARAnchor(transform: anchor.worldLocation.transform)
+            let identifier = arAnchor.identifier
+            var mutableAnchor = anchor
+            mutableAnchor.setIdentiier(identifier)
+            
+            // Keep track of the anchor's UUID bucketed by the AKAnchor.type
+            // This will be used to associate individual anchors with AKAnchor.type's,
+            // then associate AKAnchor.type's with models.
+            if let uuidSet = anchorIdentifiersForType[anchorType] {
+                var mutableUUIDSet = uuidSet
+                mutableUUIDSet.insert(identifier)
+                anchorIdentifiersForType[anchorType] = mutableUUIDSet
+            } else {
+                let uuidSet = Set([identifier])
+                anchorIdentifiersForType[anchorType] = uuidSet
+            }
+            
+            session.add(anchor: arAnchor)
+            
+        }
         
     }
     
@@ -434,6 +479,7 @@ public class Renderer {
     private var sharedBuffersRenderModule: SharedBuffersRenderModule?
     private var anchorsRenderModule: AnchorsRenderModule?
     private var trackersRenderModule: TrackersRenderModule?
+    private var pathsRenderModule: PathsRenderModule?
     private var surfacesRenderModule: SurfacesRenderModule?
     private var trackingPointRenderModule: TrackingPointsRenderModule?
     
@@ -448,7 +494,9 @@ public class Renderer {
     
     // Keeping track of Anchors / Trackers
     private var anchorIdentifiersForType = [String: Set<UUID>]()
+    private var augmentedAnchors = [AKAugmentedAnchor]()
     private var trackers = [AKAugmentedTracker]()
+    private var paths = [UUID: [AKAugmentedAnchor]]()
     
     // MARK: ARKit Session Configuration
     
@@ -503,9 +551,9 @@ public class Renderer {
         switch moduleIdentifier {
         case CameraPlaneRenderModule.identifier:
             if cameraRenderModule == nil {
-                let newSharedModule = CameraPlaneRenderModule()
-                cameraRenderModule = newSharedModule
-                renderModules.append(newSharedModule)
+                let newCameraModule = CameraPlaneRenderModule()
+                cameraRenderModule = newCameraModule
+                renderModules.append(newCameraModule)
                 hasUninitializedModules = true
             }
         case SharedBuffersRenderModule.identifier:
@@ -517,23 +565,30 @@ public class Renderer {
             }
         case SurfacesRenderModule.identifier:
             if surfacesRenderModule == nil {
-                let newSharedModule = SurfacesRenderModule()
-                surfacesRenderModule = newSharedModule
-                renderModules.append(newSharedModule)
+                let newSurfacesModule = SurfacesRenderModule()
+                surfacesRenderModule = newSurfacesModule
+                renderModules.append(newSurfacesModule)
                 hasUninitializedModules = true
             }
         case AnchorsRenderModule.identifier:
             if anchorsRenderModule == nil {
-                let newSharedModule = AnchorsRenderModule()
-                anchorsRenderModule = newSharedModule
-                renderModules.append(newSharedModule)
+                let newAnchorsModule = AnchorsRenderModule()
+                anchorsRenderModule = newAnchorsModule
+                renderModules.append(newAnchorsModule)
                 hasUninitializedModules = true
             }
         case TrackersRenderModule.identifier:
             if trackersRenderModule == nil {
-                let newSharedModule = TrackersRenderModule()
-                trackersRenderModule = newSharedModule
-                renderModules.append(newSharedModule)
+                let newTrackersModule = TrackersRenderModule()
+                trackersRenderModule = newTrackersModule
+                renderModules.append(newTrackersModule)
+                hasUninitializedModules = true
+            }
+        case PathsRenderModule.identifier:
+            if pathsRenderModule == nil {
+                let newPathsModule = PathsRenderModule()
+                pathsRenderModule = newPathsModule
+                renderModules.append(newPathsModule)
                 hasUninitializedModules = true
             }
         case TrackingPointsRenderModule.identifier:

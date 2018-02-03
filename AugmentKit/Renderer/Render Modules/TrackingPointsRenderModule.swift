@@ -193,6 +193,10 @@ class TrackingPointsRenderModule: RenderModule {
         // Do Nothing
     }
     
+    func updateBuffers(withPaths: [UUID: [AKAugmentedAnchor]], viewportProperties: ViewportProperies) {
+        // Do Nothing
+    }
+    
     // Update the render encoder for the draw call
     func draw(withRenderEncoder renderEncoder: MTLRenderCommandEncoder, sharedModules: [SharedRenderModule]?) {
         

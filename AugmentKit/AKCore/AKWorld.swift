@@ -212,6 +212,10 @@ public class AKWorld: NSObject {
         renderer.add(akTracker: tracker)
     }
     
+    public func addPath(withAnchors anchors: [AKAugmentedAnchor], identifier: UUID) {
+        renderer.addPath(withAnchors: anchors, identifier: identifier)
+    }
+    
     public func worldLocation(withLatitude latitude: Double, longitude: Double, elevation: Double?) -> AKWorldLocation? {
         
         guard let configuration = configuration else {

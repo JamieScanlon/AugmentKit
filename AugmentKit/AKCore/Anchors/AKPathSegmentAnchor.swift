@@ -1,6 +1,6 @@
 //
-//  AKObject.swift
-//  AugmentKit2
+//  AKPathSegmentAnchor.swift
+//  AugmentKit
 //
 //  MIT License
 //
@@ -25,24 +25,25 @@
 //  SOFTWARE.
 //
 //
-//  A generic AR anchor that can be placed in the AR world. These can be created
-//  and given to the AR engine to render in the AR world.
+//  An AR anchor that represents a beginning or end of a path segment. Tow or more of
+//  these can be used to create a path in the AR world. These anchors have an empty
+//  model so they cannot be rendered by themselves.
 //
 
 import Foundation
 import ModelIO
 
-public struct AKObject: AKAugmentedAnchor {
+public struct AKPathSegmentAnchor: AKAugmentedAnchor {
     
     public static var type: String {
-        return "AKObject"
+        return "AKPathSegmentAnchor"
     }
     public var worldLocation: AKWorldLocation
     public var model: AKModel
     public var identifier: UUID?
     
-    public init(withAKModel model: AKModel, at location: AKWorldLocation) {
-        self.model = model
+    public init(at location: AKWorldLocation) {
+        self.model = AKSimpleModel()
         self.worldLocation = location
     }
     
@@ -51,3 +52,4 @@ public struct AKObject: AKAugmentedAnchor {
     }
     
 }
+

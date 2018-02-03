@@ -1,28 +1,9 @@
 //
-//  TrackersRenderModule.swift
+//  PathsRenderModule.swift
 //  AugmentKit
 //
-//  MIT License
-//
-//  Copyright (c) 2017 JamieScanlon
-//
-//  Permission is hereby granted, free of charge, to any person obtaining a copy
-//  of this software and associated documentation files (the "Software"), to deal
-//  in the Software without restriction, including without limitation the rights
-//  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-//  copies of the Software, and to permit persons to whom the Software is
-//  furnished to do so, subject to the following conditions:
-//
-//  The above copyright notice and this permission notice shall be included in all
-//  copies or substantial portions of the Software.
-//
-//  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-//  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-//  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-//  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-//  SOFTWARE.
+//  Created by Jamie Scanlon on 1/28/18.
+//  Copyright © 2018 TenthLetterMade. All rights reserved.
 //
 
 import Foundation
@@ -30,25 +11,29 @@ import ARKit
 import AugmentKitShader
 import MetalKit
 
-class TrackersRenderModule: RenderModule {
+class PathsRenderModule: RenderModule {
     
-    static var identifier = "TrackersRenderModule"
+    static var identifier = "PathsRenderModule"
     
     //
     // Setup
     //
     
     var moduleIdentifier: String {
-        return TrackersRenderModule.identifier
+        return PathsRenderModule.identifier
     }
     var renderLayer: Int {
-        return 12
+        return 10
     }
     var isInitialized: Bool = false
     var sharedModuleIdentifiers: [String]? = [SharedBuffersRenderModule.identifier]
     
-    // The number of tracker instances to render
-    private(set) var trackerInstanceCount: Int = 0
+    // The number of path instances to render
+    private(set) var pathSegmentInstanceCount: Int = 0
+    
+    // The UUID's of the anchors in the ARFrame.anchors array which mark the path.
+    // Indexed by path
+    private(set) var anchorIdentifiers = [Int: [UUID]]()
     
     func initializeBuffers(withDevice aDevice: MTLDevice, maxInFlightBuffers: Int) {
         
@@ -57,51 +42,42 @@ class TrackersRenderModule: RenderModule {
         // Calculate our uniform buffer sizes. We allocate Constants.maxBuffersInFlight instances for uniform
         // storage in a single buffer. This allows us to update uniforms in a ring (i.e. triple
         // buffer the uniforms) so that the GPU reads from one slot in the ring wil the CPU writes
-        // to another. Tracker uniforms should be specified with a max instance count for instancing.
+        // to another. Path uniforms should be specified with a max instance count for instancing.
         // Also uniform storage must be aligned (to 256 bytes) to meet the requirements to be an
         // argument in the constant address space of our shading functions.
-        let trackerUniformBufferSize = Constants.alignedTrackerInstanceUniformsSize * maxInFlightBuffers
+        let pathUniformBufferSize = Constants.alignedPathSegmentInstanceUniformsSize * maxInFlightBuffers
         let materialUniformBufferSize = RenderModuleConstants.alignedMaterialSize * maxInFlightBuffers
         
         // Create and allocate our uniform buffer objects. Indicate shared storage so that both the
         // CPU can access the buffer
-        trackerUniformBuffer = device?.makeBuffer(length: trackerUniformBufferSize, options: .storageModeShared)
-        trackerUniformBuffer?.label = "TrackerUniformBuffer"
+        pathUniformBuffer = device?.makeBuffer(length: pathUniformBufferSize, options: .storageModeShared)
+        pathUniformBuffer?.label = "PathUniformBuffer"
         
         materialUniformBuffer = device?.makeBuffer(length: materialUniformBufferSize, options: .storageModeShared)
         materialUniformBuffer?.label = "MaterialUniformBuffer"
         
     }
     
-    func loadAssets(fromModelProvider modelProvider: ModelProvider?, textureLoader aTextureLoader: MTKTextureLoader, completion: (() -> Void)) {
+    func loadAssets(fromModelProvider: ModelProvider?, textureLoader: MTKTextureLoader, completion: (() -> Void)) {
         
-        guard let modelProvider = modelProvider else {
-            print("Serious Error - Model Provider not found.")
+        guard let device = device else {
+            print("Serious Error - device not found")
             completion()
             return
         }
         
-        textureLoader = aTextureLoader
+        // Create a MetalKit mesh buffer allocator so that ModelIO will load mesh data directly into
+        // Metal buffers accessible by the GPU
+        let metalAllocator = MTKMeshBufferAllocator(device: device)
         
-        //
-        // Create and load our models
-        //
+        let mesh = MDLMesh.newCylinder(withHeight: 1, radii: vector2(0.01, 0.01), radialSegments: 6, verticalSegments: 1, geometryType: .triangles, inwardNormals: false, allocator: metalAllocator)
+        let asset = MDLAsset(bufferAllocator: metalAllocator)
+        asset.add(mesh)
         
-        modelProvider.loadModel(forObjectType: AKUserTracker.type) { [weak self] model in
-            
-            guard let model = model else {
-                print("Serious Error - Failed to get model from modelProvider.")
-                completion()
-                return
-            }
-            
-            self?.trackerModel = model
-            
-            // TODO: Figure out a way to load a new model per tracker.
-            
-            completion()
-            
-        }
+        let myModel = AKMDLAssetModel(asset: asset)
+        pathSegmentModel = myModel
+    
+        completion()
         
     }
     
@@ -112,58 +88,56 @@ class TrackersRenderModule: RenderModule {
             return
         }
         
-        guard let trackerModel = trackerModel else {
-            print("Serious Error - trackerModel not found")
+        guard let pathSegmentModel = pathSegmentModel else {
+            print("Serious Error - pathSegmentModel not found")
             return
         }
         
-        if trackerModel.meshNodeIndices.count > 1 {
-            print("WARNING: More than one mesh was found. Currently only one mesh per tracker is supported.")
+        if pathSegmentModel.meshNodeIndices.count > 1 {
+            print("WARNING: More than one mesh was found. Currently only one mesh per anchor is supported.")
         }
         
-        trackerMeshGPUData = meshData(from: trackerModel)
+        pathMeshGPUData = meshData(from: pathSegmentModel)
         
-        guard let meshGPUData = trackerMeshGPUData else {
+        guard let meshGPUData = pathMeshGPUData else {
             print("Serious Error - ERROR: No meshGPUData found when trying to load the pipeline.")
             return
         }
         
-        guard let trackerVertexDescriptor = createMetalVertexDescriptor(withModelIOVertexDescriptor: trackerModel.vertexDescriptors) else {
+        guard let pathVertexDescriptor = createMetalVertexDescriptor(withModelIOVertexDescriptor: pathSegmentModel.vertexDescriptors) else {
             print("Serious Error - Failed to create a MetalKit vertex descriptor from ModelIO.")
             return
         }
         
         for (drawIdx, drawData) in meshGPUData.drawData.enumerated() {
-            let trackerPipelineStateDescriptor = MTLRenderPipelineDescriptor()
+            let pathPipelineStateDescriptor = MTLRenderPipelineDescriptor()
             do {
-                let funcConstants = MetalUtilities.getFuncConstantsForDrawDataSet(meshData: trackerModel.meshes[drawIdx], useMaterials: usesMaterials)
-                // TODO: Implement a vertex shader with puppet animation support
-                //                let vertexName = (drawData.paletteStartIndex != nil) ? "vertex_skinned" : "trackerGeometryVertexTransform"
+                let funcConstants = MetalUtilities.getFuncConstantsForDrawDataSet(meshData: pathSegmentModel.meshes[drawIdx], useMaterials: usesMaterials)
                 let vertexName = "anchorGeometryVertexTransform"
                 let fragFunc = try metalLibrary.makeFunction(name: "anchorGeometryFragmentLighting", constantValues: funcConstants)
                 let vertFunc = try metalLibrary.makeFunction(name: vertexName, constantValues: funcConstants)
-                trackerPipelineStateDescriptor.vertexDescriptor = trackerVertexDescriptor
-                trackerPipelineStateDescriptor.vertexFunction = vertFunc
-                trackerPipelineStateDescriptor.fragmentFunction = fragFunc
-                trackerPipelineStateDescriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
-                trackerPipelineStateDescriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-                trackerPipelineStateDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-                trackerPipelineStateDescriptor.sampleCount = renderDestination.sampleCount
+                pathPipelineStateDescriptor.vertexDescriptor = pathVertexDescriptor
+                pathPipelineStateDescriptor.vertexFunction = vertFunc
+                pathPipelineStateDescriptor.fragmentFunction = fragFunc
+                pathPipelineStateDescriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
+                pathPipelineStateDescriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
+                pathPipelineStateDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
+                pathPipelineStateDescriptor.sampleCount = renderDestination.sampleCount
             } catch let error {
                 print("Failed to create pipeline state descriptor, error \(error)")
             }
             
             do {
-                try trackerPipelineStates.append(device.makeRenderPipelineState(descriptor: trackerPipelineStateDescriptor))
+                try pathPipelineStates.append(device.makeRenderPipelineState(descriptor: pathPipelineStateDescriptor))
             } catch let error {
                 print("Failed to create pipeline state, error \(error)")
             }
         }
         
-        let trackerDepthStateDescriptor = MTLDepthStencilDescriptor()
-        trackerDepthStateDescriptor.depthCompareFunction = .less
-        trackerDepthStateDescriptor.isDepthWriteEnabled = true
-        trackerDepthState = device.makeDepthStencilState(descriptor: trackerDepthStateDescriptor)
+        let pathDepthStateDescriptor = MTLDepthStencilDescriptor()
+        pathDepthStateDescriptor.depthCompareFunction = .less
+        pathDepthStateDescriptor.isDepthWriteEnabled = true
+        pathDepthState = device.makeDepthStencilState(descriptor: pathDepthStateDescriptor)
         
         isInitialized = true
         
@@ -175,10 +149,10 @@ class TrackersRenderModule: RenderModule {
     
     func updateBufferState(withBufferIndex bufferIndex: Int) {
         
-        trackerUniformBufferOffset = Constants.alignedTrackerInstanceUniformsSize * bufferIndex
+        pathUniformBufferOffset = Constants.alignedPathSegmentInstanceUniformsSize * bufferIndex
         materialUniformBufferOffset = RenderModuleConstants.alignedMaterialSize * bufferIndex
         
-        trackerUniformBufferAddress = trackerUniformBuffer?.contents().advanced(by: trackerUniformBufferOffset)
+        pathUniformBufferAddress = pathUniformBuffer?.contents().advanced(by: pathUniformBufferOffset)
         materialUniformBufferAddress = materialUniformBuffer?.contents().advanced(by: materialUniformBufferOffset)
         
     }
@@ -187,63 +161,104 @@ class TrackersRenderModule: RenderModule {
         // Do Nothing
     }
     
-    func updateBuffers(withTrackers trackers: [AKAugmentedTracker], viewportProperties: ViewportProperies) {
+    func updateBuffers(withTrackers: [AKAugmentedTracker], viewportProperties: ViewportProperies) {
+        // Do Nothing
+    }
+    
+    func updateBuffers(withPaths paths: [UUID: [AKAugmentedAnchor]], viewportProperties: ViewportProperies) {
         
-        // Update the tracker uniform buffer with transforms of the current frame's trackers
-        trackerInstanceCount = 0
+        // Update the anchor uniform buffer with transforms of the current frame's anchors
+        pathSegmentInstanceCount = 0
+        anchorIdentifiers = [:]
         
-        for index in 0..<trackers.count {
+        guard let model = pathSegmentModel else {
+            return
+        }
+        
+        for path in paths {
             
-            let tracker = trackers[index]
-            trackerInstanceCount += 1
+            var lastAnchor: AKAugmentedAnchor?
+            var uuids = [UUID]()
             
-            if trackerInstanceCount > Constants.maxTrackerInstanceCount {
-                trackerInstanceCount = Constants.maxTrackerInstanceCount
-                break
-            }
-            
-            // Flip Z axis to convert geometry from right handed to left handed
-            var coordinateSpaceTransform = matrix_identity_float4x4
-            coordinateSpaceTransform.columns.2.z = -1.0
-            
-            if let model = trackerModel {
+            for anchor in path.value {
+                
+                guard let myLastAnchor = lastAnchor else {
+                    lastAnchor = anchor
+                    continue
+                }
+                
+                pathSegmentInstanceCount += 1
+                
+                if pathSegmentInstanceCount > Constants.maxPathSegmentInstanceCount {
+                    pathSegmentInstanceCount = Constants.maxPathSegmentInstanceCount
+                    break
+                }
+                
+                if let identifier = anchor.identifier {
+                    uuids.append(identifier)
+                }
+                
+                // Flip Z axis to convert geometry from right handed to left handed
+                var coordinateSpaceTransform = matrix_identity_float4x4
+                coordinateSpaceTransform.columns.2.z = -1.0
+                
+                // Rotate and scale coordinateSpaceTransform so that it is oriented from
+                // myLastAnchor to anchor
+                let finalTransform = anchor.worldLocation.transform
+                let initialTransform = myLastAnchor.worldLocation.transform
+                let distance = sqrtf(
+                    (finalTransform.columns.3.x - initialTransform.columns.3.x) * (finalTransform.columns.3.x - initialTransform.columns.3.x) +
+                    (finalTransform.columns.3.y - initialTransform.columns.3.y) * (finalTransform.columns.3.y - initialTransform.columns.3.y) +
+                    (finalTransform.columns.3.z - initialTransform.columns.3.z) * (finalTransform.columns.3.z - initialTransform.columns.3.z)
+                )
+                coordinateSpaceTransform = coordinateSpaceTransform.scale(x: 1, y: distance, z: 1)
+
+                let rotX = dot(float4(finalTransform.columns.3.x,0,0,0), initialTransform.columns.3) - Float.pi
+                coordinateSpaceTransform = coordinateSpaceTransform.rotate(radians: rotX, x: 1, y: 0, z: 0)
+
+                let rotY = dot(float4(0,finalTransform.columns.3.y,0,0), initialTransform.columns.3) - Float.pi
+                coordinateSpaceTransform = coordinateSpaceTransform.rotate(radians: rotY, x: 0, y: 1, z: 0)
+
+                let rotZ = dot(float4(0,0,finalTransform.columns.3.z,0), initialTransform.columns.3) - Float.pi
+                coordinateSpaceTransform = coordinateSpaceTransform.rotate(radians: rotZ, x: 0, y: 0, z: 1)
                 
                 // Apply the world transform (as defined in the imported model) if applicable
-                let trackerIndex = trackerInstanceCount - 1
-                if let modelIndex = modelIndex(in: model, fromTrackerIndex: trackerIndex), modelIndex < model.worldTransforms.count {
+                let pathSegmentIndex = pathSegmentInstanceCount - 1
+                if let modelIndex = modelIndex(in: model, fromPathSegmentIndex: pathSegmentIndex), modelIndex < model.worldTransforms.count {
                     let worldTransform = model.worldTransforms[modelIndex]
                     coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
                 }
                 
-                // Apply the transform of the tracker relative to the reference transform
-                let modelMatrix = tracker.position.referenceTransform * tracker.position.transform * coordinateSpaceTransform
+                // Create the final transform matrix
+                let modelMatrix = anchor.worldLocation.transform * coordinateSpaceTransform
                 
-                let trackerUniforms = trackerUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: trackerIndex)
-                trackerUniforms?.pointee.modelMatrix = modelMatrix
+                // Paths use the same uniform struct as anchors
+                let pathUniforms = pathUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: pathSegmentIndex)
+                pathUniforms?.pointee.modelMatrix = modelMatrix
                 
+            }
+            
+            if pathSegmentInstanceCount > 0 && pathSegmentInstanceCount < Constants.maxPathSegmentInstanceCount {
+                anchorIdentifiers[pathSegmentInstanceCount - 1] = uuids
             }
             
         }
         
     }
     
-    func updateBuffers(withPaths: [UUID: [AKAugmentedAnchor]], viewportProperties: ViewportProperies) {
-        // Do Nothing
-    }
-    
     func draw(withRenderEncoder renderEncoder: MTLRenderCommandEncoder, sharedModules: [SharedRenderModule]?) {
         
-        guard trackerInstanceCount > 0 else {
+        guard pathSegmentInstanceCount > 0 else {
             return
         }
         
         // Push a debug group allowing us to identify render commands in the GPU Frame Capture tool
-        renderEncoder.pushDebugGroup("Draw Trackers")
+        renderEncoder.pushDebugGroup("Draw Paths")
         
         // Set render command encoder state
         renderEncoder.setCullMode(.back)
         
-        guard let meshGPUData = trackerMeshGPUData else {
+        guard let meshGPUData = pathMeshGPUData else {
             print("Error: meshGPUData not available a draw time. Aborting")
             return
         }
@@ -261,15 +276,15 @@ class TrackersRenderModule: RenderModule {
         
         for (drawDataIdx, drawData) in meshGPUData.drawData.enumerated() {
             
-            if drawDataIdx < trackerPipelineStates.count {
-                renderEncoder.setRenderPipelineState(trackerPipelineStates[drawDataIdx])
-                renderEncoder.setDepthStencilState(trackerDepthState)
+            if drawDataIdx < pathPipelineStates.count {
+                renderEncoder.setRenderPipelineState(pathPipelineStates[drawDataIdx])
+                renderEncoder.setDepthStencilState(pathDepthState)
                 
                 // Set any buffers fed into our render pipeline
-                renderEncoder.setVertexBuffer(trackerUniformBuffer, offset: trackerUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
+                renderEncoder.setVertexBuffer(pathUniformBuffer, offset: pathUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
                 
                 var mutableDrawData = drawData
-                mutableDrawData.instCount = trackerInstanceCount
+                mutableDrawData.instCount = pathSegmentInstanceCount
                 
                 // Set the mesh's vertex data buffers
                 encode(meshGPUData: meshGPUData, fromDrawData: mutableDrawData, with: renderEncoder)
@@ -288,38 +303,39 @@ class TrackersRenderModule: RenderModule {
     
     // MARK: - Private
     
-    private enum Constants {
-        static let maxTrackerInstanceCount = 64
-        static let alignedTrackerInstanceUniformsSize = ((MemoryLayout<AnchorInstanceUniforms>.stride * Constants.maxTrackerInstanceCount) & ~0xFF) + 0x100
-    }
-    
     private var device: MTLDevice?
     private var textureLoader: MTKTextureLoader?
-    private var trackerModel: AKModel?
-    private var trackerUniformBuffer: MTLBuffer?
+    private var pathSegmentModel: AKModel?
+    private var pathUniformBuffer: MTLBuffer?
     private var materialUniformBuffer: MTLBuffer?
-    private var trackerPipelineStates = [MTLRenderPipelineState]() // Store multiple states
-    private var trackerDepthState: MTLDepthStencilState?
+    private var pathPipelineStates = [MTLRenderPipelineState]() // Store multiple states
+    private var pathDepthState: MTLDepthStencilState?
     
-    // MetalKit meshes containing vertex data and index buffer for our tracker geometry
-    private var trackerMeshGPUData: MeshGPUData?
+    // MetalKit meshes containing vertex data and index buffer for our geometry
+    private var pathMeshGPUData: MeshGPUData?
     
-    // Offset within trackerUniformBuffer to set for the current frame
-    private var trackerUniformBufferOffset: Int = 0
+    // Offset within pathUniformBuffer to set for the current frame
+    private var pathUniformBufferOffset: Int = 0
     
     // Offset within materialUniformBuffer to set for the current frame
     private var materialUniformBufferOffset: Int = 0
     
-    // Addresses to write tracker uniforms to each frame
-    private var trackerUniformBufferAddress: UnsafeMutableRawPointer?
+    // Addresses to write path uniforms to each frame
+    private var pathUniformBufferAddress: UnsafeMutableRawPointer?
     
-    // Addresses to write tracker uniforms to each frame
+    // Addresses to write material uniforms to each frame
     private var materialUniformBufferAddress: UnsafeMutableRawPointer?
+    
+    private enum Constants {
+        static let maxPathSegmentInstanceCount = 2048
+        // Paths use the same uniform struct as anchors
+        static let alignedPathSegmentInstanceUniformsSize = ((MemoryLayout<AnchorInstanceUniforms>.stride * Constants.maxPathSegmentInstanceCount) & ~0xFF) + 0x100
+    }
     
     private var usesMaterials = false
     
-    // number of frames in the tracker animation by tracker index
-    private var trackerAnimationFrameCount = [Int]()
+    // number of frames in the path animation by path index
+    private var pathAnimationFrameCount = [Int]()
     
     private func meshData(from aModel: AKModel) -> MeshGPUData {
         
@@ -403,12 +419,13 @@ class TrackersRenderModule: RenderModule {
         
     }
     
-    private func modelIndex(in model: AKModel, fromTrackerIndex trackerIndex: Int) -> Int? {
-        if trackerIndex < model.meshNodeIndices.count, trackerIndex >= 0 {
-            return model.meshNodeIndices[trackerIndex]
+    private func modelIndex(in model: AKModel, fromPathSegmentIndex pathIndex: Int) -> Int? {
+        if pathIndex < model.meshNodeIndices.count, pathIndex >= 0 {
+            return model.meshNodeIndices[pathIndex]
         } else {
             return nil
         }
     }
+    
     
 }

@@ -64,6 +64,8 @@ public protocol AKAnchor: AKGeometricEntity {
 //  in the physical world.
 public protocol AKAugmentedAnchor: AKAnchor {
     
+    mutating func setIdentiier(_ uuid: UUID)
+    
 }
 
 // MARK: - AKRealAnchor
@@ -71,6 +73,8 @@ public protocol AKAugmentedAnchor: AKAnchor {
 //  Represents an anchor in the AR world that is tied to an object in the real world
 //  for example a detected horizontal / vertical plane wich represents a table or wall
 public protocol AKRealAnchor: AKAnchor {
+    
+    mutating func setIdentiier(_ uuid: UUID)
     
 }
 

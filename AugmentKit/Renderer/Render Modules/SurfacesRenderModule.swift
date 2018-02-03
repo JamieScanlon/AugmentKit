@@ -66,7 +66,7 @@ class SurfacesRenderModule: RenderModule {
         // Also uniform storage must be aligned (to 256 bytes) to meet the requirements to be an
         // argument in the constant address space of our shading functions.
         let surfaceUniformBufferSize = Constants.alignedSurfaceInstanceUniformsSize * maxInFlightBuffers
-        let materialUniformBufferSize = Constants.alignedMaterialSize * maxInFlightBuffers
+        let materialUniformBufferSize = RenderModuleConstants.alignedMaterialSize * maxInFlightBuffers
         
         // Create and allocate our uniform buffer objects. Indicate shared storage so that both the
         // CPU can access the buffer
@@ -133,8 +133,6 @@ class SurfacesRenderModule: RenderModule {
             let surfacePipelineStateDescriptor = MTLRenderPipelineDescriptor()
             do {
                 let funcConstants = MetalUtilities.getFuncConstantsForDrawDataSet(meshData: surfaceModel.meshes[drawIdx], useMaterials: usesMaterials)
-                // TODO: Implement a vertex shader with puppet animation support
-                //                let vertexName = (drawData.paletteStartIndex != nil) ? "vertex_skinned" : "anchorGeometryVertexTransform"
                 let vertexName = "anchorGeometryVertexTransform"
                 let fragFunc = try metalLibrary.makeFunction(name: "anchorGeometryFragmentLighting", constantValues: funcConstants)
                 let vertFunc = try metalLibrary.makeFunction(name: vertexName, constantValues: funcConstants)
@@ -172,7 +170,7 @@ class SurfacesRenderModule: RenderModule {
     func updateBufferState(withBufferIndex bufferIndex: Int) {
         
         surfaceUniformBufferOffset = Constants.alignedSurfaceInstanceUniformsSize * bufferIndex
-        materialUniformBufferOffset = Constants.alignedMaterialSize * bufferIndex
+        materialUniformBufferOffset = RenderModuleConstants.alignedMaterialSize * bufferIndex
         
         surfaceUniformBufferAddress = surfaceUniformBuffer?.contents().advanced(by: surfaceUniformBufferOffset)
         materialUniformBufferAddress = materialUniformBuffer?.contents().advanced(by: materialUniformBufferOffset)
@@ -251,6 +249,10 @@ class SurfacesRenderModule: RenderModule {
         // Do Nothing
     }
     
+    func updateBuffers(withPaths: [UUID: [AKAugmentedAnchor]], viewportProperties: ViewportProperies) {
+        // Do Nothing
+    }
+    
     func draw(withRenderEncoder renderEncoder: MTLRenderCommandEncoder, sharedModules: [SharedRenderModule]?) {
         
         guard surfaceInstanceCount > 0 else {
@@ -309,12 +311,9 @@ class SurfacesRenderModule: RenderModule {
     // MARK: - Private
     
     private enum Constants {
-        
         static let maxSurfaceInstanceCount = 64
-        static let alignedMaterialSize = (MemoryLayout<MaterialUniforms>.stride & ~0xFF) + 0x100
         // Surfaces use the same uniform struct as anchors
         static let alignedSurfaceInstanceUniformsSize = ((MemoryLayout<AnchorInstanceUniforms>.stride * Constants.maxSurfaceInstanceCount) & ~0xFF) + 0x100
-        
     }
     
     private var device: MTLDevice?
@@ -345,17 +344,6 @@ class SurfacesRenderModule: RenderModule {
     // number of frames in the surface animation by surface index
     private var surfaceAnimationFrameCount = [Int]()
     
-    private func createMetalVertexDescriptor(withModelIOVertexDescriptor vtxDesc: [MDLVertexDescriptor]) -> MTLVertexDescriptor? {
-        guard !vtxDesc.isEmpty else {
-            print("WARNING: No Vertex Descriptors found!")
-            return nil
-        }
-        guard let mtlVertexDescriptor = MTKMetalVertexDescriptorFromModelIO(vtxDesc[0]) else {
-            return nil
-        }
-        return mtlVertexDescriptor
-    }
-    
     private func meshData(from aModel: AKModel) -> MeshGPUData {
         
         var myGPUData = MeshGPUData()
@@ -383,7 +371,7 @@ class SurfacesRenderModule: RenderModule {
         
         // Create Texture Buffers
         for texturePath in aModel.texturePaths {
-            myGPUData.textures.append(createMTLTexture(fromAssetPath: texturePath))
+            myGPUData.textures.append(createMTLTexture(fromAssetPath: texturePath, withTextureLoader: textureLoader))
         }
         
         // Encode the data in the meshes as DrawData objects and store them in the MeshGPUData
@@ -438,118 +426,12 @@ class SurfacesRenderModule: RenderModule {
         
     }
     
-    private func createMTLTexture(fromAssetPath assetPath: String) -> MTLTexture? {
-        do {
-            
-            let textureURL: URL? = {
-                guard let aURL = URL(string: assetPath) else {
-                    return nil
-                }
-                if aURL.scheme == nil {
-                    // If there is no scheme, assume it's a file in the bundle.
-                    let last = aURL.lastPathComponent
-                    if let bundleURL = Bundle.main.url(forResource: last, withExtension: nil) {
-                        return bundleURL
-                    } else {
-                        return aURL
-                    }
-                } else {
-                    return aURL
-                }
-            }()
-            
-            guard let aURL = textureURL else {
-                return nil
-            }
-            
-            return try textureLoader?.newTexture(URL: aURL, options: nil)
-            
-        } catch {
-            print("Unable to loader texture with assetPath \(assetPath) with error \(error)")
-        }
-        
-        return nil
-    }
-    
     private func modelIndex(in model: AKModel, fromSurfaceIndex surfaceIndex: Int) -> Int? {
         if surfaceIndex < model.meshNodeIndices.count, surfaceIndex >= 0 {
             return model.meshNodeIndices[surfaceIndex]
         } else {
             return nil
         }
-    }
-    
-    // MARK: Encoding from MeshGPUData
-    
-    private func encode(meshGPUData: MeshGPUData, fromDrawData drawData: DrawData, with renderEncoder: MTLRenderCommandEncoder) {
-        
-        // Set mesh's vertex buffers
-        for vtxBufferIdx in 0..<drawData.vbCount {
-            renderEncoder.setVertexBuffer(meshGPUData.vtxBuffers[drawData.vbStartIdx + vtxBufferIdx], offset: 0, index: vtxBufferIdx)
-        }
-        
-        // Draw each submesh of our mesh
-        for drawDataSubIndex in 0..<drawData.subData.count {
-            
-            let submeshData = drawData.subData[drawDataSubIndex]
-            
-            // Sets the weight of values sampled from a texture vs value from a material uniform
-            // for a transition between quality levels
-            //            submeshData.computeTextureWeights(for: currentQualityLevel, with: globalMapWeight)
-            
-            let idxCount = Int(submeshData.idxCount)
-            let idxType = submeshData.idxType
-            let ibOffset = drawData.ibStartIdx
-            let indexBuffer = meshGPUData.indexBuffers[ibOffset + drawDataSubIndex]
-            var materialUniforms = submeshData.materialUniforms
-            
-            // Set textures based off material flags
-            encodeTextures(with: meshGPUData, renderEncoder: renderEncoder, subData: submeshData)
-            
-            // Set Material
-            // FIXME: Using a buffer is not working. I think the buffer is set up wrong.
-            //            let materialBuffer = submeshData.materialBuffer
-            //            if let materialBuffer = materialBuffer {
-            //                renderEncoder.setFragmentBuffer(materialBuffer, offset: materialUniformBufferOffset, index: Int(kBufferIndexMaterialUniforms.rawValue))
-            //            } else {
-            //                renderEncoder.setFragmentBytes(&materialUniforms, length: Constants.alignedMaterialSize, index: Int(kBufferIndexMaterialUniforms.rawValue))
-            //            }
-            
-            renderEncoder.setFragmentBytes(&materialUniforms, length: Constants.alignedMaterialSize, index: Int(kBufferIndexMaterialUniforms.rawValue))
-            
-            renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: idxCount, indexType: idxType,
-                                                indexBuffer: indexBuffer, indexBufferOffset: 0,
-                                                instanceCount: drawData.instCount)
-        }
-        
-    }
-    
-    private func encodeTextures(with meshData: MeshGPUData, renderEncoder: MTLRenderCommandEncoder, subData drawSubData: DrawSubData) {
-        if let baseColorTexIdx = drawSubData.baseColorTexIdx {
-            renderEncoder.setFragmentTexture(meshData.textures[baseColorTexIdx],
-                                             index: Int(kTextureIndexColor.rawValue))
-        }
-        
-        if let aoTexIdx = drawSubData.aoTexIdx {
-            renderEncoder.setFragmentTexture(meshData.textures[aoTexIdx],
-                                             index: Int(kTextureIndexAmbientOcclusion.rawValue))
-        }
-        
-        if let normalTexIdx = drawSubData.normalTexIdx {
-            renderEncoder.setFragmentTexture(meshData.textures[normalTexIdx],
-                                             index: Int(kTextureIndexNormal.rawValue))
-        }
-        
-        if let roughTexIdx = drawSubData.roughTexIdx {
-            renderEncoder.setFragmentTexture(meshData.textures[roughTexIdx],
-                                             index: Int(kTextureIndexRoughness.rawValue))
-        }
-        
-        if let metalTexIdx = drawSubData.metalTexIdx {
-            renderEncoder.setFragmentTexture(meshData.textures[metalTexIdx],
-                                             index: Int(kTextureIndexMetallic.rawValue))
-        }
-        
     }
     
 }

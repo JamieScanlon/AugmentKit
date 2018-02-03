@@ -118,8 +118,14 @@ class ViewController: UIViewController {
         }
         
         // Create a new anchor at the current locaiton
-        let newObject = AKObject(withAKModel: anchorModel, at: currentWorldLocation)
-        world?.add(anchor: newObject)
+//        let newObject = AKObject(withAKModel: anchorModel, at: currentWorldLocation)
+//        world?.add(anchor: newObject)
+        
+        let distance = AKWorldDistance(metersX: 0, metersY: 3, metersZ: 0)
+        let endLocation = AKLocationUtility.worldLocation(from: currentWorldLocation, translatedBy: distance)
+        let startAnchor = AKPathSegmentAnchor(at: currentWorldLocation)
+        let endAnchor = AKPathSegmentAnchor(at: endLocation)
+        world?.addPath(withAnchors: [startAnchor, endAnchor], identifier: UUID())
         
     }
     

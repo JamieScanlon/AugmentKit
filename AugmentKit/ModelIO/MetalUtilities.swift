@@ -174,6 +174,24 @@ public extension float4x4 {
     
 }
 
+public extension simd_float4 {
+    static let zero = simd_float4(0.0, 0.0, 0.0, 0.0)
+    
+    static func ==(left: simd_float4, right: simd_float4) -> simd_int4 {
+        return simd_int4(left.x == right.x ? -1: 0, left.y == right.y ? -1: 0, left.z == right.z ? -1: 0, left.w == right.w ? -1: 0)
+    }
+    var xyz: simd_float3 {
+        get {
+            return simd_float3(x, y, z)
+        }
+        set {
+            x = newValue.x
+            y = newValue.y
+            z = newValue.z
+        }
+    }
+}
+
 class QuaternionUtilities {
     
     struct EulerAngles {

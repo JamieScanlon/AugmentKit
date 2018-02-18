@@ -429,7 +429,7 @@ public class Renderer {
     //  Add a new AKAugmentedTracker to the AR world
     public func addPath(withAnchors anchors: [AKAugmentedAnchor], identifier: UUID) {
         
-        paths[identifier] = anchors
+        var updatedAnchors = [AKAugmentedAnchor]()
         for anchor in anchors {
             
             let anchorType = type(of: anchor).type
@@ -442,6 +442,7 @@ public class Renderer {
             let identifier = arAnchor.identifier
             var mutableAnchor = anchor
             mutableAnchor.setIdentiier(identifier)
+            updatedAnchors.append(mutableAnchor)
             
             // Keep track of the anchor's UUID bucketed by the AKAnchor.type
             // This will be used to associate individual anchors with AKAnchor.type's,
@@ -458,6 +459,8 @@ public class Renderer {
             session.add(anchor: arAnchor)
             
         }
+        
+        paths[identifier] = updatedAnchors
         
     }
     

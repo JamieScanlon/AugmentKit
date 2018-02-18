@@ -95,7 +95,7 @@ class AnchorsRenderModule: RenderModule {
         modelProvider.loadModel(forObjectType: AKObject.type) { [weak self] model in
             
             guard let model = model else {
-                print("Serious Error - Failed to get model from modelProvider.")
+                print("Warning (AnchorsRenderModule) - Failed to get a model for type \(AKObject.type) from the modelProvider. Aborting the render phase.")
                 completion()
                 return
             }
@@ -118,7 +118,7 @@ class AnchorsRenderModule: RenderModule {
         }
         
         guard let anchorModel = anchorModel else {
-            print("Serious Error - anchorModel not found")
+            print("Warning (AnchorsRenderModule) - Anchor Model was not found. Aborting the render phase.")
             return
         }
         

@@ -46,7 +46,7 @@ public class AKModelProvider: ModelProvider {
         if let anchorAsset = modelsByType[type] {
             completion(anchorAsset)
         } else {
-            print("Warning - Failed to find an AKModle for type: \(type).")
+            print("Warning - Failed to find an AKModel for type: \(type).")
             completion(nil)
         }
         

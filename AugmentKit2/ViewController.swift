@@ -113,7 +113,11 @@ class ViewController: UIViewController {
             return
         }
         
-        guard let currentWorldLocation = world?.currentWorldLocation else {
+        guard let world = world else {
+            return
+        }
+        
+        guard let currentWorldLocation = world.currentWorldLocation else {
             return
         }
         
@@ -121,11 +125,41 @@ class ViewController: UIViewController {
 //        let newObject = AKObject(withAKModel: anchorModel, at: currentWorldLocation)
 //        world?.add(anchor: newObject)
         
-        let distance = AKWorldDistance(metersX: 0, metersY: 3, metersZ: 0)
-        let endLocation = AKLocationUtility.worldLocation(from: currentWorldLocation, translatedBy: distance)
+
+        // Square extenting 1m up and 1m to the east
+//        guard let location1 = world.worldLocationFromCurrentLocation(withMetersEast: 1, metersUp: 0, metersSouth: 0) else {
+//            return
+//        }
+//        guard let location2 = world.worldLocationFromCurrentLocation(withMetersEast: 1, metersUp: 1, metersSouth: 0) else {
+//            return
+//        }
+//        guard let location3 = world.worldLocationFromCurrentLocation(withMetersEast: 0, metersUp: 1, metersSouth: 0) else {
+//            return
+//        }
+//        let startAnchor = AKPathSegmentAnchor(at: currentWorldLocation)
+//        let anchor1 = AKPathSegmentAnchor(at: location1)
+//        let anchor2 = AKPathSegmentAnchor(at: location2)
+//        let anchor3 = AKPathSegmentAnchor(at: location3)
+//        let anchor4 = AKPathSegmentAnchor(at: currentWorldLocation)
+//        world.addPath(withAnchors: [startAnchor, anchor1, anchor2, anchor3, anchor4], identifier: UUID())
+        
+        // 3 lines representing the x, y, and z axises
+        guard let location1 = world.worldLocationFromCurrentLocation(withMetersEast: 0.3, metersUp: 0, metersSouth: 0) else {
+            return
+        }
+        guard let location2 = world.worldLocationFromCurrentLocation(withMetersEast: 0, metersUp: 0.3, metersSouth: 0) else {
+            return
+        }
+        guard let location3 = world.worldLocationFromCurrentLocation(withMetersEast: 0, metersUp: 0, metersSouth: 0.3) else {
+            return
+        }
         let startAnchor = AKPathSegmentAnchor(at: currentWorldLocation)
-        let endAnchor = AKPathSegmentAnchor(at: endLocation)
-        world?.addPath(withAnchors: [startAnchor, endAnchor], identifier: UUID())
+        let anchor1 = AKPathSegmentAnchor(at: location1)
+        let anchor2 = AKPathSegmentAnchor(at: location2)
+        let anchor3 = AKPathSegmentAnchor(at: location3)
+        world.addPath(withAnchors: [startAnchor, anchor1], identifier: UUID())
+        world.addPath(withAnchors: [startAnchor, anchor2], identifier: UUID())
+        world.addPath(withAnchors: [startAnchor, anchor3], identifier: UUID())
         
     }
     

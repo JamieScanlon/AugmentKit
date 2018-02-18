@@ -69,8 +69,8 @@ class PathsRenderModule: RenderModule {
         // Create a MetalKit mesh buffer allocator so that ModelIO will load mesh data directly into
         // Metal buffers accessible by the GPU
         let metalAllocator = MTKMeshBufferAllocator(device: device)
-        
-        let mesh = MDLMesh.newCylinder(withHeight: 1, radii: vector2(0.01, 0.01), radialSegments: 6, verticalSegments: 1, geometryType: .triangles, inwardNormals: false, allocator: metalAllocator)
+        // Create a cylinder that is 1cm in diameter
+        let mesh = MDLMesh.newCylinder(withHeight: 1, radii: vector2(0.005, 0.005), radialSegments: 6, verticalSegments: 1, geometryType: .triangles, inwardNormals: false, allocator: metalAllocator)
         let asset = MDLAsset(bufferAllocator: metalAllocator)
         asset.add(mesh)
         
@@ -171,10 +171,6 @@ class PathsRenderModule: RenderModule {
         pathSegmentInstanceCount = 0
         anchorIdentifiers = [:]
         
-        guard let model = pathSegmentModel else {
-            return
-        }
-        
         for path in paths {
             
             var lastAnchor: AKAugmentedAnchor?
@@ -198,43 +194,53 @@ class PathsRenderModule: RenderModule {
                     uuids.append(identifier)
                 }
                 
+                // Ignore all rotation within anchor.worldLocation.transform.
+                // When dealing with paths, the anchors are considered points in space so rotation has no meaning.
+                var modelMatrix = matrix_identity_float4x4.translate(x: anchor.worldLocation.transform.columns.3.x, y: anchor.worldLocation.transform.columns.3.y, z: anchor.worldLocation.transform.columns.3.z)
+                
                 // Flip Z axis to convert geometry from right handed to left handed
                 var coordinateSpaceTransform = matrix_identity_float4x4
                 coordinateSpaceTransform.columns.2.z = -1.0
                 
                 // Rotate and scale coordinateSpaceTransform so that it is oriented from
                 // myLastAnchor to anchor
-                let finalTransform = anchor.worldLocation.transform
-                let initialTransform = myLastAnchor.worldLocation.transform
-                let distance = sqrtf(
-                    (finalTransform.columns.3.x - initialTransform.columns.3.x) * (finalTransform.columns.3.x - initialTransform.columns.3.x) +
-                    (finalTransform.columns.3.y - initialTransform.columns.3.y) * (finalTransform.columns.3.y - initialTransform.columns.3.y) +
-                    (finalTransform.columns.3.z - initialTransform.columns.3.z) * (finalTransform.columns.3.z - initialTransform.columns.3.z)
-                )
-                coordinateSpaceTransform = coordinateSpaceTransform.scale(x: 1, y: distance, z: 1)
-
-                let rotX = dot(float4(finalTransform.columns.3.x,0,0,0), initialTransform.columns.3) - Float.pi
-                coordinateSpaceTransform = coordinateSpaceTransform.rotate(radians: rotX, x: 1, y: 0, z: 0)
-
-                let rotY = dot(float4(0,finalTransform.columns.3.y,0,0), initialTransform.columns.3) - Float.pi
-                coordinateSpaceTransform = coordinateSpaceTransform.rotate(radians: rotY, x: 0, y: 1, z: 0)
-
-                let rotZ = dot(float4(0,0,finalTransform.columns.3.z,0), initialTransform.columns.3) - Float.pi
-                coordinateSpaceTransform = coordinateSpaceTransform.rotate(radians: rotZ, x: 0, y: 0, z: 1)
                 
-                // Apply the world transform (as defined in the imported model) if applicable
-                let pathSegmentIndex = pathSegmentInstanceCount - 1
-                if let modelIndex = modelIndex(in: model, fromPathSegmentIndex: pathSegmentIndex), modelIndex < model.worldTransforms.count {
-                    let worldTransform = model.worldTransforms[modelIndex]
-                    coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
+                let finalPosition = float3(0, 0, 0)
+                let initialPosition = float3(myLastAnchor.worldLocation.transform.columns.3.x - anchor.worldLocation.transform.columns.3.x, myLastAnchor.worldLocation.transform.columns.3.y - anchor.worldLocation.transform.columns.3.y, myLastAnchor.worldLocation.transform.columns.3.z - anchor.worldLocation.transform.columns.3.z)
+                
+                // The following was taken from: http://www.thjsmith.com/40/cylinder-between-two-points-opengl-c
+                // Default cylinder direction (up)
+                let defaultLineDirection = float3(0,1,0)
+                // Get diff between two points you want cylinder along
+                let delta = (finalPosition - initialPosition)
+                // Get CROSS product (the axis of rotation)
+                let t = cross(defaultLineDirection , normalize(delta))
+                
+                // Get the magnitude of the vector
+                let magDelta = length(delta)
+                // Get angle (radians)
+                let angle = acos(dot(defaultLineDirection, delta) / magDelta)
+                
+                // The cylinder created by MDLMesh extends from (0, -0.5, 0) to (0, 0.5, 0). Translate it so that it is
+                // midway between the two points
+                let middle = -delta / 2
+                coordinateSpaceTransform = coordinateSpaceTransform.translate(x: middle.x, y: middle.y, z: -middle.z)
+                if angle == Float.pi {
+                    coordinateSpaceTransform = coordinateSpaceTransform.rotate(radians: angle, x: 0, y: 0, z: 1)
+                } else if angle > 0 {
+                    coordinateSpaceTransform = coordinateSpaceTransform.rotate(radians: angle, x: t.x, y: t.y, z: t.z)
                 }
+                coordinateSpaceTransform = coordinateSpaceTransform.scale(x: 1, y: magDelta, z: 1)
                 
                 // Create the final transform matrix
-                let modelMatrix = anchor.worldLocation.transform * coordinateSpaceTransform
+                modelMatrix = modelMatrix * coordinateSpaceTransform
                 
                 // Paths use the same uniform struct as anchors
+                let pathSegmentIndex = pathSegmentInstanceCount - 1
                 let pathUniforms = pathUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: pathSegmentIndex)
                 pathUniforms?.pointee.modelMatrix = modelMatrix
+                
+                lastAnchor = anchor
                 
             }
             

@@ -64,6 +64,68 @@ public struct AKWorldLocation {
         self.elevation = elevation
     }
     
+    //  When provided a reference location that has transform that corresponds to a
+    //  latitude, longitude, and elevation, a new location can be created with a transform.
+    //  The latitude, longitude, and elevation will be calculated based on the reference
+    //  location
+    public init(transform: matrix_float4x4, referenceLocation: AKWorldLocation) {
+        
+        self.transform = transform
+        
+        // The meters/ºlatitude and meters/ºlongitude change with lat/lng. The
+        // reference location is used to determine these values so the further
+        // the destination is from the reference location, the less accurate the
+        // resulting calculation is. It's usually fine unless you need very
+        // accuate calculations when the locations are tens or hundreds of km away
+        let latitudeInRadians = referenceLocation.latitude.degreesToRadians()
+        let metersPerDegreeLatitude =  111132.92 - 559.82 * cos(2 * latitudeInRadians) + 1.175 * cos(4 * latitudeInRadians) - 0.0023 * cos(6 * latitudeInRadians)
+        let metersPerDegreeLongitude = 11412.84 * cos(latitudeInRadians) - 93.5 * cos(3 * latitudeInRadians) + 118 * cos(5 * latitudeInRadians)
+        
+        let Δz = transform.columns.3.z - referenceLocation.transform.columns.3.z
+        let Δx = transform.columns.3.x - referenceLocation.transform.columns.3.x
+        let Δy = transform.columns.3.y - referenceLocation.transform.columns.3.y
+        
+        self.latitude = Double(Δz) / metersPerDegreeLatitude
+        self.longitude = Double(Δx) / metersPerDegreeLongitude
+        self.elevation = Double(Δy)
+        
+    }
+    
+    //  When provided a reference location that has transform that corresponds to a
+    //  latitude, longitude, and elevation, a new location can be created with a transform.
+    //  The transform will be calculated based on the reference location
+    public init(latitude: Double, longitude: Double, elevation: Double = 0, referenceLocation: AKWorldLocation) {
+        
+        self.latitude = latitude
+        self.longitude = longitude
+        self.elevation = elevation
+        
+        let Δy = elevation - referenceLocation.elevation
+        let latSign: Double = {
+            if latitude < referenceLocation.latitude {
+                return 1
+            } else {
+                return -1
+            }
+        }()
+        let lngSign: Double = {
+            if longitude < referenceLocation.longitude {
+                return -1
+            } else {
+                return 1
+            }
+        }()
+        
+        let clLocation1 = CLLocation(latitude: referenceLocation.latitude, longitude: referenceLocation.longitude)
+        let ΔzLocation = CLLocation(latitude: latitude, longitude: referenceLocation.longitude)
+        let ΔxLocation = CLLocation(latitude: referenceLocation.latitude, longitude: longitude)
+        let Δz = latSign * clLocation1.distance(from: ΔzLocation)
+        let Δx = lngSign * clLocation1.distance(from: ΔxLocation)
+        
+        self.transform = referenceLocation.transform.translate(x: Float(Δx), y: Float(Δy), z: Float(Δz))
+        
+    }
+    
 }
 
 // MARK: - AKWorldDistance
@@ -95,7 +157,10 @@ public class AKWorld: NSObject {
     public let device: MTLDevice
     public let renderDestination: MTKView
     
-    //  Returns the current location in world space of the user (technically the user's device)
+    //  Returns the current AKWorldLocation of the user (technically the user's device).
+    //  The transform is relative to the ARKit origin which was the position of the camera
+    //  when the AR session starts.
+    //  When usesLocation = true, the axis are rotated such that z points due south.
     public var currentWorldLocation: AKWorldLocation? {
         
         if configuration?.usesLocation == true {
@@ -116,14 +181,21 @@ public class AKWorld: NSObject {
         
     }
     
-    // A location that represents the origin of the AR world's reference space.
+    //  A location that represents a reliable AKWorldLocation object tying together a
+    //  real world location (latitude, longitude,  and elevation) to AR world transforms.
+    //  This location has a transform that is relative to origin of the AR world which
+    //  was the position of the camera when the AR session starts.
+    //  When usesLocation = true, the axis of the transform are rotated such that z points due south.
+    //  This transform correlates to the latitude, longitude, and elevation. This reference location
+    //  is the basis for calulating transforms based on new lat, lng, elev or translating a new
+    //  transform to lat, lng, elev
     public var referenceWorldLocation: AKWorldLocation? {
         
         if configuration?.usesLocation == true {
             if let reliableLocation = reliableWorldLocations.first {
                 // reliableLocation provides the correct translation but
                 // it may need to be rotated to face due north
-                let referenceWorldTransform = reliableLocation.transform.rotate(radians: Float(compassOffsetRotation), x: 0, y: 1, z: 0)
+                let referenceWorldTransform = matrix_identity_float4x4.rotate(radians: Float(compassOffsetRotation), x: 0, y: 1, z: 0).translate(x: reliableLocation.transform.columns.3.x, y: reliableLocation.transform.columns.3.y, z: reliableLocation.transform.columns.3.z)
                 let referenceLocation = AKWorldLocation(transform: referenceWorldTransform, latitude: reliableLocation.latitude, longitude: reliableLocation.longitude, elevation: reliableLocation.elevation)
                 // The distance to the origin is the opposite of its translation
                 let distanceToOrigin = AKWorldDistance(metersX: Double(-referenceWorldTransform.columns.3.x), metersY: Double(-referenceWorldTransform.columns.3.y), metersZ: Double(-referenceWorldTransform.columns.3.z))
@@ -238,8 +310,29 @@ public class AKWorld: NSObject {
             }
         }()
         
-        let newLocation = AKWorldLocation(transform: matrix_identity_float4x4, latitude: latitude, longitude: longitude, elevation: myElevation)
-        return AKLocationUtility.updateWorldLocationTransform(of: newLocation, usingReferenceLocation: referenceLocation)
+        return AKWorldLocation(latitude: latitude, longitude: longitude, elevation: myElevation, referenceLocation: referenceLocation)
+        
+    }
+    
+    //  Creates a new world location at a given x, y, z offset from the current users (devices) position.
+    public func worldLocationFromCurrentLocation(withMetersEast offsetX: Double, metersUp offsetY: Double, metersSouth offsetZ: Double) -> AKWorldLocation? {
+        
+        guard let currentWorldLocation = currentWorldLocation else {
+            return nil
+        }
+        
+        let translation = float4( currentWorldLocation.transform.columns.3.x + Float(offsetX),
+                                  currentWorldLocation.transform.columns.3.y + Float(offsetY),
+                                  currentWorldLocation.transform.columns.3.z + Float(offsetZ),
+                                  1
+        )
+        let endTransform = float4x4( currentWorldLocation.transform.columns.0,
+                                     currentWorldLocation.transform.columns.1,
+                                     currentWorldLocation.transform.columns.2,
+                                     translation
+        )
+        
+        return AKWorldLocation(transform: endTransform, referenceLocation: currentWorldLocation)
         
     }
     

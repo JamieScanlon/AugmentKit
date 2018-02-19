@@ -123,8 +123,8 @@ public class AKMDLAssetModel: AKModel {
                     material.metallic = readMaterialProperty(mdlMaterial, .metallic, ModelIOTools.getMaterialFloatValue)
                     material.roughness = readMaterialProperty(mdlMaterial, .roughness, ModelIOTools.getMaterialFloatValue)
                     (_, material.normalMap) = readMaterialProperty(mdlMaterial, .bump, ModelIOTools.getMaterialFloat3Value)
-                    (_, material.ambientOcclusionMap) = readMaterialProperty(mdlMaterial, .ambientOcclusion,
-                                                                             ModelIOTools.getMaterialFloat3Value)
+                    (_, material.ambientOcclusionMap) = readMaterialProperty(mdlMaterial, .ambientOcclusion, ModelIOTools.getMaterialFloat3Value)
+                    material.irradianceColorMap = readMaterialProperty(mdlMaterial, .emission, ModelIOTools.getMaterialFloat3Value)
                 }
                 materials.append(material)
             }

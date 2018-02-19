@@ -72,12 +72,8 @@ enum TextureIndices {
     kTextureIndexRoughness,
     kTextureIndexNormal,
     kTextureIndexAmbientOcclusion,
-    //kTextureIndexIrradianceMap,
+    kTextureIndexIrradianceMap,
     kNumTextureIndices
-};
-
-enum SceneTextureIndices {
-    kTextureIndexIrradianceMap = kNumTextureIndices
 };
 
 enum FunctionConstantIndices {
@@ -128,8 +124,6 @@ struct SharedUniforms {
     vector_float3 ambientLightColor;
     vector_float3 directionalLightDirection;
     vector_float3 directionalLightColor;
-    float materialShininess;
-    //float irradianceMapWeight;
 };
 
 // Structure shared between shader and C code to ensure the layout of instance uniform data accessed in
@@ -140,11 +134,11 @@ struct AnchorInstanceUniforms {
 
 struct MaterialUniforms {
     vector_float4 baseColor;
-    vector_float4 irradiatedColor;
+    vector_float3 irradiatedColor;
     float roughness;
     float metalness;
-    //float ambientOcclusion;
-    //float mapWeights[kNumMeshTextureIndices];
+    float ambientOcclusion;
+    //float mapWeights[kNumMeshTextureIndices];  // TODO: Implement for Quality level
 };
 
 #endif /* ShaderTypes_h */

@@ -198,7 +198,7 @@ LightingParameters calculateParameters(ColorInOut in,
     
     uint8_t mipLevel = parameters.roughness * irradianceMap.get_num_mip_levels();
     parameters.irradiatedColor = has_irradiance_map ? irradianceMap.sample(mipSampler, parameters.reflectedVector, level(mipLevel)).xyz : materialUniforms.irradiatedColor.xyz;
-    parameters.ambientOcclusion = has_ambient_occlusion_map ? ambientOcclusionMap.sample(linearSampler, in.texCoord.xy).x : 1.0f;
+    parameters.ambientOcclusion = has_ambient_occlusion_map ? ambientOcclusionMap.sample(linearSampler, in.texCoord.xy).x : materialUniforms.ambientOcclusion;
     
     parameters.lightCol = sharedUniforms.directionalLightColor;
     parameters.lightDir = -sharedUniforms.directionalLightDirection;

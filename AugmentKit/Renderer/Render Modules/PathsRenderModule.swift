@@ -2,9 +2,32 @@
 //  PathsRenderModule.swift
 //  AugmentKit
 //
-//  Created by Jamie Scanlon on 1/28/18.
-//  Copyright © 2018 TenthLetterMade. All rights reserved.
+//  MIT License
 //
+//  Copyright (c) 2017 JamieScanlon
+//
+//  Permission is hereby granted, free of charge, to any person obtaining a copy
+//  of this software and associated documentation files (the "Software"), to deal
+//  in the Software without restriction, including without limitation the rights
+//  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+//  copies of the Software, and to permit persons to whom the Software is
+//  furnished to do so, subject to the following conditions:
+//
+//  The above copyright notice and this permission notice shall be included in all
+//  copies or substantial portions of the Software.
+//
+//  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+//  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+//  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+//  SOFTWARE.
+//
+
+// TODO: Use a custom shader. The Anchor shader is best suited for rendering
+// existing models, not dynamicly drawn content. Instead, create a new shader
+// that lets us dynamicaly manipulate properties such as color at runtime.
 
 import Foundation
 import ARKit
@@ -71,6 +94,21 @@ class PathsRenderModule: RenderModule {
         let metalAllocator = MTKMeshBufferAllocator(device: device)
         // Create a cylinder that is 1cm in diameter
         let mesh = MDLMesh.newCylinder(withHeight: 1, radii: vector2(0.005, 0.005), radialSegments: 6, verticalSegments: 1, geometryType: .triangles, inwardNormals: false, allocator: metalAllocator)
+        let scatteringFunction = MDLScatteringFunction()
+        let material = MDLMaterial(name: "baseMaterial", scatteringFunction: scatteringFunction)
+        let colorProperty = MDLMaterialProperty(name: "pathColor", semantic: .baseColor, float3: float3(255/255, 100/255, 100/255))
+        material.setProperty(colorProperty)
+        let metallicProperty = MDLMaterialProperty(name: "pathMetallic", semantic: .metallic, float: 0)
+        material.setProperty(metallicProperty)
+        let emissionProperty = MDLMaterialProperty(name: "pathGlow", semantic: .emission, float3: float3(255/255, 255/255, 255/255))
+        material.setProperty(emissionProperty)
+        
+        for submesh in mesh.submeshes!  {
+            if let submesh = submesh as? MDLSubmesh {
+                submesh.material = material
+            }
+        }
+       
         let asset = MDLAsset(bufferAllocator: metalAllocator)
         asset.add(mesh)
         
@@ -409,11 +447,12 @@ class PathsRenderModule: RenderModule {
                     subData.materialBuffer = materialUniformBuffer
                     
                 }
-                subData.baseColorTexIdx = usesMaterials ? meshData.materials[subIndex].baseColor.1 : nil
-                subData.normalTexIdx = usesMaterials ? meshData.materials[subIndex].normalMap : nil
-                subData.aoTexIdx = usesMaterials ? meshData.materials[subIndex].ambientOcclusionMap : nil
-                subData.roughTexIdx = usesMaterials ? meshData.materials[subIndex].roughness.1 : nil
-                subData.metalTexIdx = usesMaterials ? meshData.materials[subIndex].metallic.1 : nil
+                subData.baseColorTextureIndex = usesMaterials ? meshData.materials[subIndex].baseColor.1 : nil
+                subData.normalTextureIndex = usesMaterials ? meshData.materials[subIndex].normalMap : nil
+                subData.ambientOcclusionTextureIndex = usesMaterials ? meshData.materials[subIndex].ambientOcclusionMap : nil
+                subData.roughnessTextureIndex = usesMaterials ? meshData.materials[subIndex].roughness.1 : nil
+                subData.metallicTextureIndex = usesMaterials ? meshData.materials[subIndex].metallic.1 : nil
+                subData.irradianceTextureIndex = usesMaterials ? meshData.materials[subIndex].irradianceColorMap.1 : nil
                 drawData.subData.append(subData)
             }
             

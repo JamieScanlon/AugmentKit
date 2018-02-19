@@ -387,11 +387,12 @@ class TrackersRenderModule: RenderModule {
                     subData.materialBuffer = materialUniformBuffer
                     
                 }
-                subData.baseColorTexIdx = usesMaterials ? meshData.materials[subIndex].baseColor.1 : nil
-                subData.normalTexIdx = usesMaterials ? meshData.materials[subIndex].normalMap : nil
-                subData.aoTexIdx = usesMaterials ? meshData.materials[subIndex].ambientOcclusionMap : nil
-                subData.roughTexIdx = usesMaterials ? meshData.materials[subIndex].roughness.1 : nil
-                subData.metalTexIdx = usesMaterials ? meshData.materials[subIndex].metallic.1 : nil
+                subData.baseColorTextureIndex = usesMaterials ? meshData.materials[subIndex].baseColor.1 : nil
+                subData.normalTextureIndex = usesMaterials ? meshData.materials[subIndex].normalMap : nil
+                subData.ambientOcclusionTextureIndex = usesMaterials ? meshData.materials[subIndex].ambientOcclusionMap : nil
+                subData.roughnessTextureIndex = usesMaterials ? meshData.materials[subIndex].roughness.1 : nil
+                subData.metallicTextureIndex = usesMaterials ? meshData.materials[subIndex].metallic.1 : nil
+                subData.irradianceTextureIndex = usesMaterials ? meshData.materials[subIndex].irradianceColorMap.1 : nil
                 drawData.subData.append(subData)
             }
             

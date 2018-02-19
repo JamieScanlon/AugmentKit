@@ -53,9 +53,7 @@ class MetalUtilities {
                 has_metallic_map = has_metallic_map || (material.metallic.1 != nil)
                 has_roughness_map = has_roughness_map || (material.roughness.1 != nil)
                 has_ambient_occlusion_map = has_ambient_occlusion_map || (material.ambientOcclusionMap != nil)
-
-                // -- currently not featured
-                has_irradiance_map = false
+                has_irradiance_map = has_irradiance_map || (material.irradianceColorMap.1 != nil)
             }
         }
 
@@ -89,7 +87,8 @@ class MetalUtilities {
         let baseColor = material.baseColor.0 ?? float3(1.0, 1.0, 1.0)
         matUniforms.baseColor = float4(baseColor.x, baseColor.y, baseColor.z, 1.0)
         matUniforms.roughness = material.roughness.0 ?? 1.0
-        matUniforms.irradiatedColor = float4(1.0, 1.0, 1.0, 1.0)
+        matUniforms.ambientOcclusion = 1.0
+        matUniforms.irradiatedColor = material.irradianceColorMap.0 ?? float3(1.0, 1.0, 1.0)
         matUniforms.metalness = material.metallic.0 ?? 0.0
         return matUniforms
     }
@@ -100,7 +99,8 @@ class MetalUtilities {
         let baseColor = material.baseColor.0 ?? float3(1.0, 1.0, 1.0)
         theBuffer.pointee.baseColor = float4(baseColor.x, baseColor.y, baseColor.z, 1.0)
         theBuffer.pointee.roughness = material.roughness.0 ?? 1.0
-        theBuffer.pointee.irradiatedColor = float4(1.0, 1.0, 1.0, 1.0)
+        theBuffer.pointee.ambientOcclusion = 1.0
+        theBuffer.pointee.irradiatedColor = material.irradianceColorMap.0 ?? float3(1.0, 1.0, 1.0)
         theBuffer.pointee.metalness = material.metallic.0 ?? 0.0
         
     }

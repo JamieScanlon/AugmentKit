@@ -42,7 +42,7 @@ public struct Material {
     var roughness: (Float?, Int?) = (0, nil)
     var normalMap: Int?
     var ambientOcclusionMap: Int?
-    //var irradiatedColor: float3? // TODO: Add
+    var irradianceColorMap: (float3?, Int?) = (nil, nil)
 }
 
 // MARK: - Mesh Data that will be converted into GPU Data
@@ -61,11 +61,15 @@ public struct MeshData {
 public struct DrawSubData {
     var idxCount = 0
     var idxType = MTLIndexType.uint16
-    var baseColorTexIdx: Int?
-    var normalTexIdx: Int?
-    var aoTexIdx: Int?
-    var metalTexIdx: Int?
-    var roughTexIdx: Int?
+    
+    // Texture Indexes
+    var baseColorTextureIndex: Int?
+    var normalTextureIndex: Int?
+    var ambientOcclusionTextureIndex: Int?
+    var metallicTextureIndex: Int?
+    var roughnessTextureIndex: Int?
+    var irradianceTextureIndex: Int?
+    
     var materialUniforms = MaterialUniforms()
     var materialBuffer: MTLBuffer?
 
@@ -92,6 +96,8 @@ public struct DrawSubData {
             return kFunctionConstantMetallicMapIndex
         case kTextureIndexAmbientOcclusion:
             return kFunctionConstantAmbientOcclusionMapIndex
+        case kTextureIndexIrradianceMap:
+            return kFunctionConstantIrradianceMapIndex
         case kTextureIndexRoughness:
             return kFunctionConstantRoughnessMapIndex
         default:

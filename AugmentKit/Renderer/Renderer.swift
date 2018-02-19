@@ -505,11 +505,8 @@ public class Renderer {
     
     private func createNewConfiguration() -> ARWorldTrackingConfiguration {
         let configuration = ARWorldTrackingConfiguration()
-        // Setting this to .gravityAndHeading aligns the the origin of the scene to compass
-        // direction but it also tend to make the scene jumpy.
-        // AKWorld and WorkLocationManager has the ability take heading into account when
-        // creating anchors which means that we can just use the .gravity alignment
-        configuration.worldAlignment = .gravity
+        // Setting this to .gravityAndHeading aligns the the origin of the scene to compass direction
+        configuration.worldAlignment = .gravityAndHeading
         
         // Enable horizontal plane detection
         configuration.planeDetection = .horizontal

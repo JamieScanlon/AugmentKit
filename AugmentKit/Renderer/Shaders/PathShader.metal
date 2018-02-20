@@ -36,7 +36,7 @@ using namespace metal;
 struct PathVertexIn {
     float4 position [[attribute(kVertexAttributePosition)]];
     float4 color [[attribute(kVertexAttributeColor)]];
-    float glow [[attribute(kVertexAttributeGlow)]];
+    //float glow [[attribute(kVertexAttributeGlow)]];
 };
 
 struct PathFragmentInOut {

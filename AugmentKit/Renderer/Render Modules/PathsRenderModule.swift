@@ -112,7 +112,7 @@ class PathsRenderModule: RenderModule {
         let asset = MDLAsset(bufferAllocator: metalAllocator)
         asset.add(mesh)
         
-        let myModel = AKMDLAssetModel(asset: asset)
+        let myModel = AKMDLAssetModel(asset: asset, vertexDescriptor: AKMDLAssetModel.newAnchorVertexDescriptor())
         pathSegmentModel = myModel
     
         completion()

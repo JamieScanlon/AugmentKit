@@ -93,7 +93,7 @@ class SurfacesRenderModule: RenderModule {
         let metalAllocator = MTKMeshBufferAllocator(device: device)
         
         if let asset = MDLAssetTools.assetFromImage(withName: "plane_grid", extension: "png", allocator: metalAllocator) {
-            let mySurfaceModel = AKMDLAssetModel(asset: asset)
+            let mySurfaceModel = AKMDLAssetModel(asset: asset, vertexDescriptor: AKMDLAssetModel.newAnchorVertexDescriptor())
             surfaceModel = mySurfaceModel
         }
         

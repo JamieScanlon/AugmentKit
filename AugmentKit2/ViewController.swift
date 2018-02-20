@@ -65,7 +65,7 @@ class ViewController: UIViewController {
             
             // Add a user tracking anchor.
             if let asset = MDLAssetTools.assetFromImage(withName: "compass_512.png") {
-                let myUserTrackerModel = AKMDLAssetModel(asset: asset)
+                let myUserTrackerModel = AKAnchorAssetModel(asset: asset)
                 // Position it 3 meters down from the camera
                 let offsetTransform = matrix_identity_float4x4.translate(x: 0, y: -3, z: 0)
                 let userTracker = AKUserTracker(withModel: myUserTrackerModel, withUserRelativeTransform: offsetTransform)

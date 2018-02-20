@@ -75,9 +75,9 @@ public class AKMDLAssetModel: AKModel {
     // MARK: - Init
 
     public init() {}
-
-    public init(asset: MDLAsset) {
-        let vertexDescriptor = AKMDLAssetModel.newVertexDescriptor()
+    
+    // Initializes the AKMDLAssetModel with an MDLAsset and a vertex descriptor.
+    public init(asset: MDLAsset, vertexDescriptor: MDLVertexDescriptor) {
         sampleTimes = ModelIOTools.sampleTimeInterval(start: asset.startTime, end: asset.endTime, frameInterval: 1.0 / 60.0)
         storeAllMeshesInSceneGraph(with: asset, vertexDescriptor: vertexDescriptor)
         flattenSceneGraphHierarchy(with: asset)

@@ -57,7 +57,7 @@ public class SerializeUtil {
                 }
                 return MDLAsset(scnScene: scene)
             } else {
-                return MDLAsset(url: url, vertexDescriptor: AKSimpleModel.newVertexDescriptor(), bufferAllocator: nil, preserveTopology: false, error: &error)
+                return MDLAsset(url: url, vertexDescriptor: AKSimpleModel.newAnchorVertexDescriptor(), bufferAllocator: nil, preserveTopology: false, error: &error)
             }
         }()
         
@@ -67,7 +67,7 @@ public class SerializeUtil {
         }
         
         // Load meshes into the model
-        let model = AKMDLAssetModel(asset: asset)
+        let model = AKAnchorAssetModel(asset: asset)
         let dataFileURL: URL = {
             if let directory = directory {
                 return directory.appendingPathComponent("\(fileName).dat")

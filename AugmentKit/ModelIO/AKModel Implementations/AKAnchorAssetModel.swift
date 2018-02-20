@@ -1,6 +1,6 @@
 //
-//  AKGroundLayerAnchor.swift
-//  AugmentKit2
+//  AKAnchorAssetModel.swift
+//  AugmentKit
 //
 //  MIT License
 //
@@ -25,35 +25,23 @@
 //  SOFTWARE.
 //
 //
-//  And anchor representing the lowest horizontal plane that has been detected which
-//  is assumed to be the ground. Usually these are provided by the AR engine,
-//  not created by hand.
-//
+//  This class that impements AKModel and subclasses AKMDLAssetModel. It adds
+//  convienience methods for working with AKModels that are to be rendered as
+//  anchors.
 
 import Foundation
-import MetalKit
 import ModelIO
 
-public struct AKGroundLayerAnchor: AKAnchor {
+// MARK: - AKAnchorAssetModel
+
+public class AKAnchorAssetModel: AKMDLAssetModel {
     
-    public static var type: String {
-        return "groundLayer"
+    // Initializes the AKMDLAssetModel with an MDLAsset.
+    // This assumes that it will be rendered as an anchor and therefore
+    // creates vertex descriptors for the anchor render pipeline.
+    public convenience init(asset: MDLAsset) {
+        let vertexDescriptor = AKMDLAssetModel.newAnchorVertexDescriptor()
+        self.init(asset: asset, vertexDescriptor: vertexDescriptor)
     }
-    public var worldLocation: AKWorldLocation
-    public var model: AKModel
-    public var identifier: UUID?
-    
-    public init(at location: AKWorldLocation, withAllocator metalAllocator: MTKMeshBufferAllocator? = nil) {
-        
-        let mesh = MDLMesh(planeWithExtent: vector3(1, 0, 1), segments: vector2(1, 1), geometryType: .triangles, allocator: metalAllocator)
-        let asset = MDLAsset(bufferAllocator: metalAllocator)
-        asset.add(mesh)
-        
-        let mySurfaceModel = AKMDLAssetModel(asset: asset, vertexDescriptor: AKMDLAssetModel.newAnchorVertexDescriptor())
-        
-        self.model = mySurfaceModel
-        self.worldLocation = location
-        
-    }
-    
+
 }

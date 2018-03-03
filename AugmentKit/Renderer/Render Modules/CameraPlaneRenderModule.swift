@@ -46,6 +46,7 @@ class CameraPlaneRenderModule: RenderModule {
     }
     var isInitialized: Bool = false
     var sharedModuleIdentifiers: [String]? = nil
+    var renderDistance: Double = 500
     
     func initializeBuffers(withDevice aDevice: MTLDevice, maxInFlightBuffers: Int) {
         
@@ -146,7 +147,7 @@ class CameraPlaneRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withARFrame frame: ARFrame, viewportProperties: ViewportProperies) {
+    func updateBuffers(withARFrame frame: ARFrame, cameraProperties: CameraProperties) {
         
         // Create two textures (Y and CbCr) from the provided frame's captured image
         let pixelBuffer = frame.capturedImage
@@ -158,9 +159,9 @@ class CameraPlaneRenderModule: RenderModule {
         capturedImageTextureY = createTexture(fromPixelBuffer: pixelBuffer, pixelFormat:.r8Unorm, planeIndex:0)
         capturedImageTextureCbCr = createTexture(fromPixelBuffer: pixelBuffer, pixelFormat:.rg8Unorm, planeIndex:1)
         
-        if viewportProperties.viewportSizeDidChange {
+        if cameraProperties.viewportSizeDidChange {
             // Update the texture coordinates of our image plane to aspect fill the viewport
-            let displayToCameraTransform = frame.displayTransform(for: viewportProperties.orientation, viewportSize: viewportProperties.viewportSize).inverted()
+            let displayToCameraTransform = frame.displayTransform(for: cameraProperties.orientation, viewportSize: cameraProperties.viewportSize).inverted()
             
             if let vertexData = imagePlaneVertexBuffer?.contents().assumingMemoryBound(to: Float.self) {
                 for index in 0...3 {
@@ -175,11 +176,11 @@ class CameraPlaneRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withTrackers: [AKAugmentedTracker], viewportProperties: ViewportProperies) {
+    func updateBuffers(withTrackers: [AKAugmentedTracker], cameraProperties: CameraProperties) {
         // Do Nothing
     }
     
-    func updateBuffers(withPaths: [UUID: [AKAugmentedAnchor]], viewportProperties: ViewportProperies) {
+    func updateBuffers(withPaths: [UUID: [AKAugmentedAnchor]], cameraProperties: CameraProperties) {
         // Do Nothing
     }
     

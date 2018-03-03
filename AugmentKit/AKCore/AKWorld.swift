@@ -39,9 +39,12 @@ import CoreLocation
 // MARK: - AKWorldConfiguration
 
 public struct AKWorldConfiguration {
+    // When true, AKWorld manager is able to translate postions to real
+    // work latitude and longitude. Defaults to `true`
     public var usesLocation = true
-    
-    public init(usesLocation: Bool = true) {
+    // Sets the maximum distance (in meters) that will be rendred. Defaults to 500
+    public var renderDistance: Double = 500
+    public init(usesLocation: Bool = true, renderDistance: Double = 500) {
         
     }
 }

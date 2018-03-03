@@ -31,6 +31,8 @@ import AugmentKitShader
 import Metal
 import MetalKit
 
+// MARK: - RenderModule protocol
+
 protocol RenderModule {
     
     //
@@ -43,6 +45,7 @@ protocol RenderModule {
     var renderLayer: Int { get }
     // An array of shared module identifiers that it this module will rely on in the draw phase.
     var sharedModuleIdentifiers: [String]? { get }
+    var renderDistance: Double { get set }
     
     // Initialize the buffers that will me managed and updated in this module.
     func initializeBuffers(withDevice: MTLDevice, maxInFlightBuffers: Int)
@@ -62,13 +65,13 @@ protocol RenderModule {
     func updateBufferState(withBufferIndex: Int)
     
     // Update the buffer data for anchors
-    func updateBuffers(withARFrame: ARFrame, viewportProperties: ViewportProperies)
+    func updateBuffers(withARFrame: ARFrame, cameraProperties: CameraProperties)
     
     // Update the buffer data for trackers
-    func updateBuffers(withTrackers: [AKAugmentedTracker], viewportProperties: ViewportProperies)
+    func updateBuffers(withTrackers: [AKAugmentedTracker], cameraProperties: CameraProperties)
     
     // Update the buffer data for trackers
-    func updateBuffers(withPaths: [UUID: [AKAugmentedAnchor]], viewportProperties: ViewportProperies)
+    func updateBuffers(withPaths: [UUID: [AKAugmentedAnchor]], cameraProperties: CameraProperties)
     
     // Update the render encoder for the draw call. At the end of this method it is expected that
     // drawPrimatives or drawIndexedPrimatives is called.
@@ -81,7 +84,11 @@ protocol RenderModule {
     
 }
 
+// MARK: - RenderModule extensions
+
 extension RenderModule {
+    
+    // MARK: Encoding Mesh Data
     
     func encode(meshGPUData: MeshGPUData, fromDrawData drawData: DrawData, with renderEncoder: MTLRenderCommandEncoder) {
         
@@ -114,6 +121,8 @@ extension RenderModule {
         }
         
     }
+    
+    // MARK: Encoding Textures
     
     func encodeTextures(with meshData: MeshGPUData, renderEncoder: MTLRenderCommandEncoder, subData drawSubData: DrawSubData) {
         if let baseColorTextureIndex = drawSubData.baseColorTextureIndex {
@@ -186,11 +195,74 @@ extension RenderModule {
         return mtlVertexDescriptor
     }
     
+    // MARK: Render Distance
+    
+    func anchorDistance(withTransform transform: matrix_float4x4, cameraProperties: CameraProperties?) -> Float {
+        guard let cameraProperties = cameraProperties else {
+            return 0
+        }
+        let point = float3(transform.columns.3.x, transform.columns.3.x, transform.columns.3.z)
+        return length(point - cameraProperties.position)
+    }
+    
+    func renderShpereIntersectionOfPath(withPoint0 point0: float3, point1: float3, cameraProperties: CameraProperties?) -> SphereLineIntersection {
+        guard let cameraProperties = cameraProperties else {
+            return SphereLineIntersection(isInside: false, point0: point0, point1: point1)
+        }
+        
+        let dist0 = length(point0 - cameraProperties.position)
+        let dist1 = length(point1 - cameraProperties.position)
+        let isPoint0Inside = Double(dist0) < renderDistance
+        let isPoint1Inside = Double(dist1) < renderDistance
+        
+        // If both points are inside, there is no intersection
+        guard !isPoint0Inside || !isPoint1Inside else {
+            return SphereLineIntersection(isInside: true, point0: point0, point1: point1)
+        }
+        
+        let dir = normalize(point1 - point0)
+        
+        let q = cameraProperties.position - point0
+        let vDotQ = dot(dir, q)
+        let squareDiffs = dot(q, q) - Float(renderDistance * renderDistance)
+        let discriminant = vDotQ * vDotQ - squareDiffs
+        if discriminant >= 0 {
+            let root = sqrt(discriminant)
+            let t0 = (vDotQ - root)
+            let t1 = (vDotQ + root)
+            if isPoint0Inside && !isPoint1Inside {
+                return SphereLineIntersection(isInside: true, point0: point0, point1: point0 + dir * t1)
+            } else if isPoint1Inside && !isPoint0Inside {
+                return SphereLineIntersection(isInside: true, point0: point0 + dir * t0, point1: point1)
+            } else if !isPoint1Inside && !isPoint0Inside {
+                return SphereLineIntersection(isInside: true, point0: point0 + dir * t0, point1: point0 + dir * t1)
+            } else {
+                // Both inside. No intersections
+                return SphereLineIntersection(isInside: true, point0: point0, point1: point1)
+            }
+        } else {
+            // There are no intersections
+            return SphereLineIntersection(isInside: false, point0: point0, point1: point1)
+        }
+    }
+    
 }
+
+// MARK: - RenderModuleConstants
 
 enum RenderModuleConstants {
     static let alignedMaterialSize = (MemoryLayout<MaterialUniforms>.stride & ~0xFF) + 0x100
 }
+
+// MARK: - SphereLineIntersection
+
+struct SphereLineIntersection {
+    var isInside: Bool
+    var point0: float3
+    var point1: float3
+}
+
+// MARK: - SharedRenderModule protocol
 
 // A shared render module is a render module responsible for setting up and updating
 // shared buffers. Although it does have a draw() method, typically this method does

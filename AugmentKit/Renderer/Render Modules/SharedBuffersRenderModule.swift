@@ -47,6 +47,7 @@ class SharedBuffersRenderModule: SharedRenderModule {
     }
     var isInitialized: Bool = false
     var sharedModuleIdentifiers: [String]? = nil
+    var renderDistance: Double = 500
     
     // MARK: - RenderModule
     
@@ -84,12 +85,12 @@ class SharedBuffersRenderModule: SharedRenderModule {
         sharedUniformBufferAddress = sharedUniformBuffer?.contents().advanced(by: sharedUniformBufferOffset)
     }
     
-    func updateBuffers(withARFrame frame: ARFrame, viewportProperties: ViewportProperies) {
+    func updateBuffers(withARFrame frame: ARFrame, cameraProperties: CameraProperties) {
         
         let uniforms = sharedUniformBufferAddress?.assumingMemoryBound(to: SharedUniforms.self)
         
-        uniforms?.pointee.viewMatrix = frame.camera.viewMatrix(for: viewportProperties.orientation)
-        uniforms?.pointee.projectionMatrix = frame.camera.projectionMatrix(for: viewportProperties.orientation, viewportSize: viewportProperties.viewportSize, zNear: 0.001, zFar: 1000)
+        uniforms?.pointee.viewMatrix = frame.camera.viewMatrix(for: cameraProperties.orientation)
+        uniforms?.pointee.projectionMatrix = frame.camera.projectionMatrix(for: cameraProperties.orientation, viewportSize: cameraProperties.viewportSize, zNear: 0.001, zFar: CGFloat(renderDistance))
         
         // Set up lighting for the scene using the ambient intensity if provided
         var ambientIntensity: Float = 1.0
@@ -110,11 +111,11 @@ class SharedBuffersRenderModule: SharedRenderModule {
         
     }
     
-    func updateBuffers(withTrackers: [AKAugmentedTracker], viewportProperties: ViewportProperies) {
+    func updateBuffers(withTrackers: [AKAugmentedTracker], cameraProperties: CameraProperties) {
         // Do Nothing
     }
     
-    func updateBuffers(withPaths: [UUID: [AKAugmentedAnchor]], viewportProperties: ViewportProperies) {
+    func updateBuffers(withPaths: [UUID: [AKAugmentedAnchor]], cameraProperties: CameraProperties) {
         // Do Nothing
     }
     

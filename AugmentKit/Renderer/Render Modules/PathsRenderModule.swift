@@ -50,6 +50,7 @@ class PathsRenderModule: RenderModule {
     }
     var isInitialized: Bool = false
     var sharedModuleIdentifiers: [String]? = [SharedBuffersRenderModule.identifier]
+    var renderDistance: Double = 500
     
     // The number of path instances to render
     private(set) var pathSegmentInstanceCount: Int = 0
@@ -92,8 +93,8 @@ class PathsRenderModule: RenderModule {
         // Create a MetalKit mesh buffer allocator so that ModelIO will load mesh data directly into
         // Metal buffers accessible by the GPU
         let metalAllocator = MTKMeshBufferAllocator(device: device)
-        // Create a cylinder that is 1cm in diameter
-        let mesh = MDLMesh.newCylinder(withHeight: 1, radii: vector2(0.005, 0.005), radialSegments: 6, verticalSegments: 1, geometryType: .triangles, inwardNormals: false, allocator: metalAllocator)
+        // Create a cylinder that is 10cm in diameter
+        let mesh = MDLMesh.newCylinder(withHeight: 1, radii: vector2(0.05, 0.05), radialSegments: 6, verticalSegments: 1, geometryType: .triangles, inwardNormals: false, allocator: metalAllocator)
         let scatteringFunction = MDLScatteringFunction()
         let material = MDLMaterial(name: "baseMaterial", scatteringFunction: scatteringFunction)
         let colorProperty = MDLMaterialProperty(name: "pathColor", semantic: .baseColor, float3: float3(255/255, 100/255, 100/255))
@@ -195,15 +196,15 @@ class PathsRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withARFrame frame: ARFrame, viewportProperties: ViewportProperies) {
+    func updateBuffers(withARFrame frame: ARFrame, cameraProperties: CameraProperties) {
         // Do Nothing
     }
     
-    func updateBuffers(withTrackers: [AKAugmentedTracker], viewportProperties: ViewportProperies) {
+    func updateBuffers(withTrackers: [AKAugmentedTracker], cameraProperties: CameraProperties) {
         // Do Nothing
     }
     
-    func updateBuffers(withPaths paths: [UUID: [AKAugmentedAnchor]], viewportProperties: ViewportProperies) {
+    func updateBuffers(withPaths paths: [UUID: [AKAugmentedAnchor]], cameraProperties theCameraProperties: CameraProperties) {
         
         // Update the anchor uniform buffer with transforms of the current frame's anchors
         pathSegmentInstanceCount = 0
@@ -221,6 +222,15 @@ class PathsRenderModule: RenderModule {
                     continue
                 }
                 
+                // Clip the paths to the render sphere
+                let p0 = float3(myLastAnchor.worldLocation.transform.columns.3.x, myLastAnchor.worldLocation.transform.columns.3.y, myLastAnchor.worldLocation.transform.columns.3.z)
+                let p1 = float3(anchor.worldLocation.transform.columns.3.x, anchor.worldLocation.transform.columns.3.y, anchor.worldLocation.transform.columns.3.z)
+                let sphereIntersection = renderShpereIntersectionOfPath(withPoint0: p0, point1: p1, cameraProperties: theCameraProperties)
+                guard sphereIntersection.isInside else {
+                    lastAnchor = anchor
+                    continue
+                }
+                
                 pathSegmentInstanceCount += 1
                 
                 if pathSegmentInstanceCount > Constants.maxPathSegmentInstanceCount {
@@ -232,9 +242,13 @@ class PathsRenderModule: RenderModule {
                     uuids.append(identifier)
                 }
                 
+                let lastAnchorPosition = sphereIntersection.point0
+                let anchorPosition = sphereIntersection.point1
+                
+                
                 // Ignore all rotation within anchor.worldLocation.transform.
                 // When dealing with paths, the anchors are considered points in space so rotation has no meaning.
-                var modelMatrix = matrix_identity_float4x4.translate(x: anchor.worldLocation.transform.columns.3.x, y: anchor.worldLocation.transform.columns.3.y, z: anchor.worldLocation.transform.columns.3.z)
+                var modelMatrix = matrix_identity_float4x4.translate(x: anchorPosition.x, y: anchorPosition.y, z: anchorPosition.z)
                 
                 // Flip Z axis to convert geometry from right handed to left handed
                 var coordinateSpaceTransform = matrix_identity_float4x4
@@ -243,12 +257,16 @@ class PathsRenderModule: RenderModule {
                 // Rotate and scale coordinateSpaceTransform so that it is oriented from
                 // myLastAnchor to anchor
                 
-                let finalPosition = float3(0, 0, 0)
-                let initialPosition = float3(myLastAnchor.worldLocation.transform.columns.3.x - anchor.worldLocation.transform.columns.3.x, myLastAnchor.worldLocation.transform.columns.3.y - anchor.worldLocation.transform.columns.3.y, myLastAnchor.worldLocation.transform.columns.3.z - anchor.worldLocation.transform.columns.3.z)
+                // Do all calculations with doubles and convert them to floats a the end.
+                // This reduces floating point rounding errors especially when calculating
+                // andgles of rotation
+                
+                let finalPosition = double3(0, 0, 0)
+                let initialPosition = double3(Double(lastAnchorPosition.x - anchorPosition.x), Double(lastAnchorPosition.y - anchorPosition.y), Double(lastAnchorPosition.z - anchorPosition.z))
                 
                 // The following was taken from: http://www.thjsmith.com/40/cylinder-between-two-points-opengl-c
                 // Default cylinder direction (up)
-                let defaultLineDirection = float3(0,1,0)
+                let defaultLineDirection = double3(0,1,0)
                 // Get diff between two points you want cylinder along
                 let delta = (finalPosition - initialPosition)
                 // Get CROSS product (the axis of rotation)
@@ -262,13 +280,13 @@ class PathsRenderModule: RenderModule {
                 // The cylinder created by MDLMesh extends from (0, -0.5, 0) to (0, 0.5, 0). Translate it so that it is
                 // midway between the two points
                 let middle = -delta / 2
-                coordinateSpaceTransform = coordinateSpaceTransform.translate(x: middle.x, y: middle.y, z: -middle.z)
-                if angle == Float.pi {
-                    coordinateSpaceTransform = coordinateSpaceTransform.rotate(radians: angle, x: 0, y: 0, z: 1)
-                } else if angle > 0 {
-                    coordinateSpaceTransform = coordinateSpaceTransform.rotate(radians: angle, x: t.x, y: t.y, z: t.z)
+                coordinateSpaceTransform = coordinateSpaceTransform.translate(x: Float(middle.x), y: Float(middle.y), z: Float(-middle.z))
+                if angle == Double.pi {
+                    coordinateSpaceTransform = coordinateSpaceTransform.rotate(radians: Float(angle), x: 0, y: 0, z: 1)
+                } else if Float(angle) > 0 {
+                    coordinateSpaceTransform = coordinateSpaceTransform.rotate(radians: Float(angle), x: Float(t.x), y: Float(t.y), z: Float(t.z))
                 }
-                coordinateSpaceTransform = coordinateSpaceTransform.scale(x: 1, y: magDelta, z: 1)
+                coordinateSpaceTransform = coordinateSpaceTransform.scale(x: 1, y: Float(magDelta), z: 1)
                 
                 // Create the final transform matrix
                 modelMatrix = modelMatrix * coordinateSpaceTransform

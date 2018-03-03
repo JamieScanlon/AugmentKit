@@ -47,6 +47,7 @@ class AnchorsRenderModule: RenderModule {
     }
     var isInitialized: Bool = false
     var sharedModuleIdentifiers: [String]? = [SharedBuffersRenderModule.identifier]
+    var renderDistance: Double = 500
     
     // The number of anchor instances to render
     private(set) var anchorInstanceCount: Int = 0
@@ -188,7 +189,7 @@ class AnchorsRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withARFrame frame: ARFrame, viewportProperties: ViewportProperies) {
+    func updateBuffers(withARFrame frame: ARFrame, cameraProperties: CameraProperties) {
         
         // Update the anchor uniform buffer with transforms of the current frame's anchors
         anchorInstanceCount = 0
@@ -214,6 +215,12 @@ class AnchorsRenderModule: RenderModule {
             }
             
             guard isAnchor else {
+                continue
+            }
+            
+            // Ignore anchors that are beyond the renderDistance
+            let distance = anchorDistance(withTransform: anchor.transform, cameraProperties: cameraProperties)
+            guard Double(distance) < renderDistance else {
                 continue
             }
             
@@ -249,11 +256,11 @@ class AnchorsRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withTrackers: [AKAugmentedTracker], viewportProperties: ViewportProperies) {
+    func updateBuffers(withTrackers: [AKAugmentedTracker], cameraProperties: CameraProperties) {
         // Do Nothing
     }
     
-    func updateBuffers(withPaths: [UUID: [AKAugmentedAnchor]], viewportProperties: ViewportProperies) {
+    func updateBuffers(withPaths: [UUID: [AKAugmentedAnchor]], cameraProperties: CameraProperties) {
         // Do Nothing
     }
     

@@ -47,6 +47,7 @@ class SurfacesRenderModule: RenderModule {
     }
     var isInitialized: Bool = false
     var sharedModuleIdentifiers: [String]? = [SharedBuffersRenderModule.identifier]
+    var renderDistance: Double = 500
     
     // The number of surface instances to render
     private(set) var surfaceInstanceCount: Int = 0
@@ -177,7 +178,7 @@ class SurfacesRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withARFrame frame: ARFrame, viewportProperties: ViewportProperies) {
+    func updateBuffers(withARFrame frame: ARFrame, cameraProperties: CameraProperties) {
         
         // Update the anchor uniform buffer with transforms of the current frame's anchors
         surfaceInstanceCount = 0
@@ -198,6 +199,12 @@ class SurfacesRenderModule: RenderModule {
             }
             
             guard isSurface else {
+                continue
+            }
+            
+            // Ignore anchors that are beyond the renderDistance
+            let distance = anchorDistance(withTransform: anchor.transform, cameraProperties: cameraProperties)
+            guard Double(distance) < renderDistance else {
                 continue
             }
             
@@ -245,11 +252,11 @@ class SurfacesRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withTrackers: [AKAugmentedTracker], viewportProperties: ViewportProperies) {
+    func updateBuffers(withTrackers: [AKAugmentedTracker], cameraProperties: CameraProperties) {
         // Do Nothing
     }
     
-    func updateBuffers(withPaths: [UUID: [AKAugmentedAnchor]], viewportProperties: ViewportProperies) {
+    func updateBuffers(withPaths: [UUID: [AKAugmentedAnchor]], cameraProperties: CameraProperties) {
         // Do Nothing
     }
     

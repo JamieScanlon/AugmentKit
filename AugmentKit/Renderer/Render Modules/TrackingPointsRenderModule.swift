@@ -47,6 +47,7 @@ class TrackingPointsRenderModule: RenderModule {
     }
     var isInitialized: Bool = false
     var sharedModuleIdentifiers: [String]? = [SharedBuffersRenderModule.identifier]
+    var renderDistance: Double = 500
     
     // The number of tracking points to render
     private(set) var trackingPointCount: Int = 0
@@ -153,7 +154,7 @@ class TrackingPointsRenderModule: RenderModule {
     }
     
     // Update the buffer data
-    func updateBuffers(withARFrame frame: ARFrame, viewportProperties: ViewportProperies) {
+    func updateBuffers(withARFrame frame: ARFrame, cameraProperties: CameraProperties) {
         
         trackingPointCount = 0
         
@@ -189,11 +190,11 @@ class TrackingPointsRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withTrackers: [AKAugmentedTracker], viewportProperties: ViewportProperies) {
+    func updateBuffers(withTrackers: [AKAugmentedTracker], cameraProperties: CameraProperties) {
         // Do Nothing
     }
     
-    func updateBuffers(withPaths: [UUID: [AKAugmentedAnchor]], viewportProperties: ViewportProperies) {
+    func updateBuffers(withPaths: [UUID: [AKAugmentedAnchor]], cameraProperties: CameraProperties) {
         // Do Nothing
     }
     

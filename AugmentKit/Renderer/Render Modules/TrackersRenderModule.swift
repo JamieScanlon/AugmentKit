@@ -46,6 +46,7 @@ class TrackersRenderModule: RenderModule {
     }
     var isInitialized: Bool = false
     var sharedModuleIdentifiers: [String]? = [SharedBuffersRenderModule.identifier]
+    var renderDistance: Double = 500
     
     // The number of tracker instances to render
     private(set) var trackerInstanceCount: Int = 0
@@ -183,11 +184,11 @@ class TrackersRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withARFrame frame: ARFrame, viewportProperties: ViewportProperies) {
+    func updateBuffers(withARFrame frame: ARFrame, cameraProperties: CameraProperties) {
         // Do Nothing
     }
     
-    func updateBuffers(withTrackers trackers: [AKAugmentedTracker], viewportProperties: ViewportProperies) {
+    func updateBuffers(withTrackers trackers: [AKAugmentedTracker], cameraProperties: CameraProperties) {
         
         // Update the tracker uniform buffer with transforms of the current frame's trackers
         trackerInstanceCount = 0
@@ -195,6 +196,16 @@ class TrackersRenderModule: RenderModule {
         for index in 0..<trackers.count {
             
             let tracker = trackers[index]
+            
+            // Apply the transform of the tracker relative to the reference transform
+            let trackerAbsoluteTransform = tracker.position.referenceTransform * tracker.position.transform
+            
+            // Ignore anchors that are beyond the renderDistance
+            let distance = anchorDistance(withTransform: trackerAbsoluteTransform, cameraProperties: cameraProperties)
+            guard Double(distance) < renderDistance else {
+                continue
+            }
+            
             trackerInstanceCount += 1
             
             if trackerInstanceCount > Constants.maxTrackerInstanceCount {
@@ -215,8 +226,7 @@ class TrackersRenderModule: RenderModule {
                     coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
                 }
                 
-                // Apply the transform of the tracker relative to the reference transform
-                let modelMatrix = tracker.position.referenceTransform * tracker.position.transform * coordinateSpaceTransform
+                let modelMatrix = trackerAbsoluteTransform * coordinateSpaceTransform
                 
                 let trackerUniforms = trackerUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: trackerIndex)
                 trackerUniforms?.pointee.modelMatrix = modelMatrix
@@ -227,7 +237,7 @@ class TrackersRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withPaths: [UUID: [AKAugmentedAnchor]], viewportProperties: ViewportProperies) {
+    func updateBuffers(withPaths: [UUID: [AKAugmentedAnchor]], cameraProperties: CameraProperties) {
         // Do Nothing
     }
     

@@ -44,10 +44,11 @@ public protocol RenderDebugLogger {
     func updatedAnchors(count: Int, numAnchors: Int, numPlanes: Int, numTrackingPoints: Int)
 }
 
-public struct ViewportProperies {
+public struct CameraProperties {
     var orientation: UIInterfaceOrientation
     var viewportSize: CGSize
     var viewportSizeDidChange: Bool
+    var position: float3
 }
 
 public class Renderer {
@@ -336,14 +337,22 @@ public class Renderer {
                 }
             }
             
-            let viewportProperties = ViewportProperies(orientation: orientation, viewportSize: viewportSize, viewportSizeDidChange: viewportSizeDidChange)
+            let cameraPosition: float3 = {
+                if let currentCameraPositionTransform = currentCameraPositionTransform {
+                    return float3(currentCameraPositionTransform.columns.3.x, currentCameraPositionTransform.columns.3.y, currentCameraPositionTransform.columns.3.z)
+                } else {
+                    return float3(0, 0, 0)
+                }
+            }()
+            
+            let cameraProperties = CameraProperties(orientation: orientation, viewportSize: viewportSize, viewportSizeDidChange: viewportSizeDidChange, position: cameraPosition)
             
             // Update Buffers
             for module in renderModules {
                 if module.isInitialized {
-                    module.updateBuffers(withARFrame: currentFrame, viewportProperties: viewportProperties)
-                    module.updateBuffers(withTrackers: trackers, viewportProperties: viewportProperties)
-                    module.updateBuffers(withPaths: paths, viewportProperties: viewportProperties)
+                    module.updateBuffers(withARFrame: currentFrame, cameraProperties: cameraProperties)
+                    module.updateBuffers(withTrackers: trackers, cameraProperties: cameraProperties)
+                    module.updateBuffers(withPaths: paths, cameraProperties: cameraProperties)
                 }
             }
             

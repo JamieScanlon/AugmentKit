@@ -43,7 +43,10 @@ enum BufferIndices {
     kBufferIndexAnchorInstanceUniforms,
     kBufferIndexSharedUniforms,
     kBufferIndexMaterialUniforms,
-    kBufferIndexTrackingPointData
+    kBufferIndexTrackingPointData,
+    kBufferIndexMeshPalettes,
+    kBufferIndexMeshPaletteIndex,
+    kBufferIndexMeshPaletteSize
 };
 
 // Attribute index values shared between shader and C code to ensure Metal shader vertex

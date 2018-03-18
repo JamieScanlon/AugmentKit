@@ -129,7 +129,7 @@ class TrackersRenderModule: RenderModule {
             return
         }
         
-        guard let trackerVertexDescriptor = createMetalVertexDescriptor(withModelIOVertexDescriptor: trackerModel.vertexDescriptors) else {
+        guard let trackerVertexDescriptor = createMetalVertexDescriptor(withFirstModelIOVertexDescriptorIn: trackerModel.vertexDescriptors) else {
             print("Serious Error - Failed to create a MetalKit vertex descriptor from ModelIO.")
             return
         }

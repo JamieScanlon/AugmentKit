@@ -31,7 +31,7 @@ import AugmentKitShader
 import MetalKit
 
 // TODO: Support having different models for each AKObject type
-class AnchorsRenderModule: RenderModule {
+class AnchorsRenderModule: RenderModule, SkinningModule {
     
     static var identifier = "AnchorsRenderModule"
     
@@ -68,6 +68,7 @@ class AnchorsRenderModule: RenderModule {
         // argument in the constant address space of our shading functions.
         let anchorUniformBufferSize = Constants.alignedAnchorInstanceUniformsSize * maxInFlightBuffers
         let materialUniformBufferSize = RenderModuleConstants.alignedMaterialSize * maxInFlightBuffers
+        let paletteBufferSize = Constants.alignedPaletteSize * Constants.maxPaletteSize * maxInFlightBuffers
         
         // Create and allocate our uniform buffer objects. Indicate shared storage so that both the
         // CPU can access the buffer
@@ -76,6 +77,9 @@ class AnchorsRenderModule: RenderModule {
         
         materialUniformBuffer = device?.makeBuffer(length: materialUniformBufferSize, options: .storageModeShared)
         materialUniformBuffer?.label = "MaterialUniformBuffer"
+        
+        paletteBuffer = device?.makeBuffer(length: paletteBufferSize, options: [])
+        paletteBuffer?.label = "PaletteBuffer"
         
     }
     
@@ -134,7 +138,7 @@ class AnchorsRenderModule: RenderModule {
             return
         }
         
-        guard let anchorVertexDescriptor = createMetalVertexDescriptor(withModelIOVertexDescriptor: anchorModel.vertexDescriptors) else {
+        guard let anchorVertexDescriptor = createMetalVertexDescriptor(withFirstModelIOVertexDescriptorIn: anchorModel.vertexDescriptors) else {
             print("Serious Error - Failed to create a MetalKit vertex descriptor from ModelIO.")
             return
         }
@@ -143,9 +147,8 @@ class AnchorsRenderModule: RenderModule {
             let anchorPipelineStateDescriptor = MTLRenderPipelineDescriptor()
             do {
                 let funcConstants = MetalUtilities.getFuncConstantsForDrawDataSet(meshData: anchorModel.meshes[drawIdx], useMaterials: usesMaterials)
-                // TODO: Implement a vertex shader with puppet animation support
-                //                let vertexName = (drawData.paletteStartIndex != nil) ? "vertex_skinned" : "anchorGeometryVertexTransform"
-                let vertexName = "anchorGeometryVertexTransform"
+                // Specify which shader to use based on if the model has skinned puppet suppot
+                let vertexName = (drawData.paletteStartIndex != nil) ? "anchorGeometryVertexTransformSkinned" : "anchorGeometryVertexTransform"
                 let fragFunc = try metalLibrary.makeFunction(name: "anchorGeometryFragmentLighting", constantValues: funcConstants)
                 let vertFunc = try metalLibrary.makeFunction(name: vertexName, constantValues: funcConstants)
                 anchorPipelineStateDescriptor.vertexDescriptor = anchorVertexDescriptor
@@ -183,9 +186,11 @@ class AnchorsRenderModule: RenderModule {
         
         anchorUniformBufferOffset = Constants.alignedAnchorInstanceUniformsSize * bufferIndex
         materialUniformBufferOffset = RenderModuleConstants.alignedMaterialSize * bufferIndex
+        paletteBufferOffset = Constants.alignedPaletteSize * Constants.maxPaletteSize * bufferIndex
         
         anchorUniformBufferAddress = anchorUniformBuffer?.contents().advanced(by: anchorUniformBufferOffset)
         materialUniformBufferAddress = materialUniformBuffer?.contents().advanced(by: materialUniformBufferOffset)
+        paletteBufferAddress = paletteBuffer?.contents().advanced(by: paletteBufferOffset)
         
     }
     
@@ -300,6 +305,7 @@ class AnchorsRenderModule: RenderModule {
                 
                 // Set any buffers fed into our render pipeline
                 renderEncoder.setVertexBuffer(anchorUniformBuffer, offset: anchorUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
+                renderEncoder.setVertexBuffer(paletteBuffer, offset: paletteBufferOffset, index: Int(kBufferIndexMeshPalettes.rawValue))
                 
                 var mutableDrawData = drawData
                 mutableDrawData.instCount = anchorInstanceCount
@@ -323,7 +329,9 @@ class AnchorsRenderModule: RenderModule {
     
     private enum Constants {
         static let maxAnchorInstanceCount = 64
+        static let maxPaletteSize = 100
         static let alignedAnchorInstanceUniformsSize = ((MemoryLayout<AnchorInstanceUniforms>.stride * Constants.maxAnchorInstanceCount) & ~0xFF) + 0x100
+        static let alignedPaletteSize = (MemoryLayout<matrix_float4x4>.stride & ~0xFF) + 0x100
     }
     
     private var device: MTLDevice?
@@ -331,23 +339,30 @@ class AnchorsRenderModule: RenderModule {
     private var anchorModel: AKModel?
     private var anchorUniformBuffer: MTLBuffer?
     private var materialUniformBuffer: MTLBuffer?
+    private var paletteBuffer: MTLBuffer?
     private var anchorPipelineStates = [MTLRenderPipelineState]() // Store multiple states
     private var anchorDepthState: MTLDepthStencilState?
     
     // MetalKit meshes containing vertex data and index buffer for our anchor geometry
     private var anchorMeshGPUData: MeshGPUData?
     
-    // Offset within _anchorUniformBuffer to set for the current frame
+    // Offset within anchorUniformBuffer to set for the current frame
     private var anchorUniformBufferOffset: Int = 0
     
-    // Offset within _materialUniformBuffer to set for the current frame
+    // Offset within materialUniformBuffer to set for the current frame
     private var materialUniformBufferOffset: Int = 0
+    
+    // Offset within paletteBuffer to set for the current frame
+    private var paletteBufferOffset = 0
     
     // Addresses to write anchor uniforms to each frame
     private var anchorUniformBufferAddress: UnsafeMutableRawPointer?
     
     // Addresses to write anchor uniforms to each frame
     private var materialUniformBufferAddress: UnsafeMutableRawPointer?
+    
+    // Addresses to write palette to each frame
+    private var paletteBufferAddress: UnsafeMutableRawPointer?
     
     private var usesMaterials = false
     
@@ -443,6 +458,33 @@ class AnchorsRenderModule: RenderModule {
             return model.meshNodeIndices[anchorIndex]
         } else {
             return nil
+        }
+    }
+    
+    private func updatePuppetAnimation(from aModel: AKModel, frameNumber: Int) {
+        
+        let capacity = Constants.alignedPaletteSize * Constants.maxPaletteSize
+        
+        let boundPaletteData = paletteBufferAddress?.bindMemory(to: matrix_float4x4.self, capacity: capacity)
+        
+        let paletteData = UnsafeMutableBufferPointer<matrix_float4x4>(
+            start: boundPaletteData,
+            count: Constants.maxPaletteSize
+        )
+        
+        var jointPaletteOffset = 0
+        for skin in aModel.skins {
+            if let animationIndex = skin.animationIndex {
+                let curAnimation = aModel.skeletonAnimations[animationIndex]
+                let worldPose = evaluateAnimation(curAnimation, at: (Double(frameNumber) * 1.0 / 60.0))
+                let matrixPalette = evaluateMatrixPalette(worldPose, skin)
+                
+                for k in 0..<matrixPalette.count {
+                    paletteData[k + jointPaletteOffset] = matrixPalette[k]
+                }
+                
+                jointPaletteOffset += matrixPalette.count
+            }
         }
     }
     

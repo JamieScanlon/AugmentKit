@@ -32,6 +32,8 @@ import Metal
 import MetalKit
 import ModelIO
 
+// MARK: - RenderDestinationProvider
+
 public protocol RenderDestinationProvider {
     var currentRenderPassDescriptor: MTLRenderPassDescriptor? { get }
     var currentDrawable: CAMetalDrawable? { get }
@@ -40,16 +42,23 @@ public protocol RenderDestinationProvider {
     var sampleCount: Int { get set }
 }
 
+// MARK: - RenderDebugLogger
+
 public protocol RenderDebugLogger {
     func updatedAnchors(count: Int, numAnchors: Int, numPlanes: Int, numTrackingPoints: Int)
 }
+
+// MARK: - CameraProperties
 
 public struct CameraProperties {
     var orientation: UIInterfaceOrientation
     var viewportSize: CGSize
     var viewportSizeDidChange: Bool
     var position: float3
+    var currentFrame: Int
 }
+
+// MARK: - Renderer
 
 public class Renderer {
     
@@ -114,6 +123,15 @@ public class Renderer {
     }
     public private(set) var currentCameraHeading: Double?
     public private(set) var lowestHorizPlaneAnchor: ARPlaneAnchor?
+    public var currentFrameNumber: Int {
+        guard worldInitiationTime > 0 && lastFrameTime > 0 else {
+            return 0
+        }
+        
+        let elapsedTime = lastFrameTime - worldInitiationTime
+        let fps = 1.0/60.0
+        return Int(floor(elapsedTime * fps))
+    }
     
     public init(session: ARSession, metalDevice device: MTLDevice, renderDestination: RenderDestinationProvider) {
         self.session = session
@@ -187,6 +205,12 @@ public class Renderer {
         guard let currentFrame = session.currentFrame else {
             return
         }
+        
+        if worldInitiationTime == 0 {
+            worldInitiationTime = Date().timeIntervalSinceReferenceDate
+        }
+        
+        lastFrameTime = currentFrame.timestamp
         
         let surfaceAnchors = currentFrame.anchors.filter({$0 is ARPlaneAnchor}) as! [ARPlaneAnchor]
         let normalAnchors = currentFrame.anchors.filter({!($0 is ARPlaneAnchor)})
@@ -345,7 +369,7 @@ public class Renderer {
                 }
             }()
             
-            let cameraProperties = CameraProperties(orientation: orientation, viewportSize: viewportSize, viewportSizeDidChange: viewportSizeDidChange, position: cameraPosition)
+            let cameraProperties = CameraProperties(orientation: orientation, viewportSize: viewportSize, viewportSizeDidChange: viewportSizeDidChange, position: cameraPosition, currentFrame: currentFrameNumber)
             
             // Update Buffers
             for module in renderModules {
@@ -377,9 +401,6 @@ public class Renderer {
             // Finalize rendering here & push the command buffer to the GPU
             commandBuffer.commit()
         }
-        
-        // Update the current frame
-//        currentFrameNumber += 1
         
         // Update viewportSizeDidChange state
         if viewportSizeDidChange {
@@ -483,6 +504,8 @@ public class Renderer {
     private var uniformBufferIndex: Int = 0
     // A Quaternion that represents the rotation of the camera relative to world space.
     private var currentCameraQuaternionRotation: GLKQuaternion?
+    private var worldInitiationTime: Double = 0
+    private var lastFrameTime: Double = 0
     
     // Modules
     private var renderModules: [RenderModule] = [CameraPlaneRenderModule()]

@@ -120,6 +120,13 @@ extension RenderModule {
             renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: idxCount, indexType: idxType, indexBuffer: indexBuffer, indexBufferOffset: 0, instanceCount: drawData.instCount)
         }
         
+        // Set the palette offset into
+        if var paletteStartIdx = drawData.paletteStartIndex {
+            renderEncoder.setVertexBytes(&paletteStartIdx, length: 8, index: Int(kBufferIndexMeshPaletteIndex.rawValue))
+            var paletteSize = drawData.paletteSize
+            renderEncoder.setVertexBytes(&paletteSize, length: 8, index: Int(kBufferIndexMeshPaletteSize.rawValue))
+        }
+        
     }
     
     // MARK: Encoding Textures
@@ -184,12 +191,12 @@ extension RenderModule {
         return nil
     }
     
-    func createMetalVertexDescriptor(withModelIOVertexDescriptor vtxDesc: [MDLVertexDescriptor]) -> MTLVertexDescriptor? {
-        guard !vtxDesc.isEmpty else {
+    func createMetalVertexDescriptor(withFirstModelIOVertexDescriptorIn vertexDescriptors: [MDLVertexDescriptor]) -> MTLVertexDescriptor? {
+        guard let vertexDescriptor = vertexDescriptors.first else {
             print("WARNING: No Vertex Descriptors found!")
             return nil
         }
-        guard let mtlVertexDescriptor = MTKMetalVertexDescriptorFromModelIO(vtxDesc[0]) else {
+        guard let mtlVertexDescriptor = MTKMetalVertexDescriptorFromModelIO(vertexDescriptor) else {
             return nil
         }
         return mtlVertexDescriptor
@@ -252,6 +259,90 @@ extension RenderModule {
 
 enum RenderModuleConstants {
     static let alignedMaterialSize = (MemoryLayout<MaterialUniforms>.stride & ~0xFF) + 0x100
+}
+
+// MARK: - SkinningModule
+
+protocol SkinningModule {
+    
+}
+
+extension SkinningModule {
+    
+    //  Find the largest index of time stamp <= key
+    func lowerBoundKeyframeIndex(_ lhs: [Double], key: Double) -> Int? {
+        if lhs.isEmpty {
+            return nil
+        }
+        
+        if key < lhs.first! { return 0 }
+        if key > lhs.last! { return lhs.count - 1 }
+        
+        var range = 0..<lhs.count
+        
+        while range.endIndex - range.startIndex > 1 {
+            let midIndex = range.startIndex + (range.endIndex - range.startIndex) / 2
+            
+            if lhs[midIndex] == key {
+                return midIndex
+            } else if lhs[midIndex] < key {
+                range = midIndex..<range.endIndex
+            } else {
+                range = range.startIndex..<midIndex
+            }
+        }
+        return range.startIndex
+    }
+    
+    //  Evaluate the skeleton animation at a particular time
+    func evaluateAnimation(_ animation: AnimatedSkeleton, at time: Double) -> [matrix_float4x4] {
+        let keyframeIndex = lowerBoundKeyframeIndex(animation.keyTimes, key: time)!
+        let parentIndices = animation.parentIndices
+        let animJointCount = animation.jointCount
+        
+        // get the joints at the specified range
+        let startIndex = keyframeIndex * animJointCount
+        let endIndex = startIndex + animJointCount
+        
+        // get the translations and rotations using the start and endindex
+        let poseTranslations = [float3](animation.translations[startIndex..<endIndex])
+        let poseRotations = [simd_quatf](animation.rotations[startIndex..<endIndex])
+        
+        var worldPose = [matrix_float4x4]()
+        worldPose.reserveCapacity(parentIndices.count)
+        
+        // using the parent indices create the worldspace transformations and store
+        for index in 0..<parentIndices.count {
+            let parentIndex = parentIndices[index]
+            
+            var localMatrix = simd_matrix4x4(poseRotations[index])
+            let translation = poseTranslations[index]
+            localMatrix.columns.3 = simd_float4(translation.x, translation.y, translation.z, 1.0)
+            if let index = parentIndex {
+                worldPose.append(simd_mul(worldPose[index], localMatrix))
+            } else {
+                worldPose.append(localMatrix)
+            }
+        }
+        
+        return worldPose
+    }
+    
+    //  Using the the skinData and a skeleton's pose in world space, compute the matrix palette
+    func evaluateMatrixPalette(_ worldPose: [matrix_float4x4], _ skinData: SkinData) -> [matrix_float4x4] {
+        let paletteCount = skinData.inverseBindTransforms.count
+        let inverseBindTransforms = skinData.inverseBindTransforms
+        
+        var palette = [matrix_float4x4]()
+        palette.reserveCapacity(paletteCount)
+        // using the joint map create the palette for the skeleton
+        for index in 0..<skinData.skinToSkeletonMap.count {
+            palette.append(simd_mul(worldPose[skinData.skinToSkeletonMap[index]], inverseBindTransforms[index]))
+        }
+        
+        return palette
+    }
+    
 }
 
 // MARK: - SphereLineIntersection

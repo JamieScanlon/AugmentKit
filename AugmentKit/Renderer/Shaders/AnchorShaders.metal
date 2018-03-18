@@ -56,7 +56,7 @@ constant float PI = 3.1415926535897932384626433832795;
 
 // MARK: - Structs
 
-// MARK: Ancors Vertex In
+// MARK: Anchors Vertex In
 // Per-vertex inputs fed by vertex buffer laid out with MTLVertexDescriptor in Metal API
 struct Vertex {
     float3 position      [[attribute(kVertexAttributePosition)]];
@@ -66,7 +66,7 @@ struct Vertex {
     float4 jointWeights  [[attribute(kVertexAttributeJointWeights)]];
 };
 
-// MARK: Ancors Vertex Out / Fragment In
+// MARK: Anchors Vertex Out / Fragment In
 // Vertex shader outputs and per-fragmeht inputs.  Includes clip-space position and vertex outputs
 //  interpolated by rasterizer and fed to each fragment genterated by clip-space primitives.
 struct ColorInOut {
@@ -222,7 +222,7 @@ LightingParameters calculateParameters(ColorInOut in,
 
 // MARK: - Anchor Shaders
 
-// MARK: Anchor geometry vertex function
+// MARK: Anchor vertex function
 vertex ColorInOut anchorGeometryVertexTransform(Vertex in [[stage_in]],
                                                 constant SharedUniforms &sharedUniforms [[ buffer(kBufferIndexSharedUniforms) ]],
                                                 constant AnchorInstanceUniforms *anchorInstanceUniforms [[ buffer(kBufferIndexAnchorInstanceUniforms) ]],
@@ -258,7 +258,62 @@ vertex ColorInOut anchorGeometryVertexTransform(Vertex in [[stage_in]],
     return out;
 }
 
-// MARK: Anchor geometry fragment function with materials
+// MARK: Anchor vertex function with skinning
+vertex ColorInOut anchorGeometryVertexTransformSkinned(Vertex in [[stage_in]],
+                                                       constant SharedUniforms &sharedUniforms [[ buffer(kBufferIndexSharedUniforms) ]],
+                                                       constant float4x4 *palette [[buffer(kBufferIndexMeshPalettes)]],
+                                                       constant int &paletteStartIndex [[buffer(kBufferIndexMeshPaletteIndex)]],
+                                                       constant int &paletteSize [[buffer(kBufferIndexMeshPaletteSize)]],
+                                                       constant AnchorInstanceUniforms *anchorInstanceUniforms [[ buffer(kBufferIndexAnchorInstanceUniforms) ]],
+                                                       uint vid [[vertex_id]],
+                                                       ushort iid [[instance_id]]) {
+    
+    ColorInOut out;
+    
+    // Make position a float4 to perform 4x4 matrix math on it
+    float4 position = float4(in.position, 1.0f);
+    
+    // Get the anchor model's orientation in world space
+    float4x4 modelMatrix = anchorInstanceUniforms[iid].modelMatrix;
+    
+    // Transform the model's orientation from world space to camera space.
+    float4x4 modelViewMatrix = sharedUniforms.viewMatrix * modelMatrix;
+    
+    ushort4 jointIndex = in.jointIndices + paletteStartIndex + iid * paletteSize;
+    float4 weights = in.jointWeights;
+    
+    float4 skinnedPosition = weights[0] * (palette[jointIndex[0]] * position) +
+        weights[1] * (palette[jointIndex[1]] * position) +
+        weights[2] * (palette[jointIndex[2]] * position) +
+        weights[3] * (palette[jointIndex[3]] * position);
+    
+    float4 modelNormal = float4(in.normal, 0.0f);
+    float4 skinnedNormal = weights[0] * (palette[jointIndex[0]] * modelNormal) +
+        weights[1] * (palette[jointIndex[1]] * modelNormal) +
+        weights[2] * (palette[jointIndex[2]] * modelNormal) +
+        weights[3] * (palette[jointIndex[3]] * modelNormal);
+    
+    // Calculate the position of our vertex in clip space and output for clipping and rasterization
+    out.position = sharedUniforms.projectionMatrix * modelViewMatrix * skinnedPosition;
+    
+    // Calculate the positon of our vertex in eye space
+    out.eyePosition = float3((modelViewMatrix * skinnedPosition).xyz);
+    
+    // Rotate our normals to world coordinates
+    float4 normal = modelMatrix * skinnedNormal;
+    out.normal = normalize(float3(normal.xyz));
+    
+    // Pass along the texture coordinate of our vertex such which we'll use to sample from texture's
+    //   in our fragment function, if we need it
+    if (has_any_map) {
+        out.texCoord = float2(in.texCoord.x, 1.0f - in.texCoord.y);
+    }
+    
+    return out;
+    
+}
+
+// MARK: Anchor fragment function with materials
 
 fragment float4 anchorGeometryFragmentLighting(ColorInOut in [[stage_in]],
                                                constant SharedUniforms &uniforms [[ buffer(kBufferIndexSharedUniforms) ]],

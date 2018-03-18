@@ -125,7 +125,7 @@ class SurfacesRenderModule: RenderModule {
             return
         }
         
-        guard let surfaceVertexDescriptor = createMetalVertexDescriptor(withModelIOVertexDescriptor: surfaceModel.vertexDescriptors) else {
+        guard let surfaceVertexDescriptor = createMetalVertexDescriptor(withFirstModelIOVertexDescriptorIn: surfaceModel.vertexDescriptors) else {
             print("Serious Error - Failed to create a MetalKit vertex descriptor from ModelIO.")
             return
         }

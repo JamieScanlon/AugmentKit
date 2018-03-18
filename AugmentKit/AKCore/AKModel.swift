@@ -71,29 +71,51 @@ public protocol AKModel {
 extension AKModel {
     
     //  Create a vertex descriptor for our Metal pipeline. Specifies the layout of vertices the
-    //  pipeline should expect. The layout below keeps attributes used to calculate vertex shader
-    //  output position separate (world position, skinning, tweening weights) separate from other
-    //  attributes (texture coordinates, normals).  This generally maximizes pipeline efficiency
+    //  pipeline should expect.
+    
+    //  TODO: To maximize pipeline efficiency, The layout should keep attributes used to calculate
+    //  vertex shader output position (world position, skinning, tweening weights) separate from other
+    //  attributes (texture coordinates, normals).
     public static func newAnchorVertexDescriptor() -> MDLVertexDescriptor {
         
         let geometryVertexDescriptor = MTLVertexDescriptor()
         
+        //
+        // Attributes
+        //
+        
+        // -------- Buffer 0 --------
+        
         // Positions.
-        geometryVertexDescriptor.attributes[0].format = .float3
+        geometryVertexDescriptor.attributes[0].format = .float3 // 12 bytes
         geometryVertexDescriptor.attributes[0].offset = 0
         geometryVertexDescriptor.attributes[0].bufferIndex = Int(kBufferIndexMeshPositions.rawValue)
         
+        // -------- Buffer 1 --------
+        
         // Texture coordinates.
-        geometryVertexDescriptor.attributes[1].format = .float2
+        geometryVertexDescriptor.attributes[1].format = .float2 // 8 bytes
         geometryVertexDescriptor.attributes[1].offset = 0
         geometryVertexDescriptor.attributes[1].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
         
         // Normals.
-        geometryVertexDescriptor.attributes[2].format = .float3
+        geometryVertexDescriptor.attributes[2].format = .float3 // 12 bytes
         geometryVertexDescriptor.attributes[2].offset = 8
         geometryVertexDescriptor.attributes[2].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
         
-        // TODO: JointIndices and JointWeights for Puppet animations
+        // JointIndices (Puppet animations)
+        geometryVertexDescriptor.attributes[3].format = .ushort4 // 8 bytes
+        geometryVertexDescriptor.attributes[3].offset = 20
+        geometryVertexDescriptor.attributes[3].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
+        
+        // JointWeights (Puppet animations)
+        geometryVertexDescriptor.attributes[4].format = .float4 // 16 bytes
+        geometryVertexDescriptor.attributes[4].offset = 28
+        geometryVertexDescriptor.attributes[4].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
+        
+        //
+        // Layouts
+        //
         
         // Position Buffer Layout
         geometryVertexDescriptor.layouts[0].stride = 12
@@ -101,7 +123,7 @@ extension AKModel {
         geometryVertexDescriptor.layouts[0].stepFunction = .perVertex
         
         // Generic Attribute Buffer Layout
-        geometryVertexDescriptor.layouts[1].stride = 20
+        geometryVertexDescriptor.layouts[1].stride = 44
         geometryVertexDescriptor.layouts[1].stepRate = 1
         geometryVertexDescriptor.layouts[1].stepFunction = .perVertex
         
@@ -112,7 +134,9 @@ extension AKModel {
         // Indicate how each Metal vertex descriptor attribute maps to each ModelIO attribute
         (vertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributePosition
         (vertexDescriptor.attributes[Int(kVertexAttributeTexcoord.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributeTextureCoordinate
-        (vertexDescriptor.attributes[Int(kVertexAttributeNormal.rawValue)] as! MDLVertexAttribute).name   = MDLVertexAttributeNormal
+        (vertexDescriptor.attributes[Int(kVertexAttributeNormal.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributeNormal
+        (vertexDescriptor.attributes[Int(kVertexAttributeJointIndices.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributeJointIndices
+        (vertexDescriptor.attributes[Int(kVertexAttributeJointWeights.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributeJointWeights
         
         return vertexDescriptor
         

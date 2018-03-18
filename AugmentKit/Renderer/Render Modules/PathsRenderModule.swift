@@ -143,7 +143,7 @@ class PathsRenderModule: RenderModule {
             return
         }
         
-        guard let pathVertexDescriptor = createMetalVertexDescriptor(withModelIOVertexDescriptor: pathSegmentModel.vertexDescriptors) else {
+        guard let pathVertexDescriptor = createMetalVertexDescriptor(withFirstModelIOVertexDescriptorIn: pathSegmentModel.vertexDescriptors) else {
             print("Serious Error - Failed to create a MetalKit vertex descriptor from ModelIO.")
             return
         }
@@ -398,6 +398,64 @@ class PathsRenderModule: RenderModule {
     
     // number of frames in the path animation by path index
     private var pathAnimationFrameCount = [Int]()
+    
+    private func createVertexDescriptor() -> MDLVertexDescriptor {
+        
+        // Create a vertex descriptor for our image plane vertex buffer
+        let pathsVertexDescriptor = MTLVertexDescriptor()
+        
+        //
+        // Attributes
+        //
+        
+        // -------- Buffer 0 --------
+        
+        // Positions.
+        pathsVertexDescriptor.attributes[0].format = .float3
+        pathsVertexDescriptor.attributes[0].offset = 0
+        pathsVertexDescriptor.attributes[0].bufferIndex = Int(kBufferIndexMeshPositions.rawValue)
+        
+        // -------- Buffer 1 --------
+        
+        // Texture coordinates.
+        pathsVertexDescriptor.attributes[1].format = .float2
+        pathsVertexDescriptor.attributes[1].offset = 0
+        pathsVertexDescriptor.attributes[1].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
+        
+        // Normals.
+        pathsVertexDescriptor.attributes[2].format = .float3
+        pathsVertexDescriptor.attributes[2].offset = 8
+        pathsVertexDescriptor.attributes[2].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
+        
+        //
+        // Layouts
+        //
+        
+        // Position Buffer Layout
+        pathsVertexDescriptor.layouts[0].stride = 12
+        pathsVertexDescriptor.layouts[0].stepRate = 1
+        pathsVertexDescriptor.layouts[0].stepFunction = .perVertex
+        
+        // Generic Attribute Buffer Layout
+        pathsVertexDescriptor.layouts[1].stride = 20
+        pathsVertexDescriptor.layouts[1].stepRate = 1
+        pathsVertexDescriptor.layouts[1].stepFunction = .perVertex
+        
+        //
+        // Creata a Model IO vertexDescriptor so that we format/layout our model IO mesh vertices to
+        // fit our Metal render pipeline's vertex descriptor layout
+        //
+        
+        let vertexDescriptor = MTKModelIOVertexDescriptorFromMetal(pathsVertexDescriptor)
+        
+        // Indicate how each Metal vertex descriptor attribute maps to each ModelIO attribute
+        (vertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributePosition
+        (vertexDescriptor.attributes[Int(kVertexAttributeTexcoord.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributeTextureCoordinate
+        (vertexDescriptor.attributes[Int(kVertexAttributeNormal.rawValue)] as! MDLVertexAttribute).name   = MDLVertexAttributeNormal
+        
+        return vertexDescriptor
+        
+    }
     
     private func meshData(from aModel: AKModel) -> MeshGPUData {
         

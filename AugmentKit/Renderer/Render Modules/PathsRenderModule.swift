@@ -71,6 +71,7 @@ class PathsRenderModule: RenderModule {
         // argument in the constant address space of our shading functions.
         let pathUniformBufferSize = Constants.alignedPathSegmentInstanceUniformsSize * maxInFlightBuffers
         let materialUniformBufferSize = RenderModuleConstants.alignedMaterialSize * maxInFlightBuffers
+        let effectsUniformBufferSize = Constants.alignedPathEffectsUniformSize * maxInFlightBuffers
         
         // Create and allocate our uniform buffer objects. Indicate shared storage so that both the
         // CPU can access the buffer
@@ -79,6 +80,9 @@ class PathsRenderModule: RenderModule {
         
         materialUniformBuffer = device?.makeBuffer(length: materialUniformBufferSize, options: .storageModeShared)
         materialUniformBuffer?.label = "MaterialUniformBuffer"
+        
+        effectsUniformBuffer = device?.makeBuffer(length: effectsUniformBufferSize, options: .storageModeShared)
+        effectsUniformBuffer?.label = "EffectsUniformBuffer"
         
     }
     
@@ -97,12 +101,9 @@ class PathsRenderModule: RenderModule {
         let mesh = MDLMesh.newCylinder(withHeight: 1, radii: vector2(0.05, 0.05), radialSegments: 6, verticalSegments: 1, geometryType: .triangles, inwardNormals: false, allocator: metalAllocator)
         let scatteringFunction = MDLScatteringFunction()
         let material = MDLMaterial(name: "baseMaterial", scatteringFunction: scatteringFunction)
+        // TODO: Get color from the renderer as passed from the users setup
         let colorProperty = MDLMaterialProperty(name: "pathColor", semantic: .baseColor, float3: float3(255/255, 100/255, 100/255))
         material.setProperty(colorProperty)
-        let metallicProperty = MDLMaterialProperty(name: "pathMetallic", semantic: .metallic, float: 0)
-        material.setProperty(metallicProperty)
-        let emissionProperty = MDLMaterialProperty(name: "pathGlow", semantic: .emission, float3: float3(255/255, 255/255, 255/255))
-        material.setProperty(emissionProperty)
         
         for submesh in mesh.submeshes!  {
             if let submesh = submesh as? MDLSubmesh {
@@ -113,7 +114,7 @@ class PathsRenderModule: RenderModule {
         let asset = MDLAsset(bufferAllocator: metalAllocator)
         asset.add(mesh)
         
-        let myModel = AKMDLAssetModel(asset: asset, vertexDescriptor: AKMDLAssetModel.newAnchorVertexDescriptor())
+        let myModel = AKMDLAssetModel(asset: asset, vertexDescriptor: createVertexDescriptor())
         pathSegmentModel = myModel
     
         completion()
@@ -124,6 +125,16 @@ class PathsRenderModule: RenderModule {
         
         guard let device = device else {
             print("Serious Error - device not found")
+            return
+        }
+        
+        guard let pointVertexShader = metalLibrary.makeFunction(name: "pathVertexShader") else {
+            print("Serious Error - failed to create the pathVertexShader function")
+            return
+        }
+        
+        guard let pointFragmentShader = metalLibrary.makeFunction(name: "pathFragmentShader") else {
+            print("Serious Error - failed to create the pathFragmentShader function")
             return
         }
         
@@ -150,21 +161,13 @@ class PathsRenderModule: RenderModule {
         
         for (drawIdx, drawData) in meshGPUData.drawData.enumerated() {
             let pathPipelineStateDescriptor = MTLRenderPipelineDescriptor()
-            do {
-                let funcConstants = MetalUtilities.getFuncConstantsForDrawDataSet(meshData: pathSegmentModel.meshes[drawIdx], useMaterials: usesMaterials)
-                let vertexName = "anchorGeometryVertexTransform"
-                let fragFunc = try metalLibrary.makeFunction(name: "anchorGeometryFragmentLighting", constantValues: funcConstants)
-                let vertFunc = try metalLibrary.makeFunction(name: vertexName, constantValues: funcConstants)
-                pathPipelineStateDescriptor.vertexDescriptor = pathVertexDescriptor
-                pathPipelineStateDescriptor.vertexFunction = vertFunc
-                pathPipelineStateDescriptor.fragmentFunction = fragFunc
-                pathPipelineStateDescriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
-                pathPipelineStateDescriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-                pathPipelineStateDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-                pathPipelineStateDescriptor.sampleCount = renderDestination.sampleCount
-            } catch let error {
-                print("Failed to create pipeline state descriptor, error \(error)")
-            }
+            pathPipelineStateDescriptor.vertexDescriptor = pathVertexDescriptor
+            pathPipelineStateDescriptor.vertexFunction = pointVertexShader
+            pathPipelineStateDescriptor.fragmentFunction = pointFragmentShader
+            pathPipelineStateDescriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
+            pathPipelineStateDescriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
+            pathPipelineStateDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
+            pathPipelineStateDescriptor.sampleCount = renderDestination.sampleCount
             
             do {
                 try pathPipelineStates.append(device.makeRenderPipelineState(descriptor: pathPipelineStateDescriptor))
@@ -190,9 +193,11 @@ class PathsRenderModule: RenderModule {
         
         pathUniformBufferOffset = Constants.alignedPathSegmentInstanceUniformsSize * bufferIndex
         materialUniformBufferOffset = RenderModuleConstants.alignedMaterialSize * bufferIndex
+        effectsUniformBufferOffset = Constants.alignedPathEffectsUniformSize * bufferIndex
         
         pathUniformBufferAddress = pathUniformBuffer?.contents().advanced(by: pathUniformBufferOffset)
         materialUniformBufferAddress = materialUniformBuffer?.contents().advanced(by: materialUniformBufferOffset)
+        effectsUniformBufferAddress = effectsUniformBuffer?.contents().advanced(by: effectsUniformBufferOffset)
         
     }
     
@@ -221,6 +226,10 @@ class PathsRenderModule: RenderModule {
                     lastAnchor = anchor
                     continue
                 }
+                
+                //
+                // Update the Instance uniform
+                //
                 
                 // Clip the paths to the render sphere
                 let p0 = float3(myLastAnchor.worldLocation.transform.columns.3.x, myLastAnchor.worldLocation.transform.columns.3.y, myLastAnchor.worldLocation.transform.columns.3.z)
@@ -296,6 +305,13 @@ class PathsRenderModule: RenderModule {
                 let pathUniforms = pathUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: pathSegmentIndex)
                 pathUniforms?.pointee.modelMatrix = modelMatrix
                 
+                //
+                // Update the Effects uniform
+                //
+                
+                let effectsUniforms = effectsUniformBufferAddress?.assumingMemoryBound(to: AnchorEffectsUniforms.self).advanced(by: pathSegmentIndex)
+                effectsUniforms?.pointee.glow = 0.5
+                
                 lastAnchor = anchor
                 
             }
@@ -355,6 +371,16 @@ class PathsRenderModule: RenderModule {
             
         }
         
+        if let effectsBuffer = effectsUniformBuffer {
+            
+            renderEncoder.pushDebugGroup("Draw Effects Uniforms")
+            
+            renderEncoder.setVertexBuffer(effectsBuffer, offset: effectsUniformBufferOffset, index: Int(kBufferIndexAnchorEffectsUniforms.rawValue))
+            
+            renderEncoder.popDebugGroup()
+            
+        }
+        
         renderEncoder.popDebugGroup()
         
     }
@@ -370,6 +396,7 @@ class PathsRenderModule: RenderModule {
     private var pathSegmentModel: AKModel?
     private var pathUniformBuffer: MTLBuffer?
     private var materialUniformBuffer: MTLBuffer?
+    private var effectsUniformBuffer: MTLBuffer?
     private var pathPipelineStates = [MTLRenderPipelineState]() // Store multiple states
     private var pathDepthState: MTLDepthStencilState?
     
@@ -382,16 +409,23 @@ class PathsRenderModule: RenderModule {
     // Offset within materialUniformBuffer to set for the current frame
     private var materialUniformBufferOffset: Int = 0
     
+    // Offset within effectsUniformBuffer to set for the current frame
+    private var effectsUniformBufferOffset: Int = 0
+    
     // Addresses to write path uniforms to each frame
     private var pathUniformBufferAddress: UnsafeMutableRawPointer?
     
     // Addresses to write material uniforms to each frame
     private var materialUniformBufferAddress: UnsafeMutableRawPointer?
     
+    // Addresses to write material uniforms to each frame
+    private var effectsUniformBufferAddress: UnsafeMutableRawPointer?
+    
     private enum Constants {
         static let maxPathSegmentInstanceCount = 2048
         // Paths use the same uniform struct as anchors
         static let alignedPathSegmentInstanceUniformsSize = ((MemoryLayout<AnchorInstanceUniforms>.stride * Constants.maxPathSegmentInstanceCount) & ~0xFF) + 0x100
+        static let alignedPathEffectsUniformSize = ((MemoryLayout<AnchorEffectsUniforms>.stride * Constants.maxPathSegmentInstanceCount) & ~0xFF) + 0x100
     }
     
     private var usesMaterials = false
@@ -410,22 +444,32 @@ class PathsRenderModule: RenderModule {
         
         // -------- Buffer 0 --------
         
-        // Positions.
-        pathsVertexDescriptor.attributes[0].format = .float3
+        // Positions
+        pathsVertexDescriptor.attributes[0].format = .float3 // 12 bytes
         pathsVertexDescriptor.attributes[0].offset = 0
         pathsVertexDescriptor.attributes[0].bufferIndex = Int(kBufferIndexMeshPositions.rawValue)
         
         // -------- Buffer 1 --------
         
-        // Texture coordinates.
-        pathsVertexDescriptor.attributes[1].format = .float2
+        // Texture coordinates
+        pathsVertexDescriptor.attributes[1].format = .float2 // 8 bytes
         pathsVertexDescriptor.attributes[1].offset = 0
         pathsVertexDescriptor.attributes[1].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
         
-        // Normals.
-        pathsVertexDescriptor.attributes[2].format = .float3
+        // Normals
+        pathsVertexDescriptor.attributes[2].format = .float3 // 12 bytes
         pathsVertexDescriptor.attributes[2].offset = 8
         pathsVertexDescriptor.attributes[2].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
+        
+        // Color
+        pathsVertexDescriptor.attributes[5].format = .float3 // 12 bytes
+        pathsVertexDescriptor.attributes[5].offset = 20
+        pathsVertexDescriptor.attributes[5].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
+        
+        // Glow
+        pathsVertexDescriptor.attributes[5].format = .float // 4 bytes
+        pathsVertexDescriptor.attributes[5].offset = 32
+        pathsVertexDescriptor.attributes[5].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
         
         //
         // Layouts
@@ -437,7 +481,7 @@ class PathsRenderModule: RenderModule {
         pathsVertexDescriptor.layouts[0].stepFunction = .perVertex
         
         // Generic Attribute Buffer Layout
-        pathsVertexDescriptor.layouts[1].stride = 20
+        pathsVertexDescriptor.layouts[1].stride = 36
         pathsVertexDescriptor.layouts[1].stepRate = 1
         pathsVertexDescriptor.layouts[1].stepFunction = .perVertex
         
@@ -451,7 +495,8 @@ class PathsRenderModule: RenderModule {
         // Indicate how each Metal vertex descriptor attribute maps to each ModelIO attribute
         (vertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributePosition
         (vertexDescriptor.attributes[Int(kVertexAttributeTexcoord.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributeTextureCoordinate
-        (vertexDescriptor.attributes[Int(kVertexAttributeNormal.rawValue)] as! MDLVertexAttribute).name   = MDLVertexAttributeNormal
+        (vertexDescriptor.attributes[Int(kVertexAttributeNormal.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributeNormal
+        (vertexDescriptor.attributes[Int(kVertexAttributeColor.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributeColor
         
         return vertexDescriptor
         

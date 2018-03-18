@@ -46,18 +46,20 @@ enum BufferIndices {
     kBufferIndexTrackingPointData,
     kBufferIndexMeshPalettes,
     kBufferIndexMeshPaletteIndex,
-    kBufferIndexMeshPaletteSize
+    kBufferIndexMeshPaletteSize,
+    kBufferIndexAnchorEffectsUniforms,
 };
 
 // Attribute index values shared between shader and C code to ensure Metal shader vertex
 //   attribute indices match the Metal API vertex descriptor attribute indices
 enum VertexAttributes {
-    kVertexAttributePosition  = 0,  // Used by both the Image Capture and the Anchor shaders
-    kVertexAttributeTexcoord,       // Used by both the Image Capture and the Anchor shaders
-    kVertexAttributeNormal,         // Used by the Anchor shaders only
+    kVertexAttributePosition  = 0,  // Used by all shaders
+    kVertexAttributeTexcoord,       // Used by the Image Capture, Anchor, and Path shaders
+    kVertexAttributeNormal,         // Used by the Anchor and Path shaders
     kVertexAttributeJointIndices,   // Used by the Anchor shaders only
     kVertexAttributeJointWeights,   // Used by the Anchor shaders only
-    kVertexAttributeColor           // User by the Point shaders
+    kVertexAttributeColor,          // User by the Point and Path shaders
+    kVertexAttributeGlow            // User by the Path shaders
     //kVertexAttributeTangent,
     //kVertexAttributeBitangent
 };
@@ -133,6 +135,10 @@ struct SharedUniforms {
 //    Metal shaders matches the layout of uniform data set in C code
 struct AnchorInstanceUniforms {
     matrix_float4x4 modelMatrix; // A transform matrix for the anchor model in world space.
+};
+
+struct AnchorEffectsUniforms {
+    float glow;
 };
 
 struct MaterialUniforms {

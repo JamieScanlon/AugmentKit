@@ -35,7 +35,7 @@ using namespace metal;
 
 struct PathVertexIn {
     float4 position [[attribute(kVertexAttributePosition)]];
-    float4 color [[attribute(kVertexAttributeColor)]];
+    //float4 color [[attribute(kVertexAttributeColor)]];
     //float glow [[attribute(kVertexAttributeGlow)]];
 };
 
@@ -48,6 +48,7 @@ struct PathFragmentInOut {
 vertex PathFragmentInOut pathVertexShader(PathVertexIn in [[stage_in]],
                                           constant SharedUniforms &sharedUniforms [[ buffer(kBufferIndexSharedUniforms) ]],
                                           constant AnchorInstanceUniforms *anchorInstanceUniforms [[ buffer(kBufferIndexAnchorInstanceUniforms) ]],
+                                          constant AnchorEffectsUniforms *anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]],
                                           uint vid [[vertex_id]],
                                           ushort iid [[instance_id]]
                                           ){
@@ -66,13 +67,14 @@ vertex PathFragmentInOut pathVertexShader(PathVertexIn in [[stage_in]],
     // Calculate the position of our vertex in clip space and output for clipping and rasterization
     out.position = sharedUniforms.projectionMatrix * modelViewMatrix * position;
     
-    out.color = in.color;
-    
     return out;
     
 }
 
-fragment float4 pathFragmentShader(PathFragmentInOut in [[stage_in]]) {
+fragment float4 pathFragmentShader(PathFragmentInOut in [[stage_in]],
+                                   constant MaterialUniforms &materialUniforms [[ buffer(kBufferIndexMaterialUniforms) ]]) {
+    
+    float4 final_color = materialUniforms.baseColor;
     
 //    float radiusFromPointCenter = distance(float2(0.5f), pointCoord);
 //    if (radiusFromPointCenter > 0.5) {
@@ -83,5 +85,5 @@ fragment float4 pathFragmentShader(PathFragmentInOut in [[stage_in]]) {
 //
 //    return float4(in.color.r * intensity, in.color.g * intensity, in.color.b * intensity, in.color.w * intensity);
  
-    return in.color;
+    return final_color;
 }

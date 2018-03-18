@@ -259,6 +259,10 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             
         }
         
+        if let model = anchorModel {
+            updatePuppetAnimation(from: model, frameNumber: cameraProperties.currentFrame)
+        }
+        
     }
     
     func updateBuffers(withTrackers: [AKAugmentedTracker], cameraProperties: CameraProperties) {
@@ -467,10 +471,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         
         let boundPaletteData = paletteBufferAddress?.bindMemory(to: matrix_float4x4.self, capacity: capacity)
         
-        let paletteData = UnsafeMutableBufferPointer<matrix_float4x4>(
-            start: boundPaletteData,
-            count: Constants.maxPaletteSize
-        )
+        let paletteData = UnsafeMutableBufferPointer<matrix_float4x4>(start: boundPaletteData, count: Constants.maxPaletteSize)
         
         var jointPaletteOffset = 0
         for skin in aModel.skins {

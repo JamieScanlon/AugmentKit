@@ -74,7 +74,7 @@ extension AKModel {
     //  pipeline should expect. The layout below keeps attributes used to calculate vertex shader
     //  output position separate (world position, skinning, tweening weights) separate from other
     //  attributes (texture coordinates, normals).  This generally maximizes pipeline efficiency
-    static func newAnchorVertexDescriptor() -> MDLVertexDescriptor {
+    public static func newAnchorVertexDescriptor() -> MDLVertexDescriptor {
         
         let geometryVertexDescriptor = MTLVertexDescriptor()
         

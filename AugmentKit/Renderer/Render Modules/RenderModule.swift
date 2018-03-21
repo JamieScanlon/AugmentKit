@@ -156,6 +156,38 @@ extension RenderModule {
             renderEncoder.setFragmentTexture(meshData.textures[metallicTextureIndex], index: Int(kTextureIndexMetallic.rawValue))
         }
         
+        if let subsurfaceTextureIndex = drawSubData.subsurfaceTextureIndex {
+            renderEncoder.setFragmentTexture(meshData.textures[subsurfaceTextureIndex], index: Int(kTextureIndexSubsurfaceMap.rawValue))
+        }
+        
+        if let specularTextureIndex = drawSubData.specularTextureIndex {
+            renderEncoder.setFragmentTexture(meshData.textures[specularTextureIndex], index: Int(kTextureIndexSpecularMap.rawValue))
+        }
+        
+        if let specularTintTextureIndex = drawSubData.specularTintTextureIndex {
+            renderEncoder.setFragmentTexture(meshData.textures[specularTintTextureIndex], index: Int(kTextureIndexSpecularTintMap.rawValue))
+        }
+        
+        if let anisotropicTextureIndex = drawSubData.anisotropicTextureIndex {
+            renderEncoder.setFragmentTexture(meshData.textures[anisotropicTextureIndex], index: Int(kTextureIndexAnisotropicMap.rawValue))
+        }
+        
+        if let sheenTextureIndex = drawSubData.sheenTextureIndex {
+            renderEncoder.setFragmentTexture(meshData.textures[sheenTextureIndex], index: Int(kTextureIndexSheenMap.rawValue))
+        }
+        
+        if let sheenTintTextureIndex = drawSubData.sheenTintTextureIndex {
+            renderEncoder.setFragmentTexture(meshData.textures[sheenTintTextureIndex], index: Int(kTextureIndexSheenTintMap.rawValue))
+        }
+        
+        if let clearcoatTextureIndex = drawSubData.clearcoatTextureIndex {
+            renderEncoder.setFragmentTexture(meshData.textures[clearcoatTextureIndex], index: Int(kTextureIndexClearcoatMap.rawValue))
+        }
+        
+        if let clearcoatGlossTextureIndex = drawSubData.clearcoatGlossTextureIndex {
+            renderEncoder.setFragmentTexture(meshData.textures[clearcoatGlossTextureIndex], index: Int(kTextureIndexClearcoatGlossMap.rawValue))
+        }
+        
     }
     
     func createMTLTexture(fromAssetPath assetPath: String, withTextureLoader textureLoader: MTKTextureLoader?) -> MTLTexture? {
@@ -169,6 +201,8 @@ extension RenderModule {
                     // If there is no scheme, assume it's a file in the bundle.
                     let last = aURL.lastPathComponent
                     if let bundleURL = Bundle.main.url(forResource: last, withExtension: nil) {
+                        return bundleURL
+                    } else if let bundleURL = Bundle.main.url(forResource: aURL.path, withExtension: nil) {
                         return bundleURL
                     } else {
                         return aURL

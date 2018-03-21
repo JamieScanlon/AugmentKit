@@ -44,6 +44,14 @@ class MetalUtilities {
         var has_roughness_map = false
         var has_ambient_occlusion_map = false
         var has_irradiance_map = false
+        var has_subsurface_map = false
+        var has_specular_map = false
+        var has_specularTint_map = false
+        var has_anisotropic_map = false
+        var has_sheen_map = false
+        var has_sheenTint_map = false
+        var has_clearcoat_map = false
+        var has_clearcoatGloss_map = false
 
         // Condition all subdata since we only do a pipelinestate once per DrawData
         if let meshData = meshData, useMaterials {
@@ -52,8 +60,16 @@ class MetalUtilities {
                 has_normal_map = has_normal_map || (material.normalMap != nil)
                 has_metallic_map = has_metallic_map || (material.metallic.1 != nil)
                 has_roughness_map = has_roughness_map || (material.roughness.1 != nil)
-                has_ambient_occlusion_map = has_ambient_occlusion_map || (material.ambientOcclusionMap != nil)
+                has_ambient_occlusion_map = has_ambient_occlusion_map || (material.ambientOcclusionMap.1 != nil)
                 has_irradiance_map = has_irradiance_map || (material.irradianceColorMap.1 != nil)
+                has_subsurface_map = has_subsurface_map || (material.subsurface.1 != nil)
+                has_specular_map = has_specular_map || (material.specular.1 != nil)
+                has_specularTint_map = has_specularTint_map || (material.specularTint.1 != nil)
+                has_anisotropic_map = has_anisotropic_map || (material.anisotropic.1 != nil)
+                has_sheen_map = has_sheen_map || (material.sheen.1 != nil)
+                has_sheenTint_map = has_sheenTint_map || (material.sheenTint.1 != nil)
+                has_clearcoat_map = has_clearcoat_map || (material.clearcoat.1 != nil)
+                has_clearcoatGloss_map = has_clearcoatGloss_map || (material.clearcoatGloss.1 != nil)
             }
         }
 
@@ -64,6 +80,15 @@ class MetalUtilities {
         constantValues.setConstantValue(&has_roughness_map, type: .bool, index: Int(kFunctionConstantRoughnessMapIndex.rawValue))
         constantValues.setConstantValue(&has_ambient_occlusion_map, type: .bool, index: Int(kFunctionConstantAmbientOcclusionMapIndex.rawValue))
         constantValues.setConstantValue(&has_irradiance_map, type: .bool, index: Int(kFunctionConstantIrradianceMapIndex.rawValue))
+        constantValues.setConstantValue(&has_subsurface_map, type: .bool, index: Int(kFunctionConstantSubsurfaceMapIndex.rawValue))
+        constantValues.setConstantValue(&has_specular_map, type: .bool, index: Int(kFunctionConstantSpecularMapIndex.rawValue))
+        constantValues.setConstantValue(&has_specularTint_map, type: .bool, index: Int(kFunctionConstantSpecularTintMapIndex.rawValue))
+        constantValues.setConstantValue(&has_anisotropic_map, type: .bool, index: Int(kFunctionConstantAnisotropicMapIndex.rawValue))
+        constantValues.setConstantValue(&has_sheen_map, type: .bool, index: Int(kFunctionConstantSheenMapIndex.rawValue))
+        constantValues.setConstantValue(&has_sheenTint_map, type: .bool, index: Int(kFunctionConstantSheenTintMapIndex.rawValue))
+        constantValues.setConstantValue(&has_clearcoat_map, type: .bool, index: Int(kFunctionConstantClearcoatMapIndex.rawValue))
+        constantValues.setConstantValue(&has_clearcoatGloss_map, type: .bool, index: Int(kFunctionConstantClearcoatGlossMapIndex.rawValue))
+            
         return constantValues
     }
     
@@ -87,9 +112,18 @@ class MetalUtilities {
         let baseColor = material.baseColor.0 ?? float3(1.0, 1.0, 1.0)
         matUniforms.baseColor = float4(baseColor.x, baseColor.y, baseColor.z, 1.0)
         matUniforms.roughness = material.roughness.0 ?? 1.0
-        matUniforms.ambientOcclusion = 1.0
+        matUniforms.ambientOcclusion = material.ambientOcclusionMap.0 ?? 1.0
         matUniforms.irradiatedColor = material.irradianceColorMap.0 ?? float3(1.0, 1.0, 1.0)
         matUniforms.metalness = material.metallic.0 ?? 0.0
+        matUniforms.opacity = material.opacity ?? 1.0
+        matUniforms.subsurface = material.subsurface.0 ?? 0.0
+        matUniforms.specular = material.specular.0 ?? 0.0
+        matUniforms.specularTint = material.specularTint.0 ?? 0.0
+        matUniforms.anisotropic = material.anisotropic.0 ?? 0.0
+        matUniforms.sheen = material.sheen.0 ?? 0.0
+        matUniforms.sheenTint = material.sheenTint.0 ?? 0.0
+        matUniforms.clearcoat = material.clearcoat.0 ?? 0.0
+        matUniforms.clearcoatGloss = material.clearcoatGloss.0 ?? 0.0
         return matUniforms
     }
     
@@ -99,9 +133,18 @@ class MetalUtilities {
         let baseColor = material.baseColor.0 ?? float3(1.0, 1.0, 1.0)
         theBuffer.pointee.baseColor = float4(baseColor.x, baseColor.y, baseColor.z, 1.0)
         theBuffer.pointee.roughness = material.roughness.0 ?? 1.0
-        theBuffer.pointee.ambientOcclusion = 1.0
+        theBuffer.pointee.ambientOcclusion = material.ambientOcclusionMap.0 ?? 1.0
         theBuffer.pointee.irradiatedColor = material.irradianceColorMap.0 ?? float3(1.0, 1.0, 1.0)
         theBuffer.pointee.metalness = material.metallic.0 ?? 0.0
+        theBuffer.pointee.opacity = material.opacity ?? 1.0
+        theBuffer.pointee.subsurface = material.subsurface.0 ?? 0.0
+        theBuffer.pointee.specular = material.specular.0 ?? 0.0
+        theBuffer.pointee.specularTint = material.specularTint.0 ?? 0.0
+        theBuffer.pointee.anisotropic = material.anisotropic.0 ?? 0.0
+        theBuffer.pointee.sheen = material.sheen.0 ?? 0.0
+        theBuffer.pointee.sheenTint = material.sheenTint.0 ?? 0.0
+        theBuffer.pointee.clearcoat = material.clearcoat.0 ?? 0.0
+        theBuffer.pointee.clearcoatGloss = material.clearcoatGloss.0 ?? 0.0
         
     }
     

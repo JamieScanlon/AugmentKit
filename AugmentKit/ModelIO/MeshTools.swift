@@ -101,7 +101,7 @@ public class MDLAssetTools {
         
     }
     
-    //  Creates a horizontal surface in the x-z plane with a material based on base color, spectacular, and emmision texture files.
+    //  Creates a horizontal surface in the x-z plane with a material based on base color, specular, and emmision texture files.
     //  The aspect ratio of the surface matches the aspect ratio of the base color image and the largest dimemsion
     //  is given by the scale argument (defaults to 1)
     public static func assetFromImage(withBaseColorFileName baseColorFileName: String, specularFileName: String? = nil, emissionFileName: String? = nil, scale: Float = 1, allocator: MDLMeshBufferAllocator? = nil) -> MDLAsset? {

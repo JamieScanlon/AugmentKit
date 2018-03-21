@@ -120,11 +120,21 @@ public class AKMDLAssetModel: AKModel {
                 var material = Material()
                 if let mdlMaterial = submesh.material {
                     material.baseColor = readMaterialProperty(mdlMaterial, .baseColor, ModelIOTools.getMaterialFloat3Value)
+                    material.subsurface = readMaterialProperty(mdlMaterial, .subsurface, ModelIOTools.getMaterialFloatValue)
                     material.metallic = readMaterialProperty(mdlMaterial, .metallic, ModelIOTools.getMaterialFloatValue)
+                    material.specular = readMaterialProperty(mdlMaterial, .specular, ModelIOTools.getMaterialFloatValue)
+                    material.specularTint = readMaterialProperty(mdlMaterial, .specularTint, ModelIOTools.getMaterialFloatValue)
                     material.roughness = readMaterialProperty(mdlMaterial, .roughness, ModelIOTools.getMaterialFloatValue)
-                    (_, material.normalMap) = readMaterialProperty(mdlMaterial, .bump, ModelIOTools.getMaterialFloat3Value)
-                    (_, material.ambientOcclusionMap) = readMaterialProperty(mdlMaterial, .ambientOcclusion, ModelIOTools.getMaterialFloat3Value)
+                    material.anisotropic = readMaterialProperty(mdlMaterial, .anisotropic, ModelIOTools.getMaterialFloatValue)
+                    material.sheen = readMaterialProperty(mdlMaterial, .sheen, ModelIOTools.getMaterialFloatValue)
+                    material.sheenTint = readMaterialProperty(mdlMaterial, .sheenTint, ModelIOTools.getMaterialFloatValue)
+                    material.clearcoat = readMaterialProperty(mdlMaterial, .clearcoat, ModelIOTools.getMaterialFloatValue)
+                    material.clearcoatGloss = readMaterialProperty(mdlMaterial, .clearcoatGloss, ModelIOTools.getMaterialFloatValue)
+                    material.normalMap = readMaterialProperty(mdlMaterial, .bump, ModelIOTools.getMaterialFloat3Value).textureIndex
+                    material.ambientOcclusionMap = readMaterialProperty(mdlMaterial, .ambientOcclusion, ModelIOTools.getMaterialFloatValue)
                     material.irradianceColorMap = readMaterialProperty(mdlMaterial, .emission, ModelIOTools.getMaterialFloat3Value)
+//                    material.opacity = readMaterialProperty(mdlMaterial, .opacity, ModelIOTools.getMaterialFloatValue).uniform
+                    material.opacity = 1.0
                 }
                 materials.append(material)
             }

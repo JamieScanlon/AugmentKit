@@ -52,6 +52,9 @@ enum BufferIndices {
 
 // Attribute index values shared between shader and C code to ensure Metal shader vertex
 //   attribute indices match the Metal API vertex descriptor attribute indices
+// See https://developer.apple.com/documentation/modelio/mdlvertexattribute/vertex_attributes for a
+// full list of attributes supported by ModelIO. The commented out attributes below
+// are the ones that are not yet supported here.
 enum VertexAttributes {
     kVertexAttributePosition  = 0,  // Used by all shaders
     kVertexAttributeTexcoord,       // Used by the Image Capture, Anchor, and Path shaders
@@ -59,9 +62,15 @@ enum VertexAttributes {
     kVertexAttributeJointIndices,   // Used by the Anchor shaders only
     kVertexAttributeJointWeights,   // Used by the Anchor shaders only
     kVertexAttributeColor,          // User by the Point and Path shaders
-    kVertexAttributeGlow            // User by the Path shaders
+    //kVertexAttributeAnisotropy,
+    //kVertexAttributeBinormal,
+    //kVertexAttributeBitangent,
+    //kVertexAttributeEdgeCrease,
+    //kVertexAttributeOcclusionValue,
+    //kVertexAttributeShadingBasisU,
+    //kVertexAttributeShadingBasisV,
+    //kVertexAttributeSubdivisionStencil,
     //kVertexAttributeTangent,
-    //kVertexAttributeBitangent
 };
 
 // Texture index values shared between shader and C code to ensure Metal shader texture indices
@@ -78,7 +87,15 @@ enum TextureIndices {
     kTextureIndexNormal,
     kTextureIndexAmbientOcclusion,
     kTextureIndexIrradianceMap,
-    kNumTextureIndices
+    kTextureIndexSubsurfaceMap,
+    kTextureIndexSpecularMap,
+    kTextureIndexSpecularTintMap,
+    kTextureIndexAnisotropicMap,
+    kTextureIndexSheenMap,
+    kTextureIndexSheenTintMap,
+    kTextureIndexClearcoatMap,
+    kTextureIndexClearcoatGlossMap,
+    kNumTextureIndices,
 };
 
 enum FunctionConstantIndices {
@@ -88,6 +105,14 @@ enum FunctionConstantIndices {
     kFunctionConstantRoughnessMapIndex,
     kFunctionConstantAmbientOcclusionMapIndex,
     kFunctionConstantIrradianceMapIndex,
+    kFunctionConstantSubsurfaceMapIndex,
+    kFunctionConstantSpecularMapIndex,
+    kFunctionConstantSpecularTintMapIndex,
+    kFunctionConstantAnisotropicMapIndex,
+    kFunctionConstantSheenMapIndex,
+    kFunctionConstantSheenTintMapIndex,
+    kFunctionConstantClearcoatMapIndex,
+    kFunctionConstantClearcoatGlossMapIndex,
     kNumFunctionConstantIndices
 };
 
@@ -147,7 +172,15 @@ struct MaterialUniforms {
     float roughness;
     float metalness;
     float ambientOcclusion;
-    //float mapWeights[kNumMeshTextureIndices];  // TODO: Implement for Quality level
+    float opacity;
+    float subsurface;
+    float specular;
+    float specularTint;
+    float anisotropic;
+    float sheen;
+    float sheenTint;
+    float clearcoat;
+    float clearcoatGloss;
 };
 
 #endif /* ShaderTypes_h */

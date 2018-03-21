@@ -399,10 +399,18 @@ class TrackersRenderModule: RenderModule {
                 }
                 subData.baseColorTextureIndex = usesMaterials ? meshData.materials[subIndex].baseColor.1 : nil
                 subData.normalTextureIndex = usesMaterials ? meshData.materials[subIndex].normalMap : nil
-                subData.ambientOcclusionTextureIndex = usesMaterials ? meshData.materials[subIndex].ambientOcclusionMap : nil
+                subData.ambientOcclusionTextureIndex = usesMaterials ? meshData.materials[subIndex].ambientOcclusionMap.1 : nil
                 subData.roughnessTextureIndex = usesMaterials ? meshData.materials[subIndex].roughness.1 : nil
                 subData.metallicTextureIndex = usesMaterials ? meshData.materials[subIndex].metallic.1 : nil
                 subData.irradianceTextureIndex = usesMaterials ? meshData.materials[subIndex].irradianceColorMap.1 : nil
+                subData.subsurfaceTextureIndex = usesMaterials ? meshData.materials[subIndex].subsurface.1 : nil
+                subData.specularTextureIndex = usesMaterials ? meshData.materials[subIndex].specular.1 : nil
+                subData.specularTintTextureIndex = usesMaterials ? meshData.materials[subIndex].specularTint.1 : nil
+                subData.anisotropicTextureIndex = usesMaterials ? meshData.materials[subIndex].anisotropic.1 : nil
+                subData.sheenTextureIndex = usesMaterials ? meshData.materials[subIndex].sheen.1 : nil
+                subData.sheenTintTextureIndex = usesMaterials ? meshData.materials[subIndex].sheenTint.1 : nil
+                subData.clearcoatTextureIndex = usesMaterials ? meshData.materials[subIndex].clearcoat.1 : nil
+                subData.clearcoatGlossTextureIndex = usesMaterials ? meshData.materials[subIndex].clearcoatGloss.1 : nil
                 drawData.subData.append(subData)
             }
             

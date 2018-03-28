@@ -235,13 +235,17 @@ public extension simd_float4 {
     }
 }
 
+// MARK: - EulerAngles
+
+struct EulerAngles {
+    var roll: Float
+    var pitch: Float
+    var yaw: Float
+}
+
+// MARK: - QuaternionUtilities
+
 class QuaternionUtilities {
-    
-    struct EulerAngles {
-        var roll: Float
-        var pitch: Float
-        var yaw: Float
-    }
     
     static func quaternionFromEulerAngles(eulerAngles: EulerAngles) -> GLKQuaternion {
         

@@ -34,7 +34,7 @@ import simd
 public class AKRelativePosition {
     
     public var parentPosition: AKRelativePosition?
-    public var heading: Heading? {
+    public var heading: AKHeading? {
         didSet {
             _headingHasChanged = true
         }

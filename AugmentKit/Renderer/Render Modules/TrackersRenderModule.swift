@@ -88,10 +88,10 @@ class TrackersRenderModule: RenderModule {
         // Create and load our models
         //
         
-        modelProvider.loadModel(forObjectType: AKUserTracker.type) { [weak self] model in
+        modelProvider.loadModel(forObjectType: UserTracker.type) { [weak self] model in
             
             guard let model = model else {
-                print("Warning (TrackersRenderModule) - Failed to get a model for type \(AKObject.type) from the modelProvider. Aborting the render phase.")
+                print("Warning (TrackersRenderModule) - Failed to get a model for type \(AugmentedObject.type) from the modelProvider. Aborting the render phase.")
                 completion()
                 return
             }

@@ -33,10 +33,14 @@
 import Foundation
 import ModelIO
 
-public struct AKPathSegmentAnchor: AKAugmentedAnchor {
+protocol AKPathSegmentAnchor: AKAugmentedAnchor {
+    
+}
+
+public struct PathSegmentAnchor: AKPathSegmentAnchor {
     
     public static var type: String {
-        return "AKPathSegmentAnchor"
+        return "pathSegmentAnchor"
     }
     public var worldLocation: AKWorldLocation
     public var model: AKModel
@@ -47,7 +51,7 @@ public struct AKPathSegmentAnchor: AKAugmentedAnchor {
         self.worldLocation = location
     }
     
-    public mutating func setIdentiier(_ uuid: UUID) {
+    public mutating func setIdentifier(_ uuid: UUID) {
         identifier = uuid
     }
     

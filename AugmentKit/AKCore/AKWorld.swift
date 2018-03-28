@@ -215,7 +215,10 @@ public class AKWorld: NSObject {
         
     }
     
-    public var estimatedGroundLayer: AKGroundLayerAnchor {
+    //  Returns the lowest horizontal surface anchor which is assumed to be ground.
+    //  If no horizontal surfaces have been detected, this returns a horizontal
+    //  surface 3m below the current device position.
+    public var estimatedGroundLayer: AKRealSurfaceAnchor {
         
         let currentLocation: CLLocation = {
             if let aLocation = WorldLocationManager.shared.lastLocation {
@@ -239,7 +242,7 @@ public class AKWorld: NSObject {
         }()
         
         let worldLocation = AKWorldLocation(transform: groundTransform, latitude: currentLocation.coordinate.latitude, longitude: currentLocation.coordinate.longitude, elevation: currentLocation.altitude)
-        let groundLayer = AKGroundLayerAnchor(at: worldLocation)
+        let groundLayer = RealSurfaceAnchor(at: worldLocation)
         return groundLayer
         
     }

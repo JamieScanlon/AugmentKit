@@ -64,7 +64,7 @@ public protocol AKAnchor: AKGeometricEntity {
 //  in the physical world.
 public protocol AKAugmentedAnchor: AKAnchor {
     
-    mutating func setIdentiier(_ uuid: UUID)
+    mutating func setIdentifier(_ uuid: UUID)
     
 }
 
@@ -74,7 +74,7 @@ public protocol AKAugmentedAnchor: AKAnchor {
 //  for example a detected horizontal / vertical plane wich represents a table or wall
 public protocol AKRealAnchor: AKAnchor {
     
-    mutating func setIdentiier(_ uuid: UUID)
+    mutating func setIdentifier(_ uuid: UUID)
     
 }
 

@@ -30,7 +30,7 @@ import ARKit
 import AugmentKitShader
 import MetalKit
 
-// TODO: Support having different models for each AKObject type
+// TODO: Support having different models for each AugmentedObject type
 class AnchorsRenderModule: RenderModule, SkinningModule {
     
     static var identifier = "AnchorsRenderModule"
@@ -97,10 +97,10 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         // Create and load our models
         //
         
-        modelProvider.loadModel(forObjectType: AKObject.type) { [weak self] model in
+        modelProvider.loadModel(forObjectType: AugmentedObject.type) { [weak self] model in
             
             guard let model = model else {
-                print("Warning (AnchorsRenderModule) - Failed to get a model for type \(AKObject.type) from the modelProvider. Aborting the render phase.")
+                print("Warning (AnchorsRenderModule) - Failed to get a model for type \(AugmentedObject.type) from the modelProvider. Aborting the render phase.")
                 completion()
                 return
             }

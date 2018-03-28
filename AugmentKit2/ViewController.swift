@@ -68,8 +68,8 @@ class ViewController: UIViewController {
                 let myUserTrackerModel = AKAnchorAssetModel(asset: asset)
                 // Position it 3 meters down from the camera
                 let offsetTransform = matrix_identity_float4x4.translate(x: 0, y: -3, z: 0)
-                let userTracker = AKUserTracker(withModel: myUserTrackerModel, withUserRelativeTransform: offsetTransform)
-                userTracker.position.heading = AKWorldHeading(withWorld: myWorld, worldHeadingType: .north)
+                let userTracker = UserTracker(withModel: myUserTrackerModel, withUserRelativeTransform: offsetTransform)
+                userTracker.position.heading = WorldHeading(withWorld: myWorld, worldHeadingType: .north)
                 myWorld.add(tracker: userTracker)
             }
             
@@ -122,57 +122,20 @@ class ViewController: UIViewController {
         }
         
         // Create a new anchor at the current locaiton
-//        let newObject = AKObject(withAKModel: anchorModel, at: currentWorldLocation)
-//        world?.add(anchor: newObject)
-        
+        let newObject = AugmentedObject(withAKModel: anchorModel, at: currentWorldLocation)
+        world.add(anchor: newObject)
 
-        // Square extenting 1m up and 1m to the east
-//        guard let location1 = world.worldLocationFromCurrentLocation(withMetersEast: 1, metersUp: 0, metersSouth: 0) else {
-//            return
-//        }
-//        guard let location2 = world.worldLocationFromCurrentLocation(withMetersEast: 1, metersUp: 1, metersSouth: 0) else {
-//            return
-//        }
-//        guard let location3 = world.worldLocationFromCurrentLocation(withMetersEast: 0, metersUp: 1, metersSouth: 0) else {
-//            return
-//        }
-//        let startAnchor = AKPathSegmentAnchor(at: currentWorldLocation)
-//        let anchor1 = AKPathSegmentAnchor(at: location1)
-//        let anchor2 = AKPathSegmentAnchor(at: location2)
-//        let anchor3 = AKPathSegmentAnchor(at: location3)
-//        let anchor4 = AKPathSegmentAnchor(at: currentWorldLocation)
-//        world.addPath(withAnchors: [startAnchor, anchor1, anchor2, anchor3, anchor4], identifier: UUID())
-        
-        // 3 lines representing the x, y, and z axises
-        guard let location1 = world.worldLocationFromCurrentLocation(withMetersEast: 0.3, metersUp: 0, metersSouth: 0) else {
-            return
-        }
-        guard let location2 = world.worldLocationFromCurrentLocation(withMetersEast: 0, metersUp: 0.3, metersSouth: 0) else {
-            return
-        }
-        guard let location3 = world.worldLocationFromCurrentLocation(withMetersEast: 0, metersUp: 0, metersSouth: 0.3) else {
-            return
-        }
-        let startAnchor = AKPathSegmentAnchor(at: currentWorldLocation)
-        let anchor1 = AKPathSegmentAnchor(at: location1)
-        let anchor2 = AKPathSegmentAnchor(at: location2)
-        let anchor3 = AKPathSegmentAnchor(at: location3)
-        world.addPath(withAnchors: [startAnchor, anchor1], identifier: UUID())
-        world.addPath(withAnchors: [startAnchor, anchor2], identifier: UUID())
-        world.addPath(withAnchors: [startAnchor, anchor3], identifier: UUID())
-        
     }
     
     // MARK: - Private
     
     fileprivate func loadAnchorModel() {
         
-        let url = URL(string: "https://s3-us-west-2.amazonaws.com/com.tenthlettermade.public/PinAKModelArchive.zip")!
-        
         //
         // Download a zipped Model
         //
         
+        let url = URL(string: "https://s3-us-west-2.amazonaws.com/com.tenthlettermade.public/PinAKModelArchive.zip")!
         let remoteModel = AKRemoteArchivedModel(remoteURL: url)
         remoteModel.compressor = Compressor()
         anchorModel = remoteModel
@@ -182,13 +145,13 @@ class ViewController: UIViewController {
         // Get a Model from the app bundle
         //
         
-//        // Setup the model that will be used for AKObject anchors
-//        guard let asset = AKSceneKitUtils.mdlAssetFromScene(named: "Pin.scn", world: myWorld) else {
+        // Setup the model that will be used for AugmentedObject anchors
+//        guard let world = world, let asset = AKSceneKitUtils.mdlAssetFromScene(named: "Pin.scn", world: world) else {
 //            print("ERROR: Could not load the SceneKit model")
 //            return
 //        }
-//
-//        anchorModel = AKMDLAssetModel(asset: asset)
+
+        anchorModel = AKMDLAssetModel(asset: asset, vertexDescriptor: AKMDLAssetModel.newAnchorVertexDescriptor())
         
     }
     

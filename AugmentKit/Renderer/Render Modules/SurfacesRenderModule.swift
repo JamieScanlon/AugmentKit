@@ -79,26 +79,34 @@ class SurfacesRenderModule: RenderModule {
         
     }
     
-    func loadAssets(fromModelProvider: ModelProvider?, textureLoader aTextureLoader: MTKTextureLoader, completion: (() -> Void)) {
+    func loadAssets(fromModelProvider modelProvider: ModelProvider?, textureLoader aTextureLoader: MTKTextureLoader, completion: (() -> Void)) {
         
-        textureLoader = aTextureLoader
-        
-        guard let device = device else {
-            print("Serious Error - device not found")
+        guard let modelProvider = modelProvider else {
+            print("Serious Error - Model Provider not found.")
             completion()
             return
         }
         
-        // Create a MetalKit mesh buffer allocator so that ModelIO will load mesh data directly into
-        // Metal buffers accessible by the GPU
-        let metalAllocator = MTKMeshBufferAllocator(device: device)
+        textureLoader = aTextureLoader
         
-        if let asset = MDLAssetTools.assetFromImage(withName: "plane_grid", extension: "png", allocator: metalAllocator) {
-            let mySurfaceModel = AKMDLAssetModel(asset: asset, vertexDescriptor: AKMDLAssetModel.newAnchorVertexDescriptor())
-            surfaceModel = mySurfaceModel
+        //
+        // Create and load our models
+        //
+        
+        // TODO: Ability to load multiple surface types / models.
+        modelProvider.loadModel(forObjectType: GuideSurfaceAnchor.type) { [weak self] model in
+
+            guard let model = model else {
+                print("Warning (SurfacesRenderModule) - Failed to get a model for type \(GuideSurfaceAnchor.type) from the modelProvider. Aborting the render phase.")
+                completion()
+                return
+            }
+
+            self?.surfaceModel = model
+
+            completion()
+
         }
-        
-        completion()
         
     }
     

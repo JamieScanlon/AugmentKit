@@ -121,6 +121,9 @@ public class Renderer {
         }
         return unsafeBitCast(GLKMatrix4MakeWithQuaternion(currentCameraQuaternionRotation), to: simd_float4x4.self)
     }
+    // A Quaternion that represents the rotation of the camera relative to world space.
+    // There is no postion component.
+    public private(set) var currentCameraQuaternionRotation: GLKQuaternion?
     public private(set) var currentCameraHeading: Double?
     public private(set) var lowestHorizPlaneAnchor: ARPlaneAnchor?
     public var currentFrameNumber: Int {
@@ -229,7 +232,7 @@ public class Renderer {
         // and the cameras current rotation (given by the eulerAngles) and rotate the transform
         // in the opposite direction. The result is a transform at the position of the camera
         // but oriented along the same axes as world space.
-        let eulerAngles = QuaternionUtilities.EulerAngles(roll: currentFrame.camera.eulerAngles.z, pitch: currentFrame.camera.eulerAngles.x, yaw: currentFrame.camera.eulerAngles.y)
+        let eulerAngles = EulerAngles(roll: currentFrame.camera.eulerAngles.z, pitch: currentFrame.camera.eulerAngles.x, yaw: currentFrame.camera.eulerAngles.y)
         let cameraQuaternion = QuaternionUtilities.quaternionFromEulerAngles(eulerAngles: eulerAngles)
         var positionOnlyTransform = matrix_identity_float4x4
         positionOnlyTransform = positionOnlyTransform.translate(x: currentFrame.camera.transform.columns.3.x, y: currentFrame.camera.transform.columns.3.y, z: currentFrame.camera.transform.columns.3.z)
@@ -258,7 +261,12 @@ public class Renderer {
         
         // Add surface modules for rendering if necessary
         if surfacesRenderModule == nil && showGuides && surfaceAnchors.count > 0  {
+            
+            let metalAllocator = MTKMeshBufferAllocator(device: device)
+            modelProvider?.registerModel(GuideSurfaceAnchor.createModel(withAllocator: metalAllocator)!, forObjectType: GuideSurfaceAnchor.type)
+            
             addModule(forModuelIdentifier: SurfacesRenderModule.identifier)
+            
         }
         
         // Add anchor modules if necessary
@@ -318,13 +326,28 @@ public class Renderer {
 //        }()
         
         // Calculate updates to trackers relative position
+        let cameraPositionTransform = currentCameraPositionTransform ?? matrix_identity_float4x4
+        let cameraHeading: HeadingRotation? = {
+            if let currentCameraQuaternionRotation = currentCameraQuaternionRotation {
+                return Heading.headingFrom(fromQuaternion: currentCameraQuaternionRotation)
+            }
+            return nil
+        }()
+        var updatedTrackers = [AKAugmentedTracker]()
         for tracker in trackers {
             if let userTracker = tracker as? AKUserTracker {
-                let cameraPositionTransform = currentCameraPositionTransform ?? matrix_identity_float4x4
-                userTracker.userPosition?.transform = cameraPositionTransform
+                var mutableUserTracker = userTracker
+                mutableUserTracker.userPosition?.transform = cameraPositionTransform
+                mutableUserTracker.userDeviceRotation = cameraHeading
+                mutableUserTracker.position.updateTransforms()
+                updatedTrackers.append(mutableUserTracker)
+            } else {
+                var mutableTracker = tracker
+                mutableTracker.position.updateTransforms()
+                updatedTrackers.append(mutableTracker)
             }
-            tracker.position.updateTransforms()
         }
+        trackers = updatedTrackers
         
         //
         // Encode Cammand Buffer
@@ -380,6 +403,9 @@ public class Renderer {
                 }
             }
             
+            // Getting the currentDrawable from the RenderDestinationProvider should be called as
+            // close as possible to presenting it with the command buffer. The currentDrawable is
+            // a scarce resource and holding on to it too long may affect performance
             if let renderPassDescriptor = renderDestination.currentRenderPassDescriptor, let currentDrawable = renderDestination.currentDrawable, let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) {
                 
                 renderEncoder.label = "RenderEncoder"
@@ -425,7 +451,7 @@ public class Renderer {
         let arAnchor = ARAnchor(transform: akAnchor.worldLocation.transform)
         let identifier = arAnchor.identifier
         var mutableAnchor = akAnchor
-        mutableAnchor.setIdentiier(identifier)
+        mutableAnchor.setIdentifier(identifier)
         augmentedAnchors.append(mutableAnchor)
         
         // Keep track of the anchor's UUID bucketed by the AKAnchor.type
@@ -471,7 +497,7 @@ public class Renderer {
             let arAnchor = ARAnchor(transform: anchor.worldLocation.transform)
             let identifier = arAnchor.identifier
             var mutableAnchor = anchor
-            mutableAnchor.setIdentiier(identifier)
+            mutableAnchor.setIdentifier(identifier)
             updatedAnchors.append(mutableAnchor)
             
             // Keep track of the anchor's UUID bucketed by the AKAnchor.type
@@ -502,8 +528,6 @@ public class Renderer {
     // Used to determine _uniformBufferStride each frame.
     // This is the current frame number modulo kMaxBuffersInFlight
     private var uniformBufferIndex: Int = 0
-    // A Quaternion that represents the rotation of the camera relative to world space.
-    private var currentCameraQuaternionRotation: GLKQuaternion?
     private var worldInitiationTime: Double = 0
     private var lastFrameTime: Double = 0
     

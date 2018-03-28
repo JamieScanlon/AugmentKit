@@ -34,8 +34,14 @@ class UserPosition: AKRelativePosition {
     }
 }
 
-//  An AKAugmentedTracker that follows the users position.
-public struct AKUserTracker: AKAugmentedTracker {
+//  An AR tracking object that follows the users position.
+protocol AKUserTracker: AKAugmentedTracker {
+    var position: AKRelativePosition { get }
+    var userPosition: AKRelativePosition? { get }
+    var userDeviceRotation: HeadingRotation? { get set }
+}
+
+public struct UserTracker: AKUserTracker {
     
     public static var type: String {
         return "userTracker"
@@ -48,6 +54,7 @@ public struct AKUserTracker: AKAugmentedTracker {
             return position.parentPosition
         }
     }
+    public var userDeviceRotation: HeadingRotation?
     
     public init(withModel model: AKModel, withUserRelativeTransform relativeTransform: matrix_float4x4) {
         self.model = model

@@ -26,6 +26,7 @@
 //
 
 import Foundation
+import GLKit
 
 public enum HeadingType {
     case fixed
@@ -42,13 +43,21 @@ public struct HeadingRotation: Equatable {
     }
 }
 
-public protocol Heading {
+public protocol AKHeading {
     var type: HeadingType { get }
     var offsetRoation: HeadingRotation { get }
     func updateHeading(withPosition: AKRelativePosition)
 }
 
-public class AKHeading: Heading {
+extension AKHeading {
+    public static func headingFrom(fromQuaternion quaternion: GLKQuaternion) -> HeadingRotation {
+        let eulerAngles = QuaternionUtilities.quaternionToEulerAngle(quaternion: quaternion)
+        let rotation = HeadingRotation(x: Double(eulerAngles.pitch), y: Double(eulerAngles.yaw), z: Double(eulerAngles.roll))
+        return rotation
+    }
+}
+
+public class Heading: AKHeading {
     
     public enum ValidationError: Error {
         case combinedFixedheadings
@@ -70,7 +79,7 @@ public class AKHeading: Heading {
     //  the new heading will be relative. If one of the headings is fixed, than the new
     //  heading will be fixed. If there is more than one fixed heading, this function will
     //  throw an error.
-    public static func heading(byCombining headings: [AKHeading]) throws -> AKHeading {
+    public static func heading(byCombining headings: [Heading]) throws -> Heading {
         
         var type = HeadingType.relative
         var offsetX: Double = 0
@@ -87,15 +96,15 @@ public class AKHeading: Heading {
             offsetZ += heading.offsetRoation.z
         }
         
-        return AKHeading(withType: type, offsetRoation: HeadingRotation(x: offsetX, y: offsetY, z: offsetZ))
+        return Heading(withType: type, offsetRoation: HeadingRotation(x: offsetX, y: offsetY, z: offsetZ))
         
     }
     
 }
 
-// MARK: - AKWorldHeading
+// MARK: - WorldHeading
 
-public class AKWorldHeading: Heading {
+public class WorldHeading: AKHeading {
     
     public enum WorldHeadingType {
         case north
@@ -119,10 +128,7 @@ public class AKWorldHeading: Heading {
             case .north:
                 if let referenceWorldLocation = world.referenceWorldLocation {
                     let referenceQuaternion = referenceWorldLocation.transform.quaternion()
-                    let eulerAngles = QuaternionUtilities.quaternionToEulerAngle(quaternion: referenceQuaternion)
-                    offsetRoation.x = Double(eulerAngles.pitch)
-                    offsetRoation.y = Double(eulerAngles.yaw)
-                    offsetRoation.z = Double(eulerAngles.roll)
+                    offsetRoation = WorldHeading.headingFrom(fromQuaternion: referenceQuaternion)
                 }
             }
         }

@@ -1,5 +1,5 @@
 //
-//  AKAnchorAssetModel.swift
+//  AKVector.swift
 //  AugmentKit
 //
 //  MIT License
@@ -24,24 +24,22 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 //
-//
-//  This class that impements AKModel and subclasses AKMDLAssetModel. It adds
-//  convienience methods for working with AKModels that are to be rendered as
-//  anchors.
 
 import Foundation
-import ModelIO
+import simd
 
-// MARK: - AKAnchorAssetModel
-
-public class AKAnchorAssetModel: AKMDLAssetModel {
-    
-    // Initializes the AKMDLAssetModel with an MDLAsset.
-    // This assumes that it will be rendered as an anchor and therefore
-    // creates vertex descriptors for the anchor render pipeline.
-    public convenience init(asset: MDLAsset) {
-        let vertexDescriptor = AKMDLAssetModel.newAnchorVertexDescriptor()
-        self.init(asset: asset, vertexDescriptor: vertexDescriptor)
+public struct AKVector: Equatable {
+    public var x: Double = 0
+    public var y: Double = 0
+    public var z: Double = 0
+    mutating func normalize() {
+        let newVecor = simd.normalize(double3(x, y, z))
+        x = newVecor.x
+        y = newVecor.y
+        z = newVecor.z
     }
-
+    func normalized() -> AKVector {
+        let newVecor = simd.normalize(double3(x, y, z))
+        return AKVector(x: newVecor.x, y: newVecor.y, z: newVecor.z)
+    }
 }

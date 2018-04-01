@@ -4,7 +4,7 @@
 //
 //  MIT License
 //
-//  Copyright (c) 2017 JamieScanlon
+//  Copyright (c) 2018 JamieScanlon
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -34,25 +34,21 @@ public enum HeadingType {
 }
 
 public struct HeadingRotation: Equatable {
-    public var x: Double = 0
-    public var y: Double = 0
-    public var z: Double = 0
-    
-    public static func ==(lhs: HeadingRotation, rhs: HeadingRotation) -> Bool {
-        return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z
-    }
+    public var radiansX: Double = 0
+    public var radiansY: Double = 0
+    public var radiansZ: Double = 0
 }
 
 public protocol AKHeading {
     var type: HeadingType { get }
     var offsetRoation: HeadingRotation { get }
-    func updateHeading(withPosition: AKRelativePosition)
+    mutating func updateHeading(withPosition: AKRelativePosition)
 }
 
 extension AKHeading {
     public static func headingFrom(fromQuaternion quaternion: GLKQuaternion) -> HeadingRotation {
         let eulerAngles = QuaternionUtilities.quaternionToEulerAngle(quaternion: quaternion)
-        let rotation = HeadingRotation(x: Double(eulerAngles.pitch), y: Double(eulerAngles.yaw), z: Double(eulerAngles.roll))
+        let rotation = HeadingRotation(radiansX: Double(eulerAngles.pitch), radiansY: Double(eulerAngles.yaw), radiansZ: Double(eulerAngles.roll))
         return rotation
     }
 }
@@ -91,12 +87,12 @@ public class Heading: AKHeading {
             } else if heading.type == .fixed {
                 type = .fixed
             }
-            offsetX += heading.offsetRoation.x
-            offsetY += heading.offsetRoation.y
-            offsetZ += heading.offsetRoation.z
+            offsetX += heading.offsetRoation.radiansX
+            offsetY += heading.offsetRoation.radiansY
+            offsetZ += heading.offsetRoation.radiansZ
         }
         
-        return Heading(withType: type, offsetRoation: HeadingRotation(x: offsetX, y: offsetY, z: offsetZ))
+        return Heading(withType: type, offsetRoation: HeadingRotation(radiansX: offsetX, radiansY: offsetY, radiansZ: offsetZ))
         
     }
     

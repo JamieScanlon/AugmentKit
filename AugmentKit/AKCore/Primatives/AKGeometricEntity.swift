@@ -1,5 +1,5 @@
 //
-//  AKAnchorAssetModel.swift
+//  AKGeometricEntity.swift
 //  AugmentKit
 //
 //  MIT License
@@ -24,24 +24,22 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 //
-//
-//  This class that impements AKModel and subclasses AKMDLAssetModel. It adds
-//  convienience methods for working with AKModels that are to be rendered as
-//  anchors.
 
 import Foundation
-import ModelIO
 
-// MARK: - AKAnchorAssetModel
+// MARK: - AKGeometricEntity
 
-public class AKAnchorAssetModel: AKMDLAssetModel {
-    
-    // Initializes the AKMDLAssetModel with an MDLAsset.
-    // This assumes that it will be rendered as an anchor and therefore
-    // creates vertex descriptors for the anchor render pipeline.
-    public convenience init(asset: MDLAsset) {
-        let vertexDescriptor = AKMDLAssetModel.newAnchorVertexDescriptor()
-        self.init(asset: asset, vertexDescriptor: vertexDescriptor)
-    }
-
+//  An AKGeometricEntity represents a 3D geomentry existing in world space. It may
+//  be a rendered augmented object like a virtual sign or piece of furniture, or it may
+//  be a non-rendered reference geomentry that is used as meta information about the
+//  AR world like a 2D plane might represent a table top or a wall.
+//  The object's geometry is defiened by the `model` property and may
+//  contain animation therefore the geomentry it does not always have to represent a rigid body.
+//  AKGeometricEntity does not contain any position information so it does not mean
+//  anything by itself in the context of the AKWorld. It does serve as a base protocol
+//  for more meaningful Types like AKAnchor and AKTracker.
+public protocol AKGeometricEntity {
+    static var type: String { get }
+    var model: AKModel { get }
+    var identifier: UUID? { get }
 }

@@ -4,7 +4,7 @@
 //
 //  MIT License
 //
-//  Copyright (c) 2017 JamieScanlon
+//  Copyright (c) 2018 JamieScanlon
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -64,19 +64,20 @@ public class AKRelativePosition {
         
         if let heading = heading {
             
-            let oldHeading = heading.offsetRoation
-            heading.updateHeading(withPosition: self)
-            if oldHeading != heading.offsetRoation {
-                _headingHasChanged = true
+            var mutableHeading = heading
+            let oldHeading = mutableHeading.offsetRoation
+            mutableHeading.updateHeading(withPosition: self)
+            if oldHeading != mutableHeading.offsetRoation {
+                self.heading = mutableHeading
             }
             
             if (_transformHasChanged || _headingHasChanged) {
             
-                var newTransform = matrix_identity_float4x4.rotate(radians: Float(heading.offsetRoation.x), x: 1, y: 0, z: 0)
-                newTransform = newTransform.rotate(radians: Float(heading.offsetRoation.y), x: 0, y: 1, z: 0)
-                newTransform = newTransform.rotate(radians: Float(heading.offsetRoation.z), x: 0, y: 0, z: 1)
+                var newTransform = matrix_identity_float4x4.rotate(radians: Float(mutableHeading.offsetRoation.radiansX), x: 1, y: 0, z: 0)
+                newTransform = newTransform.rotate(radians: Float(mutableHeading.offsetRoation.radiansY), x: 0, y: 1, z: 0)
+                newTransform = newTransform.rotate(radians: Float(mutableHeading.offsetRoation.radiansZ), x: 0, y: 0, z: 1)
                 
-                if heading.type == .fixed {
+                if mutableHeading.type == .fixed {
                     newTransform = newTransform * float4x4(
                         float4(transform.columns.0.x, 0, 0, 0),
                         float4(0, transform.columns.1.y, 0, 0),
@@ -85,7 +86,7 @@ public class AKRelativePosition {
                     )
                     print("New Heading: \(newTransform)")
                     transform = newTransform
-                } else if heading.type == .relative {
+                } else if mutableHeading.type == .relative {
                     transform = transform * newTransform
                 }
             }

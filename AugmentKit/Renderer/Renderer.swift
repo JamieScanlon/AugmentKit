@@ -4,7 +4,7 @@
 //
 //  MIT License
 //
-//  Copyright (c) 2017 JamieScanlon
+//  Copyright (c) 2018 JamieScanlon
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -336,11 +336,12 @@ public class Renderer {
         var updatedTrackers = [AKAugmentedTracker]()
         for tracker in trackers {
             if let userTracker = tracker as? AKUserTracker {
-                var mutableUserTracker = userTracker
-                mutableUserTracker.userPosition?.transform = cameraPositionTransform
-                mutableUserTracker.userDeviceRotation = cameraHeading
-                mutableUserTracker.position.updateTransforms()
-                updatedTrackers.append(mutableUserTracker)
+                userTracker.userPosition()?.transform = cameraPositionTransform
+                if let cameraHeading = cameraHeading {
+                    userTracker.userPosition()?.heading = Heading(withType: .fixed, offsetRoation: cameraHeading)
+                }
+                userTracker.position.updateTransforms()
+                updatedTrackers.append(userTracker)
             } else {
                 var mutableTracker = tracker
                 mutableTracker.position.updateTransforms()

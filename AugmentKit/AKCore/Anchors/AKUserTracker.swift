@@ -4,7 +4,7 @@
 //
 //  MIT License
 //
-//  Copyright (c) 2017 JamieScanlon
+//  Copyright (c) 2018 JamieScanlon
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -37,8 +37,7 @@ class UserPosition: AKRelativePosition {
 //  An AR tracking object that follows the users position.
 protocol AKUserTracker: AKAugmentedTracker {
     var position: AKRelativePosition { get }
-    var userPosition: AKRelativePosition? { get }
-    var userDeviceRotation: HeadingRotation? { get set }
+    func userPosition() -> AKRelativePosition?
 }
 
 public struct UserTracker: AKUserTracker {
@@ -49,17 +48,15 @@ public struct UserTracker: AKUserTracker {
     public var model: AKModel
     public var identifier: UUID?
     public var position: AKRelativePosition
-    public var userPosition: AKRelativePosition? {
-        get {
-            return position.parentPosition
-        }
-    }
-    public var userDeviceRotation: HeadingRotation?
     
     public init(withModel model: AKModel, withUserRelativeTransform relativeTransform: matrix_float4x4) {
         self.model = model
         let myPosition = AKRelativePosition(withTransform: relativeTransform, relativeTo: UserPosition())
         self.position = myPosition
+    }
+    
+    func userPosition() -> AKRelativePosition? {
+        return position.parentPosition
     }
     
 }

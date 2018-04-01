@@ -1,5 +1,5 @@
 //
-//  AKAnchorAssetModel.swift
+//  AKGazeTarget.swift
 //  AugmentKit
 //
 //  MIT License
@@ -24,24 +24,25 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 //
-//
-//  This class that impements AKModel and subclasses AKMDLAssetModel. It adds
-//  convienience methods for working with AKModels that are to be rendered as
-//  anchors.
 
 import Foundation
-import ModelIO
+import simd
 
-// MARK: - AKAnchorAssetModel
-
-public class AKAnchorAssetModel: AKMDLAssetModel {
-    
-    // Initializes the AKMDLAssetModel with an MDLAsset.
-    // This assumes that it will be rendered as an anchor and therefore
-    // creates vertex descriptors for the anchor render pipeline.
-    public convenience init(asset: MDLAsset) {
-        let vertexDescriptor = AKMDLAssetModel.newAnchorVertexDescriptor()
-        self.init(asset: asset, vertexDescriptor: vertexDescriptor)
+//  An ARTarget object whos vector matches the rotation of the device
+public struct GazeTarget: AKTarget {
+    public var vectorDirection: AKVector
+    public static var type: String {
+        return "GazeTarget"
     }
-
+    public var model: AKModel
+    public var identifier: UUID?
+    public var position: AKRelativePosition
+    
+    public init(withModel model: AKModel, withUserRelativeTransform relativeTransform: matrix_float4x4) {
+        self.model = model
+        let myPosition = AKRelativePosition(withTransform: relativeTransform, relativeTo: UserPosition())
+        self.position = myPosition
+        self.vectorDirection = AKVector(x: 0, y: 0, z: -1)
+    }
+    
 }

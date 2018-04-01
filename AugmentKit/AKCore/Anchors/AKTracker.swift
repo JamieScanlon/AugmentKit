@@ -1,5 +1,5 @@
 //
-//  AKAnchorAssetModel.swift
+//  AKTracker.swift
 //  AugmentKit
 //
 //  MIT License
@@ -24,24 +24,43 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 //
-//
-//  This class that impements AKModel and subclasses AKMDLAssetModel. It adds
-//  convienience methods for working with AKModels that are to be rendered as
-//  anchors.
 
 import Foundation
-import ModelIO
 
-// MARK: - AKAnchorAssetModel
 
-public class AKAnchorAssetModel: AKMDLAssetModel {
+// MARK: - AKTracker
+
+//  An AKTracker is a geometrical object that tracks another moving object or position.
+//  The object's geometry is defiened by the `model` property.
+//  The object's position is not fixed in world space but is relative.
+public protocol AKTracker: AKGeometricEntity {
     
-    // Initializes the AKMDLAssetModel with an MDLAsset.
-    // This assumes that it will be rendered as an anchor and therefore
-    // creates vertex descriptors for the anchor render pipeline.
-    public convenience init(asset: MDLAsset) {
-        let vertexDescriptor = AKMDLAssetModel.newAnchorVertexDescriptor()
-        self.init(asset: asset, vertexDescriptor: vertexDescriptor)
-    }
+    var position: AKRelativePosition { get set }
+    
+}
 
+// MARK: - AKAugmentedTracker
+
+//  Represents a tracker placed in the AR world. This tracker only exists in the AR world
+//  as opposed to a real tracker like a person or a car which exists
+//  in the physical world.
+public protocol AKAugmentedTracker: AKTracker {
+    
+}
+
+// MARK: - AKRealTracker
+
+//  Represents a tracker in the AR world that is tied to an moving object in the real world.
+//  For example a person or a car.
+public protocol AKRealTracker: AKTracker {
+    
+}
+
+// MARK: - AKAugmentedUserTracker
+
+//  Represents a tracker placed in the AR world that tracks with the user (camera).
+//  This can be used to place augmented objects that follow the user such as
+//  heads up displays.
+public protocol AKAugmentedUserTracker: AKAugmentedTracker {
+    
 }

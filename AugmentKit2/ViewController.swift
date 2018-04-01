@@ -1,10 +1,10 @@
 //
 //  ViewController.swift
-//  AugmentKit2
+//  AugmentKit - Example
 //
 //  MIT License
 //
-//  Copyright (c) 2017 JamieScanlon
+//  Copyright (c) 2018 JamieScanlon
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -124,6 +124,54 @@ class ViewController: UIViewController {
         // Create a new anchor at the current locaiton
         let newObject = AugmentedObject(withAKModel: anchorModel, at: currentWorldLocation)
         world.add(anchor: newObject)
+        
+        // Apple
+//        guard let location1 = world.worldLocation(withLatitude: 37.3335, longitude: -122.0106, elevation: currentWorldLocation.elevation) else {
+//            return
+//        }
+//
+//        guard let location2 = world.worldLocation(withLatitude: 37.3349, longitude: -122.0113, elevation: currentWorldLocation.elevation) else {
+//            return
+//        }
+//
+//        guard let location3 = world.worldLocation(withLatitude: 37.3362, longitude: -122.0106, elevation: currentWorldLocation.elevation) else {
+//            return
+//        }
+//
+//        guard let location4 = world.worldLocation(withLatitude: 37.3367, longitude: -122.0090, elevation: currentWorldLocation.elevation) else {
+//            return
+//        }
+//
+//        guard let location5 = world.worldLocation(withLatitude: 37.3365, longitude: -122.0079, elevation: currentWorldLocation.elevation) else {
+//            return
+//        }
+//        
+//        guard let location6 = world.worldLocation(withLatitude: 37.3358, longitude: -122.0070, elevation: currentWorldLocation.elevation) else {
+//            return
+//        }
+//        
+//        guard let location7 = world.worldLocation(withLatitude: 37.3348, longitude: -122.0067, elevation: currentWorldLocation.elevation) else {
+//            return
+//        }
+//        
+//        guard let location8 = world.worldLocation(withLatitude: 37.3336, longitude: -122.0074, elevation: currentWorldLocation.elevation) else {
+//            return
+//        }
+//        
+//        guard let location9 = world.worldLocation(withLatitude: 37.3330, longitude: -122.0090, elevation: currentWorldLocation.elevation) else {
+//            return
+//        }
+//
+//        let anchor1 = PathSegmentAnchor(at: location1)
+//        let anchor2 = PathSegmentAnchor(at: location2)
+//        let anchor3 = PathSegmentAnchor(at: location3)
+//        let anchor4 = PathSegmentAnchor(at: location4)
+//        let anchor5 = PathSegmentAnchor(at: location5)
+//        let anchor6 = PathSegmentAnchor(at: location6)
+//        let anchor7 = PathSegmentAnchor(at: location7)
+//        let anchor8 = PathSegmentAnchor(at: location8)
+//        let anchor9 = PathSegmentAnchor(at: location9)
+//        world.addPath(withAnchors: [anchor1, anchor2, anchor3, anchor4, anchor5, anchor6, anchor7, anchor8, anchor9, anchor1], identifier: UUID())
 
     }
     
@@ -150,8 +198,8 @@ class ViewController: UIViewController {
 //            print("ERROR: Could not load the SceneKit model")
 //            return
 //        }
-
-        anchorModel = AKMDLAssetModel(asset: asset, vertexDescriptor: AKMDLAssetModel.newAnchorVertexDescriptor())
+//
+//        anchorModel = AKMDLAssetModel(asset: asset, vertexDescriptor: AKMDLAssetModel.newAnchorVertexDescriptor())
         
     }
     

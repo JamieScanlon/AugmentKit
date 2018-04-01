@@ -1,10 +1,10 @@
 //
-//  AKGazeTarget.swift
+//  AKTarget.swift
 //  AugmentKit
 //
 //  MIT License
 //
-//  Copyright (c) 2017 JamieScanlon
+//  Copyright (c) 2018 JamieScanlon
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -28,32 +28,20 @@
 import Foundation
 import simd
 
-//  An AR tracking object that follows the users position and rotation so
-//  That an intersection can be calculated between the line created by the
-//  direction of the users gaze and any AKAnchor's or AKTracker's
-protocol AKGazeTarget: AKUserTracker {
+// MARK: - AKTarget
 
-}
-
-public struct GazeTarget: AKGazeTarget {
-    
-    public static var type: String {
-        return "userTracker"
-    }
-    public var model: AKModel
-    public var identifier: UUID?
-    public var position: AKRelativePosition
-    public var userPosition: AKRelativePosition? {
-        get {
-            return position.parentPosition
-        }
-    }
-    public var userDeviceRotation: HeadingRotation?
-    
-    public init(withModel model: AKModel, withUserRelativeTransform relativeTransform: matrix_float4x4) {
-        self.model = model
-        let myPosition = AKRelativePosition(withTransform: relativeTransform, relativeTo: UserPosition())
-        self.position = myPosition
-    }
-    
+//  An AKTarget is a geometrical object which is positioned at the intersection of
+//  a vector and another AKGeometricEntity. The vector is relative to a position.
+//  For example:
+//    An AKTarget might be the red dot of a laser pointer. Where the laser
+//    intersects a screen is be where the geometry of the dot is rendered. The
+//    location of the intersection is determined by the vector representing
+//    the direction the laser pointer is pointed as well as the postion of
+//    the laser pointer itself in the world.
+//  The object's geometry is defiened by the `model` property.
+//  The object's position is not fixed in world space but is relative.
+//  The object's vectorDirection is relative to it's position and can be a unit vector
+public protocol AKTarget: AKGeometricEntity {
+    var vectorDirection: AKVector { get }
+    var position: AKRelativePosition { get }
 }

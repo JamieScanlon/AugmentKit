@@ -183,7 +183,7 @@ class ModelIOTools {
     //  Compute an index map from all elements of A.jointPaths to the corresponding paths in B.jointPaths
     static func mapJoints<A: JointPathRemappable, B: JointPathRemappable>(from src: A, to dst: B) -> [Int] {
         let dstJointPaths = dst.jointPaths
-        return src.jointPaths.flatMap { srcJointPath in
+        return src.jointPaths.compactMap { srcJointPath in
             if let index = dstJointPaths.index(of: srcJointPath) {
                 return index
             }

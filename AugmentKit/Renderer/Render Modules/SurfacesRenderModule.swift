@@ -227,7 +227,7 @@ class SurfacesRenderModule: RenderModule {
             
             // Flip Z axis to convert geometry from right handed to left handed
             var coordinateSpaceTransform = matrix_identity_float4x4
-            coordinateSpaceTransform.columns.2.z = -1.0
+            //coordinateSpaceTransform.columns.2.z = -1.0
             
             if let model = surfaceModel {
                 
@@ -278,7 +278,7 @@ class SurfacesRenderModule: RenderModule {
         renderEncoder.pushDebugGroup("Draw Surfaces")
         
         // Set render command encoder state
-        renderEncoder.setCullMode(.back)
+        renderEncoder.setCullMode(.none)
         
         guard let meshGPUData = surfaceMeshGPUData else {
             print("Error: meshGPUData not available a draw time. Aborting")

@@ -1,5 +1,5 @@
 //
-//  AKGazeCursor.swift
+//  AKGazeTarget.swift
 //  AugmentKit
 //
 //  MIT License
@@ -31,11 +31,11 @@ import simd
 //  An AR tracking object that follows the users position and rotation so
 //  That an intersection can be calculated between the line created by the
 //  direction of the users gaze and any AKAnchor's or AKTracker's
-protocol AKGazeCursor: AKUserTracker {
+protocol AKGazeTarget: AKUserTracker {
 
 }
 
-public struct GazeCursor: AKGazeCursor {
+public struct GazeTarget: AKGazeTarget {
     
     public static var type: String {
         return "userTracker"

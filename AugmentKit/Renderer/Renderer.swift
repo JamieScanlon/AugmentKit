@@ -565,7 +565,7 @@ public class Renderer {
         configuration.worldAlignment = .gravityAndHeading
         
         // Enable horizontal plane detection
-        configuration.planeDetection = .horizontal
+        configuration.planeDetection = [.horizontal, .vertical]
         
         return configuration
     }

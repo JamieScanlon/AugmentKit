@@ -16,7 +16,7 @@
 		7D53471F203A961A00714A6F /* PathShader.metal in Sources */ = {isa = PBXBuildFile; fileRef = 7D53471E203A961A00714A6F /* PathShader.metal */; };
 		7D534722203B4CE300714A6F /* AKAnchorAssetModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D534721203B4CE300714A6F /* AKAnchorAssetModel.swift */; };
 		7D5B25A72069626900EFA3C6 /* AKRealSurfaceAnchor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D5B25A62069626900EFA3C6 /* AKRealSurfaceAnchor.swift */; };
-		7D5B25A9206BFAC100EFA3C6 /* AKGazeCursor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D5B25A8206BFAC100EFA3C6 /* AKGazeCursor.swift */; };
+		7D5B25A9206BFAC100EFA3C6 /* AKGazeTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D5B25A8206BFAC100EFA3C6 /* AKGazeTarget.swift */; };
 		7D5EEC1E1FDC5EDD00E3FE91 /* Pin.scn in Resources */ = {isa = PBXBuildFile; fileRef = 7D1B6F0C1F2983DA00AB035D /* Pin.scn */; };
 		7D5EEC1F1FDC628D00E3FE91 /* AKModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DE0C2A81FD46E5E0043FA5F /* AKModel.swift */; };
 		7D5EEC201FDC629400E3FE91 /* Serialize.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D282F131FD11DE600D00B86 /* Serialize.swift */; };
@@ -146,7 +146,7 @@
 		7D53471E203A961A00714A6F /* PathShader.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = PathShader.metal; sourceTree = "<group>"; };
 		7D534721203B4CE300714A6F /* AKAnchorAssetModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKAnchorAssetModel.swift; sourceTree = "<group>"; };
 		7D5B25A62069626900EFA3C6 /* AKRealSurfaceAnchor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKRealSurfaceAnchor.swift; sourceTree = "<group>"; };
-		7D5B25A8206BFAC100EFA3C6 /* AKGazeCursor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKGazeCursor.swift; sourceTree = "<group>"; };
+		7D5B25A8206BFAC100EFA3C6 /* AKGazeTarget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKGazeTarget.swift; sourceTree = "<group>"; };
 		7D5FDA311FC72AAE00BAE104 /* RenderModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RenderModule.swift; sourceTree = "<group>"; };
 		7D5FDA331FC7333200BAE104 /* SharedBuffersRenderModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedBuffersRenderModule.swift; sourceTree = "<group>"; };
 		7D5FDA351FC73AD000BAE104 /* CameraPlaneRenderModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraPlaneRenderModule.swift; sourceTree = "<group>"; };
@@ -340,7 +340,7 @@
 				7D8A0A812013D143006CAAAD /* AKHeading.swift */,
 				7DB72CD4202424D70050C61D /* AKPathSegmentAnchor.swift */,
 				7D5B25A62069626900EFA3C6 /* AKRealSurfaceAnchor.swift */,
-				7D5B25A8206BFAC100EFA3C6 /* AKGazeCursor.swift */,
+				7D5B25A8206BFAC100EFA3C6 /* AKGazeTarget.swift */,
 			);
 			path = Anchors;
 			sourceTree = "<group>";
@@ -622,7 +622,7 @@
 			isa = PBXProject;
 			attributes = {
 				LastSwiftUpdateCheck = 0920;
-				LastUpgradeCheck = 0900;
+				LastUpgradeCheck = 0930;
 				ORGANIZATIONNAME = TenthLetterMade;
 				TargetAttributes = {
 					7D6E6B461F8F19C300EFC667 = {
@@ -747,7 +747,7 @@
 				7D534722203B4CE300714A6F /* AKAnchorAssetModel.swift in Sources */,
 				7D5FDA3A1FC9CFA400BAE104 /* TrackingPointsRenderModule.swift in Sources */,
 				7D6E6B691F8F1CC300EFC667 /* MeshData.swift in Sources */,
-				7D5B25A9206BFAC100EFA3C6 /* AKGazeCursor.swift in Sources */,
+				7D5B25A9206BFAC100EFA3C6 /* AKGazeTarget.swift in Sources */,
 				7D640AEA1FF0174200B35A5A /* AKUserTracker.swift in Sources */,
 				7DC785D71FED819C00F82FA4 /* TrackersRenderModule.swift in Sources */,
 				7D818909201EB5DB0021694F /* PathsRenderModule.swift in Sources */,
@@ -961,6 +961,7 @@
 				CLANG_WARN_BOOL_CONVERSION = YES;
 				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
 				CLANG_WARN_EMPTY_BODY = YES;
@@ -968,6 +969,7 @@
 				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
 				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
 				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
 				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
@@ -995,12 +997,13 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 11.3;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 4.0;
 			};
 			name = Debug;
 		};
@@ -1018,6 +1021,7 @@
 				CLANG_WARN_BOOL_CONVERSION = YES;
 				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
 				CLANG_WARN_EMPTY_BODY = YES;
@@ -1025,6 +1029,7 @@
 				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
 				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
 				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
 				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
@@ -1046,10 +1051,11 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 11.3;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
 				SWIFT_OPTIMIZATION_LEVEL = "-Owholemodule";
+				SWIFT_VERSION = 4.0;
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;

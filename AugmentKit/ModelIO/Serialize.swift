@@ -79,7 +79,7 @@ public class SerializeUtil {
         
         NSKeyedArchiver.archiveRootObject(AKModelCodingWrapper(model: model), toFile: dataFileURL.path)
         
-        guard let zipFilePath = try? compressor.zipModel(withFileURLs: [dataFileURL], toDestinationFilePath: "\(fileName)-Archive") else {
+        guard let zipFilePath = compressor.zipModel(withFileURLs: [dataFileURL], toDestinationFilePath: "\(fileName)-Archive") else {
             print("SerializeUtil: Serious Error. Could not archive the model file at \(dataFileURL.path)")
             return nil
         }

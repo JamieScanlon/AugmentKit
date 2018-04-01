@@ -32,11 +32,11 @@ public extension MotionManager {
     
     public func startTrackingCompasDirection() {
         cmMotionManager.startDeviceMotionUpdates(using: .xTrueNorthZVertical, to: operationQueue) { (deviceMotion, error) in
-            if let error = error {
-                // TODO: Log errors
-            } else if let motion = deviceMotion {
-                let heading = self.headingCorrectedForTilt(withMotion: motion, viewPort: self.viewPort)
-            }
+//            if let error = error {
+//                // TODO: Log errors
+//            } else if let motion = deviceMotion {
+//                let heading = self.headingCorrectedForTilt(withMotion: motion, viewPort: self.viewPort)
+//            }
         }
     }
     public func stopTrackingCompasDirection() {

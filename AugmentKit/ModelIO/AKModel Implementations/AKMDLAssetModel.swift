@@ -266,13 +266,13 @@ public class AKMDLAssetModel: AKModel {
 
     // Map the joint indices bound to a mesh to the list of all joint indices of a skeleton
     private func computeSkinToSkeletonMaps() {
-        let skeletons = skeletonAnimations.map {
+        let skeletons: [String] = skeletonAnimations.compactMap {
             if $0.jointPaths.count > 0 {
                 return $0.jointPaths[0]
             } else {
                 return nil
             }
-        }.flatMap({$0})
+        }
         for (skinIndex, skin) in skins.enumerated() {
             guard let boundSkeletonRoot = ModelIOTools.findShortestPath(in: skin.jointPaths[0], containing: jointRootID) else {
                 continue

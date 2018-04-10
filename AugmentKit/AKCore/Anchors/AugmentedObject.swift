@@ -32,7 +32,7 @@
 import Foundation
 import ModelIO
 
-public struct AugmentedObject: AKAugmentedAnchor {
+public class AugmentedObject: AKAugmentedAnchor {
     
     public static var type: String {
         return "AugmentedObject"
@@ -46,7 +46,7 @@ public struct AugmentedObject: AKAugmentedAnchor {
         self.worldLocation = location
     }
     
-    public mutating func setIdentifier(_ uuid: UUID) {
+    public func setIdentifier(_ uuid: UUID) {
         identifier = uuid
     }
     

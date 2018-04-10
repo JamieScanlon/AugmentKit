@@ -68,7 +68,7 @@ protocol RenderModule {
     func updateBuffers(withARFrame: ARFrame, cameraProperties: CameraProperties)
     
     // Update the buffer data for trackers
-    func updateBuffers(withTrackers: [AKAugmentedTracker], cameraProperties: CameraProperties)
+    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties)
     
     // Update the buffer data for trackers
     func updateBuffers(withPaths: [UUID: [AKAugmentedAnchor]], cameraProperties: CameraProperties)
@@ -90,7 +90,7 @@ extension RenderModule {
     
     // MARK: Encoding Mesh Data
     
-    func encode(meshGPUData: MeshGPUData, fromDrawData drawData: DrawData, with renderEncoder: MTLRenderCommandEncoder) {
+    func encode(meshGPUData: MeshGPUData, fromDrawData drawData: DrawData, with renderEncoder: MTLRenderCommandEncoder, baseIndex: Int = 0) {
         
         // Set mesh's vertex buffers
         for vtxBufferIdx in 0..<drawData.vbCount {
@@ -99,6 +99,10 @@ extension RenderModule {
         
         // Draw each submesh of our mesh
         for drawDataSubIndex in 0..<drawData.subData.count {
+            
+            guard drawData.instCount > 0 else {
+                continue
+            }
             
             let submeshData = drawData.subData[drawDataSubIndex]
             
@@ -116,8 +120,7 @@ extension RenderModule {
             encodeTextures(with: meshGPUData, renderEncoder: renderEncoder, subData: submeshData)
             
             renderEncoder.setFragmentBytes(&materialUniforms, length: RenderModuleConstants.alignedMaterialSize, index: Int(kBufferIndexMaterialUniforms.rawValue))
-            
-            renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: idxCount, indexType: idxType, indexBuffer: indexBuffer, indexBufferOffset: 0, instanceCount: drawData.instCount)
+            renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: idxCount, indexType: idxType, indexBuffer: indexBuffer, indexBufferOffset: 0, instanceCount: drawData.instCount, baseVertex: 0, baseInstance: baseIndex)
         }
         
         // Set the palette offset into

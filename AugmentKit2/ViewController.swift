@@ -73,6 +73,14 @@ class ViewController: UIViewController {
                 myWorld.add(tracker: userTracker)
             }
             
+            // Add a Gaze Target
+            // Make it about 20cm square.
+            if let asset = MDLAssetTools.assetFromImage(withName: "Gaze_Target.png", extension: "", scale: 0.2) {
+                let myGazeTargetModel = AKAnchorAssetModel(asset: asset)
+                let gazeTarget = GazeTarget(withModel: myGazeTargetModel, withUserRelativeTransform: matrix_identity_float4x4)
+                myWorld.add(gazeTarget: gazeTarget)
+            }
+            
         }
         
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(ViewController.handleTap(gestureRecognize:)))
@@ -121,11 +129,13 @@ class ViewController: UIViewController {
             return
         }
         
+        // Example:
         // Create a new anchor at the current locaiton
         let newObject = AugmentedObject(withAKModel: anchorModel, at: currentWorldLocation)
         world.add(anchor: newObject)
         
-        // Apple
+        // Example:
+        // Create a path around the Apple Park building
 //        guard let location1 = world.worldLocation(withLatitude: 37.3335, longitude: -122.0106, elevation: currentWorldLocation.elevation) else {
 //            return
 //        }
@@ -183,10 +193,10 @@ class ViewController: UIViewController {
         // Download a zipped Model
         //
         
-        let url = URL(string: "https://s3-us-west-2.amazonaws.com/com.tenthlettermade.public/PinAKModelArchive.zip")!
-        let remoteModel = AKRemoteArchivedModel(remoteURL: url)
-        remoteModel.compressor = Compressor()
-        anchorModel = remoteModel
+//        let url = URL(string: "https://s3-us-west-2.amazonaws.com/com.tenthlettermade.public/PinAKModelArchive.zip")!
+//        let remoteModel = AKRemoteArchivedModel(remoteURL: url)
+//        remoteModel.compressor = Compressor()
+//        anchorModel = remoteModel
         
         
         //
@@ -194,12 +204,12 @@ class ViewController: UIViewController {
         //
         
         // Setup the model that will be used for AugmentedObject anchors
-//        guard let world = world, let asset = AKSceneKitUtils.mdlAssetFromScene(named: "Pin.scn", world: world) else {
-//            print("ERROR: Could not load the SceneKit model")
-//            return
-//        }
-//
-//        anchorModel = AKMDLAssetModel(asset: asset, vertexDescriptor: AKMDLAssetModel.newAnchorVertexDescriptor())
+        guard let world = world, let asset = AKSceneKitUtils.mdlAssetFromScene(named: "Pin.scn", world: world) else {
+            print("ERROR: Could not load the SceneKit model")
+            return
+        }
+
+        anchorModel = AKMDLAssetModel(asset: asset, vertexDescriptor: AKMDLAssetModel.newAnchorVertexDescriptor())
         
     }
     

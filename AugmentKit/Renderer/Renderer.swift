@@ -240,7 +240,10 @@ public class Renderer {
         currentCameraQuaternionRotation = cameraQuaternion
         currentCameraHeading = Double(currentFrame.camera.eulerAngles.y)
         
+        //
         // Update the lowest surface plane
+        //
+        
         for index in 0..<surfaceAnchors.count {
             let plane = surfaceAnchors[index]
             if plane.alignment == .horizontal {
@@ -269,14 +272,18 @@ public class Renderer {
             
         }
         
+        //
+        // Add new Modules
+        //
+        
         // Add anchor modules if necessary
         if anchorsRenderModule == nil && normalAnchors.count > 0 {
             addModule(forModuelIdentifier: AnchorsRenderModule.identifier)
         }
         
-        // Add tracker modules if nescessary
-        if trackersRenderModule == nil && trackers.count > 0 {
-            addModule(forModuelIdentifier: TrackersRenderModule.identifier)
+        // Add Unanchored modules if nescessary
+        if unanchoredRenderModule == nil && (trackers.count > 0 || gazeTargets.count > 0) {
+            addModule(forModuelIdentifier: UnanchoredRenderModule.identifier)
         }
         
         // Add paths modules if nescessary
@@ -327,28 +334,76 @@ public class Renderer {
         
         // Calculate updates to trackers relative position
         let cameraPositionTransform = currentCameraPositionTransform ?? matrix_identity_float4x4
-        let cameraHeading: HeadingRotation? = {
-            if let currentCameraQuaternionRotation = currentCameraQuaternionRotation {
-                return Heading.headingFrom(fromQuaternion: currentCameraQuaternionRotation)
-            }
-            return nil
-        }()
-        var updatedTrackers = [AKAugmentedTracker]()
-        for tracker in trackers {
-            if let userTracker = tracker as? AKUserTracker {
+        
+        //
+        // Update Trackers
+        //
+        
+        let updatedTrackers: [AKAugmentedTracker] = trackers.map {
+            if let userTracker = $0 as? AKAugmentedUserTracker {
                 userTracker.userPosition()?.transform = cameraPositionTransform
-                if let cameraHeading = cameraHeading {
-                    userTracker.userPosition()?.heading = Heading(withType: .fixed, offsetRoation: cameraHeading)
-                }
                 userTracker.position.updateTransforms()
-                updatedTrackers.append(userTracker)
+                return userTracker
             } else {
-                var mutableTracker = tracker
+                var mutableTracker = $0
                 mutableTracker.position.updateTransforms()
-                updatedTrackers.append(mutableTracker)
+                return mutableTracker
             }
         }
+        
         trackers = updatedTrackers
+        
+        //
+        // Update Gaze Targets
+        //
+        
+        if gazeTargets.count > 0 {
+            
+            let results = currentFrame.hitTest(CGPoint(x: 0.5, y: 0.5), types: [.existingPlaneUsingGeometry, .estimatedVerticalPlane, .estimatedHorizontalPlane])
+            
+            let hitTestResult: ARHitTestResult? = {
+                
+                // 1. Check for a result on an existing plane using geometry.
+                if let existingPlaneUsingGeometryResult = results.first(where: { $0.type == .existingPlaneUsingGeometry }) {
+                    return existingPlaneUsingGeometryResult
+                }
+                
+                // 2. Check for a result on the ground plane, assuming its dimensions are infinite.
+                //    Loop through all hits against infinite existing planes and either return the
+                //    nearest one (vertical planes) or return the nearest one which is within 5 cm
+                //    of the object's position.
+                
+                let infinitePlaneResults = currentFrame.hitTest(CGPoint(x: 0.5, y: 0.5), types: .existingPlane)
+                
+                for infinitePlaneResult in infinitePlaneResults {
+                    if let planeAnchor = infinitePlaneResult.anchor as? ARPlaneAnchor, planeAnchor.alignment == .horizontal {
+                        if let lowestHorizPlaneAnchor = lowestHorizPlaneAnchor, planeAnchor.identifier == lowestHorizPlaneAnchor.identifier {
+                            return infinitePlaneResult
+                        }
+                    }
+                }
+                
+                // 3. As a final fallback, check for a result on estimated planes.
+                let vResult = results.first(where: { $0.type == .estimatedVerticalPlane })
+                let hResult = results.first(where: { $0.type == .estimatedHorizontalPlane })
+                if hResult != nil && vResult != nil {
+                    return hResult!.distance < vResult!.distance ? hResult! : vResult!
+                } else {
+                    return hResult ?? vResult
+                }
+                
+            }()
+            
+            if let hitTestResult = hitTestResult {
+                let updatedGazeTargets: [GazeTarget] = gazeTargets.map {
+                    $0.position.parentPosition?.transform = hitTestResult.worldTransform
+                    $0.position.updateTransforms()
+                    return $0
+                }
+                gazeTargets = updatedGazeTargets
+            }
+            
+        }
         
         //
         // Encode Cammand Buffer
@@ -399,7 +454,7 @@ public class Renderer {
             for module in renderModules {
                 if module.isInitialized {
                     module.updateBuffers(withARFrame: currentFrame, cameraProperties: cameraProperties)
-                    module.updateBuffers(withTrackers: trackers, cameraProperties: cameraProperties)
+                    module.updateBuffers(withTrackers: trackers, targets: gazeTargets, cameraProperties: cameraProperties)
                     module.updateBuffers(withPaths: paths, cameraProperties: cameraProperties)
                 }
             }
@@ -438,7 +493,7 @@ public class Renderer {
         
     }
     
-    // MARK: - Anchors
+    // MARK: - Adding objects for render
     
     //  Add a new AKAugmentedAnchor to the AR world
     public func add(akAnchor: AKAugmentedAnchor) {
@@ -483,7 +538,7 @@ public class Renderer {
         
     }
     
-    //  Add a new AKAugmentedTracker to the AR world
+    //  Add a new path to the AR world
     public func addPath(withAnchors anchors: [AKAugmentedAnchor], identifier: UUID) {
         
         var updatedAnchors = [AKAugmentedAnchor]()
@@ -521,6 +576,18 @@ public class Renderer {
         
     }
     
+    public func add(gazeTarget: GazeTarget) {
+        
+        // Create a unique type for
+        let theType = type(of: gazeTarget).type
+        
+        // Resgister the AKModel with the model provider.
+        modelProvider?.registerModel(gazeTarget.model, forObjectType: theType)
+        
+        gazeTargets.append(gazeTarget)
+        
+    }
+    
     // MARK: - Private
     
     private var hasUninitializedModules = false
@@ -538,7 +605,7 @@ public class Renderer {
     private var cameraRenderModule: CameraPlaneRenderModule?
     private var sharedBuffersRenderModule: SharedBuffersRenderModule?
     private var anchorsRenderModule: AnchorsRenderModule?
-    private var trackersRenderModule: TrackersRenderModule?
+    private var unanchoredRenderModule: UnanchoredRenderModule?
     private var pathsRenderModule: PathsRenderModule?
     private var surfacesRenderModule: SurfacesRenderModule?
     private var trackingPointRenderModule: TrackingPointsRenderModule?
@@ -552,11 +619,12 @@ public class Renderer {
     private var defaultLibrary: MTLLibrary?
     private var commandQueue: MTLCommandQueue?
     
-    // Keeping track of Anchors / Trackers
+    // Keeping track of objects to render
     private var anchorIdentifiersForType = [String: Set<UUID>]()
     private var augmentedAnchors = [AKAugmentedAnchor]()
     private var trackers = [AKAugmentedTracker]()
     private var paths = [UUID: [AKAugmentedAnchor]]()
+    private var gazeTargets = [GazeTarget]()
     
     // MARK: ARKit Session Configuration
     
@@ -634,11 +702,11 @@ public class Renderer {
                 renderModules.append(newAnchorsModule)
                 hasUninitializedModules = true
             }
-        case TrackersRenderModule.identifier:
-            if trackersRenderModule == nil {
-                let newTrackersModule = TrackersRenderModule()
-                trackersRenderModule = newTrackersModule
-                renderModules.append(newTrackersModule)
+        case UnanchoredRenderModule.identifier:
+            if unanchoredRenderModule == nil {
+                let newUnanchoredModule = UnanchoredRenderModule()
+                unanchoredRenderModule = newUnanchoredModule
+                renderModules.append(newUnanchoredModule)
                 hasUninitializedModules = true
             }
         case PathsRenderModule.identifier:

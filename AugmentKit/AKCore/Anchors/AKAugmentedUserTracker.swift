@@ -1,5 +1,5 @@
 //
-//  AKUserTracker.swift
+//  AKAugmentedUserTracker.swift
 //  AugmentKit
 //
 //  MIT License
@@ -35,12 +35,12 @@ class UserPosition: AKRelativePosition {
 }
 
 //  An AR tracking object that follows the users position.
-protocol AKUserTracker: AKAugmentedTracker {
+protocol AKAugmentedUserTracker: AKAugmentedTracker {
     var position: AKRelativePosition { get }
     func userPosition() -> AKRelativePosition?
 }
 
-public struct UserTracker: AKUserTracker {
+public class UserTracker: AKAugmentedUserTracker {
     
     public static var type: String {
         return "userTracker"

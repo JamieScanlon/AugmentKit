@@ -55,12 +55,3 @@ public protocol AKAugmentedTracker: AKTracker {
 public protocol AKRealTracker: AKTracker {
     
 }
-
-// MARK: - AKAugmentedUserTracker
-
-//  Represents a tracker placed in the AR world that tracks with the user (camera).
-//  This can be used to place augmented objects that follow the user such as
-//  heads up displays.
-public protocol AKAugmentedUserTracker: AKAugmentedTracker {
-    
-}

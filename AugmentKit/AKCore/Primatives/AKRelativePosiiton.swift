@@ -84,7 +84,6 @@ public class AKRelativePosition {
                         float4(0, 0, transform.columns.2.z, 0),
                         float4(transform.columns.3.x, transform.columns.3.y, transform.columns.3.z, 1)
                     )
-                    print("New Heading: \(newTransform)")
                     transform = newTransform
                 } else if mutableHeading.type == .relative {
                     transform = transform * newTransform

@@ -29,7 +29,7 @@ import Foundation
 import simd
 
 //  An ARTarget object whos vector matches the rotation of the device
-public struct GazeTarget: AKTarget {
+public class GazeTarget: AKTarget {
     public var vectorDirection: AKVector
     public static var type: String {
         return "GazeTarget"

@@ -289,6 +289,10 @@ public class AKWorld: NSObject {
         renderer.add(akTracker: tracker)
     }
     
+    public func add(gazeTarget: GazeTarget) {
+        renderer.add(gazeTarget: gazeTarget)
+    }
+    
     public func addPath(withAnchors anchors: [AKAugmentedAnchor], identifier: UUID) {
         renderer.addPath(withAnchors: anchors, identifier: identifier)
     }

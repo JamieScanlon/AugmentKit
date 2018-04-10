@@ -24,9 +24,9 @@ Another feature that AugmentKit will provide is integrating more contextual awar
 
 * ##### Custom render engine
 
-#### Pre-Release
+#### Alpha-Release
 
-This project is currently on phase 4 (see goals below)
+This project has completed all of the base pre-release functionality. There are _plenty_ of bugs and untested areas especially around improving the renderer to reliably support and render a broad variety of models (currently it's only been tested with a few types of SceneKit models). Also animation is theoretically supported but completely untested. There are also a bunch of improvements to be made in handling UI interaction and controls as outlined in https://developer.apple.com/documentation/arkit/handling_3d_interaction_and_ui_controls_in_augmented_reality. Although the framework supports rendering different models for different types of objects, every object of they same type shares a single model which is not great so I'd like to expand on the ablilty to to per-instance models.
 
 #### Features
 
@@ -39,12 +39,21 @@ This project is currently on phase 4 (see goals below)
 * Cameras require 60fps support
 * Xcode 9 or higher to build
 
-#### Project Goals
+#### Pre-Release Project Goals
 
-1. Use ARKit and Metal for plane detection and anchor tracking. Load and render complex models from ModelIO to use as anchors
-1. Integrate with CoreLocation to provide the ability to tie a point (3D transform) in AR space to a point (latitude, longitude, elevation) in real world space.
-1. Ability to serialize, store, transmit, and load anchors (including 3D meshes) in world space.
-1. More primatives, including tracking anchors that follow users, and paths that can be used to draw line paths in 3D world space.
+- [x] Use ARKit and Metal for plane detection and anchor tracking. Load and render complex models from ModelIO to use as anchors
+- [x] Integrate with CoreLocation to provide the ability to tie a point (3D transform) in AR space to a point (latitude, longitude, elevation) in real world space.
+- [x] Ability to serialize, store, transmit, and load anchors (including 3D meshes) in world space.
+- [x] More primatives, including tracking anchors that follow users, and paths that can be used to draw line paths in 3D world space.
+
+#### Alpha-Release Project Goals
+
+- [ ] Refinements to UIControls and interactions including exposing tap and other gestures, smoothing
+- [ ] Mechanism for surfacing the state of the world and the renderer so it can be surfaced to the user
+- [ ] Mechanism for surfacing errors
+- [ ] Test and fix animation for models
+- [ ] Test and fix a variety of models.
+- [ ] Support per-instance models
 
 #### _Stretch Goals_
 

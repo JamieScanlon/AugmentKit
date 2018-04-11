@@ -24,20 +24,160 @@ Another feature that AugmentKit will provide is integrating more contextual awar
 
 * ##### Custom render engine
 
-#### Alpha-Release
+### Getting Started
+
+#### Creating the AR World
+
+Begin by creating an AKWorld object and provide it with a configuation and an MTKView to render to.
+
+```swift
+let worldConfiguration = AKWorldConfiguration()
+let world = AKWorld(renderDestination: view, configuration: worldConfiguration)
+```
+
+Make sure the orientation of the device is set.
+
+```swift
+world.renderer.orientation = UIApplication.shared.statusBarOrientation
+```
+
+Begin the AR session.
+
+```swift
+world.begin()
+```
+
+#### Adding an anchor
+
+Now the AugmentKit world is up an running but there's not much to see yet. The fun comes from placing augmented reality objects in the world. The following code could be put in a tap gesture handler. For instance, here's how to add a new MDLAsset to the world at the devices current location.
+
+```swift
+let anchorModel = AKMDLAssetModel(asset: mdlAsset, vertexDescriptor: AKMDLAssetModel.newAnchorVertexDescriptor())
+let currentWorldLocation = world.currentWorldLocation
+let newObject = AugmentedObject(withAKModel: anchorModel, at: currentWorldLocation)
+world.add(anchor: newObject)
+```
+
+#### Adding a compass that follows you
+
+Trackers are different from anchors in that they are not anchored to a fixed point in the world, they track the movement of another object. Here's an example of a tracker that follows at your feet and always points north. Your own personal compass. 
+
+```swift
+if let asset = MDLAssetTools.assetFromImage(withName: "compass_512.png") {
+    let myUserTrackerModel = AKAnchorAssetModel(asset: asset)
+    // Position it 3 meters down from the camera
+    let offsetTransform = matrix_identity_float4x4.translate(x: 0, y: -3, z: 0)
+    let userTracker = UserTracker(withModel: myUserTrackerModel, withUserRelativeTransform: offsetTransform)
+    userTracker.position.heading = WorldHeading(withWorld: myWorld, worldHeadingType: .north)
+    world.add(tracker: userTracker)
+}
+```
+
+#### Adding a target where you look
+
+Targets are objects that appear at the intersection of a line (vector really) and something else like a plane that ARKit has detected. In this example, the vector points straight out from the device and wherever it intersects the first plane, a target is drawn.
+
+```swift
+if let asset = MDLAssetTools.assetFromImage(withName: "Gaze_Target.png", extension: "", scale: 0.2) {
+    let myGazeTargetModel = AKAnchorAssetModel(asset: asset)
+    let gazeTarget = GazeTarget(withModel: myGazeTargetModel, withUserRelativeTransform: matrix_identity_float4x4)
+    world.add(gazeTarget: gazeTarget)
+}
+```
+
+#### Adding a path
+
+Paths are line segments that are drawn between anchors. Here's an example that draws a path that loops around the circular spaceship building in Apple Park. This also demonstrates how anchors can be added with a fixed latitude and longitude instead of relative to your current position as in the previous example.
+
+```swift
+guard let location1 = world.worldLocation(withLatitude: 37.3335, longitude: -122.0106, elevation: currentWorldLocation.elevation) else {
+    return
+}
+
+guard let location2 = world.worldLocation(withLatitude: 37.3349, longitude: -122.0113, elevation: currentWorldLocation.elevation) else {
+    return
+}
+
+guard let location3 = world.worldLocation(withLatitude: 37.3362, longitude: -122.0106, elevation: currentWorldLocation.elevation) else {
+    return
+}
+
+guard let location4 = world.worldLocation(withLatitude: 37.3367, longitude: -122.0090, elevation: currentWorldLocation.elevation) else {
+    return
+}
+
+guard let location5 = world.worldLocation(withLatitude: 37.3365, longitude: -122.0079, elevation: currentWorldLocation.elevation) else {
+    return
+}
+
+guard let location6 = world.worldLocation(withLatitude: 37.3358, longitude: -122.0070, elevation: currentWorldLocation.elevation) else {
+    return
+}
+
+guard let location7 = world.worldLocation(withLatitude: 37.3348, longitude: -122.0067, elevation: currentWorldLocation.elevation) else {
+    return
+}
+
+guard let location8 = world.worldLocation(withLatitude: 37.3336, longitude: -122.0074, elevation: currentWorldLocation.elevation) else {
+    return
+}
+
+guard let location9 = world.worldLocation(withLatitude: 37.3330, longitude: -122.0090, elevation: currentWorldLocation.elevation) else {
+    return
+}
+
+let anchor1 = PathSegmentAnchor(at: location1)
+let anchor2 = PathSegmentAnchor(at: location2)
+let anchor3 = PathSegmentAnchor(at: location3)
+let anchor4 = PathSegmentAnchor(at: location4)
+let anchor5 = PathSegmentAnchor(at: location5)
+let anchor6 = PathSegmentAnchor(at: location6)
+let anchor7 = PathSegmentAnchor(at: location7)
+let anchor8 = PathSegmentAnchor(at: location8)
+let anchor9 = PathSegmentAnchor(at: location9)
+world.addPath(withAnchors: [anchor1, anchor2, anchor3, anchor4, anchor5, anchor6, anchor7, anchor8, anchor9, anchor1], identifier: UUID())
+```
+
+Most use cases for AugmentKit require you to provide a 3D model for rendering. Any model that can be used with ModelIO will do. Create an MDLAsset and 
+
+### More Documntation
+
+#### AKWorld
+
+The AKWorld manages the metal renderer, the ARKit engine, and the world state and is the primary way you interact with AugmentKit. When setting up the AKWorld, you provide a configuration object which determines things like weather Location Services are enabled and what the maximum render distance is. As well as being the primary way to add Anchors, Trackers, Targets and Paths, the AKWorld instance also provides state information like the current world locaiton and utility methods for determining the world location based on latitude and longitude. AKWorld also provides some dubuging tools like logging and being able to turn on visualizations of the surfaces and raw tracking points that ARKit is detecting.
+
+#### AKModel
+
+Although you can use any model object that conforms to the AKModel protocol, the framework provides an implementation of AKModel that allows you to provide any MDLAsset object from ModelIO which takes care of parsing and converting the MDLAsset to an AKModel Object. AugmentKit also provides an implementation of AKModel that can be serialized, transmitted over the the wire or stored on disk then deserialized and used for rendering again. This is the means by which models can be shared among different users.
+
+#### AKAnchor
+
+TBD
+
+#### AKATracker
+
+TBD
+
+#### AKTarget
+
+TBD
+
+### Alpha-Release
 
 This project has completed all of the base pre-release functionality. There are _plenty_ of bugs and untested areas especially around improving the renderer to reliably support and render a broad variety of models (currently it's only been tested with a few types of SceneKit models). Also animation is theoretically supported but completely untested. There are also a bunch of improvements to be made in handling UI interaction and controls as outlined in https://developer.apple.com/documentation/arkit/handling_3d_interaction_and_ui_controls_in_augmented_reality. Although the framework supports rendering different models for different types of objects, every object of they same type shares a single model which is not great so I'd like to expand on the ablilty to to per-instance models.
 
-#### Features
+### Features
 
 * Written in Swift, ARKit, and Metal 2
 
-#### Requirements
+### Requirements
 
 * A8 or higher iOS devices
 * iOS 11.0 or higher
 * Cameras require 60fps support
 * Xcode 9 or higher to build
+
+### Goals
 
 #### Pre-Release Project Goals
 
@@ -64,5 +204,5 @@ This project has completed all of the base pre-release functionality. There are 
 
 The original goal of this project was to provide a general framework for building Augmented Reality apps. But Apple announced ARKit for iOS 11 which not only satisfies the original goal of this project, it will certainly do it better. So the projects goal changed. What's left of the original project is in the Pre-ARKit branch.
 
-#### LICENSE
+### LICENSE
 MIT

@@ -18,12 +18,6 @@
 		7D5B25A72069626900EFA3C6 /* AKRealSurfaceAnchor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D5B25A62069626900EFA3C6 /* AKRealSurfaceAnchor.swift */; };
 		7D5B25A9206BFAC100EFA3C6 /* GazeTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D5B25A8206BFAC100EFA3C6 /* GazeTarget.swift */; };
 		7D5EEC1E1FDC5EDD00E3FE91 /* Pin.scn in Resources */ = {isa = PBXBuildFile; fileRef = 7D1B6F0C1F2983DA00AB035D /* Pin.scn */; };
-		7D5EEC1F1FDC628D00E3FE91 /* AKModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DE0C2A81FD46E5E0043FA5F /* AKModel.swift */; };
-		7D5EEC201FDC629400E3FE91 /* Serialize.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D282F131FD11DE600D00B86 /* Serialize.swift */; };
-		7D5EEC211FDC629600E3FE91 /* AKMDLAssetModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D1B6F081F23B2B200AB035D /* AKMDLAssetModel.swift */; };
-		7D5EEC221FDC629800E3FE91 /* MeshTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DB396AF1F1AFDD30003019B /* MeshTools.swift */; };
-		7D5EEC231FDC629B00E3FE91 /* MeshData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DB396AD1F1AFD860003019B /* MeshData.swift */; };
-		7D5EEC241FDC629E00E3FE91 /* MetalUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DB396AB1F1AFBFB0003019B /* MetalUtilities.swift */; };
 		7D5FDA321FC72AAE00BAE104 /* RenderModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D5FDA311FC72AAE00BAE104 /* RenderModule.swift */; };
 		7D5FDA341FC7333200BAE104 /* SharedBuffersRenderModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D5FDA331FC7333200BAE104 /* SharedBuffersRenderModule.swift */; };
 		7D5FDA361FC73AD000BAE104 /* CameraPlaneRenderModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D5FDA351FC73AD000BAE104 /* CameraPlaneRenderModule.swift */; };
@@ -79,20 +73,22 @@
 		7DBA36A21F7C1AA50006310A /* texture.png in Resources */ = {isa = PBXBuildFile; fileRef = 7DBA369F1F7C1A310006310A /* texture.png */; };
 		7DC785CC1FE6537D00F82FA4 /* AKArchivedModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DC785CB1FE6537D00F82FA4 /* AKArchivedModel.swift */; };
 		7DC785D11FE655C100F82FA4 /* AKRemoteArchivedModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DC785D01FE655C100F82FA4 /* AKRemoteArchivedModel.swift */; };
-		7DC785D21FE662F600F82FA4 /* unzip.c in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098961FDDA3B9004A92AA /* unzip.c */; };
-		7DC785D31FE662FB00F82FA4 /* zip.c in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098971FDDA3B9004A92AA /* zip.c */; };
-		7DC785D41FE6630000F82FA4 /* ioapi.c in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098981FDDA3B9004A92AA /* ioapi.c */; };
 		7DC785D71FED819C00F82FA4 /* UnanchoredRenderModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DC785D61FED819C00F82FA4 /* UnanchoredRenderModule.swift */; };
+		7DCA03EF207F18FD0096F7C6 /* ZipUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098941FDDA3B9004A92AA /* ZipUtilities.swift */; };
+		7DCA03F0207F19CD0096F7C6 /* unzip.c in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098961FDDA3B9004A92AA /* unzip.c */; };
+		7DCA03F1207F19CE0096F7C6 /* unzip.c in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098961FDDA3B9004A92AA /* unzip.c */; };
+		7DCA03F2207F19D30096F7C6 /* zip.c in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098971FDDA3B9004A92AA /* zip.c */; };
+		7DCA03F3207F19D40096F7C6 /* zip.c in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098971FDDA3B9004A92AA /* zip.c */; };
+		7DCA03F4207F19D70096F7C6 /* ioapi.c in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098981FDDA3B9004A92AA /* ioapi.c */; };
+		7DCA03F5207F19D80096F7C6 /* ioapi.c in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098981FDDA3B9004A92AA /* ioapi.c */; };
+		7DCA03F6207F19E20096F7C6 /* QuickZip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF0989E1FDDA3B9004A92AA /* QuickZip.swift */; };
+		7DCA03F7207F19E60096F7C6 /* Zip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098A11FDDA3B9004A92AA /* Zip.swift */; };
+		7DCA03F8207F1A170096F7C6 /* AugmentKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7D6E6B471F8F19C300EFC667 /* AugmentKit.framework */; };
+		7DCA03F9207F1A170096F7C6 /* AugmentKit.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 7D6E6B471F8F19C300EFC667 /* AugmentKit.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		7DE0C29B1FD3DF6E0043FA5F /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DE0C29A1FD3DF6E0043FA5F /* main.swift */; };
 		7DE0C2A11FD3DFC60043FA5F /* AugmentKitCLTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DE0C29F1FD3DFC50043FA5F /* AugmentKitCLTools.swift */; };
 		7DE0C2A21FD3DFC60043FA5F /* ConsoleIO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DE0C2A01FD3DFC50043FA5F /* ConsoleIO.swift */; };
-		7DE0C2A31FD3E0850043FA5F /* AKMDLAssetModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D1B6F081F23B2B200AB035D /* AKMDLAssetModel.swift */; };
-		7DE0C2A41FD3E0AB0043FA5F /* Serialize.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D282F131FD11DE600D00B86 /* Serialize.swift */; };
-		7DE0C2A51FD3E0AF0043FA5F /* MeshData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DB396AD1F1AFD860003019B /* MeshData.swift */; };
-		7DE0C2A61FD3E0B30043FA5F /* MeshTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DB396AF1F1AFDD30003019B /* MeshTools.swift */; };
-		7DE0C2A71FD3E0C40043FA5F /* MetalUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DB396AB1F1AFBFB0003019B /* MetalUtilities.swift */; };
 		7DE0C2A91FD46E5E0043FA5F /* AKModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DE0C2A81FD46E5E0043FA5F /* AKModel.swift */; };
-		7DE0C2AA1FD476FA0043FA5F /* AKModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DE0C2A81FD46E5E0043FA5F /* AKModel.swift */; };
 		7DF697EB1FCD26F500292F66 /* AKModelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF697EA1FCD26F500292F66 /* AKModelProvider.swift */; };
 		7DFCF6031FC08CD300E8A560 /* ImageCaptureShaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = 7DFCF6021FC08CD300E8A560 /* ImageCaptureShaders.metal */; };
 		7DFCF6051FC096A900E8A560 /* PointShader.metal in Sources */ = {isa = PBXBuildFile; fileRef = 7DFCF6041FC096A900E8A560 /* PointShader.metal */; };
@@ -113,6 +109,13 @@
 			remoteGlobalIDString = 7D6E6B461F8F19C300EFC667;
 			remoteInfo = AugmentKit;
 		};
+		7DCA03FA207F1A170096F7C6 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 7D88D79F1F0AFD550009A154 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7D6E6B461F8F19C300EFC667;
+			remoteInfo = AugmentKit;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -123,6 +126,17 @@
 			dstSubfolderSpec = 10;
 			files = (
 				7DA9936C1F907A9A00595435 /* AugmentKit.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7DCA03FC207F1A180096F7C6 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				7DCA03F9207F1A170096F7C6 /* AugmentKit.framework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -258,6 +272,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7DCA03F8207F1A170096F7C6 /* AugmentKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -611,10 +626,12 @@
 				7DB2C4DF1FDC588F00B355A2 /* Sources */,
 				7DB2C4E01FDC588F00B355A2 /* Frameworks */,
 				7DB2C4E11FDC588F00B355A2 /* Resources */,
+				7DCA03FC207F1A180096F7C6 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				7DCA03FB207F1A170096F7C6 /* PBXTargetDependency */,
 			);
 			name = AugmentKitCLTools;
 			productName = AugmentKitCLTools;
@@ -743,7 +760,6 @@
 				7D5B25A72069626900EFA3C6 /* AKRealSurfaceAnchor.swift in Sources */,
 				7D8A0A822013D143006CAAAD /* AKHeading.swift in Sources */,
 				7D6E6B671F8F1CC300EFC667 /* AKMDLAssetModel.swift in Sources */,
-				7DC785D21FE662F600F82FA4 /* unzip.c in Sources */,
 				7D6E6B6E1F8F1CDB00EFC667 /* LocalStoreManager.swift in Sources */,
 				7D6E6B6F1F8F1CDB00EFC667 /* ErrorManager.swift in Sources */,
 				7D8A0A802013D058006CAAAD /* AKRelativePosiiton.swift in Sources */,
@@ -764,7 +780,6 @@
 				7D6E6B651F8F1CBC00EFC667 /* AugmentedObject.swift in Sources */,
 				7D6E6B6A1F8F1CC300EFC667 /* MetalUtilities.swift in Sources */,
 				7DC785D11FE655C100F82FA4 /* AKRemoteArchivedModel.swift in Sources */,
-				7DC785D31FE662FB00F82FA4 /* zip.c in Sources */,
 				7DAD06BE2071505E00B62B61 /* AKTracker.swift in Sources */,
 				7D5FDA3C1FC9E70E00BAE104 /* SurfacesRenderModule.swift in Sources */,
 				7D6E6B5E1F8F1C9600EFC667 /* AKSceneKitUtils.swift in Sources */,
@@ -781,7 +796,6 @@
 				7DAD06C0207150B300B62B61 /* AKGeometricEntity.swift in Sources */,
 				7D282F141FD11DE700D00B86 /* Serialize.swift in Sources */,
 				7D5FDA3E1FC9FB4400BAE104 /* Renderer.swift in Sources */,
-				7DC785D41FE6630000F82FA4 /* ioapi.c in Sources */,
 				7D6E6B6C1F8F1CDB00EFC667 /* LocationManager.swift in Sources */,
 				7D53471F203A961A00714A6F /* PathShader.metal in Sources */,
 				7DF697EB1FCD26F500292F66 /* AKModelProvider.swift in Sources */,
@@ -803,9 +817,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7DCA03F0207F19CD0096F7C6 /* unzip.c in Sources */,
 				7D3263771FF7FB490040375C /* ZipUtilities.swift in Sources */,
+				7DCA03F4207F19D70096F7C6 /* ioapi.c in Sources */,
 				7D3263781FF7FB4D0040375C /* QuickZip.swift in Sources */,
 				7D88D7B21F0AFD550009A154 /* ViewController.swift in Sources */,
+				7DCA03F2207F19D30096F7C6 /* zip.c in Sources */,
 				7D3263791FF7FB530040375C /* Zip.swift in Sources */,
 				7D88D7AB1F0AFD550009A154 /* AppDelegate.swift in Sources */,
 			);
@@ -815,13 +832,13 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				7D5EEC231FDC629B00E3FE91 /* MeshData.swift in Sources */,
-				7D5EEC1F1FDC628D00E3FE91 /* AKModel.swift in Sources */,
-				7D5EEC221FDC629800E3FE91 /* MeshTools.swift in Sources */,
+				7DCA03F3207F19D40096F7C6 /* zip.c in Sources */,
 				7DB2C4E81FDC588F00B355A2 /* ViewController.swift in Sources */,
-				7D5EEC201FDC629400E3FE91 /* Serialize.swift in Sources */,
-				7D5EEC211FDC629600E3FE91 /* AKMDLAssetModel.swift in Sources */,
-				7D5EEC241FDC629E00E3FE91 /* MetalUtilities.swift in Sources */,
+				7DCA03F6207F19E20096F7C6 /* QuickZip.swift in Sources */,
+				7DCA03F5207F19D80096F7C6 /* ioapi.c in Sources */,
+				7DCA03F1207F19CE0096F7C6 /* unzip.c in Sources */,
+				7DCA03EF207F18FD0096F7C6 /* ZipUtilities.swift in Sources */,
+				7DCA03F7207F19E60096F7C6 /* Zip.swift in Sources */,
 				7DB2C4E61FDC588F00B355A2 /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -830,15 +847,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				7DE0C2AA1FD476FA0043FA5F /* AKModel.swift in Sources */,
-				7DE0C2A51FD3E0AF0043FA5F /* MeshData.swift in Sources */,
-				7DE0C2A61FD3E0B30043FA5F /* MeshTools.swift in Sources */,
 				7DE0C2A21FD3DFC60043FA5F /* ConsoleIO.swift in Sources */,
 				7DE0C29B1FD3DF6E0043FA5F /* main.swift in Sources */,
-				7DE0C2A31FD3E0850043FA5F /* AKMDLAssetModel.swift in Sources */,
 				7DE0C2A11FD3DFC60043FA5F /* AugmentKitCLTools.swift in Sources */,
-				7DE0C2A71FD3E0C40043FA5F /* MetalUtilities.swift in Sources */,
-				7DE0C2A41FD3E0AB0043FA5F /* Serialize.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -854,6 +865,11 @@
 			isa = PBXTargetDependency;
 			target = 7D6E6B461F8F19C300EFC667 /* AugmentKit */;
 			targetProxy = 7DA9936D1F907A9A00595435 /* PBXContainerItemProxy */;
+		};
+		7DCA03FB207F1A170096F7C6 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7D6E6B461F8F19C300EFC667 /* AugmentKit */;
+			targetProxy = 7DCA03FA207F1A170096F7C6 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -1123,15 +1139,14 @@
 		7DB2C5081FDC589000B355A2 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 3XDE7T392Z;
 				INFOPLIST_FILE = AugmentKitCLTools/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 11.2;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = com.tenthlettermade.AugmentKitCLTools;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/AugmentKit/Renderer/**";
+				SWIFT_INCLUDE_PATHS = "${SRCROOT}/Libraries/Zip/minizip/**";
 				SWIFT_VERSION = 4.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -1140,15 +1155,14 @@
 		7DB2C5091FDC589000B355A2 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 3XDE7T392Z;
 				INFOPLIST_FILE = AugmentKitCLTools/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 11.2;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = com.tenthlettermade.AugmentKitCLTools;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/AugmentKit/Renderer/**";
+				SWIFT_INCLUDE_PATHS = "${SRCROOT}/Libraries/Zip/minizip/**";
 				SWIFT_VERSION = 4.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};

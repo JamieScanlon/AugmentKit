@@ -219,8 +219,8 @@ class ViewController: UIViewController {
 
 extension ViewController: RenderDebugLogger {
     
-    func updatedAnchors(count: Int, numAnchors: Int, numPlanes: Int, numTrackingPoints: Int) {
-        debugInfoAnchorCounts?.text = "Total Anchor Count: \(count) - User: \(numAnchors), planes: \(numPlanes), points: \(numTrackingPoints)"
+    func update(stats: RenderDebugLoggerStats) {
+        debugInfoAnchorCounts?.text = "ARKit Anchor Count: \(stats.arKitAnchorCount)\nAugmentKit Anchors: \(stats.numAnchors)\nplanes: \(stats.numPlanes)\ntracking points: \(stats.numTrackingPoints)\ntrackers: \(stats.numTrackers)\ntargets: \(stats.numTargets)\npath segments \(stats.numPathSegments)"
     }
 }
 

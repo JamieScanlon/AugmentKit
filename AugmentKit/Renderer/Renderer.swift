@@ -44,8 +44,18 @@ public protocol RenderDestinationProvider {
 
 // MARK: - RenderDebugLogger
 
+public struct RenderDebugLoggerStats {
+    public var arKitAnchorCount: Int
+    public var numAnchors: Int
+    public var numPlanes: Int
+    public var numTrackingPoints: Int
+    public var numTrackers: Int
+    public var numTargets: Int
+    public var numPathSegments: Int
+}
+
 public protocol RenderDebugLogger {
-    func updatedAnchors(count: Int, numAnchors: Int, numPlanes: Int, numTrackingPoints: Int)
+    func update(stats: RenderDebugLoggerStats)
 }
 
 // MARK: - CameraProperties
@@ -489,7 +499,8 @@ public class Renderer {
             viewportSizeDidChange = false
         }
         
-        logger?.updatedAnchors(count: currentFrame.anchors.count, numAnchors: anchorsRenderModule?.anchorInstanceCount ?? 0, numPlanes: surfacesRenderModule?.surfaceInstanceCount ?? 0, numTrackingPoints: trackingPointRenderModule?.trackingPointCount ?? 0)
+        let stats = RenderDebugLoggerStats(arKitAnchorCount: currentFrame.anchors.count, numAnchors: anchorsRenderModule?.anchorInstanceCount ?? 0, numPlanes: surfacesRenderModule?.surfaceInstanceCount ?? 0, numTrackingPoints: trackingPointRenderModule?.trackingPointCount ?? 0, numTrackers: unanchoredRenderModule?.trackerInstanceCount ?? 0, numTargets: unanchoredRenderModule?.targetInstanceCount ?? 0, numPathSegments: pathsRenderModule?.pathSegmentInstanceCount ?? 0)
+        logger?.update(stats: stats)
         
     }
     

@@ -25,8 +25,8 @@
 //  SOFTWARE.
 //
 
+import AugmentKit
 import UIKit
-import AugmentKitShader
 import Metal
 import MetalKit
 import ModelIO
@@ -122,7 +122,7 @@ class ViewController: UIViewController {
         }
         
         // Load meshes into the model
-        let model = AKMDLAssetModel(asset: asset)
+        let model = AKMDLAssetModel(asset: asset, vertexDescriptor: AKMDLAssetModel.newAnchorVertexDescriptor())
         let dataFileURL = url.deletingLastPathComponent().appendingPathComponent("model.dat")
         NSKeyedArchiver.archiveRootObject(AKModelCodingWrapper(model: model), toFile: dataFileURL.path)
         

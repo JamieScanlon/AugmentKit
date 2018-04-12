@@ -118,7 +118,7 @@ class AugmentKitCLTools {
         }
         
         // Load meshes into the model
-        model = AKMDLAssetModel(asset: asset)
+        model = AKMDLAssetModel(asset: asset, vertexDescriptor: AKMDLAssetModel.newAnchorVertexDescriptor())
         
         guard let model = model else {
             ConsoleIO.writeMessage("Could not parse the model file.", to: .error)

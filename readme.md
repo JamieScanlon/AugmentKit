@@ -20,6 +20,10 @@ Another feature that AugmentKit will provide is integrating more contextual awar
 
 ![](media/augmentkit-compass.gif)
 
+* ##### Horizontal and vertical surfaces
+
+![](media/augmentkit-target.gif)
+
 * ##### Load and render serialized 3D anchors over the wire
 
 * ##### Custom render engine

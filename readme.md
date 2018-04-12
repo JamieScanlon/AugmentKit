@@ -16,11 +16,7 @@ Another feature that AugmentKit will provide is integrating more contextual awar
 
 ![](media/augmentkit-location-anchor.gif)
 
-* ##### Direction aware anchors
-
-![](media/augmentkit-compass.gif)
-
-* ##### Horizontal and vertical surfaces
+* ##### Direction aware and surface aware anchors
 
 ![](media/augmentkit-target.gif)
 

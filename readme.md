@@ -152,15 +152,23 @@ Although you can use any model object that conforms to the AKModel protocol, the
 
 #### AKAnchor
 
-TBD
+An AKAnchor represents an object that can be rendered into the AKWorld at an anchored (fixed) position. The AKAnchor protocol has two sub protocols, AKAugmentedAnchor and AKRealAnchor that represent augmented objects (objects that don't exist in the real world) and real objects, objects that exist both in the augmented work and the real world
 
-#### AKATracker
+#### AKTracker
 
-TBD
+An AKTracker represents an object that can be rendered into the AKWorld. It's position is relative to another object and therefore tracks the other opject and is not fixed. The AKTracker protocol has two sub protocols, AKAugmentedTracker and AKRealTracker that represent augmented objects (objects that don't exist in the real world) and real objects, objects that exist both in the augmented work and the real world
 
 #### AKTarget
 
-TBD
+An AKTarget represents an object that can be rendered into the AKWorld. It's position is determined by a relative position (similar to an AKTracker) and a direction vector. The vector extends from the relative position and where it intersects another object in the AKWorld is where the target is rendered. A good example of this would be an augmented reality laser pointer. The red dot of the laser is where the object is rendered but where that dot is located in the AKWorld depends on where you hold the laser pointer (the position), the direction the laser pointer is pointed (the vector), and what's in its path (an intersection with another object).
+
+#### AKWorldLocation
+
+AKWorldLocation is a data structure that ties together a position in the AR world with a locaiton in the real world. When the ARKit session starts up, it crates an arbitrary coordinate system where the origin is where the device was located at the time of initialization. Every device and every AR session, therefore, has it's own local coordinate system. In order to reason about how the coordinate system relates to actual locations in the real world, AugmentKit uses location services to map a point in the ARKit coordinate system to a latitude and longitude in the real world and stores this as an AKWorldLocation object. Once a reliable AKWorldLocation is found, other AKWorldLocation objects can be derived by calculating their relative distance from the one reliable reference AKWorldLocation object.
+
+#### AugmentedObject
+
+AugmentedObject is an implementation of the AKAugmentedAnchor protocol that provides a general purpose object to be rendered in the AKWorld. As the AKAugmentedAnchor protocol implies, it is an augmented object so it does not exist in the real world and it is rendered at a fixed location.
 
 ### Alpha-Release
 

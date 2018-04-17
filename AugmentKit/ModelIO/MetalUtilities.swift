@@ -215,7 +215,25 @@ public extension float4x4 {
         return float4x4.makeQuaternion(from: self)
     }
     
+    public func isZero() -> Bool {
+        if let max = self.columns.0.max(), max > 0.0001 {
+            return false
+        }
+        if let max = self.columns.1.max(), max > 0.0001 {
+            return false
+        }
+        if let max = self.columns.2.max(), max > 0.0001 {
+            return false
+        }
+        if let max = self.columns.3.max(), max > 0.0001 {
+            return false
+        }
+        return true
+    }
+    
 }
+
+// MARK: - simd_float4
 
 public extension simd_float4 {
     static let zero = simd_float4(0.0, 0.0, 0.0, 0.0)

@@ -276,7 +276,7 @@ public class Renderer {
         if surfacesRenderModule == nil && showGuides && surfaceAnchors.count > 0  {
             
             let metalAllocator = MTKMeshBufferAllocator(device: device)
-            modelProvider?.registerModel(GuideSurfaceAnchor.createModel(withAllocator: metalAllocator)!, forObjectType: GuideSurfaceAnchor.type)
+            modelProvider?.registerModel(GuideSurfaceAnchor.createModel(withAllocator: metalAllocator)!, forObjectType: GuideSurfaceAnchor.type, identifier: nil)
             
             addModule(forModuelIdentifier: SurfacesRenderModule.identifier)
             
@@ -507,18 +507,18 @@ public class Renderer {
     // MARK: - Adding objects for render
     
     //  Add a new AKAugmentedAnchor to the AR world
-    public func add(akAnchor: AKAugmentedAnchor) {
+    public func add(akAnchor: AKAugmentedAnchor) -> UUID {
         
         let anchorType = type(of: akAnchor).type
-        
-        // Resgister the AKModel with the model provider.
-        modelProvider?.registerModel(akAnchor.model, forObjectType: anchorType)
-        
-        // Add a new anchor to the session
         let arAnchor = ARAnchor(transform: akAnchor.worldLocation.transform)
         let identifier = arAnchor.identifier
-        var mutableAnchor = akAnchor
-        mutableAnchor.setIdentifier(identifier)
+        
+        // Resgister the AKModel with the model provider.
+        modelProvider?.registerModel(akAnchor.model, forObjectType: anchorType, identifier: identifier)
+        
+        // Create an InterpolatingAugmentedObject for internal use
+        let mutableAnchor = InterpolatingAugmentedObject(withAKAugmentedAnchor: akAnchor)
+        mutableAnchor.identifier = identifier
         augmentedAnchors.append(mutableAnchor)
         
         // Keep track of the anchor's UUID bucketed by the AKAnchor.type
@@ -533,7 +533,10 @@ public class Renderer {
             anchorIdentifiersForType[anchorType] = uuidSet
         }
         
+        // Add a new anchor to the session
         session.add(anchor: arAnchor)
+        
+        return identifier
         
     }
     
@@ -543,7 +546,7 @@ public class Renderer {
         let anchorType = type(of: akTracker).type
         
         // Resgister the AKModel with the model provider.
-        modelProvider?.registerModel(akTracker.model, forObjectType: anchorType)
+        modelProvider?.registerModel(akTracker.model, forObjectType: anchorType, identifier: akTracker.identifier)
         
         trackers.append(akTracker)
         
@@ -552,20 +555,20 @@ public class Renderer {
     //  Add a new path to the AR world
     public func addPath(withAnchors anchors: [AKAugmentedAnchor], identifier: UUID) {
         
-        var updatedAnchors = [AKAugmentedAnchor]()
-        for anchor in anchors {
+        paths[identifier] = anchors.map() {
             
-            let anchorType = type(of: anchor).type
+            let anchorType = type(of: $0).type
             
             // Resgister the AKModel with the model provider.
-            modelProvider?.registerModel(anchor.model, forObjectType: anchorType)
+            modelProvider?.registerModel($0.model, forObjectType: anchorType, identifier: $0.identifier)
             
-            // Add a new anchor to the session
-            let arAnchor = ARAnchor(transform: anchor.worldLocation.transform)
+            
+            let arAnchor = ARAnchor(transform: $0.worldLocation.transform)
             let identifier = arAnchor.identifier
-            var mutableAnchor = anchor
-            mutableAnchor.setIdentifier(identifier)
-            updatedAnchors.append(mutableAnchor)
+            
+            // Create an InterpolatingAugmentedObject for internal use
+            let mutableAnchor = InterpolatingAugmentedObject(withAKAugmentedAnchor: $0)
+            mutableAnchor.identifier = identifier
             
             // Keep track of the anchor's UUID bucketed by the AKAnchor.type
             // This will be used to associate individual anchors with AKAnchor.type's,
@@ -579,11 +582,12 @@ public class Renderer {
                 anchorIdentifiersForType[anchorType] = uuidSet
             }
             
+            // Add a new anchor to the session
             session.add(anchor: arAnchor)
             
+            return mutableAnchor
+            
         }
-        
-        paths[identifier] = updatedAnchors
         
     }
     
@@ -593,7 +597,7 @@ public class Renderer {
         let theType = type(of: gazeTarget).type
         
         // Resgister the AKModel with the model provider.
-        modelProvider?.registerModel(gazeTarget.model, forObjectType: theType)
+        modelProvider?.registerModel(gazeTarget.model, forObjectType: theType, identifier: gazeTarget.identifier)
         
         gazeTargets.append(gazeTarget)
         
@@ -823,5 +827,106 @@ public class Renderer {
             return nil
         }
     }
+    
+}
+
+// MARK: - InterpolatingAugmentedObject
+
+// An internal instance of a `AKAugmentedAnchor` that interpolates between locations
+// in order to achieve smoothing.
+// Set the interpolation progress with `interpolation`
+// Call `update()` to do the terpolation calculations.
+// After calling `update()`, `currentLocation` contains the interpolated transform with
+// the `latitude`, `longitude`, and `elevation` set to the final values
+fileprivate class InterpolatingAugmentedObject: AKAugmentedAnchor {
+    
+    static var type: String {
+        return "AugmentedObject"
+    }
+    
+    // Contains the target world location which may not be the actual location
+    // if the instance ins currently interpolating
+    var worldLocation: AKWorldLocation
+    var model: AKModel
+    var identifier: UUID?
+    
+    // When interpolating, this contains the old location
+    var lastLocaion: AKWorldLocation?
+    // When interpolating, this contains the current location which is somewhere
+    // between the lastLocaion (old) and worldLocation (new)
+    private(set) var currentLocation: AKWorldLocation?
+    var progress: Float = 1.0 {
+        didSet {
+            if progress > 1 {
+                progress = 1
+            } else if progress < 0 {
+                progress = 0
+            } else if progress == 1 {
+                lastLocaion = nil
+                currentLocation = nil
+                needsUpdate = false
+            } else if progress == 0 {
+                currentLocation = lastLocaion
+                needsUpdate = false
+            } else {
+                needsUpdate = true
+            }
+            
+        }
+    }
+    
+    var interval: Float = 0.1
+    
+    init(withAKAugmentedAnchor akAugmentedAnchor: AKAugmentedAnchor) {
+        self.model = akAugmentedAnchor.model
+        self.worldLocation = akAugmentedAnchor.worldLocation
+    }
+    
+    func update() {
+        
+        guard needsUpdate else {
+            return
+        }
+        
+        needsUpdate = false
+        
+        guard let lastLocaion = lastLocaion else {
+            return
+        }
+        
+        var diff = worldLocation.transform - lastLocaion.transform
+        
+        guard !diff.isZero() else {
+            return
+        }
+        
+        diff = diff * progress
+        currentLocation = AKWorldLocation(transform: lastLocaion.transform + diff, latitude: worldLocation.latitude, longitude: worldLocation.longitude, elevation: worldLocation.elevation)
+        
+    }
+    
+    // Updates the progress and calls `update()`
+    func calculateNextPosition() {
+        
+        guard progress + interval < 1 else {
+            progress = 1
+            return
+        }
+        
+        progress += interval
+        update()
+        
+    }
+    
+    func updateLocationWithInterpolation(_ newWorldLocation: AKWorldLocation) {
+        progress = 0
+        lastLocaion = worldLocation
+        worldLocation = newWorldLocation
+        calculateNextPosition()
+    }
+    
+    // MARK: Private
+    
+    private var needsUpdate = false
     
 }

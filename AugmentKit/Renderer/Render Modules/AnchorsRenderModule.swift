@@ -97,7 +97,8 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         // Create and load our models
         //
         
-        modelProvider.loadModel(forObjectType: AugmentedObject.type) { [weak self] model in
+        // TODO: Add ability to load multiple models by identifier
+        modelProvider.loadModel(forObjectType: AugmentedObject.type, identifier: nil) { [weak self] model in
             
             guard let model = model else {
                 print("Warning (AnchorsRenderModule) - Failed to get a model for type \(AugmentedObject.type) from the modelProvider. Aborting the render phase.")

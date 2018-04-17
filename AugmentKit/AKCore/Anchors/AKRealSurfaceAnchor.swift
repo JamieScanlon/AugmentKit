@@ -61,10 +61,6 @@ public struct RealSurfaceAnchor: AKRealSurfaceAnchor {
         
     }
     
-    public mutating func setIdentifier(_ uuid: UUID) {
-        identifier = uuid
-    }
-    
 }
 
 public struct GuideSurfaceAnchor: AKRealSurfaceAnchor {

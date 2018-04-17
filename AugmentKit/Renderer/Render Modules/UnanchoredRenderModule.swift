@@ -94,7 +94,8 @@ class UnanchoredRenderModule: RenderModule {
         var hasLoadedTrackerModel = false
         var hasLoadedTargetModel = false
         
-        modelProvider.loadModel(forObjectType: UserTracker.type) { [weak self] model in
+        // TODO: Add ability to load multiple models by identifier
+        modelProvider.loadModel(forObjectType: UserTracker.type, identifier: nil) { [weak self] model in
             
             hasLoadedTrackerModel = true
             
@@ -116,7 +117,8 @@ class UnanchoredRenderModule: RenderModule {
             
         }
         
-        modelProvider.loadModel(forObjectType: GazeTarget.type) { [weak self] model in
+        // TODO: Add ability to load multiple models by identifier
+        modelProvider.loadModel(forObjectType: GazeTarget.type, identifier: nil) { [weak self] model in
             
             hasLoadedTargetModel = true
             

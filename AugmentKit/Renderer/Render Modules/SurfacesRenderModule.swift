@@ -93,8 +93,8 @@ class SurfacesRenderModule: RenderModule {
         // Create and load our models
         //
         
-        // TODO: Ability to load multiple surface types / models.
-        modelProvider.loadModel(forObjectType: GuideSurfaceAnchor.type) { [weak self] model in
+        // TODO: Add ability to load multiple models by identifier
+        modelProvider.loadModel(forObjectType: GuideSurfaceAnchor.type, identifier: nil) { [weak self] model in
 
             guard let model = model else {
                 print("Warning (SurfacesRenderModule) - Failed to get a model for type \(GuideSurfaceAnchor.type) from the modelProvider. Aborting the render phase.")

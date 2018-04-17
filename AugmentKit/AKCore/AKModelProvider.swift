@@ -29,31 +29,35 @@ import Foundation
 import ModelIO
 
 public protocol ModelProvider {
-    func registerModel(_ model: AKModel, forObjectType type: String)
-    func loadModel(forObjectType type: String, completion: (AKModel?) -> Void)
+    func registerModel(_ model: AKModel, forObjectType type: String, identifier: UUID?)
+    func loadModel(forObjectType type: String, identifier: UUID?, completion: (AKModel?) -> Void)
 }
 
 public class AKModelProvider: ModelProvider {
     
     static let sharedInstance = AKModelProvider()
     
-    public func registerModel(_ model: AKModel, forObjectType type: String) {
+    public func registerModel(_ model: AKModel, forObjectType type: String, identifier: UUID? = nil) {
         modelsByType[type] = model
+        if let identifier = identifier {
+            modelsByIdentifier[identifier] = model
+        }
     }
     
-    public func loadModel(forObjectType type: String, completion: (AKModel?) -> Void) {
-        
-        if let anchorAsset = modelsByType[type] {
+    public func loadModel(forObjectType type: String, identifier: UUID?, completion: (AKModel?) -> Void) {
+        if let identifier = identifier, let anchorAsset = modelsByIdentifier[identifier] {
+            completion(anchorAsset)
+        } else if let anchorAsset = modelsByType[type] {
             completion(anchorAsset)
         } else {
             print("Warning - Failed to find an AKModel for type: \(type).")
             completion(nil)
         }
-        
     }
     
     // MARK: - Private
     
     private var modelsByType = [String: AKModel]()
+    private var modelsByIdentifier = [UUID: AKModel]()
     
 }

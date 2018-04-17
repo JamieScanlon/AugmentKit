@@ -51,9 +51,5 @@ public struct PathSegmentAnchor: AKPathSegmentAnchor {
         self.worldLocation = location
     }
     
-    public mutating func setIdentifier(_ uuid: UUID) {
-        identifier = uuid
-    }
-    
 }
 

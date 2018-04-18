@@ -102,8 +102,9 @@ struct ColorInOut {
 // MARK: Lighting Parameters
 
 struct LightingParameters {
-    float3  lightDir;
-    float3  lightCol;
+    float3  lightDirection;
+    float3  directionalLightCol;
+    float3  ambientLightCol;
     float3  viewDir;
     float3  halfVector;
     float3  reflectedVector;
@@ -252,7 +253,7 @@ float3 computeDiffuse(LightingParameters parameters) {
 
     float subsurface = 0.0; // TODO: parameters.subsurface
     float3 diffuseOutput = ((1.0/PI) * mix(Fd, ss, subsurface) * parameters.baseColor.rgb) * (1.0 - parameters.metalness);
-    return parameters.lightCol * diffuseOutput;
+    return parameters.directionalLightCol * diffuseOutput;
     
 }
 
@@ -287,7 +288,7 @@ float3 computeClearcoat(LightingParameters parameters) {
     float clearcoatRoughness = sqr(parameters.roughness * 0.5 + 0.5);
     float Gr = smithG_GGX(parameters.nDotl, clearcoatRoughness) * smithG_GGX(parameters.nDotv, clearcoatRoughness);
     
-    float3 clearcoatOutput = parameters.clearcoat * Gr * Fr * Dr * parameters.lightCol;
+    float3 clearcoatOutput = parameters.clearcoat * Gr * Fr * Dr * parameters.directionalLightCol;
     return clearcoatOutput;
 }
 
@@ -312,8 +313,8 @@ float4 illuminate(LightingParameters parameters) {
     float3 diffuseOut = computeDiffuse(parameters) * light_color;
     
     // AMBIENCE
-    const float environmentContribution = 0.0;
-    float3 ambienceOutput = parameters.baseColor.rgb * parameters.lightCol * environmentContribution * parameters.ambientOcclusion;
+    const float environmentContribution = 0.2;
+    float3 ambienceOutput = parameters.baseColor.rgb * parameters.ambientLightCol * environmentContribution * parameters.ambientOcclusion;
     
     // CLEARCOAT
     float3 clearcoatOut = computeClearcoat(parameters);
@@ -383,21 +384,22 @@ LightingParameters calculateParameters(ColorInOut in,
     parameters.irradiatedColor = has_irradiance_map ? irradianceMap.sample(mipSampler, parameters.reflectedVector, level(mipLevel)).xyz : materialUniforms.irradiatedColor.xyz;
     parameters.ambientOcclusion = has_ambient_occlusion_map ? max(srgbToLinear(ambientOcclusionMap.sample(linearSampler, in.texCoord.xy)).x, 0.001f) : materialUniforms.ambientOcclusion;
     
-    parameters.lightCol = sharedUniforms.directionalLightColor;
-    parameters.lightDir = -sharedUniforms.directionalLightDirection;
+    parameters.directionalLightCol = sharedUniforms.directionalLightColor;
+    parameters.ambientLightCol = sharedUniforms.ambientLightColor;
+    parameters.lightDirection = -sharedUniforms.directionalLightDirection;
     
     // Light falls off based on how closely aligned the surface normal is to the light direction.
     // This is the dot product of the light direction vector and vertex normal.
     // The smaller the angle between those two vectors, the higher this value,
     // and the stronger the diffuse lighting effect should be.
-    parameters.nDotl = max(0.001f, saturate(dot(parameters.normal, parameters.lightDir)));
+    parameters.nDotl = max(0.001f, saturate(dot(parameters.normal, parameters.lightDirection)));
     
     // Calculate the halfway vector between the light direction and the direction they eye is looking
-    parameters.halfVector = normalize(parameters.lightDir + parameters.viewDir);
+    parameters.halfVector = normalize(parameters.lightDirection + parameters.viewDir);
     
     parameters.nDoth = max(0.001f,saturate(dot(parameters.normal, parameters.halfVector)));
     parameters.nDotv = max(0.001f,saturate(dot(parameters.normal, parameters.viewDir)));
-    parameters.lDoth = max(0.001f,saturate(dot(parameters.lightDir, parameters.halfVector)));
+    parameters.lDoth = max(0.001f,saturate(dot(parameters.lightDirection, parameters.halfVector)));
     
     parameters.fresnelL = Fresnel(parameters.nDotl);
     parameters.fresnelV = Fresnel(parameters.nDotv);

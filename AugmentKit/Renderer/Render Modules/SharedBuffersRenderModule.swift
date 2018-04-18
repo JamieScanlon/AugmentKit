@@ -93,14 +93,23 @@ class SharedBuffersRenderModule: SharedRenderModule {
         uniforms?.pointee.projectionMatrix = frame.camera.projectionMatrix(for: cameraProperties.orientation, viewportSize: cameraProperties.viewportSize, zNear: 0.001, zFar: CGFloat(renderDistance))
         
         // Set up lighting for the scene using the ambient intensity if provided
-        var ambientIntensity: Float = 1.0
+        let ambientIntensity: Float = {
+            if let lightEstimate = frame.lightEstimate {
+                return Float(lightEstimate.ambientIntensity) / 1000.0
+            } else {
+                return 1
+            }
+        }()
         
-        if let lightEstimate = frame.lightEstimate {
-            ambientIntensity = Float(lightEstimate.ambientIntensity) / 1000.0
-        }
+        let ambientLightColor: vector_float3 = {
+            if let lightEstimate = frame.lightEstimate {
+                return getRGB(from: lightEstimate.ambientColorTemperature)
+            } else {
+                return vector3(0.5, 0.5, 0.5)
+            }
+        }()
         
-        let ambientLightColor: vector_float3 = vector3(0.5, 0.5, 0.5)
-        uniforms?.pointee.ambientLightColor = ambientLightColor * ambientIntensity
+        uniforms?.pointee.ambientLightColor = ambientLightColor// * ambientIntensity
         
         var directionalLightDirection : vector_float3 = vector3(0.0, 0.0, -1.0)
         directionalLightDirection = simd_normalize(directionalLightDirection)
@@ -145,6 +154,37 @@ class SharedBuffersRenderModule: SharedRenderModule {
         // The 16 byte aligned size of our uniform structures
         static let alignedSharedUniformsSize = (MemoryLayout<SharedUniforms>.stride & ~0xFF) + 0x100
        
+    }
+    
+    private func getRGB(from colorTemperature: CGFloat) -> vector_float3 {
+    
+        let temp = Float(colorTemperature) / 100
+        
+        var red: Float = 127
+        var green: Float = 127
+        var blue: Float = 127
+        
+        if temp <= 66 {
+            red = 255
+            green = temp
+            green = 99.4708025861 * log(green) - 161.1195681661
+            if temp <= 19 {
+                blue = 0
+            } else {
+                blue = temp - 10
+                blue = 138.5177312231 * log(blue) - 305.0447927307
+            }
+        } else {
+            red = temp - 60
+            red = 329.698727446 * pow(red, -0.1332047592)
+            green = temp - 60
+            green = 288.1221695283 * pow(green, -0.0755148492 )
+            blue = 255
+        }
+        
+        let clamped = clamp(float3(red, green, blue), min: 0, max: 255)
+        return vector3(clamped.x, clamped.y, clamped.z)
+    
     }
     
 }

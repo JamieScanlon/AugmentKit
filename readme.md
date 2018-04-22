@@ -138,8 +138,6 @@ let anchor9 = PathSegmentAnchor(at: location9)
 world.addPath(withAnchors: [anchor1, anchor2, anchor3, anchor4, anchor5, anchor6, anchor7, anchor8, anchor9, anchor1], identifier: UUID())
 ```
 
-Most use cases for AugmentKit require you to provide a 3D model for rendering. Any model that can be used with ModelIO will do. Create an MDLAsset and 
-
 ### More Documntation
 
 #### AKWorld

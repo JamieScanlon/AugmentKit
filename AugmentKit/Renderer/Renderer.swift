@@ -32,6 +32,13 @@ import Metal
 import MetalKit
 import ModelIO
 
+// MARK: - Notifications
+
+public extension Notification.Name {
+    public static let rendererStateChanged = Notification.Name("com.tenthlettermade.augmentKit.notificaiton.rendererStateChanged")
+    public static let surfaceDetectionStateChanged = Notification.Name("com.tenthlettermade.augmentKit.notificaiton.rendererStateChanged")
+}
+
 // MARK: - RenderDestinationProvider
 
 public protocol RenderDestinationProvider {
@@ -92,7 +99,26 @@ public class Renderer {
         case paused
     }
     
-    public private(set) var state: RendererState = .uninitialized
+    public enum SurfaceDetectionState {
+        case noneDetected
+        case detected
+    }
+    
+    public fileprivate(set) var state: RendererState = .uninitialized {
+        didSet {
+            if state != oldValue {
+                NotificationCenter.default.post(Notification(name: .rendererStateChanged, object: self, userInfo: ["newValue": state, "oldValue": oldValue]))
+            }
+        }
+    }
+    public fileprivate(set) var hasDetectedSurfaces = false {
+        didSet {
+            if hasDetectedSurfaces != oldValue {
+                NotificationCenter.default.post(Notification(name: .surfaceDetectionStateChanged, object: self, userInfo: ["newState": hasDetectedSurfaces]))
+            }
+        }
+    }
+    
     public let session: ARSession
     public let device: MTLDevice
     
@@ -122,7 +148,7 @@ public class Renderer {
     
     // A transform matrix that represents the position of the camera in world space.
     // There is no rotation component.
-    public private(set) var currentCameraPositionTransform: matrix_float4x4?
+    public fileprivate(set) var currentCameraPositionTransform: matrix_float4x4?
     // A transform matrix that represents the rotation of the camera relative to world space.
     // There is no postion component.
     public var currentCameraRotation: matrix_float4x4? {
@@ -133,9 +159,9 @@ public class Renderer {
     }
     // A Quaternion that represents the rotation of the camera relative to world space.
     // There is no postion component.
-    public private(set) var currentCameraQuaternionRotation: GLKQuaternion?
-    public private(set) var currentCameraHeading: Double?
-    public private(set) var lowestHorizPlaneAnchor: ARPlaneAnchor?
+    public fileprivate(set) var currentCameraQuaternionRotation: GLKQuaternion?
+    public fileprivate(set) var currentCameraHeading: Double?
+    public fileprivate(set) var lowestHorizPlaneAnchor: ARPlaneAnchor?
     public var currentFrameNumber: Int {
         guard worldInitiationTime > 0 && lastFrameTime > 0 else {
             return 0
@@ -203,6 +229,7 @@ public class Renderer {
         guard state != .uninitialized else {
             return
         }
+        hasDetectedSurfaces = false
         session.run(createNewConfiguration(), options: [.removeExistingAnchors, .resetTracking])
         state = .running
     }
@@ -227,6 +254,8 @@ public class Renderer {
         
         let surfaceAnchors = currentFrame.anchors.filter({$0 is ARPlaneAnchor}) as! [ARPlaneAnchor]
         let normalAnchors = currentFrame.anchors.filter({!($0 is ARPlaneAnchor)})
+        
+        hasDetectedSurfaces = hasDetectedSurfaces || (lowestHorizPlaneAnchor != nil) || (surfaceAnchors.count > 0)
         
         // Update current camera position and heading
         //
@@ -307,41 +336,6 @@ public class Renderer {
         // Update positions
         //
         
-//        func normalize(_ angle: Float, forMinimalRotationTo ref: Float) -> Float {
-//            // Normalize angle in steps of 90 degrees such that the rotation to the other angle is minimal
-//            var normalized = angle
-//            while abs(normalized - ref) > Float.pi / 4 {
-//                if angle > ref {
-//                    normalized -= Float.pi / 2
-//                } else {
-//                    normalized += Float.pi / 2
-//                }
-//            }
-//            return normalized
-//        }
-        
-//        let aRotation: Float = {
-//            // Correct y rotation of camera square
-//            let tilt = abs(currentFrame.camera.eulerAngles.x)
-//            let threshold1: Float = Float.pi / 2 * 0.65
-//            let threshold2: Float = Float.pi / 2 * 0.75
-//            let yaw = atan2f(currentFrame.camera.transform.columns.0.x, currentFrame.camera.transform.columns.1.x)
-//            var angle: Float = 0
-//
-//            switch tilt {
-//            case 0..<threshold1:
-//                angle = currentFrame.camera.eulerAngles.y
-//            case threshold1..<threshold2:
-//                let relativeInRange = abs((tilt - threshold1) / (threshold2 - threshold1))
-//                let normalizedY = normalize(currentFrame.camera.eulerAngles.y, forMinimalRotationTo: yaw)
-//                angle = normalizedY * (1 - relativeInRange) + yaw * relativeInRange
-//            default:
-//                angle = yaw
-//            }
-//            return angle
-//
-//        }()
-        
         // Calculate updates to trackers relative position
         let cameraPositionTransform = currentCameraPositionTransform ?? matrix_identity_float4x4
         
@@ -367,9 +361,10 @@ public class Renderer {
         // Update Gaze Targets
         //
         
+        let results = currentFrame.hitTest(CGPoint(x: 0.5, y: 0.5), types: [.existingPlaneUsingGeometry, .estimatedVerticalPlane, .estimatedHorizontalPlane])
+        hasDetectedSurfaces = hasDetectedSurfaces || results.count > 0
+        
         if gazeTargets.count > 0 {
-            
-            let results = currentFrame.hitTest(CGPoint(x: 0.5, y: 0.5), types: [.existingPlaneUsingGeometry, .estimatedVerticalPlane, .estimatedHorizontalPlane])
             
             let hitTestResult: ARHitTestResult? = {
                 
@@ -384,6 +379,7 @@ public class Renderer {
                 //    of the object's position.
                 
                 let infinitePlaneResults = currentFrame.hitTest(CGPoint(x: 0.5, y: 0.5), types: .existingPlane)
+                hasDetectedSurfaces = hasDetectedSurfaces || infinitePlaneResults.count > 0
                 
                 for infinitePlaneResult in infinitePlaneResults {
                     if let planeAnchor = infinitePlaneResult.anchor as? ARPlaneAnchor, planeAnchor.alignment == .horizontal {
@@ -507,6 +503,7 @@ public class Renderer {
     // MARK: - Adding objects for render
     
     //  Add a new AKAugmentedAnchor to the AR world
+    @discardableResult
     public func add(akAnchor: AKAugmentedAnchor) -> UUID {
         
         let anchorType = type(of: akAnchor).type
@@ -605,45 +602,45 @@ public class Renderer {
     
     // MARK: - Private
     
-    private var hasUninitializedModules = false
-    private var renderDestination: RenderDestinationProvider
-    private let inFlightSemaphore = DispatchSemaphore(value: Constants.maxBuffersInFlight)
+    fileprivate var hasUninitializedModules = false
+    fileprivate var renderDestination: RenderDestinationProvider
+    fileprivate let inFlightSemaphore = DispatchSemaphore(value: Constants.maxBuffersInFlight)
     // Used to determine _uniformBufferStride each frame.
     // This is the current frame number modulo kMaxBuffersInFlight
-    private var uniformBufferIndex: Int = 0
-    private var worldInitiationTime: Double = 0
-    private var lastFrameTime: Double = 0
+    fileprivate var uniformBufferIndex: Int = 0
+    fileprivate var worldInitiationTime: Double = 0
+    fileprivate var lastFrameTime: Double = 0
     
     // Modules
-    private var renderModules: [RenderModule] = [CameraPlaneRenderModule()]
-    private var sharedModulesForModule = [String: [SharedRenderModule]]()
-    private var cameraRenderModule: CameraPlaneRenderModule?
-    private var sharedBuffersRenderModule: SharedBuffersRenderModule?
-    private var anchorsRenderModule: AnchorsRenderModule?
-    private var unanchoredRenderModule: UnanchoredRenderModule?
-    private var pathsRenderModule: PathsRenderModule?
-    private var surfacesRenderModule: SurfacesRenderModule?
-    private var trackingPointRenderModule: TrackingPointsRenderModule?
+    fileprivate var renderModules: [RenderModule] = [CameraPlaneRenderModule()]
+    fileprivate var sharedModulesForModule = [String: [SharedRenderModule]]()
+    fileprivate var cameraRenderModule: CameraPlaneRenderModule?
+    fileprivate var sharedBuffersRenderModule: SharedBuffersRenderModule?
+    fileprivate var anchorsRenderModule: AnchorsRenderModule?
+    fileprivate var unanchoredRenderModule: UnanchoredRenderModule?
+    fileprivate var pathsRenderModule: PathsRenderModule?
+    fileprivate var surfacesRenderModule: SurfacesRenderModule?
+    fileprivate var trackingPointRenderModule: TrackingPointsRenderModule?
     
     // Viewport
-    private var viewportSize: CGSize = CGSize()
-    private var viewportSizeDidChange: Bool = false
+    fileprivate var viewportSize: CGSize = CGSize()
+    fileprivate var viewportSizeDidChange: Bool = false
     
     // Metal objects
-    private let textureLoader: MTKTextureLoader
-    private var defaultLibrary: MTLLibrary?
-    private var commandQueue: MTLCommandQueue?
+    fileprivate let textureLoader: MTKTextureLoader
+    fileprivate var defaultLibrary: MTLLibrary?
+    fileprivate var commandQueue: MTLCommandQueue?
     
     // Keeping track of objects to render
-    private var anchorIdentifiersForType = [String: Set<UUID>]()
-    private var augmentedAnchors = [AKAugmentedAnchor]()
-    private var trackers = [AKAugmentedTracker]()
-    private var paths = [UUID: [AKAugmentedAnchor]]()
-    private var gazeTargets = [GazeTarget]()
+    fileprivate var anchorIdentifiersForType = [String: Set<UUID>]()
+    fileprivate var augmentedAnchors = [AKAugmentedAnchor]()
+    fileprivate var trackers = [AKAugmentedTracker]()
+    fileprivate var paths = [UUID: [AKAugmentedAnchor]]()
+    fileprivate var gazeTargets = [GazeTarget]()
     
     // MARK: ARKit Session Configuration
     
-    private func createNewConfiguration() -> ARWorldTrackingConfiguration {
+    fileprivate func createNewConfiguration() -> ARWorldTrackingConfiguration {
         let configuration = ARWorldTrackingConfiguration()
         // Setting this to .gravityAndHeading aligns the the origin of the scene to compass direction
         configuration.worldAlignment = .gravityAndHeading
@@ -656,7 +653,7 @@ public class Renderer {
     
     // MARK: Bootstrap
     
-    private func loadMetal() {
+    fileprivate func loadMetal() {
         
         //
         // Create and load our basic Metal state objects
@@ -686,7 +683,7 @@ public class Renderer {
     
     // Adds a module to the renderModules array witout being initialized.
     // initializeModules() must be called
-    private func addModule(forModuelIdentifier moduleIdentifier: String) {
+    fileprivate func addModule(forModuelIdentifier moduleIdentifier: String) {
         
         switch moduleIdentifier {
         case CameraPlaneRenderModule.identifier:
@@ -746,7 +743,7 @@ public class Renderer {
     
     // Updates the renderModules array with all of the required modules.
     // Also updates the sharedModulesForModule map
-    private func gatherModules() {
+    fileprivate func gatherModules() {
         
         var sharedModules: [SharedRenderModule] = []
         var updatedRenderModules: [RenderModule] = []
@@ -782,7 +779,7 @@ public class Renderer {
     
     // Initializes any uninitialized modules. If a module has already been
     // initialized, the inittilization functions are _not_ called again.
-    private func initializeModules() {
+    fileprivate func initializeModules() {
         
         guard hasUninitializedModules else {
             return
@@ -812,7 +809,7 @@ public class Renderer {
     
     // MARK: Shared Modules
     
-    func setupSharedModule(forModuleIdentifier moduleIdentifier: String) -> SharedRenderModule? {
+    fileprivate func setupSharedModule(forModuleIdentifier moduleIdentifier: String) -> SharedRenderModule? {
         
         switch moduleIdentifier {
         case SharedBuffersRenderModule.identifier:

@@ -29,10 +29,10 @@ import Foundation
 import CoreLocation
 
 public extension Notification.Name {
-    public static let locationDelegateUpdateLocationNotification = Notification.Name("com.tenthlettermade.notificaiton.LocationDelegateUpdateLocation")
-    public static let locationDelegateNearObjectNotification = Notification.Name("com.tenthlettermade.notificaiton.LocationDelegateNearObjectNotification")
-    public static let locationDelegateMoreReliableARLocationNotification = Notification.Name("com.tenthlettermade.notificaiton.LocationDelegateMoreReliableARLocation")
-    public static let locationDelegateMoreReliableARHeadingNotification = Notification.Name("com.tenthlettermade.notificaiton.LocationDelegateMoreReliableARHeading")
+    public static let locationDelegateUpdateLocationNotification = Notification.Name("com.tenthlettermade.augmentKit.notificaiton.LocationDelegateUpdateLocation")
+    public static let locationDelegateNearObjectNotification = Notification.Name("com.tenthlettermade.notificaiton.augmentKit.LocationDelegateNearObjectNotification")
+    public static let locationDelegateMoreReliableARLocationNotification = Notification.Name("com.tenthlettermade.augmentKit.notificaiton.LocationDelegateMoreReliableARLocation")
+    public static let locationDelegateMoreReliableARHeadingNotification = Notification.Name("com.tenthlettermade.augmentKit.notificaiton.LocationDelegateMoreReliableARHeading")
 }
 
 // MARK: - LocationManager

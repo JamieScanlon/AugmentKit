@@ -191,7 +191,7 @@ class CameraPlaneRenderModule: RenderModule {
         }
         
         guard let capturedImagePipelineState = capturedImagePipelineState else {
-            print("Serious Error - Captured Image Pipeline State ids nil")
+            print("Serious Error - Captured Image Pipeline State is nil")
             return
         }
         

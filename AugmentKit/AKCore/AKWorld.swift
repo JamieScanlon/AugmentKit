@@ -49,106 +49,51 @@ public struct AKWorldConfiguration {
     }
 }
 
-// MARK: - AKWorldLocation
+// MARK: - AKWorldStatus
 
-//  A data structure that combines an absolute position (latitude, longitude, and elevation)
-//  with a relative postion (transform) that ties locations in the real world to locations
-//  in AR space.
-public struct AKWorldLocation {
-    public var latitude: Double = 0
-    public var longitude: Double = 0
-    public var elevation: Double = 0
-    public var transform: matrix_float4x4 = matrix_identity_float4x4
+public struct AKWorldStatus {
     
-    public init(transform: matrix_float4x4 = matrix_identity_float4x4, latitude: Double = 0, longitude: Double = 0, elevation: Double = 0) {
-        self.transform = transform
-        self.latitude = latitude
-        self.longitude = longitude
-        self.elevation = elevation
+    public enum Status {
+        case notInitialized
+        case initializing(ARKitInitializationPhase, SurfacesInitializationPhase, LocationInitializationPhase)
+        case ready
+        case interupted
+        case error
     }
     
-    //  When provided a reference location that has transform that corresponds to a
-    //  latitude, longitude, and elevation, a new location can be created with a transform.
-    //  The latitude, longitude, and elevation will be calculated based on the reference
-    //  location
-    public init(transform: matrix_float4x4, referenceLocation: AKWorldLocation) {
-        
-        self.transform = transform
-        
-        // The meters/ºlatitude and meters/ºlongitude change with lat/lng. The
-        // reference location is used to determine these values so the further
-        // the destination is from the reference location, the less accurate the
-        // resulting calculation is. It's usually fine unless you need very
-        // accuate calculations when the locations are tens or hundreds of km away
-        let latitudeInRadians = referenceLocation.latitude.degreesToRadians()
-        let metersPerDegreeLatitude =  111132.92 - 559.82 * cos(2 * latitudeInRadians) + 1.175 * cos(4 * latitudeInRadians) - 0.0023 * cos(6 * latitudeInRadians)
-        let metersPerDegreeLongitude = 11412.84 * cos(latitudeInRadians) - 93.5 * cos(3 * latitudeInRadians) + 118 * cos(5 * latitudeInRadians)
-        
-        let Δz = transform.columns.3.z - referenceLocation.transform.columns.3.z
-        let Δx = transform.columns.3.x - referenceLocation.transform.columns.3.x
-        let Δy = transform.columns.3.y - referenceLocation.transform.columns.3.y
-        
-        self.latitude = Double(Δz) / metersPerDegreeLatitude
-        self.longitude = Double(Δx) / metersPerDegreeLongitude
-        self.elevation = Double(Δy)
-        
+    public enum ARKitInitializationPhase {
+        case notStarted
+        case initializingARKit
+        case ready
     }
     
-    //  When provided a reference location that has transform that corresponds to a
-    //  latitude, longitude, and elevation, a new location can be created with a transform.
-    //  The transform will be calculated based on the reference location
-    public init(latitude: Double, longitude: Double, elevation: Double = 0, referenceLocation: AKWorldLocation) {
-        
-        self.latitude = latitude
-        self.longitude = longitude
-        self.elevation = elevation
-        
-        let Δy = elevation - referenceLocation.elevation
-        let latSign: Double = {
-            if latitude < referenceLocation.latitude {
-                return 1
-            } else {
-                return -1
-            }
-        }()
-        let lngSign: Double = {
-            if longitude < referenceLocation.longitude {
-                return -1
-            } else {
-                return 1
-            }
-        }()
-        
-        let clLocation1 = CLLocation(latitude: referenceLocation.latitude, longitude: referenceLocation.longitude)
-        let ΔzLocation = CLLocation(latitude: latitude, longitude: referenceLocation.longitude)
-        let ΔxLocation = CLLocation(latitude: referenceLocation.latitude, longitude: longitude)
-        let Δz = latSign * clLocation1.distance(from: ΔzLocation)
-        let Δx = lngSign * clLocation1.distance(from: ΔxLocation)
-        
-        self.transform = referenceLocation.transform.translate(x: Float(Δx), y: Float(Δy), z: Float(Δz))
-        
+    public enum SurfacesInitializationPhase {
+        case notStarted
+        case findingSurfaces
+        case ready
     }
     
-}
-
-// MARK: - AKWorldDistance
-
-//  A data structure that represents the distance in meters between tow points in world space.
-public struct AKWorldDistance {
-    public var metersX: Double
-    public var metersY: Double
-    public var metersZ: Double
-    public private(set) var distance2D: Double
-    public private(set) var distance3D: Double
-    
-    public init(metersX: Double = 0, metersY: Double = 0, metersZ: Double = 0) {
-        self.metersX = metersX
-        self.metersY = metersY
-        self.metersZ = metersZ
-        let planarDistance = sqrt(metersX * metersX + metersZ * metersZ)
-        self.distance2D = planarDistance
-        self.distance3D = sqrt(planarDistance * planarDistance + metersY * metersY)
+    public enum LocationInitializationPhase {
+        case notStarted
+        case findingLocation
+        case ready
     }
+    
+    public enum Quality {
+        case notAvailable
+        case limited(ARCamera.TrackingState.Reason)
+        case normal
+    }
+    
+    var status = Status.notInitialized
+    var quality = Quality.notAvailable
+    var errors = [AKError]()
+    var timestamp: Date
+    
+    init(timestamp: Date) {
+        self.timestamp = timestamp
+    }
+    
 }
 
 // MARK: - AKWorld
@@ -247,6 +192,8 @@ public class AKWorld: NSObject {
         
     }
     
+    public private(set) var worldStatus: AKWorldStatus
+    
     public init(renderDestination: MTKView, configuration: AKWorldConfiguration = AKWorldConfiguration()) {
         
         self.renderDestination = renderDestination
@@ -256,9 +203,13 @@ public class AKWorld: NSObject {
         }
         self.device = aDevice
         self.renderer = Renderer(session: self.session, metalDevice: self.device, renderDestination: renderDestination)
+        self.worldStatus = AKWorldStatus(timestamp: Date())
         super.init()
         
         // Self is fully initialized, now do additional setup
+        
+        NotificationCenter.default.addObserver(self, selector: #selector(AKWorld.handleRendererStateChanged(notif:)), name: .rendererStateChanged, object: self.renderer)
+        NotificationCenter.default.addObserver(self, selector: #selector(AKWorld.handleSurfaceDetectionStateChanged(notif:)), name: .surfaceDetectionStateChanged, object: self.renderer)
         
         self.renderDestination.device = self.device
         self.renderer.drawRectResized(size: renderDestination.bounds.size)
@@ -277,8 +228,10 @@ public class AKWorld: NSObject {
     }
     
     public func begin() {
+        var newStatus = AKWorldStatus(timestamp: Date())
+        newStatus.status = .initializing(.initializingARKit, .notStarted, .notStarted)
+        worldStatus = newStatus
         renderer.initialize()
-        renderer.reset()
     }
     
     public func add(anchor: AKAugmentedAnchor) {
@@ -392,9 +345,105 @@ public class AKWorld: NSObject {
         
         if !didRecieveFirstLocation {
             didRecieveFirstLocation = true
+            
+            var newStatus = AKWorldStatus(timestamp: Date())
+            let arKitPhase: AKWorldStatus.ARKitInitializationPhase = {
+                switch renderer.state {
+                case .uninitialized:
+                    return .notStarted
+                case .initialized:
+                    return .initializingARKit
+                case .running:
+                    return .ready
+                case .paused:
+                    return .ready
+                }
+            }()
+            if arKitPhase == .ready && renderer.hasDetectedSurfaces {
+                newStatus.status = .ready
+            } else if renderer.hasDetectedSurfaces {
+                newStatus.status = .initializing(arKitPhase, .ready, .ready)
+            } else {
+                newStatus.status = .initializing(arKitPhase, .findingSurfaces, .ready)
+            }
+            worldStatus = newStatus
+            
             // Switch from receiving every location update to only receiving updates with more reliable locations.
             NotificationCenter.default.removeObserver(self, name: .locationDelegateUpdateLocationNotification, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(AKWorld.associateLocationWithCameraPosition(notif:)), name: .locationDelegateMoreReliableARLocationNotification, object: nil)
+        }
+        
+    }
+    
+    @objc private func handleRendererStateChanged(notif: NSNotification) {
+        
+        guard notif.name == .rendererStateChanged else {
+            return
+        }
+        
+        guard let state = notif.userInfo?["newState"] as? Renderer.RendererState else {
+            return
+        }
+        
+        switch state {
+        case .uninitialized:
+            let newStatus = AKWorldStatus(timestamp: Date())
+            worldStatus = newStatus
+        case .initialized:
+            renderer.reset()
+        case .running:
+            var newStatus = AKWorldStatus(timestamp: Date())
+            if configuration?.usesLocation == true {
+                newStatus.status = .initializing(.ready, .findingSurfaces, .findingLocation)
+            } else {
+                newStatus.status = .initializing(.ready, .findingSurfaces, .notStarted)
+            }
+            worldStatus = newStatus
+        case .paused:
+            break
+        }
+        
+    }
+    
+    @objc private func handleSurfaceDetectionStateChanged(notif: NSNotification) {
+        
+        guard notif.name == .surfaceDetectionStateChanged else {
+            return
+        }
+        
+        guard let state = notif.userInfo?["newState"] as? Renderer.SurfaceDetectionState else {
+            return
+        }
+        
+        switch state {
+        case .noneDetected:
+            var newStatus = AKWorldStatus(timestamp: Date())
+            let arKitPhase: AKWorldStatus.ARKitInitializationPhase = {
+                switch renderer.state {
+                case .uninitialized:
+                    return .notStarted
+                case .initialized:
+                    return .initializingARKit
+                case .running:
+                    return .ready
+                case .paused:
+                    return .ready
+                }
+            }()
+            if didRecieveFirstLocation || configuration?.usesLocation == false {
+                newStatus.status = .initializing(arKitPhase, .findingSurfaces, .ready)
+            } else {
+                newStatus.status = .initializing(arKitPhase, .findingSurfaces, .findingLocation)
+            }
+            worldStatus = newStatus
+        case .detected:
+            var newStatus = AKWorldStatus(timestamp: Date())
+            if didRecieveFirstLocation || configuration?.usesLocation == false {
+                newStatus.status = .ready
+            } else {
+                newStatus.status = .initializing(.ready, .ready, .findingLocation)
+            }
+            worldStatus = newStatus
         }
         
     }
@@ -422,15 +471,28 @@ extension AKWorld: MTKViewDelegate {
 extension AKWorld: ARSessionDelegate {
     
     public func session(_ session: ARSession, didFailWithError error: Error) {
-        // Present an error message to the user
+        var newStatus = AKWorldStatus(timestamp: Date())
+        var errors = worldStatus.errors
+        let newError = AKError.recoverableError(.arkitError(UnderlyingErrorInfo(underlyingError: error)))
+        errors.append(newError)
+        newStatus.errors = errors
+        newStatus.status = .error
+        worldStatus = newStatus
     }
     
     public func sessionWasInterrupted(_ session: ARSession) {
-        // Inform the user that the session has been interrupted, for example, by presenting an overlay
+        var newStatus = AKWorldStatus(timestamp: Date())
+        newStatus.status = .interupted
+        newStatus.errors = worldStatus.errors
+        worldStatus = newStatus
     }
     
     public func sessionInterruptionEnded(_ session: ARSession) {
         // Reset tracking and/or remove existing anchors if consistent tracking is required
+        var newStatus = AKWorldStatus(timestamp: Date())
+        newStatus.status = .interupted
+        newStatus.errors = worldStatus.errors
+        worldStatus = newStatus
     }
     
 }

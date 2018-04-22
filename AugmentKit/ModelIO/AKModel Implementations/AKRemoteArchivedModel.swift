@@ -153,7 +153,7 @@ public class AKRemoteArchivedModel: AKModel {
                     print("AKRemoteArchivedModel: Networking Error: \(myStatusCode)")
                     self?.status = .error
                     if let completion = completion {
-                        let error = NSError(domain: "com.tenthlettermade.AugmentKit.errordomain", code: 1, userInfo: [NSLocalizedFailureReasonErrorKey: "Networking error. Returned status code \(myStatusCode)"])
+                        let error = NSError(domain: AKErrorDomain, code: 1, userInfo: [NSLocalizedFailureReasonErrorKey: "Networking error. Returned status code \(myStatusCode)"])
                         completion(nil, error)
                     }
                     return
@@ -203,14 +203,14 @@ public class AKRemoteArchivedModel: AKModel {
                 } else if let response = response {
                     print("AKRemoteArchivedModel: Serious Error. response: \(response.debugDescription)")
                     self?.status = .error
-                    let error = NSError(domain: "com.tenthlettermade.AugmentKit.errordomain", code: 1, userInfo: [NSLocalizedFailureReasonErrorKey: "Networking error. Returned response \(response.debugDescription)"])
+                    let error = NSError(domain: AKErrorDomain, code: 1, userInfo: [NSLocalizedFailureReasonErrorKey: "Networking error. Returned response \(response.debugDescription)"])
                     if let completion = completion {
                         completion(nil, error)
                     }
                 } else {
                     print("AKRemoteArchivedModel: Serious Error.")
                     self?.status = .error
-                    let error = NSError(domain: "com.tenthlettermade.AugmentKit.errordomain", code: 1, userInfo: [NSLocalizedFailureReasonErrorKey: "Networking error."])
+                    let error = NSError(domain: AKErrorDomain, code: 1, userInfo: [NSLocalizedFailureReasonErrorKey: "Networking error."])
                     if let completion = completion {
                         completion(nil, error)
                     }

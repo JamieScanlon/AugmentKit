@@ -9,6 +9,16 @@
 import Foundation
 
 public let AKErrorDomain = "com.tenthlettermade.AugmentKit.errordomain"
+public let AKErrorCodeMissingVertexDescriptors = 123
+public let AKErrorCodeDeviceNotFound = 124
+public let AKErrorCodeShaderInitializationFailed = 125
+public let AKErrorCodeRenderPipelineInitializationFailed = 125
+public let AKErrorCodeIntermediateMeshDataNotAvailable = 126
+public let AKErrorCodeIntermediateMeshDataNotFound = 127
+public let AKErrorCodeInvalidMeshData = 128
+public let AKErrorCodeModelNotFound = 129
+public let AKErrorCodeModelNotSupported = 130
+public let AKErrorCodeModelProviderNotFound = 131
 
 public enum AKError: Error {
     case warning(AKErrorType)
@@ -33,6 +43,7 @@ public enum ModelErrorReason {
 
 public enum RenderPipelineErrorReason {
     case failedToInitialize(PipelineErrorInfo)
+    case drawAborted(PipelineErrorInfo)
 }
 
 public enum SerializationErrorReason {
@@ -55,19 +66,21 @@ public struct AssetErrorInfo {
 public struct ModelErrorInfo {
     var type: String
     var identifier: UUID?
+    var underlyingError: Error?
     
-    init(type: String, identifier: UUID? = nil) {
+    init(type: String, identifier: UUID? = nil, underlyingError: Error? = nil) {
         self.type = type
         self.identifier = identifier
+        self.underlyingError = underlyingError
     }
     
 }
 
 public struct PipelineErrorInfo {
-    var moduleIdentifier: String
+    var moduleIdentifier: String?
     var underlyingError: Error?
     
-    init(moduleIdentifier: String, underlyingError: Error? = nil) {
+    init(moduleIdentifier: String? = nil, underlyingError: Error? = nil) {
         self.moduleIdentifier = moduleIdentifier
         self.underlyingError = underlyingError
     }

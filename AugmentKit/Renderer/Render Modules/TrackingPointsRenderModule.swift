@@ -48,6 +48,7 @@ class TrackingPointsRenderModule: RenderModule {
     var isInitialized: Bool = false
     var sharedModuleIdentifiers: [String]? = [SharedBuffersRenderModule.identifier]
     var renderDistance: Double = 500
+    var errors = [AKError]()
     
     // The number of tracking points to render
     private(set) var trackingPointCount: Int = 0
@@ -79,16 +80,25 @@ class TrackingPointsRenderModule: RenderModule {
         
         guard let device = device else {
             print("Serious Error - device not found")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeDeviceNotFound, userInfo: nil)
+            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
             return
         }
         
         guard let pointVertexShader = metalLibrary.makeFunction(name: "pointVertexShader") else {
             print("Serious Error - failed to create the pointVertexShader function")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeShaderInitializationFailed, userInfo: nil)
+            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
             return
         }
         
         guard let pointFragmentShader = metalLibrary.makeFunction(name: "pointFragmentShader") else {
             print("Serious Error - failed to create the pointFragmentShader function")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeShaderInitializationFailed, userInfo: nil)
+            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
             return
         }
         
@@ -129,7 +139,8 @@ class TrackingPointsRenderModule: RenderModule {
             try trackingPointPipelineState = device.makeRenderPipelineState(descriptor: trackingPointPipelineStateDescriptor)
         } catch let error {
             print("Failed to create tracking point pipeline state, error \(error)")
-            fatalError()
+            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: error))))
+            recordNewError(newError)
         }
         
         let trackingPointDepthStateDescriptor = MTLDepthStencilDescriptor()
@@ -230,6 +241,14 @@ class TrackingPointsRenderModule: RenderModule {
     // will no longer be needed by Metal and the GPU. This gets called per frame
     func frameEncodingComplete() {
         
+    }
+    
+    //
+    // Util
+    //
+    
+    func recordNewError(_ akError: AKError) {
+        errors.append(akError)
     }
     
     // MARK: - Private

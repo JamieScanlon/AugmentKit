@@ -51,6 +51,7 @@ class PathsRenderModule: RenderModule {
     var isInitialized: Bool = false
     var sharedModuleIdentifiers: [String]? = [SharedBuffersRenderModule.identifier]
     var renderDistance: Double = 500
+    var errors = [AKError]()
     
     // The number of path instances to render
     private(set) var pathSegmentInstanceCount: Int = 0
@@ -90,6 +91,9 @@ class PathsRenderModule: RenderModule {
         
         guard let device = device else {
             print("Serious Error - device not found")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeDeviceNotFound, userInfo: nil)
+            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
             completion()
             return
         }
@@ -125,37 +129,58 @@ class PathsRenderModule: RenderModule {
         
         guard let device = device else {
             print("Serious Error - device not found")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeDeviceNotFound, userInfo: nil)
+            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
             return
         }
         
         guard let pointVertexShader = metalLibrary.makeFunction(name: "pathVertexShader") else {
             print("Serious Error - failed to create the pathVertexShader function")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeShaderInitializationFailed, userInfo: nil)
+            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
             return
         }
         
         guard let pointFragmentShader = metalLibrary.makeFunction(name: "pathFragmentShader") else {
             print("Serious Error - failed to create the pathFragmentShader function")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeShaderInitializationFailed, userInfo: nil)
+            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
             return
         }
         
         guard let pathSegmentModel = pathSegmentModel else {
             print("Serious Error - pathSegmentModel not found")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeModelNotFound, userInfo: nil)
+            let newError = AKError.warning(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
             return
         }
         
         if pathSegmentModel.meshNodeIndices.count > 1 {
             print("WARNING: More than one mesh was found. Currently only one mesh per anchor is supported.")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeModelNotSupported, userInfo: nil)
+            let newError = AKError.warning(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
         }
         
         pathMeshGPUData = meshData(from: pathSegmentModel)
         
         guard let meshGPUData = pathMeshGPUData else {
             print("Serious Error - ERROR: No meshGPUData found when trying to load the pipeline.")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeIntermediateMeshDataNotFound, userInfo: nil)
+            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
             return
         }
         
         guard let pathVertexDescriptor = createMetalVertexDescriptor(withFirstModelIOVertexDescriptorIn: pathSegmentModel.vertexDescriptors) else {
             print("Serious Error - Failed to create a MetalKit vertex descriptor from ModelIO.")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeInvalidMeshData, userInfo: nil)
+            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
             return
         }
         
@@ -173,6 +198,8 @@ class PathsRenderModule: RenderModule {
                 try pathPipelineStates.append(device.makeRenderPipelineState(descriptor: pathPipelineStateDescriptor))
             } catch let error {
                 print("Failed to create pipeline state, error \(error)")
+                let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: error))))
+                recordNewError(newError)
             }
         }
         
@@ -338,6 +365,9 @@ class PathsRenderModule: RenderModule {
         
         guard let meshGPUData = pathMeshGPUData else {
             print("Error: meshGPUData not available a draw time. Aborting")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeIntermediateMeshDataNotAvailable, userInfo: nil)
+            let newError = AKError.recoverableError(.renderPipelineError(.drawAborted(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
             return
         }
         
@@ -387,6 +417,14 @@ class PathsRenderModule: RenderModule {
     
     func frameEncodingComplete() {
         //
+    }
+    
+    //
+    // Util
+    //
+    
+    func recordNewError(_ akError: AKError) {
+        errors.append(akError)
     }
     
     // MARK: - Private
@@ -510,6 +548,9 @@ class PathsRenderModule: RenderModule {
         for vtxBuffer in aModel.vertexBuffers {
             vtxBuffer.withUnsafeBytes { (bytes: UnsafePointer<UInt8>) in
                 guard let aVTXBuffer = device?.makeBuffer(bytes: bytes, length: vtxBuffer.count, options: .storageModeShared) else {
+                    let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeRenderPipelineInitializationFailed, userInfo: nil)
+                    let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+                    recordNewError(newError)
                     fatalError("Failed to create a buffer from the device.")
                 }
                 myGPUData.vtxBuffers.append(aVTXBuffer)
@@ -521,6 +562,9 @@ class PathsRenderModule: RenderModule {
         for idxBuffer in aModel.indexBuffers {
             idxBuffer.withUnsafeBytes { (bytes: UnsafePointer<UInt8>) in
                 guard let aIDXBuffer = device?.makeBuffer(bytes: bytes, length: idxBuffer.count, options: .storageModeShared) else {
+                    let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeRenderPipelineInitializationFailed, userInfo: nil)
+                    let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+                    recordNewError(newError)
                     fatalError("Failed to create a buffer from the device.")
                 }
                 myGPUData.indexBuffers.append(aIDXBuffer)
@@ -561,6 +605,9 @@ class PathsRenderModule: RenderModule {
                     
                     guard let materialUniformBuffer = materialUniformBuffer else {
                         print("Serious Error - Material Uniform Buffer is nil")
+                        let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeRenderPipelineInitializationFailed, userInfo: nil)
+                        let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+                        recordNewError(newError)
                         return myGPUData
                     }
                     

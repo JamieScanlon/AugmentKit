@@ -36,7 +36,7 @@ import MetalKit
 protocol RenderModule {
     
     //
-    // Setup
+    // State
     //
     
     var moduleIdentifier: String { get }
@@ -46,6 +46,11 @@ protocol RenderModule {
     // An array of shared module identifiers that it this module will rely on in the draw phase.
     var sharedModuleIdentifiers: [String]? { get }
     var renderDistance: Double { get set }
+    var errors: [AKError] { get set }
+    
+    //
+    // Bootstrap
+    //
     
     // Initialize the buffers that will me managed and updated in this module.
     func initializeBuffers(withDevice: MTLDevice, maxInFlightBuffers: Int)
@@ -81,6 +86,12 @@ protocol RenderModule {
     // this frame. This indicates when the dynamic buffers, that we're writing to this frame,
     // will no longer be needed by Metal and the GPU. This gets called per frame.
     func frameEncodingComplete()
+    
+    //
+    // Util
+    //
+    
+    func recordNewError(_ akError: AKError)
     
 }
 
@@ -223,6 +234,8 @@ extension RenderModule {
             
         } catch {
             print("Unable to loader texture with assetPath \(assetPath) with error \(error)")
+            let newError = AKError.recoverableError(.modelError(.unableToLoadTexture(AssetErrorInfo(path: assetPath, underlyingError: error))))
+            recordNewError(newError)
         }
         
         return nil
@@ -231,6 +244,9 @@ extension RenderModule {
     func createMetalVertexDescriptor(withFirstModelIOVertexDescriptorIn vertexDescriptors: [MDLVertexDescriptor]) -> MTLVertexDescriptor? {
         guard let vertexDescriptor = vertexDescriptors.first else {
             print("WARNING: No Vertex Descriptors found!")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeMissingVertexDescriptors, userInfo: nil)
+            let newError = AKError.warning(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
             return nil
         }
         guard let mtlVertexDescriptor = MTKMetalVertexDescriptorFromModelIO(vertexDescriptor) else {

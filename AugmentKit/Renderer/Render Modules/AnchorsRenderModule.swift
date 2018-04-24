@@ -48,6 +48,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     var isInitialized: Bool = false
     var sharedModuleIdentifiers: [String]? = [SharedBuffersRenderModule.identifier]
     var renderDistance: Double = 500
+    var errors = [AKError]()
     
     // The number of anchor instances to render
     private(set) var anchorInstanceCount: Int = 0
@@ -87,6 +88,9 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         
         guard let modelProvider = modelProvider else {
             print("Serious Error - Model Provider not found.")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeModelProviderNotFound, userInfo: nil)
+            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
             completion()
             return
         }
@@ -102,6 +106,8 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             
             guard let model = model else {
                 print("Warning (AnchorsRenderModule) - Failed to get a model for type \(AugmentedObject.type) from the modelProvider. Aborting the render phase.")
+                let newError = AKError.warning(.modelError(.modelNotFound(ModelErrorInfo(type: AugmentedObject.type))))
+                recordNewError(newError)
                 completion()
                 return
             }
@@ -120,27 +126,42 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         
         guard let device = device else {
             print("Serious Error - device not found")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeDeviceNotFound, userInfo: nil)
+            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
             return
         }
         
         guard let anchorModel = anchorModel else {
             print("Warning (AnchorsRenderModule) - Anchor Model was not found. Aborting the render phase.")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeModelNotFound, userInfo: nil)
+            let newError = AKError.warning(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
             return
         }
         
         if anchorModel.meshNodeIndices.count > 1 {
             print("WARNING: More than one mesh was found. Currently only one mesh per anchor is supported.")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeModelNotSupported, userInfo: nil)
+            let newError = AKError.warning(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
         }
         
         anchorMeshGPUData = meshData(from: anchorModel)
         
         guard let meshGPUData = anchorMeshGPUData else {
             print("Serious Error - ERROR: No meshGPUData found when trying to load the pipeline.")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeIntermediateMeshDataNotFound, userInfo: nil)
+            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
             return
         }
         
         guard let anchorVertexDescriptor = createMetalVertexDescriptor(withFirstModelIOVertexDescriptorIn: anchorModel.vertexDescriptors) else {
             print("Serious Error - Failed to create a MetalKit vertex descriptor from ModelIO.")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeInvalidMeshData, userInfo: nil)
+            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
             return
         }
         
@@ -161,12 +182,16 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                 anchorPipelineStateDescriptor.sampleCount = renderDestination.sampleCount
             } catch let error {
                 print("Failed to create pipeline state descriptor, error \(error)")
+                let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: error))))
+                recordNewError(newError)
             }
             
             do {
                 try anchorPipelineStates.append(device.makeRenderPipelineState(descriptor: anchorPipelineStateDescriptor))
             } catch let error {
                 print("Failed to create pipeline state, error \(error)")
+                let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: error))))
+                recordNewError(newError)
             }
         }
         
@@ -288,6 +313,9 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         
         guard let meshGPUData = anchorMeshGPUData else {
             print("Error: meshGPUData not available a draw time. Aborting")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeIntermediateMeshDataNotAvailable, userInfo: nil)
+            let newError = AKError.recoverableError(.renderPipelineError(.drawAborted(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
             return
         }
         
@@ -328,6 +356,14 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     
     func frameEncodingComplete() {
         //
+    }
+    
+    //
+    // Util
+    //
+    
+    func recordNewError(_ akError: AKError) {
+        errors.append(akError)
     }
     
     // MARK: - Private
@@ -382,6 +418,9 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         for vtxBuffer in aModel.vertexBuffers {
             vtxBuffer.withUnsafeBytes { (bytes: UnsafePointer<UInt8>) in
                 guard let aVTXBuffer = device?.makeBuffer(bytes: bytes, length: vtxBuffer.count, options: .storageModeShared) else {
+                    let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeRenderPipelineInitializationFailed, userInfo: nil)
+                    let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+                    recordNewError(newError)
                     fatalError("Failed to create a buffer from the device.")
                 }
                 myGPUData.vtxBuffers.append(aVTXBuffer)
@@ -393,6 +432,9 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         for idxBuffer in aModel.indexBuffers {
             idxBuffer.withUnsafeBytes { (bytes: UnsafePointer<UInt8>) in
                 guard let aIDXBuffer = device?.makeBuffer(bytes: bytes, length: idxBuffer.count, options: .storageModeShared) else {
+                    let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeRenderPipelineInitializationFailed, userInfo: nil)
+                    let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+                    recordNewError(newError)
                     fatalError("Failed to create a buffer from the device.")
                 }
                 myGPUData.indexBuffers.append(aIDXBuffer)
@@ -433,6 +475,9 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                     
                     guard let materialUniformBuffer = materialUniformBuffer else {
                         print("Serious Error - Material Uniform Buffer is nil")
+                        let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeRenderPipelineInitializationFailed, userInfo: nil)
+                        let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+                        recordNewError(newError)
                         return myGPUData
                     }
                     

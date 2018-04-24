@@ -48,6 +48,7 @@ class SurfacesRenderModule: RenderModule {
     var isInitialized: Bool = false
     var sharedModuleIdentifiers: [String]? = [SharedBuffersRenderModule.identifier]
     var renderDistance: Double = 500
+    var errors = [AKError]()
     
     // The number of surface instances to render
     private(set) var surfaceInstanceCount: Int = 0
@@ -83,6 +84,9 @@ class SurfacesRenderModule: RenderModule {
         
         guard let modelProvider = modelProvider else {
             print("Serious Error - Model Provider not found.")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeModelProviderNotFound, userInfo: nil)
+            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
             completion()
             return
         }
@@ -98,6 +102,8 @@ class SurfacesRenderModule: RenderModule {
 
             guard let model = model else {
                 print("Warning (SurfacesRenderModule) - Failed to get a model for type \(GuideSurfaceAnchor.type) from the modelProvider. Aborting the render phase.")
+                let newError = AKError.warning(.modelError(.modelNotFound(ModelErrorInfo(type: GuideSurfaceAnchor.type))))
+                recordNewError(newError)
                 completion()
                 return
             }
@@ -114,27 +120,42 @@ class SurfacesRenderModule: RenderModule {
         
         guard let device = device else {
             print("Serious Error - device not found")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeDeviceNotFound, userInfo: nil)
+            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
             return
         }
         
         guard let surfaceModel = surfaceModel else {
             print("Serious Error - surfaceModel not found")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeModelNotFound, userInfo: nil)
+            let newError = AKError.warning(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
             return
         }
         
         if surfaceModel.meshNodeIndices.count > 1 {
             print("WARNING: More than one mesh was found. Currently only one mesh per anchor is supported.")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeModelNotSupported, userInfo: nil)
+            let newError = AKError.warning(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
         }
         
         surfaceMeshGPUData = meshData(from: surfaceModel)
         
         guard let meshGPUData = surfaceMeshGPUData else {
             print("Serious Error - ERROR: No meshGPUData found when trying to load the pipeline.")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeIntermediateMeshDataNotFound, userInfo: nil)
+            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
             return
         }
         
         guard let surfaceVertexDescriptor = createMetalVertexDescriptor(withFirstModelIOVertexDescriptorIn: surfaceModel.vertexDescriptors) else {
             print("Serious Error - Failed to create a MetalKit vertex descriptor from ModelIO.")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeInvalidMeshData, userInfo: nil)
+            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
             return
         }
         
@@ -154,12 +175,16 @@ class SurfacesRenderModule: RenderModule {
                 surfacePipelineStateDescriptor.sampleCount = renderDestination.sampleCount
             } catch let error {
                 print("Failed to create pipeline state descriptor, error \(error)")
+                let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: error))))
+                recordNewError(newError)
             }
             
             do {
                 try surfacePipelineStates.append(device.makeRenderPipelineState(descriptor: surfacePipelineStateDescriptor))
             } catch let error {
                 print("Failed to create pipeline state, error \(error)")
+                let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: error))))
+                recordNewError(newError)
             }
         }
         
@@ -282,6 +307,9 @@ class SurfacesRenderModule: RenderModule {
         
         guard let meshGPUData = surfaceMeshGPUData else {
             print("Error: meshGPUData not available a draw time. Aborting")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeIntermediateMeshDataNotAvailable, userInfo: nil)
+            let newError = AKError.recoverableError(.renderPipelineError(.drawAborted(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
             return
         }
         
@@ -321,6 +349,14 @@ class SurfacesRenderModule: RenderModule {
     
     func frameEncodingComplete() {
         //
+    }
+    
+    //
+    // Util
+    //
+    
+    func recordNewError(_ akError: AKError) {
+        errors.append(akError)
     }
     
     // MARK: - Private
@@ -367,6 +403,9 @@ class SurfacesRenderModule: RenderModule {
         for vtxBuffer in aModel.vertexBuffers {
             vtxBuffer.withUnsafeBytes { (bytes: UnsafePointer<UInt8>) in
                 guard let aVTXBuffer = device?.makeBuffer(bytes: bytes, length: vtxBuffer.count, options: .storageModeShared) else {
+                    let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeRenderPipelineInitializationFailed, userInfo: nil)
+                    let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+                    recordNewError(newError)
                     fatalError("Failed to create a buffer from the device.")
                 }
                 myGPUData.vtxBuffers.append(aVTXBuffer)
@@ -378,6 +417,9 @@ class SurfacesRenderModule: RenderModule {
         for idxBuffer in aModel.indexBuffers {
             idxBuffer.withUnsafeBytes { (bytes: UnsafePointer<UInt8>) in
                 guard let aIDXBuffer = device?.makeBuffer(bytes: bytes, length: idxBuffer.count, options: .storageModeShared) else {
+                    let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeRenderPipelineInitializationFailed, userInfo: nil)
+                    let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+                    recordNewError(newError)
                     fatalError("Failed to create a buffer from the device.")
                 }
                 myGPUData.indexBuffers.append(aIDXBuffer)
@@ -418,6 +460,9 @@ class SurfacesRenderModule: RenderModule {
                     
                     guard let materialUniformBuffer = materialUniformBuffer else {
                         print("Serious Error - Material Uniform Buffer is nil")
+                        let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeRenderPipelineInitializationFailed, userInfo: nil)
+                        let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+                        recordNewError(newError)
                         return myGPUData
                     }
                     

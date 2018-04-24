@@ -94,6 +94,30 @@ public struct AKWorldStatus {
         self.timestamp = timestamp
     }
     
+    func getSeriousErrors() -> [AKError] {
+        return errors.filter(){
+            switch $0 {
+            case .seriousError(_):
+                return true
+            default:
+                return false
+            }
+        }
+    }
+    
+    func getRecoverableErrorsAndWarnings() -> [AKError] {
+        return errors.filter(){
+            switch $0 {
+            case .recoverableError(_):
+                return true
+            case .warning(_):
+                return true
+            default:
+                return false
+            }
+        }
+    }
+    
 }
 
 // MARK: - AKWorld
@@ -448,6 +472,23 @@ public class AKWorld: NSObject {
         
     }
     
+    @objc private func handleAbortedDueToError(notif: NSNotification) {
+        
+        guard notif.name == .abortedDueToError else {
+            return
+        }
+        
+        guard let error = notif.userInfo?["error"] as? AKError else {
+            return
+        }
+        
+        var newStatus = AKWorldStatus(timestamp: Date())
+        newStatus.errors.append(error)
+        newStatus.status = .error
+        worldStatus = newStatus
+        
+    }
+    
 }
 
 // MARK: - MTKViewDelegate
@@ -476,7 +517,11 @@ extension AKWorld: ARSessionDelegate {
         let newError = AKError.recoverableError(.arkitError(UnderlyingErrorInfo(underlyingError: error)))
         errors.append(newError)
         newStatus.errors = errors
-        newStatus.status = .error
+        if newStatus.getSeriousErrors().count > 0 {
+            newStatus.status = .error
+        } else {
+            newStatus.status = worldStatus.status
+        }
         worldStatus = newStatus
     }
     

@@ -48,6 +48,7 @@ class SharedBuffersRenderModule: SharedRenderModule {
     var isInitialized: Bool = false
     var sharedModuleIdentifiers: [String]? = nil
     var renderDistance: Double = 500
+    var errors = [AKError]()
     
     // MARK: - RenderModule
     
@@ -135,6 +136,14 @@ class SharedBuffersRenderModule: SharedRenderModule {
     
     func frameEncodingComplete() {
         //
+    }
+    
+    //
+    // Util
+    //
+    
+    func recordNewError(_ akError: AKError) {
+        errors.append(akError)
     }
     
     // MARK: - SharedRenderModule

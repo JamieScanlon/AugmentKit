@@ -36,7 +36,8 @@ import ModelIO
 
 public extension Notification.Name {
     public static let rendererStateChanged = Notification.Name("com.tenthlettermade.augmentKit.notificaiton.rendererStateChanged")
-    public static let surfaceDetectionStateChanged = Notification.Name("com.tenthlettermade.augmentKit.notificaiton.rendererStateChanged")
+    public static let surfaceDetectionStateChanged = Notification.Name("com.tenthlettermade.augmentKit.notificaiton.surfaceDetectionStateChanged")
+    public static let abortedDueToError = Notification.Name("com.tenthlettermade.augmentKit.notificaiton.abortedDueToError")
 }
 
 // MARK: - RenderDestinationProvider
@@ -666,14 +667,21 @@ public class Renderer {
         
         // Load the default metal library file which contains all of the compiled .metal files
         guard let libraryFile = Bundle(for: Renderer.self).path(forResource: "default", ofType: "metallib") else {
-            fatalError("failed to create a default library for the device.")
+            print("failed to create a default library for the device.")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeRenderPipelineInitializationFailed, userInfo: nil)
+            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: nil, underlyingError: underlyingError))))
+            NotificationCenter.default.post(name: .abortedDueToError, object: self, userInfo: ["error": newError])
+            return
         }
         
         defaultLibrary = {
             do {
                 return try device.makeLibrary(filepath: libraryFile)
-            } catch {
-                fatalError("failed to create a default library for the device.")
+            } catch let error {
+                print("failed to create a default library for the device.")
+                let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: nil, underlyingError: error))))
+                NotificationCenter.default.post(name: .abortedDueToError, object: self, userInfo: ["error": newError])
+                fatalError()
             }
         }()
         

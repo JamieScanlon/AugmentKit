@@ -47,6 +47,7 @@ class CameraPlaneRenderModule: RenderModule {
     var isInitialized: Bool = false
     var sharedModuleIdentifiers: [String]? = nil
     var renderDistance: Double = 500
+    var errors = [AKError]()
     
     func initializeBuffers(withDevice aDevice: MTLDevice, maxInFlightBuffers: Int) {
         
@@ -67,16 +68,25 @@ class CameraPlaneRenderModule: RenderModule {
         
         guard let device = device else {
             print("Serious Error - device not found")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeDeviceNotFound, userInfo: nil)
+            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
             return
         }
         
         guard let capturedImageVertexTransform = metalLibrary.makeFunction(name: "capturedImageVertexTransform") else {
             print("Serious Error - failed to create the capturedImageVertexTransform function")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeShaderInitializationFailed, userInfo: nil)
+            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
             return
         }
         
         guard let capturedImageFragmentShader = metalLibrary.makeFunction(name: "capturedImageFragmentShader") else {
             print("Serious Error - failed to create the capturedImageFragmentShader function")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeShaderInitializationFailed, userInfo: nil)
+            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
             return
         }
         
@@ -116,6 +126,9 @@ class CameraPlaneRenderModule: RenderModule {
             try capturedImagePipelineState = device.makeRenderPipelineState(descriptor: capturedImagePipelineStateDescriptor)
         } catch let error {
             print("Serious Error - Failed to create captured image pipeline state, error \(error)")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeRenderPipelineInitializationFailed, userInfo: nil)
+            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
             return
         }
         
@@ -192,6 +205,9 @@ class CameraPlaneRenderModule: RenderModule {
         
         guard let capturedImagePipelineState = capturedImagePipelineState else {
             print("Serious Error - Captured Image Pipeline State is nil")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeRenderPipelineInitializationFailed, userInfo: nil)
+            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
             return
         }
         
@@ -221,6 +237,14 @@ class CameraPlaneRenderModule: RenderModule {
         textureReferences.removeAll()
     }
     
+    //
+    // Util
+    //
+    
+    func recordNewError(_ akError: AKError) {
+        errors.append(akError)
+    }
+    
     // MARK: - Private
     
     private enum Constants {
@@ -248,7 +272,10 @@ class CameraPlaneRenderModule: RenderModule {
     private func createTexture(fromPixelBuffer pixelBuffer: CVPixelBuffer, pixelFormat: MTLPixelFormat, planeIndex: Int) -> CVMetalTexture? {
         
         guard let capturedImageTextureCache = capturedImageTextureCache else {
-            print("Serious Error - Cptured Image Texture Cache is nil")
+            print("Serious Error - Captured Image Texture Cache is nil")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeRenderPipelineInitializationFailed, userInfo: nil)
+            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
             return nil
         }
         

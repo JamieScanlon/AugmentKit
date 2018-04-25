@@ -195,8 +195,8 @@ This project has completed all of the base pre-release functionality. There are 
 #### Alpha-Release Project Goals
 
 - [ ] Refinements to UIControls and interactions including exposing tap and other gestures, smoothing
-- [ ] Mechanism for surfacing the state of the world and the renderer so it can be surfaced to the user
-- [ ] Mechanism for surfacing errors
+- [x] Mechanism for surfacing the state of the world and the renderer so it can be surfaced to the user
+- [x] Mechanism for surfacing errors
 - [ ] Test and fix animation for models
 - [ ] Test and fix a variety of models.
 - [ ] Support per-instance models

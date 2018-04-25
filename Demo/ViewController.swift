@@ -51,7 +51,7 @@ class ViewController: UIViewController {
             
             // Debugging
             myWorld.renderer.showGuides = false // Change to `true` to enable rendering of tracking points and surface planes.
-            myWorld.renderer.logger = self
+            myWorld.monitor = self
             
             // Set the initial orientation
             myWorld.renderer.orientation = UIApplication.shared.statusBarOrientation
@@ -215,13 +215,18 @@ class ViewController: UIViewController {
     
 }
 
-// MARK: - RenderDebugLogger
+// MARK: - RenderMonitor
 
-extension ViewController: RenderDebugLogger {
+extension ViewController: AKWorldMonitor {
     
-    func update(stats: RenderDebugLoggerStats) {
-        debugInfoAnchorCounts?.text = "ARKit Anchor Count: \(stats.arKitAnchorCount)\nAugmentKit Anchors: \(stats.numAnchors)\nplanes: \(stats.numPlanes)\ntracking points: \(stats.numTrackingPoints)\ntrackers: \(stats.numTrackers)\ntargets: \(stats.numTargets)\npath segments \(stats.numPathSegments)"
+    func update(renderStats: RenderStats) {
+        debugInfoAnchorCounts?.text = "ARKit Anchor Count: \(renderStats.arKitAnchorCount)\nAugmentKit Anchors: \(renderStats.numAnchors)\nplanes: \(renderStats.numPlanes)\ntracking points: \(renderStats.numTrackingPoints)\ntrackers: \(renderStats.numTrackers)\ntargets: \(renderStats.numTargets)\npath segments \(renderStats.numPathSegments)"
     }
+    
+    func update(worldStatus: AKWorldStatus) {
+        // TODO: Implement
+    }
+    
 }
 
 // MARK: - Model Compressor

@@ -37,7 +37,7 @@ import ModelIO
 public extension Notification.Name {
     public static let rendererStateChanged = Notification.Name("com.tenthlettermade.augmentKit.notificaiton.rendererStateChanged")
     public static let surfaceDetectionStateChanged = Notification.Name("com.tenthlettermade.augmentKit.notificaiton.surfaceDetectionStateChanged")
-    public static let abortedDueToError = Notification.Name("com.tenthlettermade.augmentKit.notificaiton.abortedDueToError")
+    public static let abortedDueToErrors = Notification.Name("com.tenthlettermade.augmentKit.notificaiton.abortedDueToErrors")
 }
 
 // MARK: - RenderDestinationProvider
@@ -50,9 +50,9 @@ public protocol RenderDestinationProvider {
     var sampleCount: Int { get set }
 }
 
-// MARK: - RenderDebugLogger
+// MARK: - RenderMonitor
 
-public struct RenderDebugLoggerStats {
+public struct RenderStats {
     public var arKitAnchorCount: Int
     public var numAnchors: Int
     public var numPlanes: Int
@@ -62,8 +62,9 @@ public struct RenderDebugLoggerStats {
     public var numPathSegments: Int
 }
 
-public protocol RenderDebugLogger {
-    func update(stats: RenderDebugLoggerStats)
+public protocol RenderMonitor {
+    func update(renderStats: RenderStats)
+    func update(renderErrors: [AKError])
 }
 
 // MARK: - CameraProperties
@@ -81,7 +82,7 @@ public struct CameraProperties {
 public class Renderer {
     
     // Debugging
-    public var logger: RenderDebugLogger?
+    public var monitor: RenderMonitor?
     
     public var orientation: UIInterfaceOrientation = .portrait {
         didSet {
@@ -496,8 +497,13 @@ public class Renderer {
             viewportSizeDidChange = false
         }
         
-        let stats = RenderDebugLoggerStats(arKitAnchorCount: currentFrame.anchors.count, numAnchors: anchorsRenderModule?.anchorInstanceCount ?? 0, numPlanes: surfacesRenderModule?.surfaceInstanceCount ?? 0, numTrackingPoints: trackingPointRenderModule?.trackingPointCount ?? 0, numTrackers: unanchoredRenderModule?.trackerInstanceCount ?? 0, numTargets: unanchoredRenderModule?.targetInstanceCount ?? 0, numPathSegments: pathsRenderModule?.pathSegmentInstanceCount ?? 0)
-        logger?.update(stats: stats)
+        let errors = renderModules.flatMap {
+            $0.errors
+        }
+        monitor?.update(renderErrors: errors)
+        
+        let stats = RenderStats(arKitAnchorCount: currentFrame.anchors.count, numAnchors: anchorsRenderModule?.anchorInstanceCount ?? 0, numPlanes: surfacesRenderModule?.surfaceInstanceCount ?? 0, numTrackingPoints: trackingPointRenderModule?.trackingPointCount ?? 0, numTrackers: unanchoredRenderModule?.trackerInstanceCount ?? 0, numTargets: unanchoredRenderModule?.targetInstanceCount ?? 0, numPathSegments: pathsRenderModule?.pathSegmentInstanceCount ?? 0)
+        monitor?.update(renderStats: stats)
         
     }
     
@@ -639,6 +645,8 @@ public class Renderer {
     fileprivate var paths = [UUID: [AKAugmentedAnchor]]()
     fileprivate var gazeTargets = [GazeTarget]()
     
+    fileprivate var moduleErrors = [AKError]()
+    
     // MARK: ARKit Session Configuration
     
     fileprivate func createNewConfiguration() -> ARWorldTrackingConfiguration {
@@ -670,7 +678,7 @@ public class Renderer {
             print("failed to create a default library for the device.")
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeRenderPipelineInitializationFailed, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: nil, underlyingError: underlyingError))))
-            NotificationCenter.default.post(name: .abortedDueToError, object: self, userInfo: ["error": newError])
+            NotificationCenter.default.post(name: .abortedDueToErrors, object: self, userInfo: ["errors": [newError]])
             return
         }
         
@@ -680,7 +688,7 @@ public class Renderer {
             } catch let error {
                 print("failed to create a default library for the device.")
                 let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: nil, underlyingError: error))))
-                NotificationCenter.default.post(name: .abortedDueToError, object: self, userInfo: ["error": newError])
+                NotificationCenter.default.post(name: .abortedDueToErrors, object: self, userInfo: ["errors": [newError]])
                 fatalError()
             }
         }()
@@ -805,6 +813,22 @@ public class Renderer {
                 module.loadAssets(fromModelProvider: modelProvider, textureLoader: textureLoader, completion: { [weak self] in
                     if let defaultLibrary = self?.defaultLibrary, let renderDestination = self?.renderDestination {
                         module.loadPipeline(withMetalLibrary: defaultLibrary, renderDestination: renderDestination)
+                        self?.moduleErrors.append(contentsOf: module.errors)
+                        if let moduleErrors = self?.moduleErrors {
+                            let seriousErrors: [AKError] =  {
+                                return moduleErrors.filter(){
+                                    switch $0 {
+                                    case .seriousError(_):
+                                        return true
+                                    default:
+                                        return false
+                                    }
+                                }
+                            }()
+                            if seriousErrors.count > 0 {
+                                NotificationCenter.default.post(name: .abortedDueToErrors, object: self, userInfo: ["errors": seriousErrors])
+                            }
+                        }
                     }
                 })
             }

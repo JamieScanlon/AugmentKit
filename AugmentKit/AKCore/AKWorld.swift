@@ -120,6 +120,13 @@ public struct AKWorldStatus {
     
 }
 
+// MARK: - AKWorldMonitor
+
+public protocol AKWorldMonitor {
+    func update(worldStatus: AKWorldStatus)
+    func update(renderStats: RenderStats)
+}
+
 // MARK: - AKWorld
 
 public class AKWorld: NSObject {
@@ -216,7 +223,12 @@ public class AKWorld: NSObject {
         
     }
     
-    public private(set) var worldStatus: AKWorldStatus
+    public private(set) var worldStatus: AKWorldStatus {
+        didSet {
+            monitor?.update(worldStatus: worldStatus)
+        }
+    }
+    public var monitor: AKWorldMonitor?
     
     public init(renderDestination: MTKView, configuration: AKWorldConfiguration = AKWorldConfiguration()) {
         
@@ -234,8 +246,10 @@ public class AKWorld: NSObject {
         
         NotificationCenter.default.addObserver(self, selector: #selector(AKWorld.handleRendererStateChanged(notif:)), name: .rendererStateChanged, object: self.renderer)
         NotificationCenter.default.addObserver(self, selector: #selector(AKWorld.handleSurfaceDetectionStateChanged(notif:)), name: .surfaceDetectionStateChanged, object: self.renderer)
+        NotificationCenter.default.addObserver(self, selector: #selector(AKWorld.handleAbortedDueToErrors(notif:)), name: .abortedDueToErrors, object: self.renderer)
         
         self.renderDestination.device = self.device
+        self.renderer.monitor = self
         self.renderer.drawRectResized(size: renderDestination.bounds.size)
         self.session.delegate = self
         self.renderDestination.delegate = self
@@ -472,18 +486,18 @@ public class AKWorld: NSObject {
         
     }
     
-    @objc private func handleAbortedDueToError(notif: NSNotification) {
+    @objc private func handleAbortedDueToErrors(notif: NSNotification) {
         
-        guard notif.name == .abortedDueToError else {
+        guard notif.name == .abortedDueToErrors else {
             return
         }
         
-        guard let error = notif.userInfo?["error"] as? AKError else {
+        guard let errors = notif.userInfo?["errors"] as? [AKError] else {
             return
         }
         
         var newStatus = AKWorldStatus(timestamp: Date())
-        newStatus.errors.append(error)
+        newStatus.errors.append(contentsOf: errors)
         newStatus.status = .error
         worldStatus = newStatus
         
@@ -539,6 +553,28 @@ extension AKWorld: ARSessionDelegate {
         newStatus.errors = worldStatus.errors
         worldStatus = newStatus
     }
+    
+}
+
+// MARK: - RenderMonitor
+
+extension AKWorld: RenderMonitor {
+    
+    public func update(renderStats: RenderStats) {
+        monitor?.update(renderStats: renderStats)
+    }
+    
+    public func update(renderErrors: [AKError]) {
+        var newStatus = AKWorldStatus(timestamp: Date())
+        newStatus.errors = renderErrors
+        if newStatus.getSeriousErrors().count > 0 {
+            newStatus.status = .error
+        } else {
+            newStatus.status = worldStatus.status
+        }
+        worldStatus = newStatus
+    }
+    
     
 }
 

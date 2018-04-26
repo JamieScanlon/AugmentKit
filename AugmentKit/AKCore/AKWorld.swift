@@ -151,7 +151,7 @@ public class AKWorld: NSObject {
             }
         } else {
             if let currentCameraPosition = renderer.currentCameraPositionTransform {
-                return AKWorldLocation(transform: currentCameraPosition)
+                return WorldLocation(transform: currentCameraPosition)
             } else {
                 return nil
             }
@@ -175,7 +175,7 @@ public class AKWorld: NSObject {
                 // reliableLocation provides the correct translation but
                 // it may need to be rotated to face due north
                 let referenceWorldTransform = matrix_identity_float4x4.translate(x: reliableLocation.transform.columns.3.x, y: reliableLocation.transform.columns.3.y, z: reliableLocation.transform.columns.3.z)
-                let referenceLocation = AKWorldLocation(transform: referenceWorldTransform, latitude: reliableLocation.latitude, longitude: reliableLocation.longitude, elevation: reliableLocation.elevation)
+                let referenceLocation = WorldLocation(transform: referenceWorldTransform, latitude: reliableLocation.latitude, longitude: reliableLocation.longitude, elevation: reliableLocation.elevation)
                 // The distance to the origin is the opposite of its translation
                 let distanceToOrigin = AKWorldDistance(metersX: Double(-referenceWorldTransform.columns.3.x), metersY: Double(-referenceWorldTransform.columns.3.y), metersZ: Double(-referenceWorldTransform.columns.3.z))
                 return AKLocationUtility.worldLocation(from: referenceLocation, translatedBy: distanceToOrigin)
@@ -186,7 +186,7 @@ public class AKWorld: NSObject {
             // matrix_identity_float4x4 provides the correct translation but
             // it may need to be rotated to face due north
             let referenceWorldTransform = matrix_identity_float4x4
-            return AKWorldLocation(transform: referenceWorldTransform)
+            return WorldLocation(transform: referenceWorldTransform)
         }
         
     }
@@ -217,7 +217,7 @@ public class AKWorld: NSObject {
             
         }()
         
-        let worldLocation = AKWorldLocation(transform: groundTransform, latitude: currentLocation.coordinate.latitude, longitude: currentLocation.coordinate.longitude, elevation: currentLocation.altitude)
+        let worldLocation = WorldLocation(transform: groundTransform, latitude: currentLocation.coordinate.latitude, longitude: currentLocation.coordinate.longitude, elevation: currentLocation.altitude)
         let groundLayer = RealSurfaceAnchor(at: worldLocation)
         return groundLayer
         
@@ -310,7 +310,7 @@ public class AKWorld: NSObject {
             }
         }()
         
-        return AKWorldLocation(latitude: latitude, longitude: longitude, elevation: myElevation, referenceLocation: referenceLocation)
+        return WorldLocation(latitude: latitude, longitude: longitude, elevation: myElevation, referenceLocation: referenceLocation)
         
     }
     
@@ -332,7 +332,7 @@ public class AKWorld: NSObject {
                                      translation
         )
         
-        return AKWorldLocation(transform: endTransform, referenceLocation: currentWorldLocation)
+        return WorldLocation(transform: endTransform, referenceLocation: currentWorldLocation)
         
     }
     
@@ -374,7 +374,7 @@ public class AKWorld: NSObject {
             return
         }
         
-        let newReliableWorldLocation = AKWorldLocation(transform: currentCameraPosition, latitude: location.coordinate.latitude, longitude: location.coordinate.longitude, elevation: location.altitude)
+        let newReliableWorldLocation = WorldLocation(transform: currentCameraPosition, latitude: location.coordinate.latitude, longitude: location.coordinate.longitude, elevation: location.altitude)
         if reliableWorldLocations.count > 100 {
             reliableWorldLocations = Array(reliableWorldLocations.dropLast(reliableWorldLocations.count - 100))
         }

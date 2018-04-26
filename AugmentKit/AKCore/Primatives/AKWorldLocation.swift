@@ -15,7 +15,18 @@ import CoreLocation
 //  A data structure that combines an absolute position (latitude, longitude, and elevation)
 //  with a relative postion (transform) that ties locations in the real world to locations
 //  in AR space.
-public struct AKWorldLocation {
+public protocol AKWorldLocation {
+    var latitude: Double { get set }
+    var longitude: Double { get set }
+    var elevation: Double { get set }
+    var transform: matrix_float4x4 { get set }
+}
+
+// MARK: - WorldLocation
+
+// Standard implementation of an AKWorldLocation object
+public struct WorldLocation: AKWorldLocation {
+    
     public var latitude: Double = 0
     public var longitude: Double = 0
     public var elevation: Double = 0
@@ -90,4 +101,43 @@ public struct AKWorldLocation {
         
     }
     
+}
+
+// MARK: - WorldLocation
+
+// An implementation that sets the y (vertical) position of an existing locaiton equal to the estimated ground of the world
+public struct GroundFixedWorldLocation: AKWorldLocation {
+    
+    public var latitude: Double = 0
+    public var longitude: Double = 0
+    public var elevation: Double = 0
+    public var world: AKWorld
+    
+    public var transform: matrix_float4x4 {
+        get {
+            var convertedTransform = originalTransform
+            let worldGroundTransform = world.estimatedGroundLayer.worldLocation.transform
+            convertedTransform.columns.3.y = worldGroundTransform.columns.3.y
+            return convertedTransform
+        }
+        set {
+            originalTransform = newValue
+        }
+    }
+    
+    public init(worldLocation: AKWorldLocation, world: AKWorld) {
+        
+        self.originalTransform = worldLocation.transform
+        self.world = world
+        self.latitude = worldLocation.latitude
+        self.longitude = worldLocation.longitude
+        self.elevation = world.estimatedGroundLayer.worldLocation.elevation
+        
+        
+    }
+    
+    // MARK: - Private
+    
+    fileprivate var originalTransform: matrix_float4x4
+
 }

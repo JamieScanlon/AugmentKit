@@ -99,7 +99,7 @@ public class AKLocationUtility {
         
         let transform = location.transform.translate(x: Float(translatedBy.metersX), y: Float(translatedBy.metersY), z: Float(translatedBy.metersZ))
         
-        return AKWorldLocation(transform: transform, latitude: location.latitude + Δz, longitude: location.longitude + Δx, elevation: location.elevation + translatedBy.metersY)
+        return WorldLocation(transform: transform, latitude: location.latitude + Δz, longitude: location.longitude + Δx, elevation: location.elevation + translatedBy.metersY)
         
     }
     

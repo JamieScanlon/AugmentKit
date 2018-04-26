@@ -129,9 +129,11 @@ class ViewController: UIViewController {
             return
         }
         
+        let anchorLocation = GroundFixedWorldLocation(worldLocation: currentWorldLocation, world: world)
+        
         // Example:
         // Create a new anchor at the current locaiton
-        let newObject = AugmentedObject(withAKModel: anchorModel, at: currentWorldLocation)
+        let newObject = AugmentedObject(withAKModel: anchorModel, at: anchorLocation)
         world.add(anchor: newObject)
         
         // Example:

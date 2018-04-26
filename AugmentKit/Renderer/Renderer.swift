@@ -930,7 +930,7 @@ fileprivate class InterpolatingAugmentedObject: AKAugmentedAnchor {
         }
         
         diff = diff * progress
-        currentLocation = AKWorldLocation(transform: lastLocaion.transform + diff, latitude: worldLocation.latitude, longitude: worldLocation.longitude, elevation: worldLocation.elevation)
+        currentLocation = WorldLocation(transform: lastLocaion.transform + diff, latitude: worldLocation.latitude, longitude: worldLocation.longitude, elevation: worldLocation.elevation)
         
     }
     

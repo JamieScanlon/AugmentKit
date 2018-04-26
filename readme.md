@@ -162,7 +162,15 @@ An AKTarget represents an object that can be rendered into the AKWorld. It's pos
 
 #### AKWorldLocation
 
-AKWorldLocation is a data structure that ties together a position in the AR world with a locaiton in the real world. When the ARKit session starts up, it crates an arbitrary coordinate system where the origin is where the device was located at the time of initialization. Every device and every AR session, therefore, has it's own local coordinate system. In order to reason about how the coordinate system relates to actual locations in the real world, AugmentKit uses location services to map a point in the ARKit coordinate system to a latitude and longitude in the real world and stores this as an AKWorldLocation object. Once a reliable AKWorldLocation is found, other AKWorldLocation objects can be derived by calculating their relative distance from the one reliable reference AKWorldLocation object.
+AKWorldLocation is a protocol that ties together a position in the AR world with a locaiton in the real world. When the ARKit session starts up, it crates an arbitrary coordinate system where the origin is where the device was located at the time of initialization. Every device and every AR session, therefore, has it's own local coordinate system. In order to reason about how the coordinate system relates to actual locations in the real world, AugmentKit uses location services to map a point in the ARKit coordinate system to a latitude and longitude in the real world and stores this as a AKWorldLocation instance. Once a reliable AKWorldLocation is found, other AKWorldLocation objects can be derived by calculating their relative distance from the one reliable reference AKWorldLocation object.
+
+##### WorldLocation
+
+A standard implementaion of AKWorldLocation that provides common initializers that make it easy to derive latitude, longitude, and elevation relative to a reference location
+
+##### GroundFixedWorldLocation
+
+A standard implementaion of AKWorldLocation that fixes the vertical position to the estimated ground of the world. This is most commonly used to place objects such that they appear to be resting on the ground
 
 #### AugmentedObject
 

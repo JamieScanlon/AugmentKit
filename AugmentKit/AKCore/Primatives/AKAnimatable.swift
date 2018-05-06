@@ -1,5 +1,5 @@
 //
-//  AKPathSegmentAnchor.swift
+//  AKAnimatable.swift
 //  AugmentKit
 //
 //  MIT License
@@ -24,33 +24,10 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 //
-//
-//  An AR anchor that represents a beginning or end of a path segment. Tow or more of
-//  these can be used to create a path in the AR world. These anchors have an empty
-//  model so they cannot be rendered by themselves.
-//
 
 import Foundation
-import ModelIO
 
-protocol AKPathSegmentAnchor: AKAugmentedAnchor {
-    
+public protocol AKAnimatable {
+    associatedtype Value
+    func value(forTime: TimeInterval) -> Value
 }
-
-public struct PathSegmentAnchor: AKPathSegmentAnchor {
-    
-    public static var type: String {
-        return "pathSegmentAnchor"
-    }
-    public var worldLocation: AKWorldLocation
-    public var model: AKModel
-    public var identifier: UUID?
-    public var effects: [AnyEffect<Any>]?
-    
-    public init(at location: AKWorldLocation) {
-        self.model = AKSimpleModel()
-        self.worldLocation = location
-    }
-    
-}
-

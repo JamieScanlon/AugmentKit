@@ -58,6 +58,8 @@
 		7D8A0A802013D058006CAAAD /* AKRelativePosiiton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D8A0A7F2013D058006CAAAD /* AKRelativePosiiton.swift */; };
 		7D8A0A822013D143006CAAAD /* AKHeading.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D8A0A812013D143006CAAAD /* AKHeading.swift */; };
 		7D8A0A85201514F0006CAAAD /* compass_512.png in Resources */ = {isa = PBXBuildFile; fileRef = 7D8A0A8320150EAD006CAAAD /* compass_512.png */; };
+		7D8D4DE5209E8E6900F98072 /* AKAnimatable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D8D4DE4209E8E6900F98072 /* AKAnimatable.swift */; };
+		7D8D4DE7209E907E00F98072 /* AKEffect.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D8D4DE6209E907E00F98072 /* AKEffect.swift */; };
 		7DA9936B1F907A9A00595435 /* AugmentKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7D6E6B471F8F19C300EFC667 /* AugmentKit.framework */; };
 		7DA9936C1F907A9A00595435 /* AugmentKit.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 7D6E6B471F8F19C300EFC667 /* AugmentKit.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		7DAD06BE2071505E00B62B61 /* AKTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DAD06BD2071505E00B62B61 /* AKTracker.swift */; };
@@ -204,6 +206,8 @@
 		7D8A0A7F2013D058006CAAAD /* AKRelativePosiiton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKRelativePosiiton.swift; sourceTree = "<group>"; };
 		7D8A0A812013D143006CAAAD /* AKHeading.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKHeading.swift; sourceTree = "<group>"; };
 		7D8A0A8320150EAD006CAAAD /* compass_512.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = compass_512.png; sourceTree = "<group>"; };
+		7D8D4DE4209E8E6900F98072 /* AKAnimatable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKAnimatable.swift; sourceTree = "<group>"; };
+		7D8D4DE6209E907E00F98072 /* AKEffect.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKEffect.swift; sourceTree = "<group>"; };
 		7DAD06BD2071505E00B62B61 /* AKTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKTracker.swift; sourceTree = "<group>"; };
 		7DAD06BF207150B300B62B61 /* AKGeometricEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKGeometricEntity.swift; sourceTree = "<group>"; };
 		7DAD06C12071520F00B62B61 /* AKTarget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKTarget.swift; sourceTree = "<group>"; };
@@ -467,6 +471,8 @@
 				7D345B06208B83CA00C2D5D0 /* AKWorldLocation.swift */,
 				7D345B08208B844600C2D5D0 /* AKWorldDistance.swift */,
 				7D345B0A208B892200C2D5D0 /* AKError.swift */,
+				7D8D4DE4209E8E6900F98072 /* AKAnimatable.swift */,
+				7D8D4DE6209E907E00F98072 /* AKEffect.swift */,
 			);
 			path = Primatives;
 			sourceTree = "<group>";
@@ -802,12 +808,14 @@
 				7D818909201EB5DB0021694F /* PathsRenderModule.swift in Sources */,
 				7DAD06C0207150B300B62B61 /* AKGeometricEntity.swift in Sources */,
 				7D282F141FD11DE700D00B86 /* Serialize.swift in Sources */,
+				7D8D4DE5209E8E6900F98072 /* AKAnimatable.swift in Sources */,
 				7D5FDA3E1FC9FB4400BAE104 /* Renderer.swift in Sources */,
 				7D6E6B6C1F8F1CDB00EFC667 /* LocationManager.swift in Sources */,
 				7D53471F203A961A00714A6F /* PathShader.metal in Sources */,
 				7DF697EB1FCD26F500292F66 /* AKModelProvider.swift in Sources */,
 				7DFCF6031FC08CD300E8A560 /* ImageCaptureShaders.metal in Sources */,
 				7DB72CD5202424D70050C61D /* AKPathSegmentAnchor.swift in Sources */,
+				7D8D4DE7209E907E00F98072 /* AKEffect.swift in Sources */,
 				7D345B0B208B892200C2D5D0 /* AKError.swift in Sources */,
 				7DFCF6051FC096A900E8A560 /* PointShader.metal in Sources */,
 			);

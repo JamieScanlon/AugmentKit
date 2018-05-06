@@ -878,6 +878,7 @@ fileprivate class InterpolatingAugmentedObject: AKAugmentedAnchor {
     var worldLocation: AKWorldLocation
     var model: AKModel
     var identifier: UUID?
+    var effects: [AnyEffect<Any>]?
     
     // When interpolating, this contains the old location
     var lastLocaion: AKWorldLocation?

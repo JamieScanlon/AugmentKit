@@ -70,6 +70,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         let anchorUniformBufferSize = Constants.alignedAnchorInstanceUniformsSize * maxInFlightBuffers
         let materialUniformBufferSize = RenderModuleConstants.alignedMaterialSize * maxInFlightBuffers
         let paletteBufferSize = Constants.alignedPaletteSize * Constants.maxPaletteSize * maxInFlightBuffers
+        let effectsUniformBufferSize = Constants.alignedEffectsUniformSize * maxInFlightBuffers
         
         // Create and allocate our uniform buffer objects. Indicate shared storage so that both the
         // CPU can access the buffer
@@ -81,6 +82,9 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         
         paletteBuffer = device?.makeBuffer(length: paletteBufferSize, options: [])
         paletteBuffer?.label = "PaletteBuffer"
+        
+        effectsUniformBuffer = device?.makeBuffer(length: effectsUniformBufferSize, options: .storageModeShared)
+        effectsUniformBuffer?.label = "EffectsUniformBuffer"
         
     }
     
@@ -177,6 +181,9 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                 anchorPipelineStateDescriptor.vertexFunction = vertFunc
                 anchorPipelineStateDescriptor.fragmentFunction = fragFunc
                 anchorPipelineStateDescriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
+                anchorPipelineStateDescriptor.colorAttachments[0].isBlendingEnabled = true
+                anchorPipelineStateDescriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
+                anchorPipelineStateDescriptor.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
                 anchorPipelineStateDescriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
                 anchorPipelineStateDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
                 anchorPipelineStateDescriptor.sampleCount = renderDestination.sampleCount
@@ -213,10 +220,12 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         anchorUniformBufferOffset = Constants.alignedAnchorInstanceUniformsSize * bufferIndex
         materialUniformBufferOffset = RenderModuleConstants.alignedMaterialSize * bufferIndex
         paletteBufferOffset = Constants.alignedPaletteSize * Constants.maxPaletteSize * bufferIndex
+        effectsUniformBufferOffset = Constants.alignedEffectsUniformSize * bufferIndex
         
         anchorUniformBufferAddress = anchorUniformBuffer?.contents().advanced(by: anchorUniformBufferOffset)
         materialUniformBufferAddress = materialUniformBuffer?.contents().advanced(by: materialUniformBufferOffset)
         paletteBufferAddress = paletteBuffer?.contents().advanced(by: paletteBufferOffset)
+        effectsUniformBufferAddress = effectsUniformBuffer?.contents().advanced(by: effectsUniformBufferOffset)
         
     }
     
@@ -229,6 +238,10 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         var vertPlaneInstanceCount = 0
         
         for index in 0..<frame.anchors.count {
+            
+            //
+            // Update the Anchor uniform
+            //
             
             let anchor = frame.anchors[index]
             var isAnchor = false
@@ -268,10 +281,11 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             var coordinateSpaceTransform = matrix_identity_float4x4
             coordinateSpaceTransform.columns.2.z = -1.0
             
+            let anchorIndex = anchorInstanceCount - 1
+            
             if let model = anchorModel {
                 
                 // Apply the world transform (as defined in the imported model) if applicable
-                let anchorIndex = anchorInstanceCount - 1
                 if let modelIndex = modelIndex(in: model, fromAnchorIndex: anchorIndex), modelIndex < model.worldTransforms.count {
                     let worldTransform = model.worldTransforms[modelIndex]
                     coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
@@ -282,6 +296,14 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                 anchorUniforms?.pointee.modelMatrix = modelMatrix
                 
             }
+            
+            //
+            // Update the Effects uniform
+            //
+            
+            let effectsUniforms = effectsUniformBufferAddress?.assumingMemoryBound(to: AnchorEffectsUniforms.self).advanced(by: anchorIndex)
+            effectsUniforms?.pointee.alpha = 1 // TODO: Implement
+            effectsUniforms?.pointee.glow = 0 // TODO: Implement
             
         }
         
@@ -330,6 +352,14 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             
         }
         
+        if let effectsBuffer = effectsUniformBuffer {
+            
+            renderEncoder.pushDebugGroup("Draw Effects Uniforms")
+            renderEncoder.setFragmentBuffer(effectsBuffer, offset: effectsUniformBufferOffset, index: Int(kBufferIndexAnchorEffectsUniforms.rawValue))
+            renderEncoder.popDebugGroup()
+            
+        }
+        
         for (drawDataIdx, drawData) in meshGPUData.drawData.enumerated() {
             
             if drawDataIdx < anchorPipelineStates.count {
@@ -373,6 +403,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         static let maxPaletteSize = 100
         static let alignedAnchorInstanceUniformsSize = ((MemoryLayout<AnchorInstanceUniforms>.stride * Constants.maxAnchorInstanceCount) & ~0xFF) + 0x100
         static let alignedPaletteSize = (MemoryLayout<matrix_float4x4>.stride & ~0xFF) + 0x100
+        static let alignedEffectsUniformSize = ((MemoryLayout<AnchorEffectsUniforms>.stride * Constants.maxAnchorInstanceCount) & ~0xFF) + 0x100
     }
     
     private var device: MTLDevice?
@@ -381,6 +412,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     private var anchorUniformBuffer: MTLBuffer?
     private var materialUniformBuffer: MTLBuffer?
     private var paletteBuffer: MTLBuffer?
+    private var effectsUniformBuffer: MTLBuffer?
     private var anchorPipelineStates = [MTLRenderPipelineState]() // Store multiple states
     private var anchorDepthState: MTLDepthStencilState?
     
@@ -396,6 +428,9 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     // Offset within paletteBuffer to set for the current frame
     private var paletteBufferOffset = 0
     
+    // Offset within effectsUniformBuffer to set for the current frame
+    private var effectsUniformBufferOffset: Int = 0
+    
     // Addresses to write anchor uniforms to each frame
     private var anchorUniformBufferAddress: UnsafeMutableRawPointer?
     
@@ -404,6 +439,9 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     
     // Addresses to write palette to each frame
     private var paletteBufferAddress: UnsafeMutableRawPointer?
+    
+    // Addresses to write material uniforms to each frame
+    private var effectsUniformBufferAddress: UnsafeMutableRawPointer?
     
     private var usesMaterials = false
     

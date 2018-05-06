@@ -72,7 +72,7 @@ class PathsRenderModule: RenderModule {
         // argument in the constant address space of our shading functions.
         let pathUniformBufferSize = Constants.alignedPathSegmentInstanceUniformsSize * maxInFlightBuffers
         let materialUniformBufferSize = RenderModuleConstants.alignedMaterialSize * maxInFlightBuffers
-        let effectsUniformBufferSize = Constants.alignedPathEffectsUniformSize * maxInFlightBuffers
+        let effectsUniformBufferSize = Constants.alignedEffectsUniformSize * maxInFlightBuffers
         
         // Create and allocate our uniform buffer objects. Indicate shared storage so that both the
         // CPU can access the buffer
@@ -190,6 +190,9 @@ class PathsRenderModule: RenderModule {
             pathPipelineStateDescriptor.vertexFunction = pointVertexShader
             pathPipelineStateDescriptor.fragmentFunction = pointFragmentShader
             pathPipelineStateDescriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
+            pathPipelineStateDescriptor.colorAttachments[0].isBlendingEnabled = true
+            pathPipelineStateDescriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
+            pathPipelineStateDescriptor.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
             pathPipelineStateDescriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
             pathPipelineStateDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
             pathPipelineStateDescriptor.sampleCount = renderDestination.sampleCount
@@ -220,7 +223,7 @@ class PathsRenderModule: RenderModule {
         
         pathUniformBufferOffset = Constants.alignedPathSegmentInstanceUniformsSize * bufferIndex
         materialUniformBufferOffset = RenderModuleConstants.alignedMaterialSize * bufferIndex
-        effectsUniformBufferOffset = Constants.alignedPathEffectsUniformSize * bufferIndex
+        effectsUniformBufferOffset = Constants.alignedEffectsUniformSize * bufferIndex
         
         pathUniformBufferAddress = pathUniformBuffer?.contents().advanced(by: pathUniformBufferOffset)
         materialUniformBufferAddress = materialUniformBuffer?.contents().advanced(by: materialUniformBufferOffset)
@@ -337,7 +340,8 @@ class PathsRenderModule: RenderModule {
                 //
                 
                 let effectsUniforms = effectsUniformBufferAddress?.assumingMemoryBound(to: AnchorEffectsUniforms.self).advanced(by: pathSegmentIndex)
-                effectsUniforms?.pointee.glow = 0.5
+                effectsUniforms?.pointee.alpha = 1 // TODO: Implement
+                effectsUniforms?.pointee.glow = 0 // TODO: Implement
                 
                 lastAnchor = anchor
                 
@@ -382,6 +386,14 @@ class PathsRenderModule: RenderModule {
             
         }
         
+        if let effectsBuffer = effectsUniformBuffer {
+            
+            renderEncoder.pushDebugGroup("Draw Effects Uniforms")
+            renderEncoder.setFragmentBuffer(effectsBuffer, offset: effectsUniformBufferOffset, index: Int(kBufferIndexAnchorEffectsUniforms.rawValue))
+            renderEncoder.popDebugGroup()
+            
+        }
+        
         for (drawDataIdx, drawData) in meshGPUData.drawData.enumerated() {
             
             if drawDataIdx < pathPipelineStates.count {
@@ -398,16 +410,6 @@ class PathsRenderModule: RenderModule {
                 encode(meshGPUData: meshGPUData, fromDrawData: mutableDrawData, with: renderEncoder)
                 
             }
-            
-        }
-        
-        if let effectsBuffer = effectsUniformBuffer {
-            
-            renderEncoder.pushDebugGroup("Draw Effects Uniforms")
-            
-            renderEncoder.setVertexBuffer(effectsBuffer, offset: effectsUniformBufferOffset, index: Int(kBufferIndexAnchorEffectsUniforms.rawValue))
-            
-            renderEncoder.popDebugGroup()
             
         }
         
@@ -463,7 +465,7 @@ class PathsRenderModule: RenderModule {
         static let maxPathSegmentInstanceCount = 2048
         // Paths use the same uniform struct as anchors
         static let alignedPathSegmentInstanceUniformsSize = ((MemoryLayout<AnchorInstanceUniforms>.stride * Constants.maxPathSegmentInstanceCount) & ~0xFF) + 0x100
-        static let alignedPathEffectsUniformSize = ((MemoryLayout<AnchorEffectsUniforms>.stride * Constants.maxPathSegmentInstanceCount) & ~0xFF) + 0x100
+        static let alignedEffectsUniformSize = ((MemoryLayout<AnchorEffectsUniforms>.stride * Constants.maxPathSegmentInstanceCount) & ~0xFF) + 0x100
     }
     
     private var usesMaterials = false
@@ -504,11 +506,6 @@ class PathsRenderModule: RenderModule {
         pathsVertexDescriptor.attributes[5].offset = 20
         pathsVertexDescriptor.attributes[5].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
         
-        // Glow
-        pathsVertexDescriptor.attributes[5].format = .float // 4 bytes
-        pathsVertexDescriptor.attributes[5].offset = 32
-        pathsVertexDescriptor.attributes[5].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
-        
         //
         // Layouts
         //
@@ -519,7 +516,7 @@ class PathsRenderModule: RenderModule {
         pathsVertexDescriptor.layouts[0].stepFunction = .perVertex
         
         // Generic Attribute Buffer Layout
-        pathsVertexDescriptor.layouts[1].stride = 36
+        pathsVertexDescriptor.layouts[1].stride = 32
         pathsVertexDescriptor.layouts[1].stepRate = 1
         pathsVertexDescriptor.layouts[1].stepFunction = .perVertex
         

@@ -67,6 +67,7 @@ class UnanchoredRenderModule: RenderModule {
         // argument in the constant address space of our shading functions.
         let unanchoredUniformBufferSize = Constants.alignedInstanceUniformsSize * maxInFlightBuffers
         let materialUniformBufferSize = RenderModuleConstants.alignedMaterialSize * maxInFlightBuffers
+        let effectsUniformBufferSize = Constants.alignedEffectsUniformSize * maxInFlightBuffers
         
         // Create and allocate our uniform buffer objects. Indicate shared storage so that both the
         // CPU can access the buffer
@@ -75,6 +76,9 @@ class UnanchoredRenderModule: RenderModule {
         
         materialUniformBuffer = device?.makeBuffer(length: materialUniformBufferSize, options: .storageModeShared)
         materialUniformBuffer?.label = "MaterialUniformBuffer"
+        
+        effectsUniformBuffer = device?.makeBuffer(length: effectsUniformBufferSize, options: .storageModeShared)
+        effectsUniformBuffer?.label = "EffectsUniformBuffer"
         
     }
     
@@ -200,6 +204,9 @@ class UnanchoredRenderModule: RenderModule {
                     trackerPipelineStateDescriptor.vertexFunction = vertFunc
                     trackerPipelineStateDescriptor.fragmentFunction = fragFunc
                     trackerPipelineStateDescriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
+                    trackerPipelineStateDescriptor.colorAttachments[0].isBlendingEnabled = true
+                    trackerPipelineStateDescriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
+                    trackerPipelineStateDescriptor.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
                     trackerPipelineStateDescriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
                     trackerPipelineStateDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
                     trackerPipelineStateDescriptor.sampleCount = renderDestination.sampleCount
@@ -260,6 +267,9 @@ class UnanchoredRenderModule: RenderModule {
                     targetPipelineStateDescriptor.vertexFunction = vertFunc
                     targetPipelineStateDescriptor.fragmentFunction = fragFunc
                     targetPipelineStateDescriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
+                    targetPipelineStateDescriptor.colorAttachments[0].isBlendingEnabled = true
+                    targetPipelineStateDescriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
+                    targetPipelineStateDescriptor.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
                     targetPipelineStateDescriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
                     targetPipelineStateDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
                     targetPipelineStateDescriptor.sampleCount = renderDestination.sampleCount
@@ -298,9 +308,11 @@ class UnanchoredRenderModule: RenderModule {
         
         unanchoredUniformBufferOffset = Constants.alignedInstanceUniformsSize * bufferIndex
         materialUniformBufferOffset = RenderModuleConstants.alignedMaterialSize * bufferIndex
+        effectsUniformBufferOffset = Constants.alignedEffectsUniformSize * bufferIndex
         
         unanchoredUniformBufferAddress = unanchoredUniformBuffer?.contents().advanced(by: unanchoredUniformBufferOffset)
         materialUniformBufferAddress = materialUniformBuffer?.contents().advanced(by: materialUniformBufferOffset)
+        effectsUniformBufferAddress = effectsUniformBuffer?.contents().advanced(by: effectsUniformBufferOffset)
         
     }
     
@@ -338,10 +350,12 @@ class UnanchoredRenderModule: RenderModule {
             var coordinateSpaceTransform = matrix_identity_float4x4
             coordinateSpaceTransform.columns.2.z = -1.0
             
+            let trackerIndex = trackerInstanceCount - 1
+            
             if let model = trackerModel {
                 
                 // Apply the world transform (as defined in the imported model) if applicable
-                let trackerIndex = trackerInstanceCount - 1
+                
                 if let modelIndex = modelIndex(in: model, fromIndex: trackerIndex), modelIndex < model.worldTransforms.count {
                     let worldTransform = model.worldTransforms[modelIndex]
                     coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
@@ -354,6 +368,14 @@ class UnanchoredRenderModule: RenderModule {
                 
             }
             
+            //
+            // Update the Effects uniform
+            //
+            
+            let effectsUniforms = effectsUniformBufferAddress?.assumingMemoryBound(to: AnchorEffectsUniforms.self).advanced(by: trackerIndex)
+            effectsUniforms?.pointee.alpha = 1 // TODO: Implement
+            effectsUniforms?.pointee.glow = 0 // TODO: Implement
+            
         }
         
         // Update the uniform buffer with transforms of the current frame's targets
@@ -361,6 +383,10 @@ class UnanchoredRenderModule: RenderModule {
         targetInstanceCount = 0
         
         for index in 0..<targets.count {
+            
+            //
+            // Update the Target uniform
+            //
             
             let target = targets[index]
             
@@ -384,10 +410,12 @@ class UnanchoredRenderModule: RenderModule {
             var coordinateSpaceTransform = matrix_identity_float4x4
             coordinateSpaceTransform.columns.2.z = -1.0
             
+            let targetIndex = targetInstanceCount - 1
+            let adjustedIndex = targetIndex + trackerInstanceCount
+            
             if let model = targetModel {
                 
                 // Apply the world transform (as defined in the imported model) if applicable
-                let targetIndex = targetInstanceCount - 1
                 if let modelIndex = modelIndex(in: model, fromIndex: targetIndex), modelIndex < model.worldTransforms.count {
                     let worldTransform = model.worldTransforms[modelIndex]
                     coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
@@ -395,11 +423,19 @@ class UnanchoredRenderModule: RenderModule {
                 
                 let modelMatrix = targetAbsoluteTransform * coordinateSpaceTransform
                 
-                let adjustedIndex = targetIndex + trackerInstanceCount
+                
                 let targetUniforms = unanchoredUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: adjustedIndex)
                 targetUniforms?.pointee.modelMatrix = modelMatrix
                 
             }
+            
+            //
+            // Update the Effects uniform
+            //
+            
+            let effectsUniforms = effectsUniformBufferAddress?.assumingMemoryBound(to: AnchorEffectsUniforms.self).advanced(by: adjustedIndex)
+            effectsUniforms?.pointee.alpha = 1 // TODO: Implement
+            effectsUniforms?.pointee.glow = 0 // TODO: Implement
             
         }
         
@@ -436,6 +472,14 @@ class UnanchoredRenderModule: RenderModule {
             renderEncoder.setVertexBuffer(sharedBuffer.sharedUniformBuffer, offset: sharedBuffer.sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
             renderEncoder.setFragmentBuffer(sharedBuffer.sharedUniformBuffer, offset: sharedBuffer.sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
             
+            renderEncoder.popDebugGroup()
+            
+        }
+        
+        if let effectsBuffer = effectsUniformBuffer {
+            
+            renderEncoder.pushDebugGroup("Draw Effects Uniforms")
+            renderEncoder.setFragmentBuffer(effectsBuffer, offset: effectsUniformBufferOffset, index: Int(kBufferIndexAnchorEffectsUniforms.rawValue))
             renderEncoder.popDebugGroup()
             
         }
@@ -506,6 +550,7 @@ class UnanchoredRenderModule: RenderModule {
         static let maxTrackerInstanceCount = 64
         static let maxTargetInstanceCount = 64
         static let alignedInstanceUniformsSize = ((MemoryLayout<AnchorInstanceUniforms>.stride * (Constants.maxTrackerInstanceCount + Constants.maxTargetInstanceCount)) & ~0xFF) + 0x100
+        static let alignedEffectsUniformSize = ((MemoryLayout<AnchorEffectsUniforms>.stride * (Constants.maxTrackerInstanceCount + Constants.maxTargetInstanceCount)) & ~0xFF) + 0x100
     }
     
     private var device: MTLDevice?
@@ -515,6 +560,7 @@ class UnanchoredRenderModule: RenderModule {
     private var targetModel: AKModel?
     private var unanchoredUniformBuffer: MTLBuffer?
     private var materialUniformBuffer: MTLBuffer?
+    private var effectsUniformBuffer: MTLBuffer?
     private var unanchoredPipelineStates = [MTLRenderPipelineState]() // Store multiple states
     private var unanchoredDepthState: MTLDepthStencilState?
     
@@ -532,11 +578,17 @@ class UnanchoredRenderModule: RenderModule {
     // Offset within materialUniformBuffer to set for the current frame
     private var materialUniformBufferOffset: Int = 0
     
+    // Offset within effectsUniformBuffer to set for the current frame
+    private var effectsUniformBufferOffset: Int = 0
+    
     // Addresses to write uniforms to each frame
     private var unanchoredUniformBufferAddress: UnsafeMutableRawPointer?
     
     // Addresses to write material uniforms to each frame
     private var materialUniformBufferAddress: UnsafeMutableRawPointer?
+    
+    // Addresses to write material uniforms to each frame
+    private var effectsUniformBufferAddress: UnsafeMutableRawPointer?
     
     private var usesMaterials = false
     

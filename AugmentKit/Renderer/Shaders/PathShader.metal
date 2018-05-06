@@ -40,13 +40,11 @@ struct PathVertexIn {
 struct PathFragmentInOut {
     float4 position [[position]];
     float4 color;
-    float glow;
 };
 
 vertex PathFragmentInOut pathVertexShader(PathVertexIn in [[stage_in]],
                                           constant SharedUniforms &sharedUniforms [[ buffer(kBufferIndexSharedUniforms) ]],
                                           constant AnchorInstanceUniforms *anchorInstanceUniforms [[ buffer(kBufferIndexAnchorInstanceUniforms) ]],
-                                          constant AnchorEffectsUniforms *anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]],
                                           uint vid [[vertex_id]],
                                           ushort iid [[instance_id]]
                                           ){
@@ -69,8 +67,10 @@ vertex PathFragmentInOut pathVertexShader(PathVertexIn in [[stage_in]],
     
 }
 
-fragment float4 pathFragmentShader(PathFragmentInOut in [[stage_in]],
-                                   constant MaterialUniforms &materialUniforms [[ buffer(kBufferIndexMaterialUniforms) ]]) {
+fragment float4 pathFragmentShader( PathFragmentInOut in [[stage_in]],
+                                    constant MaterialUniforms &materialUniforms [[ buffer(kBufferIndexMaterialUniforms) ]],
+                                    constant AnchorEffectsUniforms &anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]]
+                                   ){
     
     float4 final_color = materialUniforms.baseColor;
     
@@ -83,5 +83,7 @@ fragment float4 pathFragmentShader(PathFragmentInOut in [[stage_in]],
 //
 //    return float4(in.color.r * intensity, in.color.g * intensity, in.color.b * intensity, in.color.w * intensity);
  
+    final_color.a *= anchorEffectsUniforms.alpha;
+    
     return final_color;
 }

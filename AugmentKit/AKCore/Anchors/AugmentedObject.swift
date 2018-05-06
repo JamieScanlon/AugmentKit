@@ -40,6 +40,7 @@ public struct AugmentedObject: AKAugmentedAnchor {
     public var worldLocation: AKWorldLocation
     public var model: AKModel
     public var identifier: UUID?
+    public var effects: [AnyEffect<Any>]?
     
     public init(withAKModel model: AKModel, at location: AKWorldLocation) {
         self.model = model

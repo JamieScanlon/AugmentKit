@@ -507,6 +507,7 @@ vertex ColorInOut anchorGeometryVertexTransformSkinned(Vertex in [[stage_in]],
 fragment float4 anchorGeometryFragmentLighting(ColorInOut in [[stage_in]],
                                                constant SharedUniforms &uniforms [[ buffer(kBufferIndexSharedUniforms) ]],
                                                constant MaterialUniforms &materialUniforms [[ buffer(kBufferIndexMaterialUniforms) ]],
+                                               constant AnchorEffectsUniforms &anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]],
                                                texture2d<float> baseColorMap [[ texture(kTextureIndexColor), function_constant(has_base_color_map) ]],
                                                texture2d<float> normalMap    [[ texture(kTextureIndexNormal), function_constant(has_normal_map) ]],
                                                texture2d<float> metallicMap  [[ texture(kTextureIndexMetallic), function_constant(has_metallic_map) ]],
@@ -551,6 +552,8 @@ fragment float4 anchorGeometryFragmentLighting(ColorInOut in [[stage_in]],
     }
     
     final_color = illuminate(parameters);
+    
+    final_color.a *= anchorEffectsUniforms.alpha;
     
     return final_color;
     

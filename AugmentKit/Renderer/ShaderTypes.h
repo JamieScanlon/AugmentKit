@@ -163,6 +163,7 @@ struct AnchorInstanceUniforms {
 };
 
 struct AnchorEffectsUniforms {
+    float alpha;
     float glow;
 };
 

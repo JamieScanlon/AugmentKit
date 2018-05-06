@@ -42,4 +42,5 @@ public protocol AKGeometricEntity {
     static var type: String { get }
     var model: AKModel { get }
     var identifier: UUID? { get }
+    var effects: [AnyEffect<Any>]? { get }
 }

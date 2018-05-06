@@ -46,7 +46,7 @@ public protocol AKAnchor: AKGeometricEntity {
 //  as opposed to a real anchor like a detected horizontal / vertical plane which exists
 //  in the physical world.
 public protocol AKAugmentedAnchor: AKAnchor {
-    var effects: [AnyEffect<Any>]? { get }
+    
 }
 
 // MARK: - AKRealAnchor

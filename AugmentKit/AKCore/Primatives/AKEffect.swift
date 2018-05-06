@@ -30,6 +30,7 @@ import Foundation
 public enum AKEffectType {
     case alpha
     case glow
+    case tint
 }
 
 public protocol AKEffect: AKAnimatable {

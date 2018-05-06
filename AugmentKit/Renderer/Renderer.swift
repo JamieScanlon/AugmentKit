@@ -513,28 +513,27 @@ public class Renderer {
     @discardableResult
     public func add(akAnchor: AKAugmentedAnchor) -> UUID {
         
-        let anchorType = type(of: akAnchor).type
         let arAnchor = ARAnchor(transform: akAnchor.worldLocation.transform)
         let identifier = arAnchor.identifier
         
+        // Create an InternalAugmentedAnchor for internal use
+        let myAnchor = InternalAugmentedAnchor(withAKAugmentedAnchor: akAnchor)
+        myAnchor.identifier = identifier
+        augmentedAnchors.append(myAnchor)
+        
+        let anchorType = type(of: myAnchor).type
+        
         // Resgister the AKModel with the model provider.
-        modelProvider?.registerModel(akAnchor.model, forObjectType: anchorType, identifier: identifier)
+        modelProvider?.registerModel(myAnchor.model, forObjectType: anchorType, identifier: myAnchor.identifier)
         
-        // Create an InterpolatingAugmentedObject for internal use
-        let mutableAnchor = InterpolatingAugmentedObject(withAKAugmentedAnchor: akAnchor)
-        mutableAnchor.identifier = identifier
-        augmentedAnchors.append(mutableAnchor)
-        
-        // Keep track of the anchor's UUID bucketed by the AKAnchor.type
-        // This will be used to associate individual anchors with AKAnchor.type's,
-        // then associate AKAnchor.type's with models.
-        if let uuidSet = anchorIdentifiersForType[anchorType] {
-            var mutableUUIDSet = uuidSet
-            mutableUUIDSet.insert(identifier)
-            anchorIdentifiersForType[anchorType] = mutableUUIDSet
+        // Keep track of the anchor bucketed by the RenderModule
+        // This will be used to load individual models per anchor.
+        if let existingGeometries = geometriesForRenderModule[AnchorsRenderModule.identifier] {
+            var mutableExistingGeometries = existingGeometries
+            mutableExistingGeometries.append(myAnchor)
+            geometriesForRenderModule[AnchorsRenderModule.identifier] = mutableExistingGeometries
         } else {
-            let uuidSet = Set([identifier])
-            anchorIdentifiersForType[anchorType] = uuidSet
+            geometriesForRenderModule[AnchorsRenderModule.identifier] = [myAnchor]
         }
         
         // Add a new anchor to the session
@@ -545,20 +544,41 @@ public class Renderer {
     }
     
     //  Add a new AKAugmentedTracker to the AR world
-    public func add(akTracker: AKAugmentedTracker) {
+    @discardableResult
+    public func add(akTracker: AKAugmentedTracker) -> UUID {
         
-        let anchorType = type(of: akTracker).type
+        let identifier = UUID()
+        
+        let myTracker: AKAugmentedTracker = {
+            if let userTracker = akTracker as? UserTracker {
+                // If a UserTracker instance was passed in, use that directly instead of the
+                // internal type
+                userTracker.identifier = identifier
+                return userTracker
+            } else {
+                // Create an InternalAugmentedAnchor for internal use
+                let aTracker = InternalAugmentedTracker(withAKAugmentedTracker: akTracker)
+                aTracker.identifier = identifier
+                return aTracker
+            }
+        }()
+        
+        let anchorType = type(of: myTracker).type
         
         // Resgister the AKModel with the model provider.
-        modelProvider?.registerModel(akTracker.model, forObjectType: anchorType, identifier: akTracker.identifier)
+        modelProvider?.registerModel(myTracker.model, forObjectType: anchorType, identifier: myTracker.identifier)
         
-        trackers.append(akTracker)
+        trackers.append(myTracker)
+        
+        return identifier
         
     }
     
     //  Add a new path to the AR world
-    public func addPath(withAnchors anchors: [AKAugmentedAnchor], identifier: UUID) {
+    @discardableResult
+    public func addPath(withAnchors anchors: [AKAugmentedAnchor]) -> UUID {
         
+        let identifier = UUID()
         paths[identifier] = anchors.map() {
             
             let anchorType = type(of: $0).type
@@ -570,21 +590,9 @@ public class Renderer {
             let arAnchor = ARAnchor(transform: $0.worldLocation.transform)
             let identifier = arAnchor.identifier
             
-            // Create an InterpolatingAugmentedObject for internal use
-            let mutableAnchor = InterpolatingAugmentedObject(withAKAugmentedAnchor: $0)
+            // Create an InternalAugmentedAnchor for internal use
+            let mutableAnchor = InternalAugmentedAnchor(withAKAugmentedAnchor: $0)
             mutableAnchor.identifier = identifier
-            
-            // Keep track of the anchor's UUID bucketed by the AKAnchor.type
-            // This will be used to associate individual anchors with AKAnchor.type's,
-            // then associate AKAnchor.type's with models.
-            if let uuidSet = anchorIdentifiersForType[anchorType] {
-                var mutableUUIDSet = uuidSet
-                mutableUUIDSet.insert(identifier)
-                anchorIdentifiersForType[anchorType] = mutableUUIDSet
-            } else {
-                let uuidSet = Set([identifier])
-                anchorIdentifiersForType[anchorType] = uuidSet
-            }
             
             // Add a new anchor to the session
             session.add(anchor: arAnchor)
@@ -593,17 +601,23 @@ public class Renderer {
             
         }
         
+        return identifier
+        
     }
     
-    public func add(gazeTarget: GazeTarget) {
+    @discardableResult
+    public func add(gazeTarget: GazeTarget) -> UUID {
         
-        // Create a unique type for
         let theType = type(of: gazeTarget).type
+        let identifier = UUID()
+        gazeTarget.identifier = identifier
         
         // Resgister the AKModel with the model provider.
         modelProvider?.registerModel(gazeTarget.model, forObjectType: theType, identifier: gazeTarget.identifier)
         
         gazeTargets.append(gazeTarget)
+        
+        return identifier
         
     }
     
@@ -639,7 +653,8 @@ public class Renderer {
     fileprivate var commandQueue: MTLCommandQueue?
     
     // Keeping track of objects to render
-    fileprivate var anchorIdentifiersForType = [String: Set<UUID>]()
+    //fileprivate var anchorIdentifiersForType = [String: Set<UUID>]()
+    fileprivate var geometriesForRenderModule = [String: [AKGeometricEntity]]()
     fileprivate var augmentedAnchors = [AKAugmentedAnchor]()
     fileprivate var trackers = [AKAugmentedTracker]()
     fileprivate var paths = [UUID: [AKAugmentedAnchor]]()
@@ -859,18 +874,38 @@ public class Renderer {
     
 }
 
-// MARK: - InterpolatingAugmentedObject
+// MARK: - InternalAugmentedTracker
 
-// An internal instance of a `AKAugmentedAnchor` that interpolates between locations
-// in order to achieve smoothing.
-// Set the interpolation progress with `interpolation`
-// Call `update()` to do the terpolation calculations.
-// After calling `update()`, `currentLocation` contains the interpolated transform with
-// the `latitude`, `longitude`, and `elevation` set to the final values
-fileprivate class InterpolatingAugmentedObject: AKAugmentedAnchor {
+// An internal instance of a `AKAugmentedTracker` that can be used and manipulated privately
+fileprivate class InternalAugmentedTracker: AKAugmentedTracker {
     
     static var type: String {
-        return "AugmentedObject"
+        return "AnyTracker"
+    }
+    
+    // Contains the target world location which may not be the actual location
+    // if the instance ins currently interpolating
+    var position: AKRelativePosition
+    var model: AKModel
+    var identifier: UUID?
+    var effects: [AnyEffect<Any>]?
+    
+    init(withAKAugmentedTracker akAugmentedTracker: AKAugmentedTracker) {
+        self.model = akAugmentedTracker.model
+        self.identifier = akAugmentedTracker.identifier
+        self.position = akAugmentedTracker.position
+        self.effects = akAugmentedTracker.effects
+    }
+    
+}
+
+// MARK: - InternalAugmentedAnchor
+
+// An internal instance of a `AKAugmentedAnchor` that can be used and manipulated privately
+fileprivate class InternalAugmentedAnchor: AKAugmentedAnchor {
+    
+    static var type: String {
+        return "AnyAnchor"
     }
     
     // Contains the target world location which may not be the actual location
@@ -879,6 +914,25 @@ fileprivate class InterpolatingAugmentedObject: AKAugmentedAnchor {
     var model: AKModel
     var identifier: UUID?
     var effects: [AnyEffect<Any>]?
+    
+    init(withAKAugmentedAnchor akAugmentedAnchor: AKAugmentedAnchor) {
+        self.model = akAugmentedAnchor.model
+        self.identifier = akAugmentedAnchor.identifier
+        self.worldLocation = akAugmentedAnchor.worldLocation
+        self.effects = akAugmentedAnchor.effects
+    }
+    
+}
+
+// MARK: - InterpolatingAugmentedObject
+
+// A subclass of `InternalAugmentedAnchor` that interpolates between locations
+// in order to achieve smoothing.
+// Set the interpolation progress with `interpolation`
+// Call `update()` to do the terpolation calculations.
+// After calling `update()`, `currentLocation` contains the interpolated transform with
+// the `latitude`, `longitude`, and `elevation` set to the final values
+fileprivate class InterpolatingAugmentedObject: InternalAugmentedAnchor {
     
     // When interpolating, this contains the old location
     var lastLocaion: AKWorldLocation?
@@ -906,11 +960,6 @@ fileprivate class InterpolatingAugmentedObject: AKAugmentedAnchor {
     }
     
     var interval: Float = 0.1
-    
-    init(withAKAugmentedAnchor akAugmentedAnchor: AKAugmentedAnchor) {
-        self.model = akAugmentedAnchor.model
-        self.worldLocation = akAugmentedAnchor.worldLocation
-    }
     
     func update() {
         

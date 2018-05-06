@@ -342,6 +342,7 @@ class PathsRenderModule: RenderModule {
                 let effectsUniforms = effectsUniformBufferAddress?.assumingMemoryBound(to: AnchorEffectsUniforms.self).advanced(by: pathSegmentIndex)
                 effectsUniforms?.pointee.alpha = 1 // TODO: Implement
                 effectsUniforms?.pointee.glow = 0 // TODO: Implement
+                effectsUniforms?.pointee.tint = float3(0,0,0) // TODO: Implement
                 
                 lastAnchor = anchor
                 

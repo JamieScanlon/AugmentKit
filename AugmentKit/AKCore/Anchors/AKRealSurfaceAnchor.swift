@@ -47,6 +47,7 @@ public struct RealSurfaceAnchor: AKRealSurfaceAnchor {
     public var worldLocation: AKWorldLocation
     public var model: AKModel
     public var identifier: UUID?
+    public var effects: [AnyEffect<Any>]?
     
     public init(at location: AKWorldLocation, withAllocator metalAllocator: MTKMeshBufferAllocator? = nil) {
         
@@ -72,6 +73,7 @@ public struct GuideSurfaceAnchor: AKRealSurfaceAnchor {
     public var worldLocation: AKWorldLocation
     public var model: AKModel
     public var identifier: UUID?
+    public var effects: [AnyEffect<Any>]?
     
     public static func createModel(withAllocator metalAllocator: MTKMeshBufferAllocator?) -> AKModel? {
         

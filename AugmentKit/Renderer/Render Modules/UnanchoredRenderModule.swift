@@ -134,7 +134,7 @@ class UnanchoredRenderModule: RenderModule {
             
             guard let model = model else {
                 print("Warning (UnanchoredRenderModule) - Failed to get a model for type \(GazeTarget.type) from the modelProvider.")
-                let newError = AKError.warning(.modelError(.modelNotFound(ModelErrorInfo(type: UserTracker.type))))
+                let newError = AKError.warning(.modelError(.modelNotFound(ModelErrorInfo(type: GazeTarget.type))))
                 recordNewError(newError)
                 if hasLoadedTrackerModel && hasLoadedTargetModel {
                     completion()
@@ -375,6 +375,7 @@ class UnanchoredRenderModule: RenderModule {
             let effectsUniforms = effectsUniformBufferAddress?.assumingMemoryBound(to: AnchorEffectsUniforms.self).advanced(by: trackerIndex)
             effectsUniforms?.pointee.alpha = 1 // TODO: Implement
             effectsUniforms?.pointee.glow = 0 // TODO: Implement
+            effectsUniforms?.pointee.tint = float3(0,0,0) // TODO: Implement
             
         }
         
@@ -436,6 +437,7 @@ class UnanchoredRenderModule: RenderModule {
             let effectsUniforms = effectsUniformBufferAddress?.assumingMemoryBound(to: AnchorEffectsUniforms.self).advanced(by: adjustedIndex)
             effectsUniforms?.pointee.alpha = 1 // TODO: Implement
             effectsUniforms?.pointee.glow = 0 // TODO: Implement
+            effectsUniforms?.pointee.tint = float3(0,0,0) // TODO: Implement
             
         }
         

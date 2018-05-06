@@ -36,6 +36,7 @@ public class GazeTarget: AKTarget {
     }
     public var model: AKModel
     public var identifier: UUID?
+    public var effects: [AnyEffect<Any>]?
     public var position: AKRelativePosition
     
     public init(withModel model: AKModel, withUserRelativeTransform relativeTransform: matrix_float4x4) {

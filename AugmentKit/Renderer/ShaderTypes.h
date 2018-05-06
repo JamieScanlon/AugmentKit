@@ -165,6 +165,7 @@ struct AnchorInstanceUniforms {
 struct AnchorEffectsUniforms {
     float alpha;
     float glow;
+    vector_float3 tint;
 };
 
 struct MaterialUniforms {

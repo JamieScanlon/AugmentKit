@@ -30,7 +30,7 @@ import ARKit
 import AugmentKitShader
 import MetalKit
 
-// TODO: Support having different models for each AugmentedObject type
+// TODO: Support having different models for each AKAugmentedAnchor type
 class AnchorsRenderModule: RenderModule, SkinningModule {
     
     static var identifier = "AnchorsRenderModule"
@@ -106,11 +106,11 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         //
         
         // TODO: Add ability to load multiple models by identifier
-        modelProvider.loadModel(forObjectType: AugmentedObject.type, identifier: nil) { [weak self] model in
+        modelProvider.loadModel(forObjectType:  "AnyAnchor", identifier: nil) { [weak self] model in
             
             guard let model = model else {
-                print("Warning (AnchorsRenderModule) - Failed to get a model for type \(AugmentedObject.type) from the modelProvider. Aborting the render phase.")
-                let newError = AKError.warning(.modelError(.modelNotFound(ModelErrorInfo(type: AugmentedObject.type))))
+                print("Warning (AnchorsRenderModule) - Failed to get a model for type  \"AnyAnchor\") from the modelProvider. Aborting the render phase.")
+                let newError = AKError.warning(.modelError(.modelNotFound(ModelErrorInfo(type:  "AnyAnchor"))))
                 recordNewError(newError)
                 completion()
                 return
@@ -304,6 +304,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             let effectsUniforms = effectsUniformBufferAddress?.assumingMemoryBound(to: AnchorEffectsUniforms.self).advanced(by: anchorIndex)
             effectsUniforms?.pointee.alpha = 1 // TODO: Implement
             effectsUniforms?.pointee.glow = 0 // TODO: Implement
+            effectsUniforms?.pointee.tint = float3(0,0,0) // TODO: Implement
             
         }
         

@@ -43,10 +43,11 @@ protocol AKAugmentedUserTracker: AKAugmentedTracker {
 public class UserTracker: AKAugmentedUserTracker {
     
     public static var type: String {
-        return "userTracker"
+        return "UserTracker"
     }
     public var model: AKModel
     public var identifier: UUID?
+    public var effects: [AnyEffect<Any>]?
     public var position: AKRelativePosition
     
     public init(withModel model: AKModel, withUserRelativeTransform relativeTransform: matrix_float4x4) {

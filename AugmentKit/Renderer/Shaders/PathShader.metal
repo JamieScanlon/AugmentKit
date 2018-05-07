@@ -72,18 +72,11 @@ fragment float4 pathFragmentShader( PathFragmentInOut in [[stage_in]],
                                     constant AnchorEffectsUniforms &anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]]
                                    ){
     
-    float4 final_color = materialUniforms.baseColor;
+    float4 intermediate_color = materialUniforms.baseColor;
     
-//    float radiusFromPointCenter = distance(float2(0.5f), pointCoord);
-//    if (radiusFromPointCenter > 0.5) {
-//        discard_fragment();
-//    }
-//
-//    float intensity = (1.0 - (radiusFromPointCenter * 2.0));
-//
-//    return float4(in.color.r * intensity, in.color.g * intensity, in.color.b * intensity, in.color.w * intensity);
- 
-    final_color.a *= anchorEffectsUniforms.alpha;
+    // Apply effects
+    float4 final_color = float4(intermediate_color.rgb * anchorEffectsUniforms.tint, intermediate_color.a * anchorEffectsUniforms.alpha);
     
     return final_color;
+    
 }

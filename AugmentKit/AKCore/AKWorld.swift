@@ -288,8 +288,8 @@ public class AKWorld: NSObject {
     }
     
     @discardableResult
-    public func addPath(withAnchors anchors: [AKAugmentedAnchor]) -> UUID {
-        return renderer.addPath(withAnchors: anchors)
+    public func add(akPath: AKPath) -> UUID {
+        return renderer.add(akPath: akPath)
     }
     
     public func worldLocation(withLatitude latitude: Double, longitude: Double, elevation: Double?) -> AKWorldLocation? {

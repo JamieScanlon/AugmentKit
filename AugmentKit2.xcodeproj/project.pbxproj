@@ -36,7 +36,7 @@
 		7D6E6B5F1F8F1C9D00EFC667 /* AnchorShaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = 7D88D7AC1F0AFD550009A154 /* AnchorShaders.metal */; };
 		7D6E6B631F8F1CBC00EFC667 /* AKAnchor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D3EAC0B1F7EA6790076635C /* AKAnchor.swift */; };
 		7D6E6B641F8F1CBC00EFC667 /* AKWorld.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D3EAC0E1F7EA8440076635C /* AKWorld.swift */; };
-		7D6E6B651F8F1CBC00EFC667 /* AugmentedObject.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D3EAC101F7ED05B0076635C /* AugmentedObject.swift */; };
+		7D6E6B651F8F1CBC00EFC667 /* AugmentedAnchor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D3EAC101F7ED05B0076635C /* AugmentedAnchor.swift */; };
 		7D6E6B661F8F1CBC00EFC667 /* AKUtility.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D3E48891F88C1C800814875 /* AKUtility.swift */; };
 		7D6E6B671F8F1CC300EFC667 /* AKMDLAssetModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D1B6F081F23B2B200AB035D /* AKMDLAssetModel.swift */; };
 		7D6E6B681F8F1CC300EFC667 /* MeshTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DB396AF1F1AFDD30003019B /* MeshTools.swift */; };
@@ -49,6 +49,7 @@
 		7D6E6B711F8F1CDB00EFC667 /* DeviceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DB396A91F1A96350003019B /* DeviceManager.swift */; };
 		7D6E6B721F8F267100EFC667 /* ShaderTypes.h in Headers */ = {isa = PBXBuildFile; fileRef = 7D88D7AE1F0AFD550009A154 /* ShaderTypes.h */; };
 		7D75DCDA207AA3990000EF6E /* Gaze_Target.png in Resources */ = {isa = PBXBuildFile; fileRef = 7D75DCD9207AA3990000EF6E /* Gaze_Target.png */; };
+		7D808FAE209FD3210077FA19 /* AKPath.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D808FAD209FD3210077FA19 /* AKPath.swift */; };
 		7D818909201EB5DB0021694F /* PathsRenderModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D818908201EB5DB0021694F /* PathsRenderModule.swift */; };
 		7D88D7AB1F0AFD550009A154 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D88D7AA1F0AFD550009A154 /* AppDelegate.swift */; };
 		7D88D7B21F0AFD550009A154 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D88D7B11F0AFD550009A154 /* ViewController.swift */; };
@@ -167,7 +168,7 @@
 		7D3E48891F88C1C800814875 /* AKUtility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKUtility.swift; sourceTree = "<group>"; };
 		7D3EAC0B1F7EA6790076635C /* AKAnchor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKAnchor.swift; sourceTree = "<group>"; };
 		7D3EAC0E1F7EA8440076635C /* AKWorld.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKWorld.swift; sourceTree = "<group>"; };
-		7D3EAC101F7ED05B0076635C /* AugmentedObject.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AugmentedObject.swift; sourceTree = "<group>"; };
+		7D3EAC101F7ED05B0076635C /* AugmentedAnchor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AugmentedAnchor.swift; sourceTree = "<group>"; };
 		7D3EAC131F7EEDCA0076635C /* AKSceneKitUtils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKSceneKitUtils.swift; sourceTree = "<group>"; };
 		7D53471E203A961A00714A6F /* PathShader.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = PathShader.metal; sourceTree = "<group>"; };
 		7D534721203B4CE300714A6F /* AKAnchorAssetModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKAnchorAssetModel.swift; sourceTree = "<group>"; };
@@ -189,6 +190,7 @@
 		7D6E6B561F8F19C400EFC667 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		7D6E6B731F8F283C00EFC667 /* module.modulemap */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.module-map"; path = module.modulemap; sourceTree = "<group>"; };
 		7D75DCD9207AA3990000EF6E /* Gaze_Target.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Gaze_Target.png; sourceTree = "<group>"; };
+		7D808FAD209FD3210077FA19 /* AKPath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKPath.swift; sourceTree = "<group>"; };
 		7D8111EE1F12974D00DD11E9 /* MotionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionManager.swift; sourceTree = "<group>"; };
 		7D818908201EB5DB0021694F /* PathsRenderModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PathsRenderModule.swift; sourceTree = "<group>"; };
 		7D88D7A71F0AFD550009A154 /* AugmentKit2Demo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AugmentKit2Demo.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -299,6 +301,8 @@
 			children = (
 				7DAD06C320716CDB00B62B61 /* Primatives */,
 				7D640AE81FF0163B00B35A5A /* Anchors */,
+				7D808FAB209FD0390077FA19 /* Trackers */,
+				7D808FAC209FD0620077FA19 /* Targets */,
 				7D3EAC0E1F7EA8440076635C /* AKWorld.swift */,
 				7D3E48891F88C1C800814875 /* AKUtility.swift */,
 				7DF697EA1FCD26F500292F66 /* AKModelProvider.swift */,
@@ -368,13 +372,10 @@
 			isa = PBXGroup;
 			children = (
 				7D3EAC0B1F7EA6790076635C /* AKAnchor.swift */,
-				7DAD06BD2071505E00B62B61 /* AKTracker.swift */,
-				7DAD06C12071520F00B62B61 /* AKTarget.swift */,
-				7D640AE91FF0174200B35A5A /* AKAugmentedUserTracker.swift */,
-				7DB72CD4202424D70050C61D /* AKPathSegmentAnchor.swift */,
 				7D5B25A62069626900EFA3C6 /* AKRealSurfaceAnchor.swift */,
-				7D3EAC101F7ED05B0076635C /* AugmentedObject.swift */,
-				7D5B25A8206BFAC100EFA3C6 /* GazeTarget.swift */,
+				7D3EAC101F7ED05B0076635C /* AugmentedAnchor.swift */,
+				7D808FAD209FD3210077FA19 /* AKPath.swift */,
+				7DB72CD4202424D70050C61D /* AKPathSegmentAnchor.swift */,
 			);
 			path = Anchors;
 			sourceTree = "<group>";
@@ -400,6 +401,24 @@
 				7D6E6B561F8F19C400EFC667 /* Info.plist */,
 			);
 			path = AugmentKitTests;
+			sourceTree = "<group>";
+		};
+		7D808FAB209FD0390077FA19 /* Trackers */ = {
+			isa = PBXGroup;
+			children = (
+				7DAD06BD2071505E00B62B61 /* AKTracker.swift */,
+				7D640AE91FF0174200B35A5A /* AKAugmentedUserTracker.swift */,
+			);
+			path = Trackers;
+			sourceTree = "<group>";
+		};
+		7D808FAC209FD0620077FA19 /* Targets */ = {
+			isa = PBXGroup;
+			children = (
+				7DAD06C12071520F00B62B61 /* AKTarget.swift */,
+				7D5B25A8206BFAC100EFA3C6 /* GazeTarget.swift */,
+			);
+			path = Targets;
 			sourceTree = "<group>";
 		};
 		7D88D79E1F0AFD550009A154 = {
@@ -769,6 +788,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7D808FAE209FD3210077FA19 /* AKPath.swift in Sources */,
 				7D5B25A72069626900EFA3C6 /* AKRealSurfaceAnchor.swift in Sources */,
 				7D8A0A822013D143006CAAAD /* AKHeading.swift in Sources */,
 				7D6E6B671F8F1CC300EFC667 /* AKMDLAssetModel.swift in Sources */,
@@ -789,7 +809,7 @@
 				7D5FDA361FC73AD000BAE104 /* CameraPlaneRenderModule.swift in Sources */,
 				7D6E6B701F8F1CDB00EFC667 /* WorldLocationManager.swift in Sources */,
 				7D6E6B641F8F1CBC00EFC667 /* AKWorld.swift in Sources */,
-				7D6E6B651F8F1CBC00EFC667 /* AugmentedObject.swift in Sources */,
+				7D6E6B651F8F1CBC00EFC667 /* AugmentedAnchor.swift in Sources */,
 				7D6E6B6A1F8F1CC300EFC667 /* MetalUtilities.swift in Sources */,
 				7DC785D11FE655C100F82FA4 /* AKRemoteArchivedModel.swift in Sources */,
 				7DAD06BE2071505E00B62B61 /* AKTracker.swift in Sources */,

@@ -76,7 +76,7 @@ protocol RenderModule {
     func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties)
     
     // Update the buffer data for trackers
-    func updateBuffers(withPaths: [UUID: [AKAugmentedAnchor]], cameraProperties: CameraProperties)
+    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties)
     
     // Update the render encoder for the draw call. At the end of this method it is expected that
     // drawPrimatives or drawIndexedPrimatives is called.

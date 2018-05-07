@@ -375,7 +375,7 @@ class UnanchoredRenderModule: RenderModule {
             let effectsUniforms = effectsUniformBufferAddress?.assumingMemoryBound(to: AnchorEffectsUniforms.self).advanced(by: trackerIndex)
             effectsUniforms?.pointee.alpha = 1 // TODO: Implement
             effectsUniforms?.pointee.glow = 0 // TODO: Implement
-            effectsUniforms?.pointee.tint = float3(0,0,0) // TODO: Implement
+            effectsUniforms?.pointee.tint = float3(1,1,1) // TODO: Implement
             
         }
         
@@ -437,13 +437,13 @@ class UnanchoredRenderModule: RenderModule {
             let effectsUniforms = effectsUniformBufferAddress?.assumingMemoryBound(to: AnchorEffectsUniforms.self).advanced(by: adjustedIndex)
             effectsUniforms?.pointee.alpha = 1 // TODO: Implement
             effectsUniforms?.pointee.glow = 0 // TODO: Implement
-            effectsUniforms?.pointee.tint = float3(0,0,0) // TODO: Implement
+            effectsUniforms?.pointee.tint = float3(1,1,1) // TODO: Implement
             
         }
         
     }
     
-    func updateBuffers(withPaths: [UUID: [AKAugmentedAnchor]], cameraProperties: CameraProperties) {
+    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties) {
         // Do Nothing
     }
     

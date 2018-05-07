@@ -106,7 +106,7 @@ class PathsRenderModule: RenderModule {
         let scatteringFunction = MDLScatteringFunction()
         let material = MDLMaterial(name: "baseMaterial", scatteringFunction: scatteringFunction)
         // TODO: Get color from the renderer as passed from the users setup
-        let colorProperty = MDLMaterialProperty(name: "pathColor", semantic: .baseColor, float3: float3(255/255, 100/255, 100/255))
+        let colorProperty = MDLMaterialProperty(name: "pathColor", semantic: .baseColor, float3: float3(255/255, 255/255, 255/255))
         material.setProperty(colorProperty)
         
         for submesh in mesh.submeshes!  {
@@ -239,7 +239,7 @@ class PathsRenderModule: RenderModule {
         // Do Nothing
     }
     
-    func updateBuffers(withPaths paths: [UUID: [AKAugmentedAnchor]], cameraProperties theCameraProperties: CameraProperties) {
+    func updateBuffers(withPaths paths: [AKPath], cameraProperties theCameraProperties: CameraProperties) {
         
         // Update the anchor uniform buffer with transforms of the current frame's anchors
         pathSegmentInstanceCount = 0
@@ -250,7 +250,7 @@ class PathsRenderModule: RenderModule {
             var lastAnchor: AKAugmentedAnchor?
             var uuids = [UUID]()
             
-            for anchor in path.value {
+            for anchor in path.segmentPoints {
                 
                 guard let myLastAnchor = lastAnchor else {
                     lastAnchor = anchor
@@ -342,7 +342,7 @@ class PathsRenderModule: RenderModule {
                 let effectsUniforms = effectsUniformBufferAddress?.assumingMemoryBound(to: AnchorEffectsUniforms.self).advanced(by: pathSegmentIndex)
                 effectsUniforms?.pointee.alpha = 1 // TODO: Implement
                 effectsUniforms?.pointee.glow = 0 // TODO: Implement
-                effectsUniforms?.pointee.tint = float3(0,0,0) // TODO: Implement
+                effectsUniforms?.pointee.tint = float3(1,0.25,0.25) // TODO: Implement
                 
                 lastAnchor = anchor
                 

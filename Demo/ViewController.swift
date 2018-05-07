@@ -133,8 +133,26 @@ class ViewController: UIViewController {
         
         // Example:
         // Create a new anchor at the current locaiton
-        let newObject = AugmentedObject(withAKModel: anchorModel, at: anchorLocation)
+        let newObject = AugmentedAnchor(withAKModel: anchorModel, at: anchorLocation)
         world.add(anchor: newObject)
+        
+        // Example:
+        // Create a square path
+//        guard let location1 = world.worldLocationFromCurrentLocation(withMetersEast: 1, metersUp: 0, metersSouth: 0) else {
+//            return
+//        }
+//
+//        guard let location2 = world.worldLocationFromCurrentLocation(withMetersEast: 1, metersUp: 1, metersSouth: 0) else {
+//            return
+//        }
+//
+//        guard let location3 = world.worldLocationFromCurrentLocation(withMetersEast: 0, metersUp: 1, metersSouth: 0) else {
+//            return
+//        }
+//
+//        let path = PathAnchor(withWorldLocaitons: [currentWorldLocation, location1, location2, location3, currentWorldLocation])
+//        world.add(akPath: path)
+        
         
         // Example:
         // Create a path around the Apple Park building
@@ -157,33 +175,25 @@ class ViewController: UIViewController {
 //        guard let location5 = world.worldLocation(withLatitude: 37.3365, longitude: -122.0079, elevation: currentWorldLocation.elevation) else {
 //            return
 //        }
-//        
+//
 //        guard let location6 = world.worldLocation(withLatitude: 37.3358, longitude: -122.0070, elevation: currentWorldLocation.elevation) else {
 //            return
 //        }
-//        
+//
 //        guard let location7 = world.worldLocation(withLatitude: 37.3348, longitude: -122.0067, elevation: currentWorldLocation.elevation) else {
 //            return
 //        }
-//        
+//
 //        guard let location8 = world.worldLocation(withLatitude: 37.3336, longitude: -122.0074, elevation: currentWorldLocation.elevation) else {
 //            return
 //        }
-//        
+//
 //        guard let location9 = world.worldLocation(withLatitude: 37.3330, longitude: -122.0090, elevation: currentWorldLocation.elevation) else {
 //            return
 //        }
 //
-//        let anchor1 = PathSegmentAnchor(at: location1)
-//        let anchor2 = PathSegmentAnchor(at: location2)
-//        let anchor3 = PathSegmentAnchor(at: location3)
-//        let anchor4 = PathSegmentAnchor(at: location4)
-//        let anchor5 = PathSegmentAnchor(at: location5)
-//        let anchor6 = PathSegmentAnchor(at: location6)
-//        let anchor7 = PathSegmentAnchor(at: location7)
-//        let anchor8 = PathSegmentAnchor(at: location8)
-//        let anchor9 = PathSegmentAnchor(at: location9)
-//        world.addPath(withAnchors: [anchor1, anchor2, anchor3, anchor4, anchor5, anchor6, anchor7, anchor8, anchor9, anchor1], identifier: UUID())
+//        let path = PathAnchor(withWorldLocaitons: [location1, location2, location3, location4, location5, location6, location7, location8, location9, location1])
+//        world.add(akPath: path)
 
     }
     
@@ -205,7 +215,7 @@ class ViewController: UIViewController {
         // Get a Model from the app bundle
         //
         
-        // Setup the model that will be used for AugmentedObject anchors
+        // Setup the model that will be used for AugmentedAnchor anchors
         guard let world = world, let asset = AKSceneKitUtils.mdlAssetFromScene(named: "Pin.scn", world: world) else {
             print("ERROR: Could not load the SceneKit model")
             return

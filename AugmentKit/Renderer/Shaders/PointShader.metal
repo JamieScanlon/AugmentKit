@@ -95,7 +95,8 @@ fragment float4 pointFragmentShader(PointInOut in [[stage_in]], float2 pointCoor
     }
     
     float intensity = (1.0 - (radiusFromPointCenter * 2.0));
+    float4 final_color = float4(in.color.r * intensity, in.color.g * intensity, in.color.b * intensity, in.color.w * intensity);
     
-    return float4(in.color.r * intensity, in.color.g * intensity, in.color.b * intensity, in.color.w * intensity);
+    return final_color;
     
 }

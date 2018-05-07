@@ -570,36 +570,50 @@ public class Renderer {
         
         trackers.append(myTracker)
         
+        // Keep track of the tracker bucketed by the RenderModule
+        // This will be used to load individual models per anchor.
+        if let existingGeometries = geometriesForRenderModule[UnanchoredRenderModule.identifier] {
+            var mutableExistingGeometries = existingGeometries
+            mutableExistingGeometries.append(myTracker)
+            geometriesForRenderModule[UnanchoredRenderModule.identifier] = mutableExistingGeometries
+        } else {
+            geometriesForRenderModule[UnanchoredRenderModule.identifier] = [myTracker]
+        }
+        
         return identifier
         
     }
     
     //  Add a new path to the AR world
     @discardableResult
-    public func addPath(withAnchors anchors: [AKAugmentedAnchor]) -> UUID {
+    public func add(akPath: AKPath) -> UUID {
         
         let identifier = UUID()
-        paths[identifier] = anchors.map() {
-            
-            let anchorType = type(of: $0).type
-            
-            // Resgister the AKModel with the model provider.
-            modelProvider?.registerModel($0.model, forObjectType: anchorType, identifier: $0.identifier)
-            
-            
-            let arAnchor = ARAnchor(transform: $0.worldLocation.transform)
-            let identifier = arAnchor.identifier
-            
-            // Create an InternalAugmentedAnchor for internal use
-            let mutableAnchor = InternalAugmentedAnchor(withAKAugmentedAnchor: $0)
-            mutableAnchor.identifier = identifier
+        
+        // Create an InternalAugmentedAnchor for internal use
+        let myPath = InternalPath(withAKPath: akPath)
+        myPath.identifier = identifier
+        
+        let anchorType = type(of: myPath).type
+        
+        // Resgister the AKModel with the model provider.
+        modelProvider?.registerModel(myPath.model, forObjectType: anchorType, identifier: myPath.identifier)
+        
+        // Update the segment anchors by adding the ARAnchor identifier which will allow us
+        // to trace back the ARAnchors to the path they belong to.
+        let updatedSegments: [PathSegmentAnchor] = myPath.segmentPoints.map {
             
             // Add a new anchor to the session
+            let arAnchor = ARAnchor(transform: $0.worldLocation.transform)
             session.add(anchor: arAnchor)
             
-            return mutableAnchor
+            return PathSegmentAnchor(at: $0.worldLocation, identifier: arAnchor.identifier, effects: $0.effects)
+            
             
         }
+        
+        myPath.segmentPoints = updatedSegments
+        paths.append(myPath)
         
         return identifier
         
@@ -616,6 +630,16 @@ public class Renderer {
         modelProvider?.registerModel(gazeTarget.model, forObjectType: theType, identifier: gazeTarget.identifier)
         
         gazeTargets.append(gazeTarget)
+        
+        // Keep track of the tracker bucketed by the RenderModule
+        // This will be used to load individual models per anchor.
+        if let existingGeometries = geometriesForRenderModule[UnanchoredRenderModule.identifier] {
+            var mutableExistingGeometries = existingGeometries
+            mutableExistingGeometries.append(gazeTarget)
+            geometriesForRenderModule[UnanchoredRenderModule.identifier] = mutableExistingGeometries
+        } else {
+            geometriesForRenderModule[UnanchoredRenderModule.identifier] = [gazeTarget]
+        }
         
         return identifier
         
@@ -657,7 +681,7 @@ public class Renderer {
     fileprivate var geometriesForRenderModule = [String: [AKGeometricEntity]]()
     fileprivate var augmentedAnchors = [AKAugmentedAnchor]()
     fileprivate var trackers = [AKAugmentedTracker]()
-    fileprivate var paths = [UUID: [AKAugmentedAnchor]]()
+    fileprivate var paths = [AKPath]()
     fileprivate var gazeTargets = [GazeTarget]()
     
     fileprivate var moduleErrors = [AKError]()
@@ -874,17 +898,42 @@ public class Renderer {
     
 }
 
+// MARK: - InternalPath
+
+// An internal instance of a `InternalPath` that can be used and manipulated privately
+// This is a Class type so it can have reference symantics (i.e. properties can be updated)
+fileprivate class InternalPath: AKPath {
+    
+    static var type: String {
+        return "AnyPath"
+    }
+    
+    var worldLocation: AKWorldLocation
+    var model: AKModel
+    var identifier: UUID?
+    var effects: [AnyEffect<Any>]?
+    var segmentPoints: [AKPathSegmentAnchor]
+    
+    init(withAKPath akPath: AKPath) {
+        self.model = akPath.model
+        self.identifier = akPath.identifier
+        self.worldLocation = akPath.worldLocation
+        self.effects = akPath.effects
+        self.segmentPoints = akPath.segmentPoints
+    }
+    
+}
+
 // MARK: - InternalAugmentedTracker
 
 // An internal instance of a `AKAugmentedTracker` that can be used and manipulated privately
+// This is a Class type so it can have reference symantics (i.e. properties can be updated)
 fileprivate class InternalAugmentedTracker: AKAugmentedTracker {
     
     static var type: String {
         return "AnyTracker"
     }
     
-    // Contains the target world location which may not be the actual location
-    // if the instance ins currently interpolating
     var position: AKRelativePosition
     var model: AKModel
     var identifier: UUID?
@@ -902,14 +951,13 @@ fileprivate class InternalAugmentedTracker: AKAugmentedTracker {
 // MARK: - InternalAugmentedAnchor
 
 // An internal instance of a `AKAugmentedAnchor` that can be used and manipulated privately
+// This is a Class type so it can have reference symantics (i.e. properties can be updated)
 fileprivate class InternalAugmentedAnchor: AKAugmentedAnchor {
     
     static var type: String {
         return "AnyAnchor"
     }
     
-    // Contains the target world location which may not be the actual location
-    // if the instance ins currently interpolating
     var worldLocation: AKWorldLocation
     var model: AKModel
     var identifier: UUID?
@@ -924,7 +972,7 @@ fileprivate class InternalAugmentedAnchor: AKAugmentedAnchor {
     
 }
 
-// MARK: - InterpolatingAugmentedObject
+// MARK: - InterpolatingAugmentedAnchor
 
 // A subclass of `InternalAugmentedAnchor` that interpolates between locations
 // in order to achieve smoothing.
@@ -932,7 +980,7 @@ fileprivate class InternalAugmentedAnchor: AKAugmentedAnchor {
 // Call `update()` to do the terpolation calculations.
 // After calling `update()`, `currentLocation` contains the interpolated transform with
 // the `latitude`, `longitude`, and `elevation` set to the final values
-fileprivate class InterpolatingAugmentedObject: InternalAugmentedAnchor {
+fileprivate class InterpolatingAugmentedAnchor: InternalAugmentedAnchor {
     
     // When interpolating, this contains the old location
     var lastLocaion: AKWorldLocation?

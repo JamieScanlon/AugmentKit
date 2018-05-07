@@ -1,5 +1,5 @@
 //
-//  AugmentedObject.swift
+//  AugmentedAnchor.swift
 //  AugmentKit
 //
 //  MIT License
@@ -32,10 +32,10 @@
 import Foundation
 import ModelIO
 
-public struct AugmentedObject: AKAugmentedAnchor {
+public struct AugmentedAnchor: AKAugmentedAnchor {
     
     public static var type: String {
-        return "AugmentedObject"
+        return "AugmentedAnchor"
     }
     public var worldLocation: AKWorldLocation
     public var model: AKModel

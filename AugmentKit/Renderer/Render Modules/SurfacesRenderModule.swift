@@ -289,7 +289,7 @@ class SurfacesRenderModule: RenderModule {
         // Do Nothing
     }
     
-    func updateBuffers(withPaths: [UUID: [AKAugmentedAnchor]], cameraProperties: CameraProperties) {
+    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties) {
         // Do Nothing
     }
     

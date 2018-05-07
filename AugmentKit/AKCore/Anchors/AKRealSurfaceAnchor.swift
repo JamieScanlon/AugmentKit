@@ -41,7 +41,7 @@ public protocol AKRealSurfaceAnchor: AKRealAnchor {
 public struct RealSurfaceAnchor: AKRealSurfaceAnchor {
     
     public static var type: String {
-        return "realSurface"
+        return "RealSurface"
     }
     public var orientation: ARPlaneAnchor.Alignment = .horizontal
     public var worldLocation: AKWorldLocation
@@ -67,7 +67,7 @@ public struct RealSurfaceAnchor: AKRealSurfaceAnchor {
 public struct GuideSurfaceAnchor: AKRealSurfaceAnchor {
     
     public static var type: String {
-        return "guideSurface"
+        return "GuideSurface"
     }
     public var orientation: ARPlaneAnchor.Alignment = .horizontal
     public var worldLocation: AKWorldLocation

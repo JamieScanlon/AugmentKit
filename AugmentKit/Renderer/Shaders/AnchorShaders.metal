@@ -551,9 +551,10 @@ fragment float4 anchorGeometryFragmentLighting(ColorInOut in [[stage_in]],
         discard_fragment();
     }
     
-    final_color = illuminate(parameters);
+    float4 intermediate_color = illuminate(parameters);
     
-    final_color.a *= anchorEffectsUniforms.alpha;
+    // Apply effects
+    final_color = float4(intermediate_color.rgb * anchorEffectsUniforms.tint, intermediate_color.a * anchorEffectsUniforms.alpha);
     
     return final_color;
     

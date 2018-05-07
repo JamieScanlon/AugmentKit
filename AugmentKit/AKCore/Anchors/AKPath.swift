@@ -1,5 +1,5 @@
 //
-//  AKPathSegmentAnchor.swift
+//  AKPath.swift
 //  AugmentKit
 //
 //  MIT License
@@ -24,35 +24,33 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 //
-//
-//  An AR anchor that represents a beginning or end of a path segment. Tow or more of
-//  these can be used to create a path in the AR world. These anchors have an empty
-//  model so they cannot be rendered by themselves.
-//
 
 import Foundation
-import ModelIO
 
-public protocol AKPathSegmentAnchor: AKAugmentedAnchor {
-    
+public protocol AKPath: AKAugmentedAnchor {
+    // Thickness measured in meters
+    var lineThickness: Double { get }
+    var segmentPoints: [AKPathSegmentAnchor] { get }
 }
 
-public struct PathSegmentAnchor: AKPathSegmentAnchor {
+public struct PathAnchor: AKPath {
     
     public static var type: String {
-        return "PathSegmentAnchor"
+        return "PathAnchor"
     }
     public var worldLocation: AKWorldLocation
     public var model: AKModel
     public var identifier: UUID?
     public var effects: [AnyEffect<Any>]?
+    public var lineThickness: Double = 0.1 // Default to 10cm line thickness
+    public var segmentPoints: [AKPathSegmentAnchor]
     
-    public init(at location: AKWorldLocation, identifier: UUID? = nil, effects: [AnyEffect<Any>]? = nil) {
+    public init(withWorldLocaitons locations: [AKWorldLocation]) {
         self.model = AKSimpleModel()
-        self.worldLocation = location
-        self.identifier = identifier
-        self.effects = effects
+        self.worldLocation = locations[0]
+        self.segmentPoints = locations.map {
+            return PathSegmentAnchor(at: $0)
+        }
     }
     
 }
-

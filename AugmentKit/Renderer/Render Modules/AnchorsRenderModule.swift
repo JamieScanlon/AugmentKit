@@ -304,7 +304,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             let effectsUniforms = effectsUniformBufferAddress?.assumingMemoryBound(to: AnchorEffectsUniforms.self).advanced(by: anchorIndex)
             effectsUniforms?.pointee.alpha = 1 // TODO: Implement
             effectsUniforms?.pointee.glow = 0 // TODO: Implement
-            effectsUniforms?.pointee.tint = float3(0,0,0) // TODO: Implement
+            effectsUniforms?.pointee.tint = float3(1,1,1) // TODO: Implement
             
         }
         
@@ -318,7 +318,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         // Do Nothing
     }
     
-    func updateBuffers(withPaths: [UUID: [AKAugmentedAnchor]], cameraProperties: CameraProperties) {
+    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties) {
         // Do Nothing
     }
     

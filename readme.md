@@ -126,16 +126,8 @@ guard let location9 = world.worldLocation(withLatitude: 37.3330, longitude: -122
     return
 }
 
-let anchor1 = PathSegmentAnchor(at: location1)
-let anchor2 = PathSegmentAnchor(at: location2)
-let anchor3 = PathSegmentAnchor(at: location3)
-let anchor4 = PathSegmentAnchor(at: location4)
-let anchor5 = PathSegmentAnchor(at: location5)
-let anchor6 = PathSegmentAnchor(at: location6)
-let anchor7 = PathSegmentAnchor(at: location7)
-let anchor8 = PathSegmentAnchor(at: location8)
-let anchor9 = PathSegmentAnchor(at: location9)
-world.addPath(withAnchors: [anchor1, anchor2, anchor3, anchor4, anchor5, anchor6, anchor7, anchor8, anchor9, anchor1], identifier: UUID())
+let path = PathAnchor(withWorldLocaitons: [location1, location2, location3, location4, location5, location6, location7, location8, location9, location1])
+world.add(akPath: path)
 ```
 
 ### More Documntation
@@ -202,6 +194,7 @@ This project has completed all of the base pre-release functionality. There are 
 
 #### Alpha-Release Project Goals
 
+- [ ] Remove and Update methods for augmented objects
 - [ ] Refinements to UIControls and interactions including exposing tap and other gestures, smoothing
 - [x] Mechanism for surfacing the state of the world and the renderer so it can be surfaced to the user
 - [x] Mechanism for surfacing errors

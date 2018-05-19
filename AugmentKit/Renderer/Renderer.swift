@@ -532,6 +532,8 @@ public class Renderer {
             var mutableExistingGeometries = existingGeometries
             mutableExistingGeometries.append(myAnchor)
             geometriesForRenderModule[AnchorsRenderModule.identifier] = mutableExistingGeometries
+            anchorsRenderModule?.isInitialized = false
+            hasUninitializedModules = true
         } else {
             geometriesForRenderModule[AnchorsRenderModule.identifier] = [myAnchor]
         }
@@ -642,6 +644,83 @@ public class Renderer {
         }
         
         return identifier
+        
+    }
+    
+    // MARK: - Removing objects
+    
+    public func remove(akAnchorWithID id: UUID) {
+        
+        guard let akAnchor = augmentedAnchors.filter({$0.identifier == id}).first, let akAnchorIndex = augmentedAnchors.index(where: {$0.identifier == id}) else {
+            return
+        }
+        
+        augmentedAnchors.remove(at: akAnchorIndex)
+        let anchorType = type(of: akAnchor).type
+        modelProvider?.unregisterModel(forObjectType: anchorType, identifier: akAnchor.identifier)
+        var existingGeometries = geometriesForRenderModule[AnchorsRenderModule.identifier]
+        if let index = existingGeometries?.index(where: {$0.identifier == id}) {
+            existingGeometries?.remove(at: index)
+        }
+        geometriesForRenderModule[AnchorsRenderModule.identifier] = existingGeometries
+        
+        guard let arAnchor = session.currentFrame?.anchors.filter({$0.identifier == id}).first else {
+            return
+        }
+        
+        session.remove(anchor: arAnchor)
+        
+    }
+    
+    public func remove(akTrackerWithID id: UUID) {
+        
+        guard let akTracker = trackers.filter({$0.identifier == id}).first, let akTrackerIndex = trackers.index(where: {$0.identifier == id}) else {
+            return
+        }
+        
+        trackers.remove(at: akTrackerIndex)
+        let anchorType = type(of: akTracker).type
+        modelProvider?.unregisterModel(forObjectType: anchorType, identifier: akTracker.identifier)
+        var existingGeometries = geometriesForRenderModule[UnanchoredRenderModule.identifier]
+        if let index = existingGeometries?.index(where: {$0.identifier == id}) {
+            existingGeometries?.remove(at: index)
+        }
+        geometriesForRenderModule[UnanchoredRenderModule.identifier] = existingGeometries
+        
+    }
+    
+    public func remove(akPathWithID id: UUID) {
+        
+        guard let akPath = paths.filter({$0.identifier == id}).first, let akPathIndex = paths.index(where: {$0.identifier == id}) else {
+            return
+        }
+        
+        akPath.segmentPoints.forEach { segment in
+            if let arAnchor = session.currentFrame?.anchors.filter({$0.identifier == segment.identifier}).first  {
+                session.remove(anchor: arAnchor)
+            }
+        }
+        
+        paths.remove(at: akPathIndex)
+        let anchorType = type(of: akPath).type
+        modelProvider?.unregisterModel(forObjectType: anchorType, identifier: akPath.identifier)
+        
+    }
+    
+    public func remove(gazeTargetWithID id: UUID) {
+        
+        guard let gazeTarget = gazeTargets.filter({$0.identifier == id}).first, let gazeTargetIndex = gazeTargets.index(where: {$0.identifier == id}) else {
+            return
+        }
+        
+        gazeTargets.remove(at: gazeTargetIndex)
+        let anchorType = type(of: gazeTarget).type
+        modelProvider?.unregisterModel(forObjectType: anchorType, identifier: gazeTarget.identifier)
+        var existingGeometries = geometriesForRenderModule[UnanchoredRenderModule.identifier]
+        if let index = existingGeometries?.index(where: {$0.identifier == id}) {
+            existingGeometries?.remove(at: index)
+        }
+        geometriesForRenderModule[UnanchoredRenderModule.identifier] = existingGeometries
         
     }
     
@@ -849,7 +928,8 @@ public class Renderer {
                 module.initializeBuffers(withDevice: device, maxInFlightBuffers: Constants.maxBuffersInFlight)
                 
                 // Load the assets
-                module.loadAssets(fromModelProvider: modelProvider, textureLoader: textureLoader, completion: { [weak self] in
+                let geometricEntities = geometriesForRenderModule[module.moduleIdentifier] ?? []
+                module.loadAssets(forGeometricEntities: geometricEntities, fromModelProvider: modelProvider, textureLoader: textureLoader, completion: { [weak self] in
                     if let defaultLibrary = self?.defaultLibrary, let renderDestination = self?.renderDestination {
                         module.loadPipeline(withMetalLibrary: defaultLibrary, renderDestination: renderDestination)
                         self?.moduleErrors.append(contentsOf: module.errors)
@@ -913,6 +993,7 @@ fileprivate class InternalPath: AKPath {
     var identifier: UUID?
     var effects: [AnyEffect<Any>]?
     var segmentPoints: [AKPathSegmentAnchor]
+    var lineThickness: Double
     
     init(withAKPath akPath: AKPath) {
         self.model = akPath.model
@@ -920,6 +1001,7 @@ fileprivate class InternalPath: AKPath {
         self.worldLocation = akPath.worldLocation
         self.effects = akPath.effects
         self.segmentPoints = akPath.segmentPoints
+        self.lineThickness = akPath.lineThickness
     }
     
 }

@@ -87,7 +87,7 @@ class PathsRenderModule: RenderModule {
         
     }
     
-    func loadAssets(fromModelProvider: ModelProvider?, textureLoader: MTKTextureLoader, completion: (() -> Void)) {
+    func loadAssets(forGeometricEntities: [AKGeometricEntity], fromModelProvider: ModelProvider?, textureLoader: MTKTextureLoader, completion: (() -> Void)) {
         
         guard let device = device else {
             print("Serious Error - device not found")

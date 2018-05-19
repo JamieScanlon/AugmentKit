@@ -36,34 +36,28 @@ import simd
 // MARK: - AKModel
 
 public protocol AKModel {
-    
-    var jointRootID: String { get set }
-    
-    var nodeNames: [String] { get set }
-    var texturePaths: [String] { get set }
-    
+
     // Transform for a node at a given index
     var localTransforms: [matrix_float4x4] { get set }
     // Combined transform of all the parent nodes of a node at a given index
     var worldTransforms: [matrix_float4x4] { get set }
     var parentIndices: [Int?] { get set }
     var meshNodeIndices: [Int] { get set }
-    var meshSkinIndices: [Int?] { get set }
     var instanceCount: [Int] { get set }
-    
     var vertexDescriptors: [MDLVertexDescriptor] { get set }
     var vertexBuffers: [Data] { get set }
     var indexBuffers: [Data] { get set }
-    
+    var nodeNames: [String] { get set }
+    var texturePaths: [String] { get set }
     var meshes: [MeshData] { get set }
-    var skins: [SkinData] { get set }
-    
     var sampleTimes: [Double] { get set }
     var localTransformAnimations: [[matrix_float4x4]] { get set }
     var worldTransformAnimations: [[matrix_float4x4]] { get set }
     var localTransformAnimationIndices: [Int?] { get set }
     var worldTransformAnimationIndices: [Int?] { get set }
-    
+    var meshSkinIndices: [Int?] { get set }
+    var skins: [SkinData] { get set }
+    var jointRootID: String { get set }
     var skeletonAnimations: [AnimatedSkeleton] { get set }
     
 }
@@ -140,6 +134,12 @@ extension AKModel {
         
         return vertexDescriptor
         
+    }
+    
+    public func hash() -> Data {
+        let identity = "\(localTransforms.description)\(worldTransforms.description)\(parentIndices.description)\(meshNodeIndices.description)\(instanceCount.description)\(vertexDescriptors.description)\(vertexBuffers.description)\(nodeNames.description)\(texturePaths.description)\(meshes.description)\(sampleTimes.description)\(localTransformAnimations.description)\(indexBuffers.description)\(worldTransformAnimations.description)\(worldTransformAnimationIndices.description)\(meshSkinIndices.description)\(skins.description)\(jointRootID.description)\(localTransformAnimationIndices.description)\(skeletonAnimations.description)"
+        let sha256 = SHA256(identity)
+        return Data(bytes: sha256.digest())
     }
     
 }

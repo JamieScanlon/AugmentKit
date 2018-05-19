@@ -70,7 +70,7 @@ class TrackingPointsRenderModule: RenderModule {
     }
     
     // Load the data from the Model Provider.
-    func loadAssets(fromModelProvider: ModelProvider?, textureLoader: MTKTextureLoader, completion: (() -> Void)) {
+    func loadAssets(forGeometricEntities: [AKGeometricEntity], fromModelProvider: ModelProvider?, textureLoader: MTKTextureLoader, completion: (() -> Void)) {
         completion()
     }
     

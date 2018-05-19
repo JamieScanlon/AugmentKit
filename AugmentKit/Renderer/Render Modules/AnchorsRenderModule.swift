@@ -59,6 +59,10 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     
     func initializeBuffers(withDevice aDevice: MTLDevice, maxInFlightBuffers: Int) {
         
+        guard device == nil else {
+            return
+        }
+        
         device = aDevice
         
         // Calculate our uniform buffer sizes. We allocate Constants.maxBuffersInFlight instances for uniform
@@ -88,7 +92,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         
     }
     
-    func loadAssets(fromModelProvider modelProvider: ModelProvider?, textureLoader aTextureLoader: MTKTextureLoader, completion: (() -> Void)) {
+    func loadAssets(forGeometricEntities geometricEntities: [AKGeometricEntity], fromModelProvider modelProvider: ModelProvider?, textureLoader aTextureLoader: MTKTextureLoader, completion: (() -> Void)) {
         
         guard let modelProvider = modelProvider else {
             print("Serious Error - Model Provider not found.")
@@ -105,7 +109,9 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         // Create and load our models
         //
         
-        // TODO: Add ability to load multiple models by identifier
+        var numModels = geometricEntities.count
+        
+        // Load the default model
         modelProvider.loadModel(forObjectType:  "AnyAnchor", identifier: nil) { [weak self] model in
             
             guard let model = model else {
@@ -116,11 +122,37 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                 return
             }
             
-            self?.anchorModel = model
+            self?.modelsForAnchorsByUUID[generalUUID] = model
             
             // TODO: Figure out a way to load a new model per anchor.
+            if numModels == 0 {
+                completion()
+            }
             
-            completion()
+        }
+        
+        // Load the per-geometry models
+        for geometricEntity in geometricEntities {
+            
+            if let identifier = geometricEntity.identifier {
+                modelProvider.loadModel(forObjectType:  "AnyAnchor", identifier: identifier) { [weak self] model in
+                    
+                    guard let model = model else {
+                        print("Warning (AnchorsRenderModule) - Failed to get a model for type  \"AnyAnchor\") from the modelProvider. Aborting the render phase.")
+                        let newError = AKError.warning(.modelError(.modelNotFound(ModelErrorInfo(type:  "AnyAnchor"))))
+                        recordNewError(newError)
+                        completion()
+                        return
+                    }
+                    
+                    self?.modelsForAnchorsByUUID[identifier] = model
+                }
+            }
+            
+            numModels -= 1
+            if numModels <= 0 {
+                completion()
+            }
             
         }
         
@@ -136,7 +168,8 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             return
         }
         
-        guard let anchorModel = anchorModel else {
+        // Make sure there is at least one general purpose model
+        guard modelsForAnchorsByUUID[generalUUID] != nil else {
             print("Warning (AnchorsRenderModule) - Anchor Model was not found. Aborting the render phase.")
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeModelNotFound, userInfo: nil)
             let newError = AKError.warning(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
@@ -144,62 +177,22 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             return
         }
         
-        if anchorModel.meshNodeIndices.count > 1 {
-            print("WARNING: More than one mesh was found. Currently only one mesh per anchor is supported.")
-            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeModelNotSupported, userInfo: nil)
-            let newError = AKError.warning(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-            recordNewError(newError)
-        }
-        
-        anchorMeshGPUData = meshData(from: anchorModel)
-        
-        guard let meshGPUData = anchorMeshGPUData else {
-            print("Serious Error - ERROR: No meshGPUData found when trying to load the pipeline.")
-            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeIntermediateMeshDataNotFound, userInfo: nil)
-            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-            recordNewError(newError)
-            return
-        }
-        
-        guard let anchorVertexDescriptor = createMetalVertexDescriptor(withFirstModelIOVertexDescriptorIn: anchorModel.vertexDescriptors) else {
-            print("Serious Error - Failed to create a MetalKit vertex descriptor from ModelIO.")
-            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeInvalidMeshData, userInfo: nil)
-            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-            recordNewError(newError)
-            return
-        }
-        
-        for (drawIdx, drawData) in meshGPUData.drawData.enumerated() {
-            let anchorPipelineStateDescriptor = MTLRenderPipelineDescriptor()
-            do {
-                let funcConstants = MetalUtilities.getFuncConstantsForDrawDataSet(meshData: anchorModel.meshes[drawIdx], useMaterials: usesMaterials)
-                // Specify which shader to use based on if the model has skinned puppet suppot
-                let vertexName = (drawData.paletteStartIndex != nil) ? "anchorGeometryVertexTransformSkinned" : "anchorGeometryVertexTransform"
-                let fragFunc = try metalLibrary.makeFunction(name: "anchorGeometryFragmentLighting", constantValues: funcConstants)
-                let vertFunc = try metalLibrary.makeFunction(name: vertexName, constantValues: funcConstants)
-                anchorPipelineStateDescriptor.vertexDescriptor = anchorVertexDescriptor
-                anchorPipelineStateDescriptor.vertexFunction = vertFunc
-                anchorPipelineStateDescriptor.fragmentFunction = fragFunc
-                anchorPipelineStateDescriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
-                anchorPipelineStateDescriptor.colorAttachments[0].isBlendingEnabled = true
-                anchorPipelineStateDescriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
-                anchorPipelineStateDescriptor.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
-                anchorPipelineStateDescriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-                anchorPipelineStateDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-                anchorPipelineStateDescriptor.sampleCount = renderDestination.sampleCount
-            } catch let error {
-                print("Failed to create pipeline state descriptor, error \(error)")
-                let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: error))))
+        for item in modelsForAnchorsByUUID {
+            
+            let uuid = item.key
+            let akModel = item.value
+            
+            if akModel.meshNodeIndices.count > 1 {
+                print("WARNING: More than one mesh was found. Currently only one mesh per anchor is supported.")
+                let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeModelNotSupported, userInfo: nil)
+                let newError = AKError.warning(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
                 recordNewError(newError)
             }
             
-            do {
-                try anchorPipelineStates.append(device.makeRenderPipelineState(descriptor: anchorPipelineStateDescriptor))
-            } catch let error {
-                print("Failed to create pipeline state, error \(error)")
-                let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: error))))
-                recordNewError(newError)
-            }
+            meshGPUDataForAnchorsByUUID[uuid] = meshData(from: akModel)
+            
+            createPipelineStates(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination)
+            
         }
         
         let anchorDepthStateDescriptor = MTLDepthStencilDescriptor()
@@ -283,9 +276,11 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             
             let anchorIndex = anchorInstanceCount - 1
             
-            if let model = anchorModel {
+            if let model = modelsForAnchorsByUUID[anchor.identifier] {
                 
                 // Apply the world transform (as defined in the imported model) if applicable
+                // FIXME: I'm pretty sure this does not work. The modelIndex (the index of the MDLMesh in the MDLAsset)
+                // is not the same thing as the anchorIndex (the index of the anchor in the frame.anchors array).
                 if let modelIndex = modelIndex(in: model, fromAnchorIndex: anchorIndex), modelIndex < model.worldTransforms.count {
                     let worldTransform = model.worldTransforms[modelIndex]
                     coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
@@ -294,6 +289,24 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                 let modelMatrix = anchor.transform * coordinateSpaceTransform
                 let anchorUniforms = anchorUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: anchorIndex)
                 anchorUniforms?.pointee.modelMatrix = modelMatrix
+                
+                updatePuppetAnimation(from: model, frameNumber: cameraProperties.currentFrame)
+                
+            } else if let model = modelsForAnchorsByUUID[generalUUID] {
+                
+                // Apply the world transform (as defined in the imported model) if applicable
+                // FIXME: I'm pretty sure this does not work. The modelIndex (the index of the MDLMesh in the MDLAsset)
+                // is not the same thing as the anchorIndex (the index of the anchor in the frame.anchors array).
+                if let modelIndex = modelIndex(in: model, fromAnchorIndex: anchorIndex), modelIndex < model.worldTransforms.count {
+                    let worldTransform = model.worldTransforms[modelIndex]
+                    coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
+                }
+                
+                let modelMatrix = anchor.transform * coordinateSpaceTransform
+                let anchorUniforms = anchorUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: anchorIndex)
+                anchorUniforms?.pointee.modelMatrix = modelMatrix
+                
+                updatePuppetAnimation(from: model, frameNumber: cameraProperties.currentFrame)
                 
             }
             
@@ -306,10 +319,6 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             effectsUniforms?.pointee.glow = 0 // TODO: Implement
             effectsUniforms?.pointee.tint = float3(1,1,1) // TODO: Implement
             
-        }
-        
-        if let model = anchorModel {
-            updatePuppetAnimation(from: model, frameNumber: cameraProperties.currentFrame)
         }
         
     }
@@ -334,14 +343,6 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         // Set render command encoder state
         renderEncoder.setCullMode(.back)
         
-        guard let meshGPUData = anchorMeshGPUData else {
-            print("Error: meshGPUData not available a draw time. Aborting")
-            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeIntermediateMeshDataNotAvailable, userInfo: nil)
-            let newError = AKError.recoverableError(.renderPipelineError(.drawAborted(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-            recordNewError(newError)
-            return
-        }
-        
         if let sharedBuffer = sharedModules?.filter({$0.moduleIdentifier == SharedBuffersRenderModule.identifier}).first {
             
             renderEncoder.pushDebugGroup("Draw Shared Uniforms")
@@ -361,21 +362,41 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             
         }
         
-        for (drawDataIdx, drawData) in meshGPUData.drawData.enumerated() {
+        // Make sure there is at least one general purpose meshGPUData
+        guard meshGPUDataForAnchorsByUUID[generalUUID] != nil else {
+            print("Error: meshGPUData not available a draw time. Aborting")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeIntermediateMeshDataNotAvailable, userInfo: nil)
+            let newError = AKError.recoverableError(.renderPipelineError(.drawAborted(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
+            return
+        }
+        
+        for item in meshGPUDataForAnchorsByUUID {
             
-            if drawDataIdx < anchorPipelineStates.count {
-                renderEncoder.setRenderPipelineState(anchorPipelineStates[drawDataIdx])
-                renderEncoder.setDepthStencilState(anchorDepthState)
+            let uuid = item.key
+            let meshGPUData = item.value
+            
+            guard let myPipelineStates = pipelineStatesForAnchorsByUUID[uuid] else {
+                continue
+            }
+            
+            for (drawDataIdx, drawData) in meshGPUData.drawData.enumerated() {
                 
-                // Set any buffers fed into our render pipeline
-                renderEncoder.setVertexBuffer(anchorUniformBuffer, offset: anchorUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
-                renderEncoder.setVertexBuffer(paletteBuffer, offset: paletteBufferOffset, index: Int(kBufferIndexMeshPalettes.rawValue))
-                
-                var mutableDrawData = drawData
-                mutableDrawData.instCount = anchorInstanceCount
-                
-                // Set the mesh's vertex data buffers
-                encode(meshGPUData: meshGPUData, fromDrawData: mutableDrawData, with: renderEncoder)
+                if drawDataIdx < myPipelineStates.count {
+                    renderEncoder.setRenderPipelineState(myPipelineStates[drawDataIdx])
+                    renderEncoder.setDepthStencilState(anchorDepthState)
+                    
+                    // Set any buffers fed into our render pipeline
+                    renderEncoder.setVertexBuffer(anchorUniformBuffer, offset: anchorUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
+                    renderEncoder.setVertexBuffer(paletteBuffer, offset: paletteBufferOffset, index: Int(kBufferIndexMeshPalettes.rawValue))
+                    
+                    var mutableDrawData = drawData
+                    mutableDrawData.instCount = anchorInstanceCount
+                    
+                    // Set the mesh's vertex data buffers
+                    encode(meshGPUData: meshGPUData, fromDrawData: mutableDrawData, with: renderEncoder)
+                    
+                }
                 
             }
             
@@ -409,16 +430,17 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     
     private var device: MTLDevice?
     private var textureLoader: MTKTextureLoader?
-    private var anchorModel: AKModel?
+    private var generalUUID = UUID()
+    private var modelsForAnchorsByUUID = [UUID: AKModel]()
     private var anchorUniformBuffer: MTLBuffer?
     private var materialUniformBuffer: MTLBuffer?
     private var paletteBuffer: MTLBuffer?
     private var effectsUniformBuffer: MTLBuffer?
-    private var anchorPipelineStates = [MTLRenderPipelineState]() // Store multiple states
+    private var pipelineStatesForAnchorsByUUID = [UUID: [MTLRenderPipelineState]]()
     private var anchorDepthState: MTLDepthStencilState?
     
     // MetalKit meshes containing vertex data and index buffer for our anchor geometry
-    private var anchorMeshGPUData: MeshGPUData?
+    private var meshGPUDataForAnchorsByUUID = [UUID: MeshGPUData]()
     
     // Offset within anchorUniformBuffer to set for the current frame
     private var anchorUniformBufferOffset: Int = 0
@@ -547,6 +569,77 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         }
         
         return myGPUData
+        
+    }
+    
+    private func createPipelineStates(forUUID uuid: UUID, withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider) {
+        
+        guard let device = device else {
+            print("Serious Error - device not found")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeDeviceNotFound, userInfo: nil)
+            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
+            return
+        }
+        
+        guard let akModel = modelsForAnchorsByUUID[uuid] else {
+            print("Warning - No AKModel found for UUID \(uuid).")
+            let newError = AKError.warning(.modelError(.modelNotFound(ModelErrorInfo(type:  "AnyAnchor", identifier: uuid))))
+            recordNewError(newError)
+            return
+        }
+        
+        guard let meshGPUData = meshGPUDataForAnchorsByUUID[uuid] else {
+            print("Serious Error - ERROR: No meshGPUData found when trying to load the pipeline.")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeIntermediateMeshDataNotFound, userInfo: nil)
+            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
+            return
+        }
+        
+        guard let anchorVertexDescriptor = createMetalVertexDescriptor(withFirstModelIOVertexDescriptorIn: akModel.vertexDescriptors) else {
+            print("Serious Error - Failed to create a MetalKit vertex descriptor from ModelIO.")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeInvalidMeshData, userInfo: nil)
+            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
+            return
+        }
+        
+        var myPipelineStates = [MTLRenderPipelineState]()
+        for (drawIdx, drawData) in meshGPUData.drawData.enumerated() {
+            let anchorPipelineStateDescriptor = MTLRenderPipelineDescriptor()
+            do {
+                let funcConstants = MetalUtilities.getFuncConstantsForDrawDataSet(meshData: akModel.meshes[drawIdx], useMaterials: usesMaterials)
+                // Specify which shader to use based on if the model has skinned puppet suppot
+                let vertexName = (drawData.paletteStartIndex != nil) ? "anchorGeometryVertexTransformSkinned" : "anchorGeometryVertexTransform"
+                let fragFunc = try metalLibrary.makeFunction(name: "anchorGeometryFragmentLighting", constantValues: funcConstants)
+                let vertFunc = try metalLibrary.makeFunction(name: vertexName, constantValues: funcConstants)
+                anchorPipelineStateDescriptor.vertexDescriptor = anchorVertexDescriptor
+                anchorPipelineStateDescriptor.vertexFunction = vertFunc
+                anchorPipelineStateDescriptor.fragmentFunction = fragFunc
+                anchorPipelineStateDescriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
+                anchorPipelineStateDescriptor.colorAttachments[0].isBlendingEnabled = true
+                anchorPipelineStateDescriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
+                anchorPipelineStateDescriptor.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
+                anchorPipelineStateDescriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
+                anchorPipelineStateDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
+                anchorPipelineStateDescriptor.sampleCount = renderDestination.sampleCount
+            } catch let error {
+                print("Failed to create pipeline state descriptor, error \(error)")
+                let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: error))))
+                recordNewError(newError)
+            }
+            
+            do {
+                try myPipelineStates.append(device.makeRenderPipelineState(descriptor: anchorPipelineStateDescriptor))
+            } catch let error {
+                print("Failed to create pipeline state, error \(error)")
+                let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: error))))
+                recordNewError(newError)
+            }
+        }
+        
+        pipelineStatesForAnchorsByUUID[uuid] = myPipelineStates
         
     }
     

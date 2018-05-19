@@ -30,6 +30,7 @@ import ModelIO
 
 public protocol ModelProvider {
     func registerModel(_ model: AKModel, forObjectType type: String, identifier: UUID?)
+    func unregisterModel(forObjectType type: String, identifier: UUID?)
     func loadModel(forObjectType type: String, identifier: UUID?, completion: (AKModel?) -> Void)
 }
 
@@ -38,9 +39,19 @@ public class AKModelProvider: ModelProvider {
     static let sharedInstance = AKModelProvider()
     
     public func registerModel(_ model: AKModel, forObjectType type: String, identifier: UUID? = nil) {
-        modelsByType[type] = model
+        if modelsByType[type] == nil || identifier == nil {
+            modelsByType[type] = model
+        }
         if let identifier = identifier {
             modelsByIdentifier[identifier] = model
+        }
+    }
+    
+    public func unregisterModel(forObjectType type: String, identifier: UUID?) {
+        if let identifier = identifier {
+            modelsByIdentifier[identifier] = nil
+        } else {
+            modelsByType[type] = nil
         }
     }
     

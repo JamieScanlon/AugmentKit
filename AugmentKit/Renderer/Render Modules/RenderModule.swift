@@ -56,7 +56,7 @@ protocol RenderModule {
     func initializeBuffers(withDevice: MTLDevice, maxInFlightBuffers: Int)
     
     // Load the data from the Model Provider.
-    func loadAssets(fromModelProvider: ModelProvider?, textureLoader: MTKTextureLoader, completion: (() -> Void))
+    func loadAssets(forGeometricEntities: [AKGeometricEntity], fromModelProvider: ModelProvider?, textureLoader: MTKTextureLoader, completion: (() -> Void))
     
     // This funciton should set up the vertex descriptors, pipeline / depth state descriptors,
     // textures, etc.

@@ -34,7 +34,8 @@ import AugmentKit
 class ViewController: UIViewController {
     
     var world: AKWorld?
-    var anchorModel: AKModel?
+    var pinModel: AKModel?
+    var shipModel: AKModel?
     
     @IBOutlet var debugInfoAnchorCounts: UILabel?
     
@@ -61,7 +62,7 @@ class ViewController: UIViewController {
             
             world = myWorld
             
-            loadAnchorModel()
+            loadAnchorModels()
             
             // Add a user tracking anchor.
             if let asset = MDLAssetTools.assetFromImage(withName: "compass_512.png") {
@@ -117,7 +118,7 @@ class ViewController: UIViewController {
     @objc
     private func handleTap(gestureRecognize: UITapGestureRecognizer) {
         
-        guard let anchorModel = anchorModel else {
+        guard let anchorModel = getRandomModel() else {
             return
         }
         
@@ -199,7 +200,7 @@ class ViewController: UIViewController {
     
     // MARK: - Private
     
-    fileprivate func loadAnchorModel() {
+    fileprivate func loadAnchorModels() {
         
         //
         // Download a zipped Model
@@ -208,7 +209,7 @@ class ViewController: UIViewController {
 //        let url = URL(string: "https://s3-us-west-2.amazonaws.com/com.tenthlettermade.public/PinAKModelArchive.zip")!
 //        let remoteModel = AKRemoteArchivedModel(remoteURL: url)
 //        remoteModel.compressor = Compressor()
-//        anchorModel = remoteModel
+//        pinModel = remoteModel
         
         
         //
@@ -216,12 +217,36 @@ class ViewController: UIViewController {
         //
         
         // Setup the model that will be used for AugmentedAnchor anchors
-        guard let world = world, let asset = AKSceneKitUtils.mdlAssetFromScene(named: "Pin.scn", world: world) else {
+        guard let world = world else {
+            print("ERROR: The AKWorld has not been initialized")
+            return
+        }
+        
+        guard let pinAsset = AKSceneKitUtils.mdlAssetFromScene(named: "Pin.scn", world: world) else {
+            print("ERROR: Could not load the SceneKit model")
+            return
+        }
+        
+        guard let shipAsset = AKSceneKitUtils.mdlAssetFromScene(named: "ship.scn", world: world) else {
             print("ERROR: Could not load the SceneKit model")
             return
         }
 
-        anchorModel = AKMDLAssetModel(asset: asset, vertexDescriptor: AKMDLAssetModel.newAnchorVertexDescriptor())
+        pinModel = AKMDLAssetModel(asset: pinAsset, vertexDescriptor: AKMDLAssetModel.newAnchorVertexDescriptor())
+        shipModel = AKMDLAssetModel(asset: shipAsset, vertexDescriptor: AKMDLAssetModel.newAnchorVertexDescriptor())
+        
+    }
+    
+    fileprivate func getRandomModel() -> AKModel? {
+        
+        let random = arc4random_uniform(2)
+        if random == 0 {
+            return pinModel
+        } else if random == 1 {
+            return shipModel
+        } else {
+            return nil
+        }
         
     }
     

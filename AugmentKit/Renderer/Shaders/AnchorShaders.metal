@@ -166,8 +166,6 @@ float4 srgbToLinear(float4 c);
 float4 linearToSrgba(float4 c);
 inline float Fresnel(float dotProduct);
 inline float sqr(float a);
-float Geometry(float Ndotv, float alphaG);
-float Distribution(float NdotH, float roughness);
 float smithG_GGX(float nDotv, float alphaG);
 float GTR1(float nDoth, float a);
 float GTR2_aniso(float nDoth, float HdotX, float HdotY, float ax, float ay);
@@ -196,26 +194,12 @@ inline float sqr(float a) {
     return a * a;
 }
 
-float Geometry(float Ndotv, float alphaG) {
-    float a = alphaG * alphaG;
-    float b = Ndotv * Ndotv;
-    return (float)(1.0 / (Ndotv + sqrt(a + b - a*b)));
-}
-
-float Distribution(float NdotH, float roughness) {
-    if (roughness >= 1.0)
-        return 1.0 / PI;
-    
-    float roughnessSqr = pow(roughness, 2);
-    
-    float d = (NdotH * roughnessSqr - NdotH) * NdotH + 1;
-    return roughnessSqr / (PI * d * d);
-}
-
-float smithG_GGX(float nDotv, float alphaG) {
-    float a = alphaG*alphaG;
-    float b = nDotv * nDotv;
-    return 1.0 / (nDotv + sqrt(a + b - a*b));
+// dotProduct os either nDotl or nDotv
+// roughnessAlpha
+float smithG_GGX(float dotProduct, float roughnessAlpha) {
+    float a = roughnessAlpha * roughnessAlpha;
+    float b = dotProduct * dotProduct;
+    return 1.0 / (dotProduct + sqrt(a + b - a*b));
 }
 
 // Generalized Trowbridge-Reitz
@@ -259,23 +243,74 @@ float3 computeDiffuse(LightingParameters parameters) {
 
 float3 computeSpecular(LightingParameters parameters) {
     
-    //float specularRoughness = parameters.roughness * (1.0 - parameters.metalness) + parameters.metalness;
-    float specularRoughness = parameters.roughness * 0.5 + 0.5;
+//    //float specularRoughness = parameters.roughness * (1.0 - parameters.metalness) + parameters.metalness;
+//    float specularRoughness = parameters.roughness * 0.5 + 0.5;
+//    float aspect = sqrt(1.0 - parameters.anisotropic * 0.9);
+//    //float alphaAniso = specularRoughness;
+//    float alphaAniso = sqr(specularRoughness);
+//    float ax = max(0.0001, alphaAniso / aspect);
+//    float ay = max(0.0001, alphaAniso * aspect);
+//    // TODO: Support shading basis - float Ds = GTR2_aniso(parameters.nDoth, dot(parameters.halfVector, parameters.shadingBasisU), dot(dsv.halfVector, parameters.shadingBasisV), ax, ay);
+//    float3 shadingBasisX = float3(1,0,0);
+//    float3 shadingBasisY = float3(0,1,0);
+//    float Ds = GTR2_aniso(parameters.nDoth, dot(parameters.halfVector, shadingBasisX), dot(parameters.halfVector, shadingBasisY), ax, ay);
+//    float3 Cspec0 = parameters.specular * mix(float3(1.0), parameters.baseColorHueSat, parameters.specularTint);
+//    float3 Fs = mix(Cspec0, float3(1), parameters.fresnelH);
+//    float alphaG = sqr(specularRoughness * 0.5 + 0.5);
+//    float Gs = smithG_GGX(parameters.nDotl, alphaG) * smithG_GGX(parameters.nDotv, alphaG);
+//
+//    float3 specularOutput = (Ds * Gs * Fs * parameters.irradiatedColor) * (1.0 + parameters.metalness * parameters.baseColor.rgb) + parameters.metalness * parameters.irradiatedColor * parameters.baseColor.rgb;
+//    return specularOutput;
+    
+    //
+    // Cook–Torrance formula
+    // see: https://en.m.wikipedia.org/wiki/Specular_highlight#Cook–Torrance_model
+    //
+    
+    // Roughness alpha
+    
+    // Method 1
+    float specularRoughness = parameters.roughness;
+    specularRoughness = max(specularRoughness, 0.01f);
+    specularRoughness = pow(specularRoughness, 3.0f);
+    
+    // Method 2
+//    float specularRoughness = parameters.roughness * 0.5 + 0.5;
+    
     float aspect = sqrt(1.0 - parameters.anisotropic * 0.9);
-    //float alphaAniso = specularRoughness;
     float alphaAniso = sqr(specularRoughness);
-    float ax = max(0.0001, alphaAniso / aspect);
-    float ay = max(0.0001, alphaAniso * aspect);
-    // TODO: Support shading basis - float Ds = GTR2_aniso(parameters.nDoth, dot(parameters.halfVector, parameters.shadingBasisU), dot(dsv.halfVector, parameters.shadingBasisV), ax, ay);
+    
+    float roughnessAlpha = sqr(specularRoughness * 0.5 + 0.5);
+    float roughnessAlphaX = max(0.0001, alphaAniso / aspect);
+    float roughnessAlphaY = max(0.0001, alphaAniso * aspect);
+    
+    // Normal Distribution Function (NDF):
+    // The NDF, also known as the specular distribution, describes the distribution of microfacets for the surface
     float3 shadingBasisX = float3(1,0,0);
     float3 shadingBasisY = float3(0,1,0);
-    float Ds = GTR2_aniso(parameters.nDoth, dot(parameters.halfVector, shadingBasisX), dot(parameters.halfVector, shadingBasisY), ax, ay);
+    float Ds = GTR2_aniso(parameters.nDoth, dot(parameters.halfVector, shadingBasisX), dot(parameters.halfVector, shadingBasisY), roughnessAlphaX, roughnessAlphaY);
+    
+    // Fresnel
+    // The Fresnel function describes the amount of light that reflects from a mirror surface given its index of refraction.
     float3 Cspec0 = parameters.specular * mix(float3(1.0), parameters.baseColorHueSat, parameters.specularTint);
     float3 Fs = mix(Cspec0, float3(1), parameters.fresnelH);
-    float alphaG = sqr(specularRoughness * 0.5 + 0.5);
-    float Gs = smithG_GGX(parameters.nDotl, alphaG) * smithG_GGX(parameters.nDotv, alphaG);
-
-    float3 specularOutput = (Ds * Gs * Fs * parameters.irradiatedColor) * (1.0 + parameters.metalness * parameters.baseColor.rgb) + parameters.metalness * parameters.irradiatedColor * parameters.baseColor.rgb;
+    
+    // Geometric Shadowing:
+    // The geometric shadowing term describes the shadowing from the microfacets.
+    // This means ideally it should depend on roughness and the microfacet distribution.
+    // The following geometric shadowing models use Smith's method[8] for their respective NDF.
+    // Smith breaks G into two components: light and view, and uses the same equation for both.
+    float Gs = smithG_GGX(parameters.nDotl, roughnessAlpha) * smithG_GGX(parameters.nDotv, roughnessAlpha);
+    
+    
+    float3 specularBDRF = (Ds * Gs * Fs) / (4 * parameters.nDotl * parameters.nDotv);
+    
+    // Method 1
+    float3 specularOutput = specularBDRF * parameters.irradiatedColor * parameters.directionalLightCol * mix(float3(1.0f), parameters.baseColor.rgb, parameters.metalness);
+    
+    // Method 2
+//    float3 specularOutput = (Ds * Gs * Fs * parameters.irradiatedColor) * (1.0 + parameters.metalness * parameters.baseColor.rgb) + parameters.metalness * parameters.irradiatedColor * parameters.baseColor.rgb;
+    
     return specularOutput;
     
 }
@@ -309,12 +344,13 @@ float4 illuminate(LightingParameters parameters) {
     
     // DIFFUSE
     // 2pi to integrate the entire dome, 0.5 as intensity
-    float3 light_color = float3(2.0 * PI * 0.3) * (parameters.nDotl + parameters.irradiatedColor * (1.0 - parameters.nDotl) * parameters.ambientOcclusion);
+    //float3 light_color = float3(2.0 * PI * 0.3) * (parameters.nDotl + (parameters.irradiatedColor - (parameters.irradiatedColor * parameters.nDotl)) * parameters.ambientOcclusion);
+    float3 light_color = float3(2.0 * PI * 0.3) * (parameters.nDotl + parameters.irradiatedColor - parameters.ambientOcclusion);
     float3 diffuseOut = computeDiffuse(parameters) * light_color;
     
     // AMBIENCE
-    const float environmentContribution = 0.2;
-    float3 ambienceOutput = parameters.baseColor.rgb * parameters.ambientLightCol * environmentContribution * parameters.ambientOcclusion;
+    const float environmentContribution = 1;
+    float3 ambienceOutput = parameters.ambientLightCol * environmentContribution * parameters.ambientOcclusion;
     
     // CLEARCOAT
     float3 clearcoatOut = computeClearcoat(parameters);
@@ -551,7 +587,31 @@ fragment float4 anchorGeometryFragmentLighting(ColorInOut in [[stage_in]],
         discard_fragment();
     }
     
-    float4 intermediate_color = illuminate(parameters);
+    // DIFFUSE
+    // 2pi to integrate the entire dome, 0.5 as intensity
+//    //float3 light_color = float3(2.0 * PI * 0.3) * (parameters.nDotl + (parameters.irradiatedColor - (parameters.irradiatedColor * parameters.nDotl)) * parameters.ambientOcclusion);
+//    float3 light_color = float3(2.0 * PI * 0.3) * (parameters.nDotl + parameters.irradiatedColor - parameters.ambientOcclusion);
+//    float3 diffuseOut = computeDiffuse(parameters) * light_color;
+//    float4 intermediate_color = float4(parameters.baseColor.rgb * diffuseOut, 1);
+    
+    // AMBIENCE
+//    const float environmentContribution = 1;
+//    float3 ambienceOutput = parameters.ambientLightCol * environmentContribution * parameters.ambientOcclusion;
+//    float4 intermediate_color =  float4(parameters.baseColor.rgb * ambienceOutput, 1);
+    
+    // CLEARCOAT
+//    float3 clearcoatOut = computeClearcoat(parameters);
+//    float4 intermediate_color =  float4(parameters.baseColor.rgb * clearcoatOut, 1);
+    
+    // SPECULAR
+//    float3 specularOut = computeSpecular(parameters);
+//    float4 intermediate_color =  float4(parameters.baseColor.rgb * specularOut, 1);
+    
+    // SHEEN
+//    float3 sheenOut = computeSheen(parameters) * light_color;
+//    float4 intermediate_color =  float4(parameters.baseColor.rgb * sheenOut, 1);
+    
+    float4 intermediate_color =  float4(parameters.baseColor * illuminate(parameters));
     
     // Apply effects
     final_color = float4(intermediate_color.rgb * anchorEffectsUniforms.tint, intermediate_color.a * anchorEffectsUniforms.alpha);

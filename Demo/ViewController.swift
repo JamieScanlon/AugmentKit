@@ -118,10 +118,6 @@ class ViewController: UIViewController {
     @objc
     private func handleTap(gestureRecognize: UITapGestureRecognizer) {
         
-        guard let anchorModel = getRandomModel() else {
-            return
-        }
-        
         guard let world = world else {
             return
         }
@@ -130,11 +126,11 @@ class ViewController: UIViewController {
             return
         }
         
-        let anchorLocation = GroundFixedWorldLocation(worldLocation: currentWorldLocation, world: world)
-        
         // Example:
         // Create a new anchor at the current locaiton
-        let newObject = AugmentedAnchor(withAKModel: anchorModel, at: anchorLocation)
+        guard let newObject = getRandomAnchor() else {
+            return
+        }
         world.add(anchor: newObject)
         
         // Example:
@@ -237,16 +233,42 @@ class ViewController: UIViewController {
         
     }
     
-    fileprivate func getRandomModel() -> AKModel? {
+    fileprivate func getRandomAnchor() -> AKAugmentedAnchor? {
+        
         
         let random = arc4random_uniform(2)
-        if random == 0 {
-            return pinModel
-        } else if random == 1 {
-            return shipModel
-        } else {
+        
+        let model: AKModel? = {
+            if random == 0 {
+                return pinModel
+            } else if random == 1 {
+                return shipModel
+            } else {
+                return nil
+            }
+        }()
+        
+        guard let anchorModel = model else {
             return nil
         }
+        
+        guard let world = world else {
+            return nil
+        }
+        
+        guard let currentWorldLocation = world.currentWorldLocation else {
+            return nil
+        }
+        
+        let anchorLocation: AKWorldLocation = {
+            if random == 0 {
+                return GroundFixedWorldLocation(worldLocation: currentWorldLocation, world: world)
+            } else {
+                return currentWorldLocation
+            }
+        }()
+        
+        return AugmentedAnchor(withAKModel: anchorModel, at: anchorLocation)
         
     }
     

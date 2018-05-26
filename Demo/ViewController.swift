@@ -36,8 +36,11 @@ class ViewController: UIViewController {
     var world: AKWorld?
     var pinModel: AKModel?
     var shipModel: AKModel?
+    var maxModel: AKModel?
     
+    @IBOutlet var infoView: UIView?
     @IBOutlet var debugInfoAnchorCounts: UILabel?
+    @IBOutlet var errorInfo: UILabel?
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -86,6 +89,8 @@ class ViewController: UIViewController {
         
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(ViewController.handleTap(gestureRecognize:)))
         view.addGestureRecognizer(tapGesture)
+        
+        infoView?.isHidden = true
         
     }
     
@@ -227,23 +232,31 @@ class ViewController: UIViewController {
             print("ERROR: Could not load the SceneKit model")
             return
         }
+        
+        guard let maxAsset = AKSceneKitUtils.mdlAssetFromScene(named: "Art.scnassets/character/max.scn", world: world) else {
+            print("ERROR: Could not load the SceneKit model")
+            return
+        }
 
         pinModel = AKMDLAssetModel(asset: pinAsset, vertexDescriptor: AKMDLAssetModel.newAnchorVertexDescriptor())
         shipModel = AKMDLAssetModel(asset: shipAsset, vertexDescriptor: AKMDLAssetModel.newAnchorVertexDescriptor())
+        maxModel = AKMDLAssetModel(asset: maxAsset, vertexDescriptor: AKMDLAssetModel.newAnchorVertexDescriptor())
         
     }
     
     fileprivate func getRandomAnchor() -> AKAugmentedAnchor? {
         
-        
-        let random = arc4random_uniform(2)
+        let random = arc4random_uniform(3)
         
         let model: AKModel? = {
-            if random == 0 {
+            switch random {
+            case 0:
                 return pinModel
-            } else if random == 1 {
+            case 1:
                 return shipModel
-            } else {
+            case 2:
+                return maxModel
+            default:
                 return nil
             }
         }()
@@ -261,7 +274,7 @@ class ViewController: UIViewController {
         }
         
         let anchorLocation: AKWorldLocation = {
-            if random == 0 {
+            if random == 0 || random == 2 {
                 return GroundFixedWorldLocation(worldLocation: currentWorldLocation, world: world)
             } else {
                 return currentWorldLocation
@@ -278,12 +291,28 @@ class ViewController: UIViewController {
 
 extension ViewController: AKWorldMonitor {
     
+    @IBAction func infoButtonClicked(_ sender: UIButton) {
+        if let infoView = infoView {
+            infoView.isHidden = !infoView.isHidden
+        }
+    }
+    
     func update(renderStats: RenderStats) {
         debugInfoAnchorCounts?.text = "ARKit Anchor Count: \(renderStats.arKitAnchorCount)\nAugmentKit Anchors: \(renderStats.numAnchors)\nplanes: \(renderStats.numPlanes)\ntracking points: \(renderStats.numTrackingPoints)\ntrackers: \(renderStats.numTrackers)\ntargets: \(renderStats.numTargets)\npath segments \(renderStats.numPathSegments)"
     }
     
     func update(worldStatus: AKWorldStatus) {
-        // TODO: Implement
+        
+        guard let errorInfo = errorInfo else {
+            return
+        }
+        
+        if worldStatus.errors.count > 0 {
+            errorInfo.text = ""
+            for error in worldStatus.errors {
+                errorInfo.text = (errorInfo.text ?? "") + "Error: \(error.localizedDescription)\n\n"
+            }
+        }
     }
     
 }

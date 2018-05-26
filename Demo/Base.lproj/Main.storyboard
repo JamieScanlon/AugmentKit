@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="14109" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" colorMatched="YES" initialViewController="BV1-FR-VrT">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="14109" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="BV1-FR-VrT">
     <device id="retina4_7" orientation="portrait">
         <adaptation id="fullscreen"/>
     </device>
     <dependencies>
         <deployment identifier="iOS"/>
         <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="14088"/>
+        <capability name="Safe area layout guides" minToolsVersion="9.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
     <scenes>
@@ -13,30 +14,59 @@
         <scene sceneID="tXr-a1-R10">
             <objects>
                 <viewController id="BV1-FR-VrT" customClass="ViewController" customModule="AugmentKit2Demo" customModuleProvider="target" sceneMemberID="viewController">
-                    <layoutGuides>
-                        <viewControllerLayoutGuide type="top" id="8aa-yV-Osq"/>
-                        <viewControllerLayoutGuide type="bottom" id="qHh-Mt-9TT"/>
-                    </layoutGuides>
                     <view key="view" opaque="NO" contentMode="scaleToFill" id="3se-qz-xqx" customClass="MTKView">
                         <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Label" textAlignment="natural" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="IVD-ew-6C4">
+                            <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="OoB-B5-1np">
                                 <rect key="frame" x="0.0" y="653" width="375" height="14"/>
-                                <color key="backgroundColor" red="0.33333333333333331" green="0.33333333333333331" blue="0.33333333333333331" alpha="0.50527486313868608" colorSpace="calibratedRGB"/>
-                                <fontDescription key="fontDescription" name="Menlo-Regular" family="Menlo" pointSize="12"/>
-                                <color key="textColor" name="controlBackgroundColor" catalog="System" colorSpace="catalog"/>
-                                <nil key="highlightedColor"/>
-                            </label>
+                                <subviews>
+                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Label" textAlignment="natural" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="IVD-ew-6C4">
+                                        <rect key="frame" x="0.0" y="0.0" width="375" height="14"/>
+                                        <color key="backgroundColor" red="0.33333333333333331" green="0.33333333333333331" blue="0.33333333333333331" alpha="0.50527486313868608" colorSpace="calibratedRGB"/>
+                                        <fontDescription key="fontDescription" name="Menlo-Regular" family="Menlo" pointSize="12"/>
+                                        <color key="textColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                        <nil key="highlightedColor"/>
+                                    </label>
+                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="" textAlignment="natural" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="gUK-GV-nDE">
+                                        <rect key="frame" x="0.0" y="14" width="375" height="0.0"/>
+                                        <color key="backgroundColor" red="0.33333333329999998" green="0.33333333329999998" blue="0.33333333329999998" alpha="0.50527486310000003" colorSpace="calibratedRGB"/>
+                                        <fontDescription key="fontDescription" name="Menlo-Regular" family="Menlo" pointSize="12"/>
+                                        <color key="textColor" red="0.84861111111111109" green="0.17939814814814814" blue="0.0" alpha="1" colorSpace="calibratedRGB"/>
+                                        <nil key="highlightedColor"/>
+                                    </label>
+                                </subviews>
+                                <color key="backgroundColor" white="0.0" alpha="0.0" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                <constraints>
+                                    <constraint firstItem="gUK-GV-nDE" firstAttribute="leading" secondItem="OoB-B5-1np" secondAttribute="leading" id="5AA-Nl-3rE"/>
+                                    <constraint firstAttribute="trailing" secondItem="IVD-ew-6C4" secondAttribute="trailing" id="Arp-oY-QOL"/>
+                                    <constraint firstAttribute="bottom" secondItem="gUK-GV-nDE" secondAttribute="bottom" id="NHL-DC-9qD"/>
+                                    <constraint firstItem="IVD-ew-6C4" firstAttribute="top" secondItem="OoB-B5-1np" secondAttribute="top" id="Ol6-jf-5fw"/>
+                                    <constraint firstItem="gUK-GV-nDE" firstAttribute="top" secondItem="IVD-ew-6C4" secondAttribute="bottom" id="h3g-z9-Rkl"/>
+                                    <constraint firstItem="IVD-ew-6C4" firstAttribute="leading" secondItem="OoB-B5-1np" secondAttribute="leading" id="qnx-6d-5w2"/>
+                                    <constraint firstAttribute="trailing" secondItem="gUK-GV-nDE" secondAttribute="trailing" id="vO5-di-ALJ"/>
+                                </constraints>
+                            </view>
+                            <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="infoLight" showsTouchWhenHighlighted="YES" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="yvh-QQ-EiY">
+                                <rect key="frame" x="8" y="28" width="22" height="22"/>
+                                <connections>
+                                    <action selector="infoButtonClicked:" destination="BV1-FR-VrT" eventType="touchUpInside" id="hML-QZ-Ook"/>
+                                </connections>
+                            </button>
                         </subviews>
                         <constraints>
-                            <constraint firstItem="IVD-ew-6C4" firstAttribute="leading" secondItem="3se-qz-xqx" secondAttribute="leading" id="Bhp-3a-env"/>
-                            <constraint firstAttribute="trailing" secondItem="IVD-ew-6C4" secondAttribute="trailing" id="bP3-Xr-NsD"/>
-                            <constraint firstItem="qHh-Mt-9TT" firstAttribute="top" secondItem="IVD-ew-6C4" secondAttribute="bottom" id="g7C-Y4-6x3"/>
+                            <constraint firstItem="OoB-B5-1np" firstAttribute="leading" secondItem="JHQ-EL-C3B" secondAttribute="leading" id="5IW-Sx-vZP"/>
+                            <constraint firstItem="JHQ-EL-C3B" firstAttribute="bottom" secondItem="OoB-B5-1np" secondAttribute="bottom" id="N4h-0D-aU6"/>
+                            <constraint firstItem="yvh-QQ-EiY" firstAttribute="top" secondItem="JHQ-EL-C3B" secondAttribute="top" constant="8" id="Wm9-iG-mRZ"/>
+                            <constraint firstItem="yvh-QQ-EiY" firstAttribute="leading" secondItem="JHQ-EL-C3B" secondAttribute="leading" constant="8" id="iU8-U5-xpS"/>
+                            <constraint firstItem="JHQ-EL-C3B" firstAttribute="trailing" secondItem="OoB-B5-1np" secondAttribute="trailing" id="uub-Ie-OqQ"/>
                         </constraints>
+                        <viewLayoutGuide key="safeArea" id="JHQ-EL-C3B"/>
                     </view>
                     <connections>
                         <outlet property="debugInfoAnchorCounts" destination="IVD-ew-6C4" id="LDm-PA-Scw"/>
+                        <outlet property="errorInfo" destination="gUK-GV-nDE" id="oTR-nx-uyA"/>
+                        <outlet property="infoView" destination="OoB-B5-1np" id="bzA-Bd-zHn"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="SZV-WD-TEh" sceneMemberID="firstResponder"/>

@@ -85,16 +85,16 @@ public struct AKWorldStatus {
         case normal
     }
     
-    var status = Status.notInitialized
-    var quality = Quality.notAvailable
-    var errors = [AKError]()
-    var timestamp: Date
+    public var status = Status.notInitialized
+    public var quality = Quality.notAvailable
+    public var errors = [AKError]()
+    public var timestamp: Date
     
-    init(timestamp: Date) {
+    public init(timestamp: Date) {
         self.timestamp = timestamp
     }
     
-    func getSeriousErrors() -> [AKError] {
+    public func getSeriousErrors() -> [AKError] {
         return errors.filter(){
             switch $0 {
             case .seriousError(_):
@@ -105,7 +105,7 @@ public struct AKWorldStatus {
         }
     }
     
-    func getRecoverableErrorsAndWarnings() -> [AKError] {
+    public func getRecoverableErrorsAndWarnings() -> [AKError] {
         return errors.filter(){
             switch $0 {
             case .recoverableError(_):

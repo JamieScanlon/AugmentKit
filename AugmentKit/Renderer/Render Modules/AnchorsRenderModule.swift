@@ -53,10 +53,6 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     // The number of anchor instances to render
     private(set) var anchorInstanceCount: Int = 0
     
-    // Then indexes of the anchors in the ARFrame.anchors array which contain
-    // actual anchors as well as plane anchors
-    private(set) var anchorIndexes = [Int]()
-    
     func initializeBuffers(withDevice aDevice: MTLDevice, maxInFlightBuffers: Int) {
         
         guard device == nil else {
@@ -226,15 +222,21 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         
         // Update the anchor uniform buffer with transforms of the current frame's anchors
         anchorInstanceCount = 0
-        anchorIndexes = []
         var horizPlaneInstanceCount = 0
         var vertPlaneInstanceCount = 0
+        anchorsByUUID = [:]
+        
+        // In the buffer, the anchors ar layed out by UUID in sorted order. So if there are
+        // 5 anchors with UUID = "A..." and 3 UUIDs = "B..." and 1 UUID = "C..." then that's
+        // how they will layed out in memory. Therefor updating the buffers is a 2 step process.
+        // First, loop through all of the ARAnchors and gather the UUIDs as well as the counts for each.
+        // Second, layout and update the buffers in the desired order.
+        
+        //
+        // Gather the UUID's
+        //
         
         for index in 0..<frame.anchors.count {
-            
-            //
-            // Update the Anchor uniform
-            //
             
             let anchor = frame.anchors[index]
             var isAnchor = false
@@ -246,8 +248,6 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                     vertPlaneInstanceCount += 1
                 }
             } else {
-                anchorInstanceCount += 1
-                anchorIndexes.append(index)
                 isAnchor = true
             }
             
@@ -261,63 +261,90 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                 continue
             }
             
-            guard anchorInstanceCount > 0 else {
-                continue
-            }
+            anchorInstanceCount += 1
             
             if anchorInstanceCount > Constants.maxAnchorInstanceCount {
                 anchorInstanceCount = Constants.maxAnchorInstanceCount
                 break
             }
             
-            // Flip Z axis to convert geometry from right handed to left handed
-            var coordinateSpaceTransform = matrix_identity_float4x4
-            coordinateSpaceTransform.columns.2.z = -1.0
-            
-            let anchorIndex = anchorInstanceCount - 1
-            
-            if let model = modelsForAnchorsByUUID[anchor.identifier] {
-                
-                // Apply the world transform (as defined in the imported model) if applicable
-                // FIXME: I'm pretty sure this does not work. The modelIndex (the index of the MDLMesh in the MDLAsset)
-                // is not the same thing as the anchorIndex (the index of the anchor in the frame.anchors array).
-                if let modelIndex = modelIndex(in: model, fromAnchorIndex: anchorIndex), modelIndex < model.worldTransforms.count {
-                    let worldTransform = model.worldTransforms[modelIndex]
-                    coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
+            let uuid: UUID = {
+                if modelsForAnchorsByUUID[anchor.identifier] != nil {
+                    return anchor.identifier
+                } else {
+                    return generalUUID
                 }
-                
-                let modelMatrix = anchor.transform * coordinateSpaceTransform
-                let anchorUniforms = anchorUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: anchorIndex)
-                anchorUniforms?.pointee.modelMatrix = modelMatrix
-                
-                updatePuppetAnimation(from: model, frameNumber: cameraProperties.currentFrame)
-                
-            } else if let model = modelsForAnchorsByUUID[generalUUID] {
-                
-                // Apply the world transform (as defined in the imported model) if applicable
-                // FIXME: I'm pretty sure this does not work. The modelIndex (the index of the MDLMesh in the MDLAsset)
-                // is not the same thing as the anchorIndex (the index of the anchor in the frame.anchors array).
-                if let modelIndex = modelIndex(in: model, fromAnchorIndex: anchorIndex), modelIndex < model.worldTransforms.count {
-                    let worldTransform = model.worldTransforms[modelIndex]
-                    coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
-                }
-                
-                let modelMatrix = anchor.transform * coordinateSpaceTransform
-                let anchorUniforms = anchorUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: anchorIndex)
-                anchorUniforms?.pointee.modelMatrix = modelMatrix
-                
-                updatePuppetAnimation(from: model, frameNumber: cameraProperties.currentFrame)
-                
+            }()
+            
+            if let currentAnchors = anchorsByUUID[uuid] {
+                var mutableCurrentAnchors = currentAnchors
+                mutableCurrentAnchors.append(anchor)
+                anchorsByUUID[uuid] = mutableCurrentAnchors
+            } else {
+                anchorsByUUID[uuid] = [anchor]
             }
             
-            //
-            // Update the Effects uniform
-            //
+        }
+        
+        //
+        // Update the Anchor uniform
+        //
+        
+        let orderedArray = anchorsByUUID.sorted {
+            $0.key.uuidString < $1.key.uuidString
+        }
+        
+        var anchorIndex = 0
+        
+        for item in orderedArray {
             
-            let effectsUniforms = effectsUniformBufferAddress?.assumingMemoryBound(to: AnchorEffectsUniforms.self).advanced(by: anchorIndex)
-            effectsUniforms?.pointee.alpha = 1 // TODO: Implement
-            effectsUniforms?.pointee.glow = 0 // TODO: Implement
-            effectsUniforms?.pointee.tint = float3(1,1,1) // TODO: Implement
+            let uuid = item.key
+            let anchors = item.value
+            
+            guard let model = modelsForAnchorsByUUID[uuid] else {
+                print("Error: Could not find mesh for UUID: \(uuid)")
+                let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeIntermediateMeshDataNotAvailable, userInfo: nil)
+                let newError = AKError.recoverableError(.renderPipelineError(.drawAborted(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+                recordNewError(newError)
+                continue
+            }
+            
+            for anchor in anchors {
+                
+                // Flip Z axis to convert geometry from right handed to left handed
+                var coordinateSpaceTransform = matrix_identity_float4x4
+                coordinateSpaceTransform.columns.2.z = -1.0
+                
+                // Apply the world transform (as defined in the imported model) if applicable
+                // FIXME: I'm pretty sure this does not work. The modelIndex (the index of the MDLMesh in the MDLAsset)
+                // is not the same thing as the anchorIndex (the index of the anchor in the frame.anchors array).
+                if let modelIndex = modelIndex(in: model, fromAnchorIndex: anchorIndex), modelIndex < model.worldTransforms.count {
+                    let worldTransform = model.worldTransforms[modelIndex]
+                    coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
+                }
+                
+                let modelMatrix = anchor.transform * coordinateSpaceTransform
+                let anchorUniforms = anchorUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: anchorIndex)
+                anchorUniforms?.pointee.modelMatrix = modelMatrix
+                
+                //
+                // Update puppet animation
+                //
+                
+                updatePuppetAnimation(from: model, frameNumber: cameraProperties.currentFrame)
+                
+                //
+                // Update Effects uniform
+                //
+                
+                let effectsUniforms = effectsUniformBufferAddress?.assumingMemoryBound(to: AnchorEffectsUniforms.self).advanced(by: anchorIndex)
+                effectsUniforms?.pointee.alpha = 1 // TODO: Implement
+                effectsUniforms?.pointee.glow = 0 // TODO: Implement
+                effectsUniforms?.pointee.tint = float3(1,1,1) // TODO: Implement
+                
+                anchorIndex += 1
+                
+            }
             
         }
         
@@ -362,24 +389,35 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             
         }
         
-        // Make sure there is at least one general purpose meshGPUData
-        guard meshGPUDataForAnchorsByUUID[generalUUID] != nil else {
-            print("Error: meshGPUData not available a draw time. Aborting")
-            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeIntermediateMeshDataNotAvailable, userInfo: nil)
-            let newError = AKError.recoverableError(.renderPipelineError(.drawAborted(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-            recordNewError(newError)
-            return
+        let orderedArray = anchorsByUUID.sorted {
+            $0.key.uuidString < $1.key.uuidString
         }
         
-        for item in meshGPUDataForAnchorsByUUID {
+        
+        var baseIndex = 0
+        
+        for item in orderedArray {
             
             let uuid = item.key
-            let meshGPUData = item.value
+            
+            guard let meshGPUData = meshGPUDataForAnchorsByUUID[uuid] else {
+                print("Error: Could not find meshGPUData for UUID: \(uuid)")
+                let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeIntermediateMeshDataNotAvailable, userInfo: nil)
+                let newError = AKError.recoverableError(.renderPipelineError(.drawAborted(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+                recordNewError(newError)
+                continue
+            }
             
             guard let myPipelineStates = pipelineStatesForAnchorsByUUID[uuid] else {
                 continue
             }
             
+            let anchorcount = (anchorsByUUID[uuid] ?? []).count
+            
+            // While the Mesh GPU Data can techically contain multiple meshes each
+            // with their own pipline state, the current implementation of the
+            // renderer only supports one. So while we are saving all of the states
+            // in the myPipelineStates array, only the first will be used.
             for (drawDataIdx, drawData) in meshGPUData.drawData.enumerated() {
                 
                 if drawDataIdx < myPipelineStates.count {
@@ -391,14 +429,16 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                     renderEncoder.setVertexBuffer(paletteBuffer, offset: paletteBufferOffset, index: Int(kBufferIndexMeshPalettes.rawValue))
                     
                     var mutableDrawData = drawData
-                    mutableDrawData.instCount = anchorInstanceCount
+                    mutableDrawData.instCount = anchorcount
                     
                     // Set the mesh's vertex data buffers
-                    encode(meshGPUData: meshGPUData, fromDrawData: mutableDrawData, with: renderEncoder)
+                    encode(meshGPUData: meshGPUData, fromDrawData: mutableDrawData, with: renderEncoder, baseIndex: baseIndex)
                     
                 }
                 
             }
+            
+             baseIndex += anchorcount
             
         }
         
@@ -421,7 +461,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     // MARK: - Private
     
     private enum Constants {
-        static let maxAnchorInstanceCount = 64
+        static let maxAnchorInstanceCount = 256
         static let maxPaletteSize = 100
         static let alignedAnchorInstanceUniformsSize = ((MemoryLayout<AnchorInstanceUniforms>.stride * Constants.maxAnchorInstanceCount) & ~0xFF) + 0x100
         static let alignedPaletteSize = (MemoryLayout<matrix_float4x4>.stride & ~0xFF) + 0x100
@@ -470,6 +510,8 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     
     // number of frames in the anchor animation by anchor index
     private var anchorAnimationFrameCount = [Int]()
+    
+    private var anchorsByUUID = [UUID: [ARAnchor]]()
     
     private func meshData(from aModel: AKModel) -> MeshGPUData {
         
@@ -605,6 +647,10 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             return
         }
         
+        // While the Mesh GPU Data can techically contain multiple meshes each
+        // with their own pipline state, the current implementation of the
+        // renderer only supports one. So while we are saving all of the states
+        // in the myPipelineStates array, only the first will be used.
         var myPipelineStates = [MTLRenderPipelineState]()
         for (drawIdx, drawData) in meshGPUData.drawData.enumerated() {
             let anchorPipelineStateDescriptor = MTLRenderPipelineDescriptor()

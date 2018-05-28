@@ -355,8 +355,9 @@ class UnanchoredRenderModule: RenderModule {
             if let model = trackerModel {
                 
                 // Apply the world transform (as defined in the imported model) if applicable
-                
-                if let modelIndex = modelIndex(in: model, fromIndex: trackerIndex), modelIndex < model.worldTransforms.count {
+                // We currenly only support a single mesh so we just use the first item
+                if model.meshNodeIndices.count > 0, model.meshNodeIndices[0] < model.worldTransforms.count {
+                    let modelIndex = model.meshNodeIndices[0]
                     let worldTransform = model.worldTransforms[modelIndex]
                     coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
                 }
@@ -417,7 +418,9 @@ class UnanchoredRenderModule: RenderModule {
             if let model = targetModel {
                 
                 // Apply the world transform (as defined in the imported model) if applicable
-                if let modelIndex = modelIndex(in: model, fromIndex: targetIndex), modelIndex < model.worldTransforms.count {
+                // We currenly only support a single mesh so we just use the first item
+                if model.meshNodeIndices.count > 0, model.meshNodeIndices[0] < model.worldTransforms.count {
+                    let modelIndex = model.meshNodeIndices[0]
                     let worldTransform = model.worldTransforms[modelIndex]
                     coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
                 }
@@ -698,14 +701,6 @@ class UnanchoredRenderModule: RenderModule {
         
         return myGPUData
         
-    }
-    
-    private func modelIndex(in model: AKModel, fromIndex index: Int) -> Int? {
-        if index < model.meshNodeIndices.count, index >= 0 {
-            return model.meshNodeIndices[index]
-        } else {
-            return nil
-        }
     }
     
 }

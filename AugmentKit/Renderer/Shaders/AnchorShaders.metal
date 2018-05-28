@@ -306,7 +306,7 @@ float3 computeSpecular(LightingParameters parameters) {
     float3 specularBDRF = (Ds * Gs * Fs) / (4 * parameters.nDotl * parameters.nDotv);
     
     // Method 1
-    float3 specularOutput = specularBDRF * parameters.irradiatedColor * parameters.directionalLightCol * mix(float3(1.0f), parameters.baseColor.rgb, parameters.metalness);
+    float3 specularOutput = specularBDRF * parameters.irradiatedColor * parameters.directionalLightCol * mix(float3(1.0f), parameters.baseColor.rgb, parameters.metalness) * parameters.nDoth;
     
     // Method 2
 //    float3 specularOutput = (Ds * Gs * Fs * parameters.irradiatedColor) * (1.0 + parameters.metalness * parameters.baseColor.rgb) + parameters.metalness * parameters.irradiatedColor * parameters.baseColor.rgb;

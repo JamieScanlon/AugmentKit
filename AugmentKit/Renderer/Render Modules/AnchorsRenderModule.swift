@@ -316,13 +316,14 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                 coordinateSpaceTransform.columns.2.z = -1.0
                 
                 // Apply the world transform (as defined in the imported model) if applicable
-                // FIXME: I'm pretty sure this does not work. The modelIndex (the index of the MDLMesh in the MDLAsset)
-                // is not the same thing as the anchorIndex (the index of the anchor in the frame.anchors array).
-                if let modelIndex = modelIndex(in: model, fromAnchorIndex: anchorIndex), modelIndex < model.worldTransforms.count {
+                // We currenly only support a single mesh so we just use the first item
+                if model.meshNodeIndices.count > 0, model.meshNodeIndices[0] < model.worldTransforms.count {
+                    let modelIndex = model.meshNodeIndices[0]
                     let worldTransform = model.worldTransforms[modelIndex]
                     coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
                 }
-                
+                print("anchor.transform: \(anchor.transform)")
+                print("coordinateSpaceTransform: \(coordinateSpaceTransform)")
                 let modelMatrix = anchor.transform * coordinateSpaceTransform
                 let anchorUniforms = anchorUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: anchorIndex)
                 anchorUniforms?.pointee.modelMatrix = modelMatrix
@@ -687,14 +688,6 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         
         pipelineStatesForAnchorsByUUID[uuid] = myPipelineStates
         
-    }
-    
-    private func modelIndex(in model: AKModel, fromAnchorIndex anchorIndex: Int) -> Int? {
-        if anchorIndex < model.meshNodeIndices.count, anchorIndex >= 0 {
-            return model.meshNodeIndices[anchorIndex]
-        } else {
-            return nil
-        }
     }
     
     private func updatePuppetAnimation(from aModel: AKModel, frameNumber: Int) {

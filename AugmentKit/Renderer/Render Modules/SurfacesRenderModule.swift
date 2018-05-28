@@ -256,9 +256,12 @@ class SurfacesRenderModule: RenderModule {
             
             if let model = surfaceModel {
                 
-                // Apply the world transform (as defined in the imported model) if applicable
                 let surfaceIndex = surfaceInstanceCount - 1
-                if let modelIndex = modelIndex(in: model, fromSurfaceIndex: surfaceIndex), modelIndex < model.worldTransforms.count {
+                
+                // Apply the world transform (as defined in the imported model) if applicable
+                // We currenly only support a single mesh so we just use the first item
+                if model.meshNodeIndices.count > 0, model.meshNodeIndices[0] < model.worldTransforms.count {
+                    let modelIndex = model.meshNodeIndices[0]
                     let worldTransform = model.worldTransforms[modelIndex]
                     coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
                 }
@@ -493,14 +496,6 @@ class SurfacesRenderModule: RenderModule {
         
         return myGPUData
         
-    }
-    
-    private func modelIndex(in model: AKModel, fromSurfaceIndex surfaceIndex: Int) -> Int? {
-        if surfaceIndex < model.meshNodeIndices.count, surfaceIndex >= 0 {
-            return model.meshNodeIndices[surfaceIndex]
-        } else {
-            return nil
-        }
     }
     
 }

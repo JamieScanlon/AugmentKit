@@ -638,13 +638,4 @@ class PathsRenderModule: RenderModule {
         
     }
     
-    private func modelIndex(in model: AKModel, fromPathSegmentIndex pathIndex: Int) -> Int? {
-        if pathIndex < model.meshNodeIndices.count, pathIndex >= 0 {
-            return model.meshNodeIndices[pathIndex]
-        } else {
-            return nil
-        }
-    }
-    
-    
 }

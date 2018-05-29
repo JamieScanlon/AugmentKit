@@ -200,7 +200,7 @@ This project has completed all of the base pre-release functionality. There are 
 - [x] Mechanism for surfacing errors
 - [ ] Test and fix animation for models
 - [ ] Test and fix a variety of models.
-- [ ] Support per-instance models
+- [x] Support per-instance models
 
 #### _Stretch Goals_
 

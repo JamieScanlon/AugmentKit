@@ -587,30 +587,6 @@ fragment float4 anchorGeometryFragmentLighting(ColorInOut in [[stage_in]],
         discard_fragment();
     }
     
-    // DIFFUSE
-    // 2pi to integrate the entire dome, 0.5 as intensity
-//    //float3 light_color = float3(2.0 * PI * 0.3) * (parameters.nDotl + (parameters.irradiatedColor - (parameters.irradiatedColor * parameters.nDotl)) * parameters.ambientOcclusion);
-//    float3 light_color = float3(2.0 * PI * 0.3) * (parameters.nDotl + parameters.irradiatedColor - parameters.ambientOcclusion);
-//    float3 diffuseOut = computeDiffuse(parameters) * light_color;
-//    float4 intermediate_color = float4(parameters.baseColor.rgb * diffuseOut, 1);
-    
-    // AMBIENCE
-//    const float environmentContribution = 1;
-//    float3 ambienceOutput = parameters.ambientLightCol * environmentContribution * parameters.ambientOcclusion;
-//    float4 intermediate_color =  float4(parameters.baseColor.rgb * ambienceOutput, 1);
-    
-    // CLEARCOAT
-//    float3 clearcoatOut = computeClearcoat(parameters);
-//    float4 intermediate_color =  float4(parameters.baseColor.rgb * clearcoatOut, 1);
-    
-    // SPECULAR
-//    float3 specularOut = computeSpecular(parameters);
-//    float4 intermediate_color =  float4(parameters.baseColor.rgb * specularOut, 1);
-    
-    // SHEEN
-//    float3 sheenOut = computeSheen(parameters) * light_color;
-//    float4 intermediate_color =  float4(parameters.baseColor.rgb * sheenOut, 1);
-    
     float4 intermediate_color =  float4(parameters.baseColor * illuminate(parameters));
     
     // Apply effects

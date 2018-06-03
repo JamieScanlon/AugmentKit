@@ -322,8 +322,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                     let worldTransform = model.worldTransforms[modelIndex]
                     coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
                 }
-                print("anchor.transform: \(anchor.transform)")
-                print("coordinateSpaceTransform: \(coordinateSpaceTransform)")
+                
                 let modelMatrix = anchor.transform * coordinateSpaceTransform
                 let anchorUniforms = anchorUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: anchorIndex)
                 anchorUniforms?.pointee.modelMatrix = modelMatrix

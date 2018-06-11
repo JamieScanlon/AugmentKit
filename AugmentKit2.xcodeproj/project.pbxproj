@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		7D02B24420CB98B70055BB57 /* retrotv.usdz in Resources */ = {isa = PBXBuildFile; fileRef = 7D02B24320CB98B70055BB57 /* retrotv.usdz */; };
 		7D1B6F0D1F29851E00AB035D /* Pin.scn in Resources */ = {isa = PBXBuildFile; fileRef = 7D1B6F0C1F2983DA00AB035D /* Pin.scn */; };
 		7D282F141FD11DE700D00B86 /* Serialize.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D282F131FD11DE600D00B86 /* Serialize.swift */; };
 		7D3263771FF7FB490040375C /* ZipUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098941FDDA3B9004A92AA /* ZipUtilities.swift */; };
@@ -160,6 +161,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		7D02B24320CB98B70055BB57 /* retrotv.usdz */ = {isa = PBXFileReference; lastKnownFileType = file; path = retrotv.usdz; sourceTree = "<group>"; };
 		7D1B6F081F23B2B200AB035D /* AKMDLAssetModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKMDLAssetModel.swift; sourceTree = "<group>"; };
 		7D1B6F0C1F2983DA00AB035D /* Pin.scn */ = {isa = PBXFileReference; lastKnownFileType = file.bplist; path = Pin.scn; sourceTree = "<group>"; };
 		7D282F131FD11DE600D00B86 /* Serialize.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Serialize.swift; sourceTree = "<group>"; };
@@ -538,6 +540,7 @@
 		7DBA369E1F7C1A180006310A /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				7D02B24320CB98B70055BB57 /* retrotv.usdz */,
 				7DD1856520B0AE6500165635 /* Art.scnassets */,
 				7D75DCD9207AA3990000EF6E /* Gaze_Target.png */,
 				7D8A0A8320150EAD006CAAAD /* compass_512.png */,
@@ -781,6 +784,7 @@
 				7DBA369C1F7AE0AE0006310A /* plane_grid.png in Resources */,
 				7D88D7B71F0AFD560009A154 /* Assets.xcassets in Resources */,
 				7D88D7B51F0AFD550009A154 /* Main.storyboard in Resources */,
+				7D02B24420CB98B70055BB57 /* retrotv.usdz in Resources */,
 				7D8A0A85201514F0006CAAAD /* compass_512.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1093,8 +1097,8 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 11.3;
-				MTL_ENABLE_DEBUG_INFO = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
@@ -1147,7 +1151,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 11.3;
+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
 				SWIFT_OPTIMIZATION_LEVEL = "-Owholemodule";

@@ -299,7 +299,7 @@ public class AKMDLAssetModel: AKModel {
                     result.uniform = getPropertyValue(property)
                     return result
                 case .string, .URL:
-                    if let path = property.stringValue {
+                    if let path = property.urlValue?.absoluteString {
                         if let index = texturePaths.index(of: path) {
                             result.textureIndex = index
                         } else {
@@ -307,7 +307,7 @@ public class AKMDLAssetModel: AKModel {
                             texturePaths.append(path)
                             result.textureIndex = index
                         }
-                    } else if let path = property.urlValue?.absoluteString {
+                    } else if let path = property.stringValue {
                         if let index = texturePaths.index(of: path) {
                             result.textureIndex = index
                         } else {

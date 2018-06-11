@@ -120,23 +120,18 @@ class ViewController: UIViewController {
         
     }
     
+    // MARK: - Private
+    
     @objc
-    private func handleTap(gestureRecognize: UITapGestureRecognizer) {
+    fileprivate func handleTap(gestureRecognize: UITapGestureRecognizer) {
         
-        guard let world = world else {
-            return
-        }
-        
-        guard let currentWorldLocation = world.currentWorldLocation else {
-            return
-        }
-        
-        // Example:
-        // Create a new anchor at the current locaiton
-        guard let newObject = getRandomAnchor() else {
-            return
-        }
-        world.add(anchor: newObject)
+//        guard let world = world else {
+//            return
+//        }
+//
+//        guard let currentWorldLocation = world.currentWorldLocation else {
+//            return
+//        }
         
         // Example:
         // Create a square path
@@ -199,7 +194,70 @@ class ViewController: UIViewController {
 
     }
     
-    // MARK: - Private
+    @IBAction fileprivate func markerTapped(_ sender: UIButton) {
+        
+        // Create a new anchor at the current locaiton
+        
+        guard let anchorModel = pinModel else {
+            return
+        }
+        
+        guard let world = world else {
+            return
+        }
+        
+        guard let currentWorldLocation = world.currentWorldLocation else {
+            return
+        }
+        
+        let anchorLocation = GroundFixedWorldLocation(worldLocation: currentWorldLocation, world: world)
+        let newObject = AugmentedAnchor(withAKModel: anchorModel, at: anchorLocation)
+        world.add(anchor: newObject)
+        
+    }
+    
+    @IBAction fileprivate func maxTapped(_ sender: UIButton) {
+        
+        // Create a new anchor at the current locaiton
+        
+        guard let anchorModel = maxModel else {
+            return
+        }
+        
+        guard let world = world else {
+            return
+        }
+        
+        guard let currentWorldLocation = world.currentWorldLocation else {
+            return
+        }
+        
+        let anchorLocation = GroundFixedWorldLocation(worldLocation: currentWorldLocation, world: world)
+        let newObject = AugmentedAnchor(withAKModel: anchorModel, at: currentWorldLocation)
+        world.add(anchor: newObject)
+        
+    }
+    
+    @IBAction fileprivate func planeTapped(_ sender: UIButton) {
+        
+        // Create a new anchor at the current locaiton
+        
+        guard let anchorModel = shipModel else {
+            return
+        }
+        
+        guard let world = world else {
+            return
+        }
+        
+        guard let currentWorldLocation = world.currentWorldLocation else {
+            return
+        }
+        
+        let newObject = AugmentedAnchor(withAKModel: anchorModel, at: currentWorldLocation)
+        world.add(anchor: newObject)
+        
+    }
     
     fileprivate func loadAnchorModels() {
         
@@ -241,47 +299,6 @@ class ViewController: UIViewController {
         pinModel = AKMDLAssetModel(asset: pinAsset, vertexDescriptor: AKMDLAssetModel.newAnchorVertexDescriptor())
         shipModel = AKMDLAssetModel(asset: shipAsset, vertexDescriptor: AKMDLAssetModel.newAnchorVertexDescriptor())
         maxModel = AKMDLAssetModel(asset: maxAsset, vertexDescriptor: AKMDLAssetModel.newAnchorVertexDescriptor())
-        
-    }
-    
-    fileprivate func getRandomAnchor() -> AKAugmentedAnchor? {
-        
-        let random = arc4random_uniform(3)
-        
-        let model: AKModel? = {
-            switch random {
-            case 0:
-                return pinModel
-            case 1:
-                return shipModel
-            case 2:
-                return maxModel
-            default:
-                return nil
-            }
-        }()
-        
-        guard let anchorModel = model else {
-            return nil
-        }
-        
-        guard let world = world else {
-            return nil
-        }
-        
-        guard let currentWorldLocation = world.currentWorldLocation else {
-            return nil
-        }
-        
-        let anchorLocation: AKWorldLocation = {
-            if random == 0 || random == 2 {
-                return GroundFixedWorldLocation(worldLocation: currentWorldLocation, world: world)
-            } else {
-                return currentWorldLocation
-            }
-        }()
-        
-        return AugmentedAnchor(withAKModel: anchorModel, at: anchorLocation)
         
     }
     

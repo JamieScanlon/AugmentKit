@@ -108,7 +108,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         var numModels = geometricEntities.count
         
         // Load the default model
-        modelProvider.loadModel(forObjectType:  "AnyAnchor", identifier: nil) { [weak self] model in
+        modelProvider.loadModel(forObjectType: "AnyAnchor", identifier: nil) { [weak self] model in
             
             guard let model = model else {
                 print("Warning (AnchorsRenderModule) - Failed to get a model for type  \"AnyAnchor\") from the modelProvider. Aborting the render phase.")
@@ -120,7 +120,6 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             
             self?.modelsForAnchorsByUUID[generalUUID] = model
             
-            // TODO: Figure out a way to load a new model per anchor.
             if numModels == 0 {
                 completion()
             }

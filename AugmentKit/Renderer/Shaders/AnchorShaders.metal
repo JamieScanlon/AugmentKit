@@ -222,6 +222,11 @@ float3 computeNormalMap(ColorInOut in, texture2d<float> normalMapTexture) {
 
 float3 computeDiffuse(LightingParameters parameters) {
     
+    // Pure metals have no diffuse component
+    if (parameters.metalness == 1) {
+        return float3(0);
+    }
+    
     // Diffuse fresnel - go from 1 at normal incidence to .5 at grazing
     // and mix in diffuse retro-reflection based on roughness
     float Fd90 = 0.5 + 2.0 * sqr(parameters.lDoth) * parameters.roughness;
@@ -242,25 +247,6 @@ float3 computeDiffuse(LightingParameters parameters) {
 }
 
 float3 computeSpecular(LightingParameters parameters) {
-    
-//    //float specularRoughness = parameters.roughness * (1.0 - parameters.metalness) + parameters.metalness;
-//    float specularRoughness = parameters.roughness * 0.5 + 0.5;
-//    float aspect = sqrt(1.0 - parameters.anisotropic * 0.9);
-//    //float alphaAniso = specularRoughness;
-//    float alphaAniso = sqr(specularRoughness);
-//    float ax = max(0.0001, alphaAniso / aspect);
-//    float ay = max(0.0001, alphaAniso * aspect);
-//    // TODO: Support shading basis - float Ds = GTR2_aniso(parameters.nDoth, dot(parameters.halfVector, parameters.shadingBasisU), dot(dsv.halfVector, parameters.shadingBasisV), ax, ay);
-//    float3 shadingBasisX = float3(1,0,0);
-//    float3 shadingBasisY = float3(0,1,0);
-//    float Ds = GTR2_aniso(parameters.nDoth, dot(parameters.halfVector, shadingBasisX), dot(parameters.halfVector, shadingBasisY), ax, ay);
-//    float3 Cspec0 = parameters.specular * mix(float3(1.0), parameters.baseColorHueSat, parameters.specularTint);
-//    float3 Fs = mix(Cspec0, float3(1), parameters.fresnelH);
-//    float alphaG = sqr(specularRoughness * 0.5 + 0.5);
-//    float Gs = smithG_GGX(parameters.nDotl, alphaG) * smithG_GGX(parameters.nDotv, alphaG);
-//
-//    float3 specularOutput = (Ds * Gs * Fs * parameters.irradiatedColor) * (1.0 + parameters.metalness * parameters.baseColor.rgb) + parameters.metalness * parameters.irradiatedColor * parameters.baseColor.rgb;
-//    return specularOutput;
     
     //
     // Cook–Torrance formula

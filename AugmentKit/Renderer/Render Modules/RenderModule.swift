@@ -99,8 +99,6 @@ protocol RenderModule {
 
 extension RenderModule {
     
-    // MARK: Encoding Mesh Data
-    
     func encode(meshGPUData: MeshGPUData, fromDrawData drawData: DrawData, with renderEncoder: MTLRenderCommandEncoder, baseIndex: Int = 0) {
         
         // Set mesh's vertex buffers
@@ -214,9 +212,9 @@ extension RenderModule {
                 if aURL.scheme == nil {
                     // If there is no scheme, assume it's a file in the bundle.
                     let last = aURL.lastPathComponent
-                    if let bundleURL = Bundle.main.url(forResource: last, withExtension: nil) {
+                    if let bundleURL = Bundle(for: Renderer.self).url(forResource: last, withExtension: nil) {
                         return bundleURL
-                    } else if let bundleURL = Bundle.main.url(forResource: aURL.path, withExtension: nil) {
+                    } else if let bundleURL = Bundle(for: Renderer.self).url(forResource: aURL.path, withExtension: nil) {
                         return bundleURL
                     } else {
                         return aURL

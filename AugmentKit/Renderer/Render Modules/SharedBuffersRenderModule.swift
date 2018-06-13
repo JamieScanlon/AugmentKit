@@ -73,7 +73,7 @@ class SharedBuffersRenderModule: SharedRenderModule {
         completion()
     }
     
-    func loadPipeline(withMetalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider) {
+    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle) {
         isInitialized = true
     }
     

@@ -89,7 +89,7 @@ public class MDLAssetTools {
     //  Creates a horizontal surface in the x-z plane with a material based on a base color texture file.
     //  The aspect ratio of the surface matches the aspect ratio of the base color image and the largest dimemsion
     //  is given by the scale argument (defaults to 1)
-    public static func assetFromImage(withName name: String, extension fileExtension: String = "", scale: Float = 1, allocator: MDLMeshBufferAllocator? = nil) -> MDLAsset? {
+    public static func assetFromImage(inBundle bundle: Bundle, withName name: String, extension fileExtension: String = "", scale: Float = 1, allocator: MDLMeshBufferAllocator? = nil) -> MDLAsset? {
         
         let fullFileName: String = {
             if !fileExtension.isEmpty {
@@ -99,16 +99,16 @@ public class MDLAssetTools {
             }
         }()
         
-        return assetFromImage(withBaseColorFileName: fullFileName, specularFileName: nil, emissionFileName: nil, scale: scale, allocator: allocator)
+        return assetFromImage(inBundle: bundle, withBaseColorFileName: fullFileName, specularFileName: nil, emissionFileName: nil, scale: scale, allocator: allocator)
         
     }
     
     //  Creates a horizontal surface in the x-z plane with a material based on base color, specular, and emmision texture files.
     //  The aspect ratio of the surface matches the aspect ratio of the base color image and the largest dimemsion
     //  is given by the scale argument (defaults to 1)
-    public static func assetFromImage(withBaseColorFileName baseColorFileName: String, specularFileName: String? = nil, emissionFileName: String? = nil, scale: Float = 1, allocator: MDLMeshBufferAllocator? = nil) -> MDLAsset? {
+    public static func assetFromImage(inBundle bundle: Bundle, withBaseColorFileName baseColorFileName: String, specularFileName: String? = nil, emissionFileName: String? = nil, scale: Float = 1, allocator: MDLMeshBufferAllocator? = nil) -> MDLAsset? {
         
-        guard let baseColorFileURL = Bundle(for: MDLAssetTools.self).url(forResource: baseColorFileName, withExtension: "") else {
+        guard let baseColorFileURL = bundle.url(forResource: baseColorFileName, withExtension: "") else {
             print("WARNING: (MDLAssetTools) Could not find the image asset with file name: \(baseColorFileName)")
             return nil
         }
@@ -136,10 +136,10 @@ public class MDLAssetTools {
         
         let textues: [MDLMaterialSemantic: URL] = {
             var myTextures = [MDLMaterialSemantic.baseColor: baseColorFileURL]
-            if let specularFileName = specularFileName, let specularFileURL = Bundle(for: MDLAssetTools.self).url(forResource: specularFileName, withExtension: "") {
+            if let specularFileName = specularFileName, let specularFileURL = bundle.url(forResource: specularFileName, withExtension: "") {
                 myTextures[MDLMaterialSemantic.specular] = specularFileURL
             }
-            if let emissionFileName = emissionFileName, let emissionFileURL = Bundle(for: MDLAssetTools.self).url(forResource: emissionFileName, withExtension: "") {
+            if let emissionFileName = emissionFileName, let emissionFileURL = bundle.url(forResource: emissionFileName, withExtension: "") {
                 myTextures[MDLMaterialSemantic.emission] = emissionFileURL
             }
             return myTextures
@@ -184,7 +184,7 @@ class ModelIOTools {
     
     // MARK: Encoding Mesh Data
     
-    static func meshGPUData(from mdlAsset: MDLAsset, vertexDescriptor: MDLVertexDescriptor, device: MTLDevice) -> MeshGPUData {
+    static func meshGPUData(from mdlAsset: MDLAsset, vertexDescriptor: MDLVertexDescriptor, device: MTLDevice, textureBundle: Bundle) -> MeshGPUData {
         
         var meshGPUData = MeshGPUData()
         var jointRootID = "root"
@@ -489,7 +489,7 @@ class ModelIOTools {
             return localTransform
         }
         
-        func createMTLTexture(fromAssetPath assetPath: String, withTextureLoader textureLoader: MTKTextureLoader?) -> MTLTexture? {
+        func createMTLTexture(inBundle bundle: Bundle, fromAssetPath assetPath: String, withTextureLoader textureLoader: MTKTextureLoader?) -> MTLTexture? {
             do {
                 
                 let textureURL: URL? = {
@@ -499,9 +499,9 @@ class ModelIOTools {
                     if aURL.scheme == nil {
                         // If there is no scheme, assume it's a file in the bundle.
                         let last = aURL.lastPathComponent
-                        if let bundleURL = Bundle(for: Renderer.self).url(forResource: last, withExtension: nil) {
+                        if let bundleURL = bundle.url(forResource: last, withExtension: nil) {
                             return bundleURL
-                        } else if let bundleURL = Bundle(for: Renderer.self).url(forResource: aURL.path, withExtension: nil) {
+                        } else if let bundleURL = bundle.url(forResource: aURL.path, withExtension: nil) {
                             return bundleURL
                         } else {
                             return aURL
@@ -616,7 +616,7 @@ class ModelIOTools {
         // Create Texture Buffers
         let textureLoader = MTKTextureLoader(device: device)
         for texturePath in texturePaths {
-            meshGPUData.textures.append(createMTLTexture(fromAssetPath: texturePath, withTextureLoader: textureLoader))
+            meshGPUData.textures.append(createMTLTexture(inBundle: textureBundle, fromAssetPath: texturePath, withTextureLoader: textureLoader))
         }
         
         return meshGPUData

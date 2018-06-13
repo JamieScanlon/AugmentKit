@@ -68,7 +68,7 @@ class ViewController: UIViewController {
             loadAnchorModels()
             
             // Add a user tracking anchor.
-            if let asset = MDLAssetTools.assetFromImage(withName: "compass_512.png") {
+            if let asset = MDLAssetTools.assetFromImage(inBundle: Bundle.main, withName: "compass_512.png") {
                 let myUserTrackerModel = AKAnchorAssetModel(asset: asset)
                 // Position it 3 meters down from the camera
                 let offsetTransform = matrix_identity_float4x4.translate(x: 0, y: -3, z: 0)
@@ -79,7 +79,7 @@ class ViewController: UIViewController {
             
             // Add a Gaze Target
             // Make it about 20cm square.
-            if let asset = MDLAssetTools.assetFromImage(withName: "Gaze_Target.png", extension: "", scale: 0.2) {
+            if let asset = MDLAssetTools.assetFromImage(inBundle: Bundle.main, withName: "Gaze_Target.png", extension: "", scale: 0.2) {
                 let myGazeTargetModel = AKAnchorAssetModel(asset: asset)
                 let gazeTarget = GazeTarget(withModel: myGazeTargetModel, withUserRelativeTransform: matrix_identity_float4x4)
                 myWorld.add(gazeTarget: gazeTarget)

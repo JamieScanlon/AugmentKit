@@ -230,15 +230,22 @@ public class AKWorld: NSObject {
     }
     public var monitor: AKWorldMonitor?
     
-    public init(renderDestination: MTKView, configuration: AKWorldConfiguration = AKWorldConfiguration()) {
+    public init(renderDestination: MTKView, configuration: AKWorldConfiguration = AKWorldConfiguration(), textureBundle: Bundle? = nil) {
         
+        let bundle: Bundle = {
+            if let textureBundle = textureBundle {
+                return textureBundle
+            } else {
+                return Bundle(for: type(of: renderDestination).self)
+            }
+        }()
         self.renderDestination = renderDestination
         self.session = ARSession()
         guard let aDevice = MTLCreateSystemDefaultDevice() else {
             fatalError("Metal is not supported on this device")
         }
         self.device = aDevice
-        self.renderer = Renderer(session: self.session, metalDevice: self.device, renderDestination: renderDestination)
+        self.renderer = Renderer(session: self.session, metalDevice: self.device, renderDestination: renderDestination, textureBundle: bundle)
         self.worldStatus = AKWorldStatus(timestamp: Date())
         super.init()
         

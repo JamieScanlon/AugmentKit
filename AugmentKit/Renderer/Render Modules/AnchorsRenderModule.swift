@@ -153,7 +153,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         
     }
     
-    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider) {
+    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle) {
         
         guard let device = device else {
             print("Serious Error - device not found")
@@ -184,7 +184,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                 recordNewError(newError)
             }
             
-            meshGPUDataForAnchorsByUUID[uuid] = meshData(from: akModel)
+            meshGPUDataForAnchorsByUUID[uuid] = meshData(from: akModel, textureBundle: textureBundle)
             
             createPipelineStates(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination)
             
@@ -512,7 +512,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     
     private var anchorsByUUID = [UUID: [ARAnchor]]()
     
-    private func meshData(from aModel: AKModel) -> MeshGPUData {
+    private func meshData(from aModel: AKModel, textureBundle: Bundle) -> MeshGPUData {
         
         var myGPUData = MeshGPUData()
         
@@ -545,7 +545,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         
         // Create Texture Buffers
         for texturePath in aModel.texturePaths {
-            myGPUData.textures.append(createMTLTexture(fromAssetPath: texturePath, withTextureLoader: textureLoader))
+            myGPUData.textures.append(createMTLTexture(inBundle: textureBundle, fromAssetPath: texturePath, withTextureLoader: textureLoader))
         }
         
         // Encode the data in the meshes as DrawData objects and store them in the MeshGPUData

@@ -154,7 +154,7 @@ class UnanchoredRenderModule: RenderModule {
         
     }
     
-    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider) {
+    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle) {
         
         guard let device = device else {
             print("Serious Error - device not found")
@@ -173,7 +173,7 @@ class UnanchoredRenderModule: RenderModule {
                 recordNewError(newError)
             }
             
-            trackerMeshGPUData = meshData(from: trackerModel)
+            trackerMeshGPUData = meshData(from: trackerModel, texturebundle: textureBundle)
             
             guard let trackerMeshGPUData = trackerMeshGPUData else {
                 print("Serious Error - ERROR: No meshGPUData found for target when trying to load the pipeline.")
@@ -236,7 +236,7 @@ class UnanchoredRenderModule: RenderModule {
                 recordNewError(newError)
             }
             
-            targetMeshGPUData = meshData(from: targetModel)
+            targetMeshGPUData = meshData(from: targetModel, texturebundle: textureBundle)
             
             guard let targetMeshGPUData = targetMeshGPUData else {
                 print("Serious Error - ERROR: No meshGPUData for target found when trying to load the pipeline.")
@@ -603,7 +603,7 @@ class UnanchoredRenderModule: RenderModule {
     // number of frames in the target animation by index
     private var targetAnimationFrameCount = [Int]()
     
-    private func meshData(from aModel: AKModel) -> MeshGPUData {
+    private func meshData(from aModel: AKModel, texturebundle: Bundle) -> MeshGPUData {
         
         var myGPUData = MeshGPUData()
         
@@ -636,7 +636,7 @@ class UnanchoredRenderModule: RenderModule {
         
         // Create Texture Buffers
         for texturePath in aModel.texturePaths {
-            myGPUData.textures.append(createMTLTexture(fromAssetPath: texturePath, withTextureLoader: textureLoader))
+            myGPUData.textures.append(createMTLTexture(inBundle: texturebundle, fromAssetPath: texturePath, withTextureLoader: textureLoader))
         }
         
         // Encode the data in the meshes as DrawData objects and store them in the MeshGPUData

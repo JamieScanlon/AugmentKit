@@ -236,7 +236,7 @@ public class AKWorld: NSObject {
             if let textureBundle = textureBundle {
                 return textureBundle
             } else {
-                return Bundle(for: type(of: renderDestination).self)
+                return Bundle.main
             }
         }()
         self.renderDestination = renderDestination

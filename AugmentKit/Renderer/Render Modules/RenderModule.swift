@@ -60,7 +60,7 @@ protocol RenderModule {
     
     // This funciton should set up the vertex descriptors, pipeline / depth state descriptors,
     // textures, etc.
-    func loadPipeline(withMetalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider)
+    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle)
     
     //
     // Per Frame Updates
@@ -98,8 +98,6 @@ protocol RenderModule {
 // MARK: - RenderModule extensions
 
 extension RenderModule {
-    
-    // MARK: Encoding Mesh Data
     
     func encode(meshGPUData: MeshGPUData, fromDrawData drawData: DrawData, with renderEncoder: MTLRenderCommandEncoder, baseIndex: Int = 0) {
         
@@ -204,7 +202,7 @@ extension RenderModule {
         
     }
     
-    func createMTLTexture(fromAssetPath assetPath: String, withTextureLoader textureLoader: MTKTextureLoader?) -> MTLTexture? {
+    func createMTLTexture(inBundle bundle: Bundle, fromAssetPath assetPath: String, withTextureLoader textureLoader: MTKTextureLoader?) -> MTLTexture? {
         do {
             
             let textureURL: URL? = {
@@ -214,9 +212,9 @@ extension RenderModule {
                 if aURL.scheme == nil {
                     // If there is no scheme, assume it's a file in the bundle.
                     let last = aURL.lastPathComponent
-                    if let bundleURL = Bundle.main.url(forResource: last, withExtension: nil) {
+                    if let bundleURL = bundle.url(forResource: last, withExtension: nil) {
                         return bundleURL
-                    } else if let bundleURL = Bundle.main.url(forResource: aURL.path, withExtension: nil) {
+                    } else if let bundleURL = bundle.url(forResource: aURL.path, withExtension: nil) {
                         return bundleURL
                     } else {
                         return aURL

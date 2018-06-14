@@ -76,7 +76,7 @@ class TrackingPointsRenderModule: RenderModule {
     
     // This funciton should set up the vertex descriptors, pipeline / depth state descriptors,
     // textures, etc.
-    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider) {
+    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle) {
         
         guard let device = device else {
             print("Serious Error - device not found")

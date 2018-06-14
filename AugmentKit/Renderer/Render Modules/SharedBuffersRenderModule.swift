@@ -73,7 +73,7 @@ class SharedBuffersRenderModule: SharedRenderModule {
         completion()
     }
     
-    func loadPipeline(withMetalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider) {
+    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle) {
         isInitialized = true
     }
     
@@ -112,7 +112,7 @@ class SharedBuffersRenderModule: SharedRenderModule {
         
         uniforms?.pointee.ambientLightColor = ambientLightColor// * ambientIntensity
         
-        var directionalLightDirection : vector_float3 = vector3(0.0, 0.0, -1.0)
+        var directionalLightDirection : vector_float3 = vector3(0.0, -1.0, 0.0)
         directionalLightDirection = simd_normalize(directionalLightDirection)
         uniforms?.pointee.directionalLightDirection = directionalLightDirection
         

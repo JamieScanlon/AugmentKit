@@ -64,7 +64,7 @@ class CameraPlaneRenderModule: RenderModule {
         completion()
     }
     
-    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider) {
+    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle) {
         
         guard let device = device else {
             print("Serious Error - device not found")

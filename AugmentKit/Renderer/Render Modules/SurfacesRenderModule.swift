@@ -116,7 +116,7 @@ class SurfacesRenderModule: RenderModule {
         
     }
     
-    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider) {
+    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle) {
         
         guard let device = device else {
             print("Serious Error - device not found")
@@ -141,7 +141,7 @@ class SurfacesRenderModule: RenderModule {
             recordNewError(newError)
         }
         
-        surfaceMeshGPUData = meshData(from: surfaceModel)
+        surfaceMeshGPUData = meshData(from: surfaceModel, texturebundle: textureBundle)
         
         guard let meshGPUData = surfaceMeshGPUData else {
             print("Serious Error - ERROR: No meshGPUData found when trying to load the pipeline.")
@@ -398,7 +398,7 @@ class SurfacesRenderModule: RenderModule {
     // number of frames in the surface animation by surface index
     private var surfaceAnimationFrameCount = [Int]()
     
-    private func meshData(from aModel: AKModel) -> MeshGPUData {
+    private func meshData(from aModel: AKModel, texturebundle: Bundle) -> MeshGPUData {
         
         var myGPUData = MeshGPUData()
         
@@ -431,7 +431,7 @@ class SurfacesRenderModule: RenderModule {
         
         // Create Texture Buffers
         for texturePath in aModel.texturePaths {
-            myGPUData.textures.append(createMTLTexture(fromAssetPath: texturePath, withTextureLoader: textureLoader))
+            myGPUData.textures.append(createMTLTexture(inBundle: texturebundle, fromAssetPath: texturePath, withTextureLoader: textureLoader))
         }
         
         // Encode the data in the meshes as DrawData objects and store them in the MeshGPUData

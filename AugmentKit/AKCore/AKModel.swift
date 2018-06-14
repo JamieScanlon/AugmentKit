@@ -35,6 +35,7 @@ import simd
 
 // MARK: - AKModel
 
+@available(*, deprecated, message: "Use MDLAsset objects directly.")
 public protocol AKModel {
 
     // Transform for a node at a given index

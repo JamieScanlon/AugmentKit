@@ -123,6 +123,7 @@ public class Renderer {
     
     public let session: ARSession
     public let device: MTLDevice
+    public let textureBundle: Bundle
     
     public var modelProvider: ModelProvider? = AKModelProvider.sharedInstance
     
@@ -174,10 +175,11 @@ public class Renderer {
         return Int(floor(elapsedTime * fps))
     }
     
-    public init(session: ARSession, metalDevice device: MTLDevice, renderDestination: RenderDestinationProvider) {
+    public init(session: ARSession, metalDevice device: MTLDevice, renderDestination: RenderDestinationProvider, textureBundle: Bundle) {
         self.session = session
         self.device = device
         self.renderDestination = renderDestination
+        self.textureBundle = textureBundle
         self.textureLoader = MTKTextureLoader(device: device)
     }
     
@@ -307,7 +309,7 @@ public class Renderer {
         if surfacesRenderModule == nil && showGuides && surfaceAnchors.count > 0  {
             
             let metalAllocator = MTKMeshBufferAllocator(device: device)
-            modelProvider?.registerModel(GuideSurfaceAnchor.createModel(withAllocator: metalAllocator)!, forObjectType: GuideSurfaceAnchor.type, identifier: nil)
+            modelProvider?.registerModel(GuideSurfaceAnchor.createModel(inBundle: textureBundle, withAllocator: metalAllocator)!, forObjectType: GuideSurfaceAnchor.type, identifier: nil)
             
             addModule(forModuelIdentifier: SurfacesRenderModule.identifier)
             
@@ -931,7 +933,7 @@ public class Renderer {
                 let geometricEntities = geometriesForRenderModule[module.moduleIdentifier] ?? []
                 module.loadAssets(forGeometricEntities: geometricEntities, fromModelProvider: modelProvider, textureLoader: textureLoader, completion: { [weak self] in
                     if let defaultLibrary = self?.defaultLibrary, let renderDestination = self?.renderDestination {
-                        module.loadPipeline(withMetalLibrary: defaultLibrary, renderDestination: renderDestination)
+                        module.loadPipeline(withMetalLibrary: defaultLibrary, renderDestination: renderDestination, textureBundle: textureBundle)
                         self?.moduleErrors.append(contentsOf: module.errors)
                         if let moduleErrors = self?.moduleErrors {
                             let seriousErrors: [AKError] =  {

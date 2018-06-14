@@ -108,7 +108,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         var numModels = geometricEntities.count
         
         // Load the default model
-        modelProvider.loadModel(forObjectType:  "AnyAnchor", identifier: nil) { [weak self] model in
+        modelProvider.loadModel(forObjectType: "AnyAnchor", identifier: nil) { [weak self] model in
             
             guard let model = model else {
                 print("Warning (AnchorsRenderModule) - Failed to get a model for type  \"AnyAnchor\") from the modelProvider. Aborting the render phase.")
@@ -120,7 +120,6 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             
             self?.modelsForAnchorsByUUID[generalUUID] = model
             
-            // TODO: Figure out a way to load a new model per anchor.
             if numModels == 0 {
                 completion()
             }
@@ -154,7 +153,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         
     }
     
-    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider) {
+    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle) {
         
         guard let device = device else {
             print("Serious Error - device not found")
@@ -185,7 +184,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                 recordNewError(newError)
             }
             
-            meshGPUDataForAnchorsByUUID[uuid] = meshData(from: akModel)
+            meshGPUDataForAnchorsByUUID[uuid] = meshData(from: akModel, textureBundle: textureBundle)
             
             createPipelineStates(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination)
             
@@ -317,11 +316,11 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                 
                 // Apply the world transform (as defined in the imported model) if applicable
                 // We currenly only support a single mesh so we just use the first item
-                if model.meshNodeIndices.count > 0, model.meshNodeIndices[0] < model.worldTransforms.count {
-                    let modelIndex = model.meshNodeIndices[0]
-                    let worldTransform = model.worldTransforms[modelIndex]
-                    coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
-                }
+//                if model.meshNodeIndices.count > 0, model.meshNodeIndices[0] < model.worldTransforms.count {
+//                    let modelIndex = model.meshNodeIndices[0]
+//                    let worldTransform = model.worldTransforms[modelIndex]
+//                    coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
+//                }
                 
                 let modelMatrix = anchor.transform * coordinateSpaceTransform
                 let anchorUniforms = anchorUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: anchorIndex)
@@ -513,7 +512,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     
     private var anchorsByUUID = [UUID: [ARAnchor]]()
     
-    private func meshData(from aModel: AKModel) -> MeshGPUData {
+    private func meshData(from aModel: AKModel, textureBundle: Bundle) -> MeshGPUData {
         
         var myGPUData = MeshGPUData()
         
@@ -546,7 +545,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         
         // Create Texture Buffers
         for texturePath in aModel.texturePaths {
-            myGPUData.textures.append(createMTLTexture(fromAssetPath: texturePath, withTextureLoader: textureLoader))
+            myGPUData.textures.append(createMTLTexture(inBundle: textureBundle, fromAssetPath: texturePath, withTextureLoader: textureLoader))
         }
         
         // Encode the data in the meshes as DrawData objects and store them in the MeshGPUData

@@ -46,6 +46,25 @@
 
 using namespace metal;
 
+//
+// Physically Based Shader
+//
+// This shader uses the following parameters following Disney's "principled" BDRF and
+// Which are supported by ModelIO
+// see: https://disney-animation.s3.amazonaws.com/library/s2012_pbs_disney_brdf_notes_v2.pdf
+// • baseColor - the surface color, usually supplied by texture maps.
+// • subsurface - controls diffuse shape using a subsurface approximation.
+// • metallic - the metallic-ness (0 = dielectric, 1 = metallic). This is a linear blend between two different models. The metallic model has no diffuse component and also has a tinted incident specular, equal to the base color.
+// • specular - incident specular amount. This is in lieu of an explicit index-of-refraction. 12
+// • specularTint - a concession for artistic control that tints incident specular towards the base color. Grazing specular is still achromatic.
+// • roughness - surface roughness, controls both diffuse and specular response.
+// • anisotropic - degree of anisotropy. This controls the aspect ratio of the specular highlight. (0 = isotropic, 1 = maximally anisotropic).
+// • sheen - an additional grazing component, primarily intended for cloth.
+// • sheenTint - amount to tint sheen towards base color.
+// • clearcoat - a second, special-purpose specular lobe.
+// • clearcoatGloss - controls clearcoat glossiness (0 = a “satin” appearance, 1 = a “gloss” appearance).
+//
+
 // MARK: - Constants
 
 constant bool has_base_color_map [[ function_constant(kFunctionConstantBaseColorMapIndex) ]];
@@ -161,7 +180,6 @@ LightingParameters calculateParameters(ColorInOut in,
                                        texture2d<float> clearcoatMap [[ function_constant(has_clearcoat_map) ]],
                                        texture2d<float> clearcoatGlossMap [[ function_constant(has_clearcoatGloss_map) ]]);
 
-// Schlick Fresnel
 float4 srgbToLinear(float4 c);
 float4 linearToSrgba(float4 c);
 inline float Fresnel(float dotProduct);
@@ -186,8 +204,12 @@ float4 linearToSrgba(float4 c) {
     return pow(c, gamma);
 }
 
+// Schlick Fresnel Approximation:
+// F0 + (1 - F0) * pow(1.0 - dotProduct, 5.0)
+// F0 is the Fresnel of the material at 0º (normal incidence)
+// is approximated by a constant 0.04 (water/glass)
 inline float Fresnel(float dotProduct) {
-    return pow(clamp(1.0 - dotProduct, 0.0, 1.0), 5.0);
+    return 0.04 + (1.0 - 0.04) * pow(clamp(1.0 - dotProduct, 0.0, 1.0), 5.0);
 }
 
 inline float sqr(float a) {
@@ -222,6 +244,11 @@ float3 computeNormalMap(ColorInOut in, texture2d<float> normalMapTexture) {
 
 float3 computeDiffuse(LightingParameters parameters) {
     
+    // Pure metals have no diffuse component
+    if (parameters.metalness == 1) {
+        return float3(0);
+    }
+    
     // Diffuse fresnel - go from 1 at normal incidence to .5 at grazing
     // and mix in diffuse retro-reflection based on roughness
     float Fd90 = 0.5 + 2.0 * sqr(parameters.lDoth) * parameters.roughness;
@@ -243,24 +270,13 @@ float3 computeDiffuse(LightingParameters parameters) {
 
 float3 computeSpecular(LightingParameters parameters) {
     
-//    //float specularRoughness = parameters.roughness * (1.0 - parameters.metalness) + parameters.metalness;
-//    float specularRoughness = parameters.roughness * 0.5 + 0.5;
-//    float aspect = sqrt(1.0 - parameters.anisotropic * 0.9);
-//    //float alphaAniso = specularRoughness;
-//    float alphaAniso = sqr(specularRoughness);
-//    float ax = max(0.0001, alphaAniso / aspect);
-//    float ay = max(0.0001, alphaAniso * aspect);
-//    // TODO: Support shading basis - float Ds = GTR2_aniso(parameters.nDoth, dot(parameters.halfVector, parameters.shadingBasisU), dot(dsv.halfVector, parameters.shadingBasisV), ax, ay);
-//    float3 shadingBasisX = float3(1,0,0);
-//    float3 shadingBasisY = float3(0,1,0);
-//    float Ds = GTR2_aniso(parameters.nDoth, dot(parameters.halfVector, shadingBasisX), dot(parameters.halfVector, shadingBasisY), ax, ay);
-//    float3 Cspec0 = parameters.specular * mix(float3(1.0), parameters.baseColorHueSat, parameters.specularTint);
-//    float3 Fs = mix(Cspec0, float3(1), parameters.fresnelH);
-//    float alphaG = sqr(specularRoughness * 0.5 + 0.5);
-//    float Gs = smithG_GGX(parameters.nDotl, alphaG) * smithG_GGX(parameters.nDotv, alphaG);
-//
-//    float3 specularOutput = (Ds * Gs * Fs * parameters.irradiatedColor) * (1.0 + parameters.metalness * parameters.baseColor.rgb) + parameters.metalness * parameters.irradiatedColor * parameters.baseColor.rgb;
-//    return specularOutput;
+    // Calculate BDRF
+    // B-idirectional
+    // R-eflectance
+    // D-istribution
+    // F-unction
+    // BDRF is a function of light direction and view (camera/eye) direction
+    // See: https://www.youtube.com/watch?v=j-A0mwsJRmk
     
     //
     // Cook–Torrance formula
@@ -285,20 +301,23 @@ float3 computeSpecular(LightingParameters parameters) {
     float roughnessAlphaY = max(0.0001, alphaAniso * aspect);
     
     // Normal Distribution Function (NDF):
-    // The NDF, also known as the specular distribution, describes the distribution of microfacets for the surface
+    // The NDF, also known as the specular distribution, describes the distribution of microfacets for the surface.
+    // Determines the size and shape of the highlight.
     float3 shadingBasisX = float3(1,0,0);
     float3 shadingBasisY = float3(0,1,0);
     float Ds = GTR2_aniso(parameters.nDoth, dot(parameters.halfVector, shadingBasisX), dot(parameters.halfVector, shadingBasisY), roughnessAlphaX, roughnessAlphaY);
     
-    // Fresnel
-    // The Fresnel function describes the amount of light that reflects from a mirror surface given its index of refraction.
+    // Fresnel Reflectance:
+    // The fraction of incoming light that is reflected as opposed to refracted from a flat surface at a given lighting angle.
+    // Fresnel Reflectance goes to 1 as the angle of incidence goes to 90º. The value of Fresnel Reflectance at 0º
+    // is the specular reflectance color.
     float3 Cspec0 = parameters.specular * mix(float3(1.0), parameters.baseColorHueSat, parameters.specularTint);
     float3 Fs = mix(Cspec0, float3(1), parameters.fresnelH);
     
     // Geometric Shadowing:
     // The geometric shadowing term describes the shadowing from the microfacets.
     // This means ideally it should depend on roughness and the microfacet distribution.
-    // The following geometric shadowing models use Smith's method[8] for their respective NDF.
+    // The following geometric shadowing models use Smith's method for their respective NDF.
     // Smith breaks G into two components: light and view, and uses the same equation for both.
     float Gs = smithG_GGX(parameters.nDotl, roughnessAlpha) * smithG_GGX(parameters.nDotv, roughnessAlpha);
     
@@ -317,9 +336,10 @@ float3 computeSpecular(LightingParameters parameters) {
 
 float3 computeClearcoat(LightingParameters parameters) {
     
-    // clearcoat (ior = 1.5 -> F0 = 0.04)
+    // For Dielectics (non-metals) the Fresnel for 0º typically ranges from 0.02 (water) to 0.1 (diamond) but for
+    // the sake of simplicity, it is common to set this value as a constant of 0.04 (plastic/glass) for all materials.
+    float Fr = mix(0.1, 0.04, parameters.fresnelH);
     float Dr = GTR1(parameters.nDoth, mix(.6, 0.001, parameters.clearcoatGloss));
-    float Fr = mix(0.1, 0.4, parameters.fresnelH);
     float clearcoatRoughness = sqr(parameters.roughness * 0.5 + 0.5);
     float Gr = smithG_GGX(parameters.nDotl, clearcoatRoughness) * smithG_GGX(parameters.nDotv, clearcoatRoughness);
     

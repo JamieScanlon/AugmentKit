@@ -316,11 +316,11 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                 
                 // Apply the world transform (as defined in the imported model) if applicable
                 // We currenly only support a single mesh so we just use the first item
-                if model.meshNodeIndices.count > 0, model.meshNodeIndices[0] < model.worldTransforms.count {
-                    let modelIndex = model.meshNodeIndices[0]
-                    let worldTransform = model.worldTransforms[modelIndex]
-                    coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
-                }
+//                if model.meshNodeIndices.count > 0, model.meshNodeIndices[0] < model.worldTransforms.count {
+//                    let modelIndex = model.meshNodeIndices[0]
+//                    let worldTransform = model.worldTransforms[modelIndex]
+//                    coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
+//                }
                 
                 let modelMatrix = anchor.transform * coordinateSpaceTransform
                 let anchorUniforms = anchorUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: anchorIndex)

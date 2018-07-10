@@ -184,10 +184,11 @@ class ModelIOTools {
     
     // MARK: Encoding Mesh Data
     
-    static func meshGPUData(from mdlAsset: MDLAsset, vertexDescriptor: MDLVertexDescriptor, device: MTLDevice, textureBundle: Bundle) -> MeshGPUData {
+    // Encodes an MDLAsset from ModelID into a MeshGPUData object which is used internally to set up the render pipeline.
+    static func meshGPUData(from mdlAsset: MDLAsset, device: MTLDevice, textureBundle: Bundle, vertexDescriptor: MDLVertexDescriptor? = nil) -> MeshGPUData {
         
         var meshGPUData = MeshGPUData()
-        var jointRootID = "root"
+        var jointRootID = "root" // FIXME: This is hardcoded to 'root' but it should be dynamic
         var texturePaths = [String]()
         var sampleTimes = [Double]()
         var localTransformAnimations = [[matrix_float4x4]]()
@@ -209,7 +210,7 @@ class ModelIOTools {
         var worldTransforms = [matrix_float4x4]()
         
         // Record all buffers and materials for an MDLMesh
-        func store(_ mesh: MDLMesh, vertexDescriptor: MDLVertexDescriptor? = nil) {
+        func store(_ mesh: MDLMesh, vertexDescriptor: MDLVertexDescriptor? = nil) -> DrawData {
             
             var drawData = DrawData()
             
@@ -221,7 +222,6 @@ class ModelIOTools {
             drawData.vbStartIdx = vertexBuffers.count
             drawData.ibStartIdx = indexBuffers.count
             
-            var materials = [MaterialUniforms]()
             if let mtlVertexDescriptor = MTKMetalVertexDescriptorFromModelIO(mesh.vertexDescriptor) {
                 vertexDescriptors.append(mtlVertexDescriptor)
             }
@@ -317,16 +317,55 @@ class ModelIOTools {
                         
                     }
                     
-                    // TODO: subData.materialBuffer
-//                    MetalUtilities.convertMaterialBuffer(from: meshData.materials[subIndex], with: materialUniformBuffer, offset: materialUniformBufferOffset)
+                    if subData.baseColorTextureIndex != nil {
+                        drawData.hasBaseColorMap = true
+                    }
+                    if subData.normalTextureIndex != nil {
+                        drawData.hasNormalMap = true
+                    }
+                    if subData.ambientOcclusionTextureIndex != nil {
+                        drawData.hasAmbientOcclusionMap = true
+                    }
+                    if subData.roughnessTextureIndex != nil {
+                        drawData.hasRoughnessMap = true
+                    }
+                    if subData.metallicTextureIndex != nil {
+                        drawData.hasMetallicMap = true
+                    }
+                    if subData.irradianceTextureIndex != nil {
+                        drawData.hasIrradianceMap = true
+                    }
+                    if subData.subsurfaceTextureIndex != nil {
+                        drawData.hasSubsurfaceMap = true
+                    }
+                    if subData.specularTextureIndex != nil {
+                        drawData.hasSpecularMap = true
+                    }
+                    if subData.specularTintTextureIndex != nil {
+                        drawData.hasSpecularTintMap = true
+                    }
+                    if subData.anisotropicTextureIndex != nil {
+                        drawData.hasAnisotropicMap = true
+                    }
+                    if subData.sheenTextureIndex != nil {
+                        drawData.hasSheenMap = true
+                    }
+                    if subData.sheenTintTextureIndex != nil {
+                        drawData.hasSheenTintMap = true
+                    }
+                    if subData.clearcoatTextureIndex != nil {
+                        drawData.hasClearcoatMap = true
+                    }
+                    if subData.clearcoatGlossTextureIndex != nil {
+                        drawData.hasClearcoatGlossMap = true
+                    }
                     
                     drawData.subData.append(subData)
                     
-                    materials.append(material)
                 }
             }
             
-            meshGPUData.drawData.append(drawData)
+            return drawData
             
         }
         
@@ -367,13 +406,13 @@ class ModelIOTools {
         }
         
         // Store skinning information if object has MDLSkinDeformerComponent
-        func storeMeshSkin(for object: MDLObject) -> Bool {
+        func storeMeshSkin(for object: MDLObject) -> SkinData? {
             guard let skinDeformer = object.componentConforming(to: MDLTransformComponent.self) as? MDLSkeleton else {
-                return false
+                return nil
             }
             
             guard !skinDeformer.jointPaths.isEmpty else {
-                return false
+                return nil
             }
             
             var skin = SkinData()
@@ -382,8 +421,7 @@ class ModelIOTools {
             // store the joint bind transforms which give us the bind pose
             let jointBindTransforms = skinDeformer.jointBindTransforms
             skin.inverseBindTransforms = jointBindTransforms.float4x4Array.map { simd_inverse($0) }
-            skins.append(skin)
-            return true
+            return skin
         }
         
         // Record a node's parent index and store its local transform
@@ -458,20 +496,27 @@ class ModelIOTools {
         
         func calculateWorldTransforms(atTime time: Double) -> [matrix_float4x4] {
             
-            let numParents = parentIndices.count
-            var myTransforms = [matrix_float4x4](repeating: matrix_identity_float4x4, count: numParents)
+            var myTransforms = [matrix_float4x4](repeating: matrix_identity_float4x4, count: meshNodeIndices.count)
             
-            // -- traverse the scene and update the node transforms
-            for (tfIdx, parentIndexOptional) in parentIndices.enumerated() {
-                let localTransform = getLocalTransform(atTime: time, index: tfIdx)
-                if let parentIndex = parentIndexOptional {
-                    let parentTransform = myTransforms[parentIndex]
-                    let worldMatrix = simd_mul(parentTransform, localTransform)
-                    myTransforms[tfIdx] = worldMatrix
-                    
-                } else {
-                    myTransforms[tfIdx] = localTransform
-                }
+            for (index, meshIndex) in meshNodeIndices.enumerated() {
+                
+                let localTransform = getLocalTransform(atTime: time, index: meshIndex)
+                let parentTransform: matrix_float4x4 = {
+                    var currentIndex = meshIndex
+                    var parentIndex = parentIndices[currentIndex]
+                    var currentTransform = matrix_identity_float4x4
+                    while parentIndex != nil {
+                        let aTransform = getLocalTransform(atTime: time, index: meshIndex)
+                        currentTransform = simd_mul(currentTransform, aTransform)
+                        currentIndex = parentIndex!
+                        parentIndex = parentIndices[currentIndex]
+                    }
+                    return currentTransform
+                }()
+                
+                let worldMatrix = simd_mul(parentTransform, localTransform)
+                myTransforms[index] = worldMatrix
+                
             }
             
             return myTransforms
@@ -539,28 +584,48 @@ class ModelIOTools {
         var masterMeshes: [MDLMesh] = []
         walkMasters(in: mdlAsset) { object in
             guard let mesh = object as? MDLMesh else { return }
-            store(mesh, vertexDescriptor: vertexDescriptor)
+            meshGPUData.drawData.append(store(mesh, vertexDescriptor: vertexDescriptor))
             masterMeshes.append(mesh)
         }
+        
         var instanceMeshIdx = [Int]()
         walkSceneGraph(in: mdlAsset) { object, currentIdx, parentIdx in
+            
             if let mesh = object as? MDLMesh {
                 meshNodeIndices.append(currentIdx)
-                store(mesh, vertexDescriptor: vertexDescriptor)
+                var drawData = store(mesh, vertexDescriptor: vertexDescriptor)
+                if let skin = storeMeshSkin(for: object) {
+                    skins.append(skin)
+                    drawData.skins.append(skin)
+                    drawData.skeletonAnimations.append(AnimatedSkeleton()) // FIXME: Parse the skeleton animation
+                    meshSkinIndices.append(skins.count - 1)
+                } else {
+                    meshSkinIndices.append(nil)
+                }
+                meshGPUData.drawData.append(drawData)
                 instanceMeshIdx.append(meshGPUData.drawData.count - 1)
-                let hasSkin = storeMeshSkin(for: object)
-                meshSkinIndices.append(hasSkin ? skins.count - 1 : nil)
             } else if let instance = object.instance, let masterIndex = ModelIOTools.findMasterIndex(masterMeshes, instance) {
                 meshNodeIndices.append(currentIdx)
                 instanceMeshIdx.append(masterIndex)
-                let hasSkin = storeMeshSkin(for: object)
-                meshSkinIndices.append(hasSkin ? skins.count - 1 : nil)
+                if let skin = storeMeshSkin(for: object) {
+                    skins.append(skin)
+                    var drawData = meshGPUData.drawData[masterIndex]
+                    drawData.skins.append(skin)
+                    drawData.skeletonAnimations.append(AnimatedSkeleton()) // FIXME: Parse the skeleton animation
+                    meshSkinIndices.append(skins.count - 1)
+                } else {
+                    meshSkinIndices.append(nil)
+                }
             }
+            
             flattenNode(object, nodeIndex: currentIdx, parentNodeIndex: parentIdx)
+            
+            // TODO: This skeleleton animation stuff needs more work. It is in a non-fuctional state right now
             if let skeletonRootPath = findShortestPath(in: object.path, containing: jointRootID), skeletonRootPath == object.path {
                 let animation = createSkeletonAnimation(for: mdlAsset, rootPath: skeletonRootPath)
                 skeletonAnimations.append(animation)
             }
+            
         }
         
         let (permutation, instCount) = sortedMeshIndexPermutation(instanceMeshIdx)
@@ -577,7 +642,7 @@ class ModelIOTools {
             }
         }
         for (skinIndex, skin) in skins.enumerated() {
-            guard let boundSkeletonRoot = ModelIOTools.findShortestPath(in: skin.jointPaths[0], containing: jointRootID) else {
+            guard let boundSkeletonRoot = findShortestPath(in: skin.jointPaths[0], containing: jointRootID) else {
                 continue
             }
             
@@ -592,16 +657,24 @@ class ModelIOTools {
         fixupPaths(mdlAsset, &texturePaths)
         updateWorldTransforms()
         
+        // Attach world transform to the DrawData object
+        for (nodeIndex, transform) in worldTransforms.enumerated() {
+            meshGPUData.drawData[nodeIndex].worldTransform = transform
+        }
+        
         // Create Vertex Buffers
         for vtxBuffer in vertexBuffers {
             vtxBuffer.withUnsafeBytes { (bytes: UnsafePointer<UInt8>) in
                 guard let aVTXBuffer = device.makeBuffer(bytes: bytes, length: vtxBuffer.count, options: .storageModeShared) else {
                     fatalError("Failed to create a buffer from the device.")
                 }
-                meshGPUData.vtxBuffers.append(aVTXBuffer)
+                meshGPUData.vertexBuffers.append(aVTXBuffer)
             }
             
         }
+        
+        // Vertex Descriptors
+        meshGPUData.vertexDescriptors = vertexDescriptors
         
         // Create Index Buffers
         for idxBuffer in indexBuffers {

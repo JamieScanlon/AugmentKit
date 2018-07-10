@@ -27,6 +27,7 @@
 
 import Foundation
 import simd
+import ModelIO
 
 class UserPosition: AKRelativePosition {
     public init() {
@@ -45,19 +46,23 @@ public class UserTracker: AKAugmentedUserTracker {
     public static var type: String {
         return "UserTracker"
     }
-    public var model: AKModel
+    public var asset: MDLAsset
     public var identifier: UUID?
     public var effects: [AnyEffect<Any>]?
     public var position: AKRelativePosition
     
-    public init(withModel model: AKModel, withUserRelativeTransform relativeTransform: matrix_float4x4) {
-        self.model = model
+    public init(withModelAsset asset: MDLAsset, withUserRelativeTransform relativeTransform: matrix_float4x4) {
+        self.asset = asset
         let myPosition = AKRelativePosition(withTransform: relativeTransform, relativeTo: UserPosition())
         self.position = myPosition
     }
     
-    func userPosition() -> AKRelativePosition? {
+    public func userPosition() -> AKRelativePosition? {
         return position.parentPosition
+    }
+    
+    public func setIdentifier(_ identifier: UUID) {
+        self.identifier = identifier
     }
     
 }

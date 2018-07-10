@@ -25,7 +25,11 @@
 //  SOFTWARE.
 //
 //
-//  Contains data structures for the render engine
+//  Contains data structures for the render engine. The structure of these data
+//  objects are intended to contain all the data needed to set up the Metal pipline
+//  in a way that is easy to fetch. There is not suppose to be much, if any,
+//  translation required between the properties here and the properties of the
+//  render pipleine objects.
 //
 
 import Foundation
@@ -33,47 +37,6 @@ import simd
 import ModelIO
 import MetalKit
 import AugmentKitShader
-
-// MARK: - Material Data. Intermediate format sutable for serialization and transport.
-
-// See https://developer.apple.com/documentation/modelio/mdlmaterialsemantic for a list
-// of all material properties supported by ModelIO. The ones that are commented out
-// below are not yet supported.
-public struct Material {
-    var baseColor: (float3?, Int?) = (float3(1, 1, 1), nil)
-    var subsurface: (Float?, Int?) = (0, nil)
-    var metallic: (Float?, Int?) = (0, nil)
-    var specular: (Float?, Int?) = (0, nil)
-//    var specularExponent: Float?
-    var specularTint: (Float?, Int?) = (0, nil)
-    var roughness: (Float?, Int?) = (0, nil)
-    var anisotropic: (Float?, Int?) = (0, nil)
-//    var anisotropicRotation: Float?
-    var sheen: (Float?, Int?) = (0, nil)
-    var sheenTint: (Float?, Int?) = (0, nil)
-    var clearcoat: (Float?, Int?) = (0, nil)
-    var clearcoatGloss: (Float?, Int?) = (0, nil)
-    var irradianceColorMap: (float3?, Int?) = (nil, nil)
-    var opacity: Float?
-//    var interfaceIndexOfRefraction: Float?
-//    var materialIndexOfRefraction: Float?
-    var normalMap: Int? // bump
-//    var displacementMap: Int?
-//    var displacementScale: Float?
-    var ambientOcclusionMap: (Float?, Int?) = (nil, nil)
-//    var ambientOcclusionScale: Float?
-}
-
-// MARK: - Mesh Data that will be converted into GPU Data
-
-public struct MeshData {
-    var vbCount = 0
-    var vbStartIdx = 0
-    var ibStartIdx = 0
-    var idxCounts = [Int]()
-    var idxTypes = [MDLIndexBitDepth]()
-    var materials = [Material]()
-}
 
 // MARK: - Data that will be submitted to the GPU
 
@@ -158,10 +121,28 @@ public struct DrawData {
     var paletteStartIndex: Int?
     var paletteSize = 0
     var subData = [DrawSubData]()
+    var worldTransform: matrix_float4x4 = matrix_identity_float4x4
+    var skins = [SkinData]()
+    var skeletonAnimations = [AnimatedSkeleton]()
+    var hasBaseColorMap = false
+    var hasNormalMap = false
+    var hasMetallicMap = false
+    var hasRoughnessMap = false
+    var hasAmbientOcclusionMap = false
+    var hasIrradianceMap = false
+    var hasSubsurfaceMap = false
+    var hasSpecularMap = false
+    var hasSpecularTintMap = false
+    var hasAnisotropicMap = false
+    var hasSheenMap = false
+    var hasSheenTintMap = false
+    var hasClearcoatMap = false
+    var hasClearcoatGlossMap = false
 }
 
 public struct MeshGPUData {
-    var vtxBuffers = [MTLBuffer]()
+    var vertexBuffers = [MTLBuffer]()
+    var vertexDescriptors = [MTLVertexDescriptor]()
     var indexBuffers = [MTLBuffer]()
     var textures = [MTLTexture?]()
     var drawData = [DrawData]()
@@ -172,7 +153,6 @@ public struct MeshGPUData {
 //  Describes how a mesh is bound to a skeleton
 public struct SkinData: JointPathRemappable {
     var jointPaths = [String]()
-    
     var skinToSkeletonMap = [Int]()
     var inverseBindTransforms = [matrix_float4x4]()
     var animationIndex: Int?
@@ -181,17 +161,13 @@ public struct SkinData: JointPathRemappable {
 //  Stores skeleton data as well as its time-sampled animation
 public struct AnimatedSkeleton: JointPathRemappable {
     var jointPaths = [String]()
-    
     var parentIndices = [Int?]()
-    
     var keyTimes = [Double]()
     var translations = [vector_float3]()
     var rotations = [simd_quatf]()
-    
     var jointCount: Int {
         return jointPaths.count
     }
-    
     var timeSampleCount: Int {
         return keyTimes.count
     }

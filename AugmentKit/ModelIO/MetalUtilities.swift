@@ -36,7 +36,7 @@ import AugmentKitShader
 
 class MetalUtilities {
     
-    static func getFuncConstantsForDrawDataSet(meshData: MeshData?, useMaterials: Bool) -> MTLFunctionConstantValues {
+    static func getFuncConstants(forDrawData drawData: DrawData?, useMaterials: Bool) -> MTLFunctionConstantValues {
         
         var has_base_color_map = false
         var has_normal_map = false
@@ -52,27 +52,24 @@ class MetalUtilities {
         var has_sheenTint_map = false
         var has_clearcoat_map = false
         var has_clearcoatGloss_map = false
-
-        // Condition all subdata since we only do a pipelinestate once per DrawData
-        if let meshData = meshData, useMaterials {
-            for material in meshData.materials {
-                has_base_color_map = has_base_color_map || (material.baseColor.1 != nil)
-                has_normal_map = has_normal_map || (material.normalMap != nil)
-                has_metallic_map = has_metallic_map || (material.metallic.1 != nil)
-                has_roughness_map = has_roughness_map || (material.roughness.1 != nil)
-                has_ambient_occlusion_map = has_ambient_occlusion_map || (material.ambientOcclusionMap.1 != nil)
-                has_irradiance_map = has_irradiance_map || (material.irradianceColorMap.1 != nil)
-                has_subsurface_map = has_subsurface_map || (material.subsurface.1 != nil)
-                has_specular_map = has_specular_map || (material.specular.1 != nil)
-                has_specularTint_map = has_specularTint_map || (material.specularTint.1 != nil)
-                has_anisotropic_map = has_anisotropic_map || (material.anisotropic.1 != nil)
-                has_sheen_map = has_sheen_map || (material.sheen.1 != nil)
-                has_sheenTint_map = has_sheenTint_map || (material.sheenTint.1 != nil)
-                has_clearcoat_map = has_clearcoat_map || (material.clearcoat.1 != nil)
-                has_clearcoatGloss_map = has_clearcoatGloss_map || (material.clearcoatGloss.1 != nil)
-            }
+        
+        if let drawData = drawData, useMaterials {
+            has_base_color_map = has_base_color_map || drawData.hasBaseColorMap
+            has_normal_map = has_normal_map || drawData.hasNormalMap
+            has_metallic_map = has_metallic_map || drawData.hasMetallicMap
+            has_roughness_map = has_roughness_map || drawData.hasRoughnessMap
+            has_ambient_occlusion_map = has_ambient_occlusion_map || drawData.hasAmbientOcclusionMap
+            has_irradiance_map = has_irradiance_map || drawData.hasIrradianceMap
+            has_subsurface_map = has_subsurface_map || drawData.hasSubsurfaceMap
+            has_specular_map = has_specular_map || drawData.hasSpecularMap
+            has_specularTint_map = has_specularTint_map || drawData.hasSpecularTintMap
+            has_anisotropic_map = has_anisotropic_map || drawData.hasAnisotropicMap
+            has_sheen_map = has_sheen_map || drawData.hasSheenMap
+            has_sheenTint_map = has_sheenTint_map || drawData.hasSheenTintMap
+            has_clearcoat_map = has_clearcoat_map || drawData.hasClearcoatMap
+            has_clearcoatGloss_map = has_clearcoatGloss_map || drawData.hasClearcoatGlossMap
         }
-
+        
         let constantValues = MTLFunctionConstantValues()
         constantValues.setConstantValue(&has_base_color_map, type: .bool, index: Int(kFunctionConstantBaseColorMapIndex.rawValue))
         constantValues.setConstantValue(&has_normal_map, type: .bool, index: Int(kFunctionConstantNormalMapIndex.rawValue))
@@ -88,7 +85,7 @@ class MetalUtilities {
         constantValues.setConstantValue(&has_sheenTint_map, type: .bool, index: Int(kFunctionConstantSheenTintMapIndex.rawValue))
         constantValues.setConstantValue(&has_clearcoat_map, type: .bool, index: Int(kFunctionConstantClearcoatMapIndex.rawValue))
         constantValues.setConstantValue(&has_clearcoatGloss_map, type: .bool, index: Int(kFunctionConstantClearcoatGlossMapIndex.rawValue))
-            
+        
         return constantValues
     }
     
@@ -107,47 +104,6 @@ class MetalUtilities {
         }
     }
     
-    static func convertToMaterialUniform(from material: Material) -> MaterialUniforms {
-        var matUniforms = MaterialUniforms()
-        let baseColor = material.baseColor.0 ?? float3(1.0, 1.0, 1.0)
-        matUniforms.baseColor = float4(baseColor.x, baseColor.y, baseColor.z, 1.0)
-        matUniforms.roughness = material.roughness.0 ?? 1.0
-        matUniforms.ambientOcclusion = material.ambientOcclusionMap.0 ?? 1.0
-        matUniforms.irradiatedColor = material.irradianceColorMap.0 ?? float3(1.0, 1.0, 1.0)
-        matUniforms.metalness = material.metallic.0 ?? 0.0
-        matUniforms.opacity = material.opacity ?? 1.0
-        matUniforms.subsurface = material.subsurface.0 ?? 0.0
-        matUniforms.specular = material.specular.0 ?? 0.0
-        matUniforms.specularTint = material.specularTint.0 ?? 0.0
-        matUniforms.anisotropic = material.anisotropic.0 ?? 0.0
-        matUniforms.sheen = material.sheen.0 ?? 0.0
-        matUniforms.sheenTint = material.sheenTint.0 ?? 0.0
-        matUniforms.clearcoat = material.clearcoat.0 ?? 0.0
-        matUniforms.clearcoatGloss = material.clearcoatGloss.0 ?? 0.0
-        return matUniforms
-    }
-    
-    static func convertMaterialBuffer(from material: Material, with materialBuffer: MTLBuffer, offset: Int) {
-        
-        let theBuffer = materialBuffer.contents().assumingMemoryBound(to: MaterialUniforms.self).advanced(by: offset)
-        let baseColor = material.baseColor.0 ?? float3(1.0, 1.0, 1.0)
-        theBuffer.pointee.baseColor = float4(baseColor.x, baseColor.y, baseColor.z, 1.0)
-        theBuffer.pointee.roughness = material.roughness.0 ?? 1.0
-        theBuffer.pointee.ambientOcclusion = material.ambientOcclusionMap.0 ?? 1.0
-        theBuffer.pointee.irradiatedColor = material.irradianceColorMap.0 ?? float3(1.0, 1.0, 1.0)
-        theBuffer.pointee.metalness = material.metallic.0 ?? 0.0
-        theBuffer.pointee.opacity = material.opacity ?? 1.0
-        theBuffer.pointee.subsurface = material.subsurface.0 ?? 0.0
-        theBuffer.pointee.specular = material.specular.0 ?? 0.0
-        theBuffer.pointee.specularTint = material.specularTint.0 ?? 0.0
-        theBuffer.pointee.anisotropic = material.anisotropic.0 ?? 0.0
-        theBuffer.pointee.sheen = material.sheen.0 ?? 0.0
-        theBuffer.pointee.sheenTint = material.sheenTint.0 ?? 0.0
-        theBuffer.pointee.clearcoat = material.clearcoat.0 ?? 0.0
-        theBuffer.pointee.clearcoatGloss = material.clearcoatGloss.0 ?? 0.0
-        
-    }
-    
     static func isTexturedProperty(_ propertyIndex: FunctionConstantIndices, at quality: QualityLevel) -> Bool {
         var minLevelForProperty = kQualityLevelHigh
         switch propertyIndex {
@@ -159,6 +115,79 @@ class MetalUtilities {
             break
         }
         return quality.rawValue <= minLevelForProperty.rawValue
+    }
+    
+    //  Create a vertex descriptor for our Metal pipeline. Specifies the layout of vertices the
+    //  pipeline should expect.
+    
+    //  TODO: To maximize pipeline efficiency, The layout should keep attributes used to calculate
+    //  vertex shader output position (world position, skinning, tweening weights) separate from other
+    //  attributes (texture coordinates, normals).
+    static func createStandardVertexDescriptor() -> MDLVertexDescriptor {
+            
+        let geometryVertexDescriptor = MTLVertexDescriptor()
+        
+        //
+        // Attributes
+        //
+        
+        // -------- Buffer 0 --------
+        
+        // Positions.
+        geometryVertexDescriptor.attributes[0].format = .float3 // 12 bytes
+        geometryVertexDescriptor.attributes[0].offset = 0
+        geometryVertexDescriptor.attributes[0].bufferIndex = Int(kBufferIndexMeshPositions.rawValue)
+        
+        // -------- Buffer 1 --------
+        
+        // Texture coordinates.
+        geometryVertexDescriptor.attributes[1].format = .float2 // 8 bytes
+        geometryVertexDescriptor.attributes[1].offset = 0
+        geometryVertexDescriptor.attributes[1].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
+        
+        // Normals.
+        geometryVertexDescriptor.attributes[2].format = .float3 // 12 bytes
+        geometryVertexDescriptor.attributes[2].offset = 8
+        geometryVertexDescriptor.attributes[2].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
+        
+        // JointIndices (Puppet animations)
+        geometryVertexDescriptor.attributes[3].format = .ushort4 // 8 bytes
+        geometryVertexDescriptor.attributes[3].offset = 20
+        geometryVertexDescriptor.attributes[3].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
+        
+        // JointWeights (Puppet animations)
+        geometryVertexDescriptor.attributes[4].format = .float4 // 16 bytes
+        geometryVertexDescriptor.attributes[4].offset = 28
+        geometryVertexDescriptor.attributes[4].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
+        
+        //
+        // Layouts
+        //
+        
+        // Position Buffer Layout
+        geometryVertexDescriptor.layouts[0].stride = 12
+        geometryVertexDescriptor.layouts[0].stepRate = 1
+        geometryVertexDescriptor.layouts[0].stepFunction = .perVertex
+        
+        // Generic Attribute Buffer Layout
+        geometryVertexDescriptor.layouts[1].stride = 44
+        geometryVertexDescriptor.layouts[1].stepRate = 1
+        geometryVertexDescriptor.layouts[1].stepFunction = .perVertex
+        
+        // Creata a Model IO vertexDescriptor so that we format/layout our model IO mesh vertices to
+        // fit our Metal render pipeline's vertex descriptor layout
+        let vertexDescriptor = MTKModelIOVertexDescriptorFromMetal(geometryVertexDescriptor)
+        
+        // Indicate how each Metal vertex descriptor attribute maps to each ModelIO attribute
+        // See: https://developer.apple.com/documentation/modelio/mdlvertexattribute/vertex_attributes
+        (vertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributePosition
+        (vertexDescriptor.attributes[Int(kVertexAttributeTexcoord.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributeTextureCoordinate
+        (vertexDescriptor.attributes[Int(kVertexAttributeNormal.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributeNormal
+        (vertexDescriptor.attributes[Int(kVertexAttributeJointIndices.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributeJointIndices
+        (vertexDescriptor.attributes[Int(kVertexAttributeJointWeights.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributeJointWeights
+        
+        return vertexDescriptor
+        
     }
     
 }

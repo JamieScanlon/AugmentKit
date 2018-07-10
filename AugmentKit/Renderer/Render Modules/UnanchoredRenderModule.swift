@@ -98,55 +98,55 @@ class UnanchoredRenderModule: RenderModule {
         //
         // Create and load our models
         //
-        
-        var hasLoadedTrackerModel = false
-        var hasLoadedTargetModel = false
+            
+        var hasLoadedTrackerAsset = false
+        var hasLoadedTargetAsset = false
         
         // TODO: Add ability to load multiple models by identifier
-        modelProvider.loadModel(forObjectType: UserTracker.type, identifier: nil) { [weak self] model in
+        modelProvider.loadAsset(forObjectType: UserTracker.type, identifier: nil) { [weak self] asset in
             
-            hasLoadedTrackerModel = true
+            hasLoadedTrackerAsset = true
             
-            guard let model = model else {
-                print("Warning (UnanchoredRenderModule) - Failed to get a model for type \(UserTracker.type) from the modelProvider.")
+            guard let asset = asset else {
+                print("Warning (UnanchoredRenderModule) - Failed to get a MDLAsset for type \(UserTracker.type) from the modelProvider.")
                 let newError = AKError.warning(.modelError(.modelNotFound(ModelErrorInfo(type: UserTracker.type))))
                 recordNewError(newError)
-                if hasLoadedTrackerModel && hasLoadedTargetModel {
+                if hasLoadedTrackerAsset && hasLoadedTargetAsset {
                     completion()
                 }
                 return
             }
             
-            self?.trackerModel = model
+            self?.trackerAsset = asset
             
             // TODO: Figure out a way to load a new model per tracker.
             
-            if hasLoadedTrackerModel && hasLoadedTargetModel {
+            if hasLoadedTrackerAsset && hasLoadedTargetAsset {
                 completion()
             }
             
         }
         
         // TODO: Add ability to load multiple models by identifier
-        modelProvider.loadModel(forObjectType: GazeTarget.type, identifier: nil) { [weak self] model in
+        modelProvider.loadAsset(forObjectType: GazeTarget.type, identifier: nil) { [weak self] asset in
             
-            hasLoadedTargetModel = true
+            hasLoadedTargetAsset = true
             
-            guard let model = model else {
-                print("Warning (UnanchoredRenderModule) - Failed to get a model for type \(GazeTarget.type) from the modelProvider.")
+            guard let asset = asset else {
+                print("Warning (UnanchoredRenderModule) - Failed to get a MDLAsset for type \(GazeTarget.type) from the modelProvider.")
                 let newError = AKError.warning(.modelError(.modelNotFound(ModelErrorInfo(type: GazeTarget.type))))
                 recordNewError(newError)
-                if hasLoadedTrackerModel && hasLoadedTargetModel {
+                if hasLoadedTrackerAsset && hasLoadedTargetAsset {
                     completion()
                 }
                 return
             }
             
-            self?.targetModel = model
+            self?.targetAsset = asset
             
             // TODO: Figure out a way to load a new model per target.
             
-            if hasLoadedTrackerModel && hasLoadedTargetModel {
+            if hasLoadedTrackerAsset && hasLoadedTargetAsset {
                 completion()
             }
             
@@ -164,16 +164,15 @@ class UnanchoredRenderModule: RenderModule {
             return
         }
         
-        if let trackerModel = trackerModel {
-        
-            if trackerModel.meshNodeIndices.count > 1 {
-                print("WARNING: More than one mesh was found. Currently only one mesh per tracker is supported.")
-                let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeModelNotSupported, userInfo: nil)
-                let newError = AKError.warning(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-                recordNewError(newError)
-            }
+        if trackerAsset != nil {
             
-            trackerMeshGPUData = meshData(from: trackerModel, texturebundle: textureBundle)
+            trackerMeshGPUData = {
+                if let trackerAsset = trackerAsset {
+                    return ModelIOTools.meshGPUData(from: trackerAsset, device: device, textureBundle: textureBundle)
+                } else {
+                    return nil
+                }
+            }()
             
             guard let trackerMeshGPUData = trackerMeshGPUData else {
                 print("Serious Error - ERROR: No meshGPUData found for target when trying to load the pipeline.")
@@ -183,7 +182,16 @@ class UnanchoredRenderModule: RenderModule {
                 return
             }
             
-            guard let trackerVertexDescriptor = createMetalVertexDescriptor(withFirstModelIOVertexDescriptorIn: trackerModel.vertexDescriptors) else {
+            if trackerMeshGPUData.drawData.count > 1 {
+                print("WARNING: More than one mesh was found. Currently only one mesh per tracker is supported.")
+                let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeModelNotSupported, userInfo: nil)
+                let newError = AKError.warning(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+                recordNewError(newError)
+            }
+            
+            let myTrackerVertexDescriptor = trackerMeshGPUData.vertexDescriptors.first
+            
+            guard let trackerVertexDescriptor = myTrackerVertexDescriptor else {
                 print("Serious Error - Failed to create a MetalKit vertex descriptor from ModelIO.")
                 let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeInvalidMeshData, userInfo: nil)
                 let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
@@ -194,10 +202,9 @@ class UnanchoredRenderModule: RenderModule {
             for (drawIdx, drawData) in trackerMeshGPUData.drawData.enumerated() {
                 let trackerPipelineStateDescriptor = MTLRenderPipelineDescriptor()
                 do {
-                    let funcConstants = MetalUtilities.getFuncConstantsForDrawDataSet(meshData: trackerModel.meshes[drawIdx], useMaterials: usesMaterials)
-                    // TODO: Implement a vertex shader with puppet animation support
-                    //                let vertexName = (drawData.paletteStartIndex != nil) ? "vertex_skinned" : "trackerGeometryVertexTransform"
-                    let vertexName = "anchorGeometryVertexTransform"
+                    let funcConstants = MetalUtilities.getFuncConstants(forDrawData: drawData, useMaterials: usesMaterials)
+                    // Specify which shader to use based on if the model has skinned puppet suppot
+                    let vertexName = (drawData.paletteStartIndex != nil) ? "anchorGeometryVertexTransformSkinned" : "anchorGeometryVertexTransform"
                     let fragFunc = try metalLibrary.makeFunction(name: "anchorGeometryFragmentLighting", constantValues: funcConstants)
                     let vertFunc = try metalLibrary.makeFunction(name: vertexName, constantValues: funcConstants)
                     trackerPipelineStateDescriptor.vertexDescriptor = trackerVertexDescriptor
@@ -227,16 +234,15 @@ class UnanchoredRenderModule: RenderModule {
             
         }
         
-        if let targetModel = targetModel {
+        if targetAsset != nil {
             
-            if targetModel.meshNodeIndices.count > 1 {
-                print("WARNING: More than one mesh was found. Currently only one mesh per target is supported.")
-                let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeModelNotSupported, userInfo: nil)
-                let newError = AKError.warning(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-                recordNewError(newError)
-            }
-            
-            targetMeshGPUData = meshData(from: targetModel, texturebundle: textureBundle)
+            targetMeshGPUData = {
+                if let targetAsset = targetAsset {
+                    return ModelIOTools.meshGPUData(from: targetAsset, device: device, textureBundle: textureBundle)
+                } else {
+                    return nil
+                }
+            }()
             
             guard let targetMeshGPUData = targetMeshGPUData else {
                 print("Serious Error - ERROR: No meshGPUData for target found when trying to load the pipeline.")
@@ -246,7 +252,16 @@ class UnanchoredRenderModule: RenderModule {
                 return
             }
             
-            guard let targetVertexDescriptor = createMetalVertexDescriptor(withFirstModelIOVertexDescriptorIn: targetModel.vertexDescriptors) else {
+            if targetMeshGPUData.drawData.count > 1 {
+                print("WARNING: More than one mesh was found. Currently only one mesh per target is supported.")
+                let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeModelNotSupported, userInfo: nil)
+                let newError = AKError.warning(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+                recordNewError(newError)
+            }
+            
+            let myTargetVertexDescriptor = targetMeshGPUData.vertexDescriptors.first
+            
+            guard let targetVertexDescriptor = myTargetVertexDescriptor else {
                 print("Serious Error - Failed to create a MetalKit vertex descriptor from ModelIO.")
                 let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeInvalidMeshData, userInfo: nil)
                 let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
@@ -257,10 +272,9 @@ class UnanchoredRenderModule: RenderModule {
             for (drawIdx, drawData) in targetMeshGPUData.drawData.enumerated() {
                 let targetPipelineStateDescriptor = MTLRenderPipelineDescriptor()
                 do {
-                    let funcConstants = MetalUtilities.getFuncConstantsForDrawDataSet(meshData: targetModel.meshes[drawIdx], useMaterials: usesMaterials)
-                    // TODO: Implement a vertex shader with puppet animation support
-                    //                let vertexName = (drawData.paletteStartIndex != nil) ? "vertex_skinned" : "targetGeometryVertexTransform"
-                    let vertexName = "anchorGeometryVertexTransform"
+                    let funcConstants = MetalUtilities.getFuncConstants(forDrawData: drawData, useMaterials: usesMaterials)
+                    // Specify which shader to use based on if the model has skinned puppet suppot
+                    let vertexName = (drawData.paletteStartIndex != nil) ? "anchorGeometryVertexTransformSkinned" : "anchorGeometryVertexTransform"
                     let fragFunc = try metalLibrary.makeFunction(name: "anchorGeometryFragmentLighting", constantValues: funcConstants)
                     let vertFunc = try metalLibrary.makeFunction(name: vertexName, constantValues: funcConstants)
                     targetPipelineStateDescriptor.vertexDescriptor = targetVertexDescriptor
@@ -352,13 +366,11 @@ class UnanchoredRenderModule: RenderModule {
             
             let trackerIndex = trackerInstanceCount - 1
             
-            if let model = trackerModel {
-                
+            if let trackerMeshGPUData = trackerMeshGPUData {
                 // Apply the world transform (as defined in the imported model) if applicable
                 // We currenly only support a single mesh so we just use the first item
-                if model.meshNodeIndices.count > 0, model.meshNodeIndices[0] < model.worldTransforms.count {
-                    let modelIndex = model.meshNodeIndices[0]
-                    let worldTransform = model.worldTransforms[modelIndex]
+                if trackerMeshGPUData.drawData.count > 0 {
+                    let worldTransform = trackerMeshGPUData.drawData[0].worldTransform
                     coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
                 }
                 
@@ -366,7 +378,6 @@ class UnanchoredRenderModule: RenderModule {
                 
                 let trackerUniforms = unanchoredUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: trackerIndex)
                 trackerUniforms?.pointee.modelMatrix = modelMatrix
-                
             }
             
             //
@@ -415,22 +426,18 @@ class UnanchoredRenderModule: RenderModule {
             let targetIndex = targetInstanceCount - 1
             let adjustedIndex = targetIndex + trackerInstanceCount
             
-            if let model = targetModel {
-                
+            if let targetMeshGPUData = targetMeshGPUData {
                 // Apply the world transform (as defined in the imported model) if applicable
                 // We currenly only support a single mesh so we just use the first item
-                if model.meshNodeIndices.count > 0, model.meshNodeIndices[0] < model.worldTransforms.count {
-                    let modelIndex = model.meshNodeIndices[0]
-                    let worldTransform = model.worldTransforms[modelIndex]
+                if targetMeshGPUData.drawData.count > 0 {
+                    let worldTransform = targetMeshGPUData.drawData[0].worldTransform
                     coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
                 }
                 
                 let modelMatrix = targetAbsoluteTransform * coordinateSpaceTransform
                 
-                
                 let targetUniforms = unanchoredUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: adjustedIndex)
                 targetUniforms?.pointee.modelMatrix = modelMatrix
-                
             }
             
             //
@@ -470,7 +477,7 @@ class UnanchoredRenderModule: RenderModule {
             return
         }
         
-        if let sharedBuffer = sharedModules?.filter({$0.moduleIdentifier == SharedBuffersRenderModule.identifier}).first {
+        if let sharedBuffer = sharedModules?.first(where: {$0.moduleIdentifier == SharedBuffersRenderModule.identifier}) {
             
             renderEncoder.pushDebugGroup("Draw Shared Uniforms")
             
@@ -561,8 +568,8 @@ class UnanchoredRenderModule: RenderModule {
     private var device: MTLDevice?
     private var textureLoader: MTKTextureLoader?
     // TODO: Support per-instance models for trackers and targets
-    private var trackerModel: AKModel?
-    private var targetModel: AKModel?
+    private var trackerAsset: MDLAsset?
+    private var targetAsset: MDLAsset?
     private var unanchoredUniformBuffer: MTLBuffer?
     private var materialUniformBuffer: MTLBuffer?
     private var effectsUniformBuffer: MTLBuffer?
@@ -595,112 +602,12 @@ class UnanchoredRenderModule: RenderModule {
     // Addresses to write material uniforms to each frame
     private var effectsUniformBufferAddress: UnsafeMutableRawPointer?
     
-    private var usesMaterials = false
+    private var usesMaterials = true
     
     // number of frames in the tracker animation by index
     private var trackerAnimationFrameCount = [Int]()
     
     // number of frames in the target animation by index
     private var targetAnimationFrameCount = [Int]()
-    
-    private func meshData(from aModel: AKModel, texturebundle: Bundle) -> MeshGPUData {
-        
-        var myGPUData = MeshGPUData()
-        
-        // Create Vertex Buffers
-        for vtxBuffer in aModel.vertexBuffers {
-            vtxBuffer.withUnsafeBytes { (bytes: UnsafePointer<UInt8>) in
-                guard let aVTXBuffer = device?.makeBuffer(bytes: bytes, length: vtxBuffer.count, options: .storageModeShared) else {
-                    let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeRenderPipelineInitializationFailed, userInfo: nil)
-                    let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-                    recordNewError(newError)
-                    fatalError("Failed to create a buffer from the device.")
-                }
-                myGPUData.vtxBuffers.append(aVTXBuffer)
-            }
-            
-        }
-        
-        // Create Index Buffers
-        for idxBuffer in aModel.indexBuffers {
-            idxBuffer.withUnsafeBytes { (bytes: UnsafePointer<UInt8>) in
-                guard let aIDXBuffer = device?.makeBuffer(bytes: bytes, length: idxBuffer.count, options: .storageModeShared) else {
-                    let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeRenderPipelineInitializationFailed, userInfo: nil)
-                    let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-                    recordNewError(newError)
-                    fatalError("Failed to create a buffer from the device.")
-                }
-                myGPUData.indexBuffers.append(aIDXBuffer)
-            }
-        }
-        
-        // Create Texture Buffers
-        for texturePath in aModel.texturePaths {
-            myGPUData.textures.append(createMTLTexture(inBundle: texturebundle, fromAssetPath: texturePath, withTextureLoader: textureLoader))
-        }
-        
-        // Encode the data in the meshes as DrawData objects and store them in the MeshGPUData
-        var instStartIdx = 0
-        var paletteStartIdx = 0
-        for (meshIdx, meshData) in aModel.meshes.enumerated() {
-            
-            var drawData = DrawData()
-            drawData.vbCount = meshData.vbCount
-            drawData.vbStartIdx = meshData.vbStartIdx
-            drawData.ibStartIdx = meshData.ibStartIdx
-            drawData.instCount = !aModel.instanceCount.isEmpty ? aModel.instanceCount[meshIdx] : 1
-            drawData.instBufferStartIdx = instStartIdx
-            if !aModel.meshSkinIndices.isEmpty,
-                let paletteIndex = aModel.meshSkinIndices[instStartIdx] {
-                drawData.paletteSize = aModel.skins[paletteIndex].jointPaths.count
-                drawData.paletteStartIndex = paletteStartIdx
-                paletteStartIdx += drawData.paletteSize * drawData.instCount
-            }
-            instStartIdx += drawData.instCount
-            usesMaterials = (!meshData.materials.isEmpty)
-            for subIndex in 0..<meshData.idxCounts.count {
-                var subData = DrawSubData()
-                subData.idxCount = meshData.idxCounts[subIndex]
-                subData.idxType = MetalUtilities.convertToMTLIndexType(from: meshData.idxTypes[subIndex])
-                subData.materialUniforms = usesMaterials ? MetalUtilities.convertToMaterialUniform(from: meshData.materials[subIndex])
-                    : MaterialUniforms()
-                if usesMaterials {
-                    
-                    guard let materialUniformBuffer = materialUniformBuffer else {
-                        print("Serious Error - Material Uniform Buffer is nil")
-                        let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeRenderPipelineInitializationFailed, userInfo: nil)
-                        let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-                        recordNewError(newError)
-                        return myGPUData
-                    }
-                    
-                    MetalUtilities.convertMaterialBuffer(from: meshData.materials[subIndex], with: materialUniformBuffer, offset: materialUniformBufferOffset)
-                    subData.materialBuffer = materialUniformBuffer
-                    
-                }
-                subData.baseColorTextureIndex = usesMaterials ? meshData.materials[subIndex].baseColor.1 : nil
-                subData.normalTextureIndex = usesMaterials ? meshData.materials[subIndex].normalMap : nil
-                subData.ambientOcclusionTextureIndex = usesMaterials ? meshData.materials[subIndex].ambientOcclusionMap.1 : nil
-                subData.roughnessTextureIndex = usesMaterials ? meshData.materials[subIndex].roughness.1 : nil
-                subData.metallicTextureIndex = usesMaterials ? meshData.materials[subIndex].metallic.1 : nil
-                subData.irradianceTextureIndex = usesMaterials ? meshData.materials[subIndex].irradianceColorMap.1 : nil
-                subData.subsurfaceTextureIndex = usesMaterials ? meshData.materials[subIndex].subsurface.1 : nil
-                subData.specularTextureIndex = usesMaterials ? meshData.materials[subIndex].specular.1 : nil
-                subData.specularTintTextureIndex = usesMaterials ? meshData.materials[subIndex].specularTint.1 : nil
-                subData.anisotropicTextureIndex = usesMaterials ? meshData.materials[subIndex].anisotropic.1 : nil
-                subData.sheenTextureIndex = usesMaterials ? meshData.materials[subIndex].sheen.1 : nil
-                subData.sheenTintTextureIndex = usesMaterials ? meshData.materials[subIndex].sheenTint.1 : nil
-                subData.clearcoatTextureIndex = usesMaterials ? meshData.materials[subIndex].clearcoat.1 : nil
-                subData.clearcoatGlossTextureIndex = usesMaterials ? meshData.materials[subIndex].clearcoatGloss.1 : nil
-                drawData.subData.append(subData)
-            }
-            
-            myGPUData.drawData.append(drawData)
-            
-        }
-        
-        return myGPUData
-        
-    }
     
 }

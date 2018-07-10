@@ -34,9 +34,11 @@ import ModelIO
 //  have animation but its position is essentially fixed in space.
 //  The object's geometry is defiened by the `model` property.
 //  The objects position in the world is defined by the worldLocation property.
-public protocol AKAnchor: AKGeometricEntity {
+//  The conforming object must be a class, i.e. must have reference symantics.
+public protocol AKAnchor: class, AKGeometricEntity {
     
     var worldLocation: AKWorldLocation { get set }
+    func setIdentifier(_ identifier: UUID)
     
 }
 

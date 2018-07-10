@@ -225,7 +225,7 @@ class TrackingPointsRenderModule: RenderModule {
         
         renderEncoder.setRenderPipelineState(trackingPointPipelineState)
         renderEncoder.setVertexBuffer(trackingPointDataBuffer, offset: trackingPointDataBufferOffset, index: Int(kBufferIndexTrackingPointData.rawValue))
-        if let sharedBuffer = sharedModules?.filter({$0.moduleIdentifier == SharedBuffersRenderModule.identifier}).first {
+        if let sharedBuffer = sharedModules?.first(where: {$0.moduleIdentifier == SharedBuffersRenderModule.identifier}) {
             renderEncoder.pushDebugGroup("Draw Shared Uniforms")
             renderEncoder.setVertexBuffer(sharedBuffer.sharedUniformBuffer, offset: sharedBuffer.sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
             renderEncoder.popDebugGroup()

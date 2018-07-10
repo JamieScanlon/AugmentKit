@@ -27,6 +27,7 @@
 
 import Foundation
 import simd
+import ModelIO
 
 //  An ARTarget object whos vector matches the rotation of the device
 public class GazeTarget: AKTarget {
@@ -34,16 +35,20 @@ public class GazeTarget: AKTarget {
     public static var type: String {
         return "GazeTarget"
     }
-    public var model: AKModel
+    public var asset: MDLAsset
     public var identifier: UUID?
     public var effects: [AnyEffect<Any>]?
     public var position: AKRelativePosition
     
-    public init(withModel model: AKModel, withUserRelativeTransform relativeTransform: matrix_float4x4) {
-        self.model = model
+    public init(withModelAsset asset: MDLAsset, withUserRelativeTransform relativeTransform: matrix_float4x4) {
+        self.asset = asset
         let myPosition = AKRelativePosition(withTransform: relativeTransform, relativeTo: UserPosition())
         self.position = myPosition
         self.vectorDirection = AKVector(x: 0, y: 0, z: -1)
+    }
+    
+    public func setIdentifier(_ identifier: UUID) {
+        self.identifier = identifier
     }
     
 }

@@ -34,9 +34,9 @@ import AugmentKit
 class ViewController: UIViewController {
     
     var world: AKWorld?
-    var pinModel: AKModel?
-    var shipModel: AKModel?
-    var maxModel: AKModel?
+    var pinAsset: MDLAsset?
+    var shipAsset: MDLAsset?
+    var maxAsset: MDLAsset?
     
     @IBOutlet var infoView: UIView?
     @IBOutlet var debugInfoAnchorCounts: UILabel?
@@ -69,10 +69,9 @@ class ViewController: UIViewController {
             
             // Add a user tracking anchor.
             if let asset = MDLAssetTools.assetFromImage(inBundle: Bundle.main, withName: "compass_512.png") {
-                let myUserTrackerModel = AKAnchorAssetModel(asset: asset)
                 // Position it 3 meters down from the camera
                 let offsetTransform = matrix_identity_float4x4.translate(x: 0, y: -3, z: 0)
-                let userTracker = UserTracker(withModel: myUserTrackerModel, withUserRelativeTransform: offsetTransform)
+                let userTracker = UserTracker(withModelAsset: asset, withUserRelativeTransform: offsetTransform)
                 userTracker.position.heading = WorldHeading(withWorld: myWorld, worldHeadingType: .north)
                 myWorld.add(tracker: userTracker)
             }
@@ -80,8 +79,7 @@ class ViewController: UIViewController {
             // Add a Gaze Target
             // Make it about 20cm square.
             if let asset = MDLAssetTools.assetFromImage(inBundle: Bundle.main, withName: "Gaze_Target.png", extension: "", scale: 0.2) {
-                let myGazeTargetModel = AKAnchorAssetModel(asset: asset)
-                let gazeTarget = GazeTarget(withModel: myGazeTargetModel, withUserRelativeTransform: matrix_identity_float4x4)
+                let gazeTarget = GazeTarget(withModelAsset: asset, withUserRelativeTransform: matrix_identity_float4x4)
                 myWorld.add(gazeTarget: gazeTarget)
             }
             
@@ -197,8 +195,8 @@ class ViewController: UIViewController {
     @IBAction fileprivate func markerTapped(_ sender: UIButton) {
         
         // Create a new anchor at the current locaiton
-        
-        guard let anchorModel = pinModel else {
+
+        guard let anchorModel = pinAsset else {
             return
         }
         
@@ -211,7 +209,7 @@ class ViewController: UIViewController {
         }
         
         let anchorLocation = GroundFixedWorldLocation(worldLocation: currentWorldLocation, world: world)
-        let newObject = AugmentedAnchor(withAKModel: anchorModel, at: anchorLocation)
+        let newObject = AugmentedAnchor(withModelAsset: anchorModel, at: anchorLocation)
         world.add(anchor: newObject)
         
     }
@@ -219,8 +217,8 @@ class ViewController: UIViewController {
     @IBAction fileprivate func maxTapped(_ sender: UIButton) {
         
         // Create a new anchor at the current locaiton
-        
-        guard let anchorModel = maxModel else {
+
+        guard let anchorModel = maxAsset else {
             return
         }
         
@@ -233,7 +231,7 @@ class ViewController: UIViewController {
         }
         
         let anchorLocation = GroundFixedWorldLocation(worldLocation: currentWorldLocation, world: world)
-        let newObject = AugmentedAnchor(withAKModel: anchorModel, at: currentWorldLocation)
+        let newObject = AugmentedAnchor(withModelAsset: anchorModel, at: anchorLocation)
         world.add(anchor: newObject)
         
     }
@@ -241,8 +239,8 @@ class ViewController: UIViewController {
     @IBAction fileprivate func planeTapped(_ sender: UIButton) {
         
         // Create a new anchor at the current locaiton
-        
-        guard let anchorModel = shipModel else {
+
+        guard let anchorModel = shipAsset else {
             return
         }
         
@@ -254,7 +252,7 @@ class ViewController: UIViewController {
             return
         }
         
-        let newObject = AugmentedAnchor(withAKModel: anchorModel, at: currentWorldLocation)
+        let newObject = AugmentedAnchor(withModelAsset: anchorModel, at: currentWorldLocation)
         world.add(anchor: newObject)
         
     }
@@ -281,24 +279,24 @@ class ViewController: UIViewController {
             return
         }
         
-        guard let pinAsset = AKSceneKitUtils.mdlAssetFromScene(named: "Pin.scn", world: world) else {
+        guard let aPinAsset = AKSceneKitUtils.mdlAssetFromScene(named: "Pin.scn", world: world) else {
             print("ERROR: Could not load the SceneKit model")
             return
         }
         
-        guard let shipAsset = AKSceneKitUtils.mdlAssetFromScene(named: "ship.scn", world: world) else {
+        guard let aShipAsset = AKSceneKitUtils.mdlAssetFromScene(named: "ship.scn", world: world) else {
             print("ERROR: Could not load the SceneKit model")
             return
         }
         
-        guard let maxAsset = AKSceneKitUtils.mdlAssetFromScene(named: "Art.scnassets/character/max.scn", world: world) else {
+        guard let aMaxAsset = AKSceneKitUtils.mdlAssetFromScene(named: "Art.scnassets/character/max.scn", world: world) else {
             print("ERROR: Could not load the SceneKit model")
             return
         }
-
-        pinModel = AKMDLAssetModel(asset: pinAsset, vertexDescriptor: AKMDLAssetModel.newAnchorVertexDescriptor())
-        shipModel = AKMDLAssetModel(asset: shipAsset, vertexDescriptor: AKMDLAssetModel.newAnchorVertexDescriptor())
-        maxModel = AKMDLAssetModel(asset: maxAsset, vertexDescriptor: AKMDLAssetModel.newAnchorVertexDescriptor())
+        
+        pinAsset = aPinAsset
+        shipAsset = aShipAsset
+        maxAsset = aMaxAsset
         
     }
     
@@ -332,30 +330,4 @@ extension ViewController: AKWorldMonitor {
         }
     }
     
-}
-
-// MARK: - Model Compressor
-
-class Compressor: ModelCompressor {
-    
-    func zipModel(withFileURLs fileURLs: [URL], toDestinationFilePath destinationFilePath: String) -> URL? {
-        
-        guard let zipFileURL = try? Zip.quickZipFiles(fileURLs, fileName: destinationFilePath) else {
-            print("SerializeUtil: Serious Error. Could not archive the model file at \(fileURLs.first?.path ?? "nil")")
-            return nil
-        }
-        
-        return zipFileURL
-        
-    }
-    
-    func unzipModel(withFileURL filePath: URL) -> URL? {
-        do {
-            let unzipDirectory = try Zip.quickUnzipFile(filePath)
-            return unzipDirectory
-        } catch {
-            print(error.localizedDescription)
-            return nil
-        }
-    }
 }

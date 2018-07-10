@@ -103,7 +103,7 @@ extension RenderModule {
         
         // Set mesh's vertex buffers
         for vtxBufferIdx in 0..<drawData.vbCount {
-            renderEncoder.setVertexBuffer(meshGPUData.vtxBuffers[drawData.vbStartIdx + vtxBufferIdx], offset: 0, index: vtxBufferIdx)
+            renderEncoder.setVertexBuffer(meshGPUData.vertexBuffers[drawData.vbStartIdx + vtxBufferIdx], offset: 0, index: vtxBufferIdx)
         }
         
         // Draw each submesh of our mesh

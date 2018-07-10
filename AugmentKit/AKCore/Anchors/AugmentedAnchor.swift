@@ -32,19 +32,23 @@
 import Foundation
 import ModelIO
 
-public struct AugmentedAnchor: AKAugmentedAnchor {
+public class AugmentedAnchor: AKAugmentedAnchor {
     
     public static var type: String {
         return "AugmentedAnchor"
     }
     public var worldLocation: AKWorldLocation
-    public var model: AKModel
+    public var asset: MDLAsset
     public var identifier: UUID?
     public var effects: [AnyEffect<Any>]?
     
-    public init(withAKModel model: AKModel, at location: AKWorldLocation) {
-        self.model = model
+    public init(withModelAsset asset: MDLAsset, at location: AKWorldLocation) {
+        self.asset = asset
         self.worldLocation = location
+    }
+    
+    public func setIdentifier(_ identifier: UUID) {
+        self.identifier = identifier
     }
     
 }

@@ -9,16 +9,13 @@
 /* Begin PBXBuildFile section */
 		7D02B24420CB98B70055BB57 /* retrotv.usdz in Resources */ = {isa = PBXBuildFile; fileRef = 7D02B24320CB98B70055BB57 /* retrotv.usdz */; };
 		7D1B6F0D1F29851E00AB035D /* Pin.scn in Resources */ = {isa = PBXBuildFile; fileRef = 7D1B6F0C1F2983DA00AB035D /* Pin.scn */; };
-		7D282F141FD11DE700D00B86 /* Serialize.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D282F131FD11DE600D00B86 /* Serialize.swift */; };
 		7D3263771FF7FB490040375C /* ZipUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098941FDDA3B9004A92AA /* ZipUtilities.swift */; };
 		7D3263781FF7FB4D0040375C /* QuickZip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF0989E1FDDA3B9004A92AA /* QuickZip.swift */; };
 		7D3263791FF7FB530040375C /* Zip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098A11FDDA3B9004A92AA /* Zip.swift */; };
-		7D32637B1FF7FBFA0040375C /* ModelCompressor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D32637A1FF7FBFA0040375C /* ModelCompressor.swift */; };
 		7D345B07208B83CA00C2D5D0 /* AKWorldLocation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D345B06208B83CA00C2D5D0 /* AKWorldLocation.swift */; };
 		7D345B09208B844600C2D5D0 /* AKWorldDistance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D345B08208B844600C2D5D0 /* AKWorldDistance.swift */; };
 		7D345B0B208B892200C2D5D0 /* AKError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D345B0A208B892200C2D5D0 /* AKError.swift */; };
 		7D53471F203A961A00714A6F /* PathShader.metal in Sources */ = {isa = PBXBuildFile; fileRef = 7D53471E203A961A00714A6F /* PathShader.metal */; };
-		7D534722203B4CE300714A6F /* AKAnchorAssetModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D534721203B4CE300714A6F /* AKAnchorAssetModel.swift */; };
 		7D5B25A72069626900EFA3C6 /* AKRealSurfaceAnchor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D5B25A62069626900EFA3C6 /* AKRealSurfaceAnchor.swift */; };
 		7D5B25A9206BFAC100EFA3C6 /* GazeTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D5B25A8206BFAC100EFA3C6 /* GazeTarget.swift */; };
 		7D5EEC1E1FDC5EDD00E3FE91 /* Pin.scn in Resources */ = {isa = PBXBuildFile; fileRef = 7D1B6F0C1F2983DA00AB035D /* Pin.scn */; };
@@ -39,7 +36,6 @@
 		7D6E6B641F8F1CBC00EFC667 /* AKWorld.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D3EAC0E1F7EA8440076635C /* AKWorld.swift */; };
 		7D6E6B651F8F1CBC00EFC667 /* AugmentedAnchor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D3EAC101F7ED05B0076635C /* AugmentedAnchor.swift */; };
 		7D6E6B661F8F1CBC00EFC667 /* AKUtility.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D3E48891F88C1C800814875 /* AKUtility.swift */; };
-		7D6E6B671F8F1CC300EFC667 /* AKMDLAssetModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D1B6F081F23B2B200AB035D /* AKMDLAssetModel.swift */; };
 		7D6E6B681F8F1CC300EFC667 /* MeshTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DB396AF1F1AFDD30003019B /* MeshTools.swift */; };
 		7D6E6B691F8F1CC300EFC667 /* MeshData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DB396AD1F1AFD860003019B /* MeshData.swift */; };
 		7D6E6B6A1F8F1CC300EFC667 /* MetalUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DB396AB1F1AFBFB0003019B /* MetalUtilities.swift */; };
@@ -52,6 +48,7 @@
 		7D75DCDA207AA3990000EF6E /* Gaze_Target.png in Resources */ = {isa = PBXBuildFile; fileRef = 7D75DCD9207AA3990000EF6E /* Gaze_Target.png */; };
 		7D808FAE209FD3210077FA19 /* AKPath.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D808FAD209FD3210077FA19 /* AKPath.swift */; };
 		7D818909201EB5DB0021694F /* PathsRenderModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D818908201EB5DB0021694F /* PathsRenderModule.swift */; };
+		7D81F47420F47687002FF4B7 /* RemoteModelLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DC785D01FE655C100F82FA4 /* RemoteModelLoader.swift */; };
 		7D88D7AB1F0AFD550009A154 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D88D7AA1F0AFD550009A154 /* AppDelegate.swift */; };
 		7D88D7B21F0AFD550009A154 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D88D7B11F0AFD550009A154 /* ViewController.swift */; };
 		7D88D7B51F0AFD550009A154 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 7D88D7B31F0AFD550009A154 /* Main.storyboard */; };
@@ -78,8 +75,6 @@
 		7DBA369C1F7AE0AE0006310A /* plane_grid.png in Resources */ = {isa = PBXBuildFile; fileRef = 7DBA369B1F7AE0AD0006310A /* plane_grid.png */; };
 		7DBA36A11F7C1AA10006310A /* ship.scn in Resources */ = {isa = PBXBuildFile; fileRef = 7DBA36A01F7C1A310006310A /* ship.scn */; };
 		7DBA36A21F7C1AA50006310A /* texture.png in Resources */ = {isa = PBXBuildFile; fileRef = 7DBA369F1F7C1A310006310A /* texture.png */; };
-		7DC785CC1FE6537D00F82FA4 /* AKArchivedModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DC785CB1FE6537D00F82FA4 /* AKArchivedModel.swift */; };
-		7DC785D11FE655C100F82FA4 /* AKRemoteArchivedModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DC785D01FE655C100F82FA4 /* AKRemoteArchivedModel.swift */; };
 		7DC785D71FED819C00F82FA4 /* UnanchoredRenderModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DC785D61FED819C00F82FA4 /* UnanchoredRenderModule.swift */; };
 		7DCA03EF207F18FD0096F7C6 /* ZipUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098941FDDA3B9004A92AA /* ZipUtilities.swift */; };
 		7DCA03F0207F19CD0096F7C6 /* unzip.c in Sources */ = {isa = PBXBuildFile; fileRef = 7DF098961FDDA3B9004A92AA /* unzip.c */; };
@@ -96,7 +91,6 @@
 		7DE0C29B1FD3DF6E0043FA5F /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DE0C29A1FD3DF6E0043FA5F /* main.swift */; };
 		7DE0C2A11FD3DFC60043FA5F /* AugmentKitCLTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DE0C29F1FD3DFC50043FA5F /* AugmentKitCLTools.swift */; };
 		7DE0C2A21FD3DFC60043FA5F /* ConsoleIO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DE0C2A01FD3DFC50043FA5F /* ConsoleIO.swift */; };
-		7DE0C2A91FD46E5E0043FA5F /* AKModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DE0C2A81FD46E5E0043FA5F /* AKModel.swift */; };
 		7DF697EB1FCD26F500292F66 /* AKModelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF697EA1FCD26F500292F66 /* AKModelProvider.swift */; };
 		7DFCF6031FC08CD300E8A560 /* ImageCaptureShaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = 7DFCF6021FC08CD300E8A560 /* ImageCaptureShaders.metal */; };
 		7DFCF6051FC096A900E8A560 /* PointShader.metal in Sources */ = {isa = PBXBuildFile; fileRef = 7DFCF6041FC096A900E8A560 /* PointShader.metal */; };
@@ -162,10 +156,7 @@
 
 /* Begin PBXFileReference section */
 		7D02B24320CB98B70055BB57 /* retrotv.usdz */ = {isa = PBXFileReference; lastKnownFileType = file; path = retrotv.usdz; sourceTree = "<group>"; };
-		7D1B6F081F23B2B200AB035D /* AKMDLAssetModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKMDLAssetModel.swift; sourceTree = "<group>"; };
 		7D1B6F0C1F2983DA00AB035D /* Pin.scn */ = {isa = PBXFileReference; lastKnownFileType = file.bplist; path = Pin.scn; sourceTree = "<group>"; };
-		7D282F131FD11DE600D00B86 /* Serialize.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Serialize.swift; sourceTree = "<group>"; };
-		7D32637A1FF7FBFA0040375C /* ModelCompressor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelCompressor.swift; sourceTree = "<group>"; };
 		7D345B06208B83CA00C2D5D0 /* AKWorldLocation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKWorldLocation.swift; sourceTree = "<group>"; };
 		7D345B08208B844600C2D5D0 /* AKWorldDistance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKWorldDistance.swift; sourceTree = "<group>"; };
 		7D345B0A208B892200C2D5D0 /* AKError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKError.swift; sourceTree = "<group>"; };
@@ -175,7 +166,6 @@
 		7D3EAC101F7ED05B0076635C /* AugmentedAnchor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AugmentedAnchor.swift; sourceTree = "<group>"; };
 		7D3EAC131F7EEDCA0076635C /* AKSceneKitUtils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKSceneKitUtils.swift; sourceTree = "<group>"; };
 		7D53471E203A961A00714A6F /* PathShader.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = PathShader.metal; sourceTree = "<group>"; };
-		7D534721203B4CE300714A6F /* AKAnchorAssetModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKAnchorAssetModel.swift; sourceTree = "<group>"; };
 		7D5B25A62069626900EFA3C6 /* AKRealSurfaceAnchor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKRealSurfaceAnchor.swift; sourceTree = "<group>"; };
 		7D5B25A8206BFAC100EFA3C6 /* GazeTarget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GazeTarget.swift; sourceTree = "<group>"; };
 		7D5FDA311FC72AAE00BAE104 /* RenderModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RenderModule.swift; sourceTree = "<group>"; };
@@ -234,15 +224,13 @@
 		7DBA369B1F7AE0AD0006310A /* plane_grid.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = plane_grid.png; sourceTree = "<group>"; };
 		7DBA369F1F7C1A310006310A /* texture.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = texture.png; sourceTree = "<group>"; };
 		7DBA36A01F7C1A310006310A /* ship.scn */ = {isa = PBXFileReference; lastKnownFileType = file.bplist; path = ship.scn; sourceTree = "<group>"; };
-		7DC785CB1FE6537D00F82FA4 /* AKArchivedModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKArchivedModel.swift; sourceTree = "<group>"; };
-		7DC785D01FE655C100F82FA4 /* AKRemoteArchivedModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKRemoteArchivedModel.swift; sourceTree = "<group>"; };
+		7DC785D01FE655C100F82FA4 /* RemoteModelLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteModelLoader.swift; sourceTree = "<group>"; };
 		7DC785D61FED819C00F82FA4 /* UnanchoredRenderModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnanchoredRenderModule.swift; sourceTree = "<group>"; };
 		7DD1856520B0AE6500165635 /* Art.scnassets */ = {isa = PBXFileReference; lastKnownFileType = wrapper.scnassets; path = Art.scnassets; sourceTree = "<group>"; };
 		7DE0C2981FD3DF6D0043FA5F /* akcltool */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = akcltool; sourceTree = BUILT_PRODUCTS_DIR; };
 		7DE0C29A1FD3DF6E0043FA5F /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		7DE0C29F1FD3DFC50043FA5F /* AugmentKitCLTools.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AugmentKitCLTools.swift; sourceTree = "<group>"; };
 		7DE0C2A01FD3DFC50043FA5F /* ConsoleIO.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ConsoleIO.swift; sourceTree = "<group>"; };
-		7DE0C2A81FD46E5E0043FA5F /* AKModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKModel.swift; sourceTree = "<group>"; };
 		7DF098941FDDA3B9004A92AA /* ZipUtilities.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ZipUtilities.swift; sourceTree = "<group>"; };
 		7DF098961FDDA3B9004A92AA /* unzip.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = unzip.c; sourceTree = "<group>"; };
 		7DF098971FDDA3B9004A92AA /* zip.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = zip.c; sourceTree = "<group>"; };
@@ -313,7 +301,6 @@
 				7D3EAC0E1F7EA8440076635C /* AKWorld.swift */,
 				7D3E48891F88C1C800814875 /* AKUtility.swift */,
 				7DF697EA1FCD26F500292F66 /* AKModelProvider.swift */,
-				7DE0C2A81FD46E5E0043FA5F /* AKModel.swift */,
 			);
 			path = AKCore;
 			sourceTree = "<group>";
@@ -336,17 +323,6 @@
 				7D3EAC131F7EEDCA0076635C /* AKSceneKitUtils.swift */,
 			);
 			path = SceneKit;
-			sourceTree = "<group>";
-		};
-		7D534720203B4C7F00714A6F /* AKModel Implementations */ = {
-			isa = PBXGroup;
-			children = (
-				7D1B6F081F23B2B200AB035D /* AKMDLAssetModel.swift */,
-				7DC785CB1FE6537D00F82FA4 /* AKArchivedModel.swift */,
-				7DC785D01FE655C100F82FA4 /* AKRemoteArchivedModel.swift */,
-				7D534721203B4CE300714A6F /* AKAnchorAssetModel.swift */,
-			);
-			path = "AKModel Implementations";
 			sourceTree = "<group>";
 		};
 		7D5FDA2D1FC404A400BAE104 /* Shaders */ = {
@@ -459,6 +435,7 @@
 			children = (
 				7DBA369E1F7C1A180006310A /* Models */,
 				7D88D7AA1F0AFD550009A154 /* AppDelegate.swift */,
+				7DC785D01FE655C100F82FA4 /* RemoteModelLoader.swift */,
 				7D88D7B11F0AFD550009A154 /* ViewController.swift */,
 				7D88D7B31F0AFD550009A154 /* Main.storyboard */,
 				7D88D7B61F0AFD560009A154 /* Assets.xcassets */,
@@ -527,12 +504,9 @@
 		7DB396B11F1AFDDB0003019B /* ModelIO */ = {
 			isa = PBXGroup;
 			children = (
-				7D534720203B4C7F00714A6F /* AKModel Implementations */,
-				7D282F131FD11DE600D00B86 /* Serialize.swift */,
 				7DB396AF1F1AFDD30003019B /* MeshTools.swift */,
 				7DB396AD1F1AFD860003019B /* MeshData.swift */,
 				7DB396AB1F1AFBFB0003019B /* MetalUtilities.swift */,
-				7D32637A1FF7FBFA0040375C /* ModelCompressor.swift */,
 			);
 			path = ModelIO;
 			sourceTree = "<group>";
@@ -715,6 +689,7 @@
 				TargetAttributes = {
 					7D6E6B461F8F19C300EFC667 = {
 						CreatedOnToolsVersion = 9.0;
+						LastSwiftMigration = 1000;
 						ProvisioningStyle = Automatic;
 					};
 					7D6E6B4E1F8F19C300EFC667 = {
@@ -723,6 +698,7 @@
 					};
 					7D88D7A61F0AFD550009A154 = {
 						CreatedOnToolsVersion = 9.0;
+						LastSwiftMigration = 1000;
 					};
 					7DB2C4E21FDC588F00B355A2 = {
 						CreatedOnToolsVersion = 9.2;
@@ -810,35 +786,29 @@
 				7D808FAE209FD3210077FA19 /* AKPath.swift in Sources */,
 				7D5B25A72069626900EFA3C6 /* AKRealSurfaceAnchor.swift in Sources */,
 				7D8A0A822013D143006CAAAD /* AKHeading.swift in Sources */,
-				7D6E6B671F8F1CC300EFC667 /* AKMDLAssetModel.swift in Sources */,
 				7D6E6B6E1F8F1CDB00EFC667 /* LocalStoreManager.swift in Sources */,
 				7D8A0A802013D058006CAAAD /* AKRelativePosiiton.swift in Sources */,
 				7D6E6B6D1F8F1CDB00EFC667 /* MotionManager.swift in Sources */,
 				7DAD06C520716D5600B62B61 /* AKVector.swift in Sources */,
 				7D6E6B5F1F8F1C9D00EFC667 /* AnchorShaders.metal in Sources */,
-				7DC785CC1FE6537D00F82FA4 /* AKArchivedModel.swift in Sources */,
 				7D6E6B631F8F1CBC00EFC667 /* AKAnchor.swift in Sources */,
 				7D9B13AA20A7519F006C2B63 /* SHA256.swift in Sources */,
 				7D6E6B661F8F1CBC00EFC667 /* AKUtility.swift in Sources */,
 				7D345B09208B844600C2D5D0 /* AKWorldDistance.swift in Sources */,
 				7D6E6B711F8F1CDB00EFC667 /* DeviceManager.swift in Sources */,
 				7D5FDA381FC7431500BAE104 /* AnchorsRenderModule.swift in Sources */,
-				7DE0C2A91FD46E5E0043FA5F /* AKModel.swift in Sources */,
-				7D32637B1FF7FBFA0040375C /* ModelCompressor.swift in Sources */,
 				7D5FDA341FC7333200BAE104 /* SharedBuffersRenderModule.swift in Sources */,
 				7D5FDA361FC73AD000BAE104 /* CameraPlaneRenderModule.swift in Sources */,
 				7D6E6B701F8F1CDB00EFC667 /* WorldLocationManager.swift in Sources */,
 				7D6E6B641F8F1CBC00EFC667 /* AKWorld.swift in Sources */,
 				7D6E6B651F8F1CBC00EFC667 /* AugmentedAnchor.swift in Sources */,
 				7D6E6B6A1F8F1CC300EFC667 /* MetalUtilities.swift in Sources */,
-				7DC785D11FE655C100F82FA4 /* AKRemoteArchivedModel.swift in Sources */,
 				7DAD06BE2071505E00B62B61 /* AKTracker.swift in Sources */,
 				7D5FDA3C1FC9E70E00BAE104 /* SurfacesRenderModule.swift in Sources */,
 				7D6E6B5E1F8F1C9600EFC667 /* AKSceneKitUtils.swift in Sources */,
 				7D6E6B681F8F1CC300EFC667 /* MeshTools.swift in Sources */,
 				7DAD06C22071520F00B62B61 /* AKTarget.swift in Sources */,
 				7D5FDA321FC72AAE00BAE104 /* RenderModule.swift in Sources */,
-				7D534722203B4CE300714A6F /* AKAnchorAssetModel.swift in Sources */,
 				7D5FDA3A1FC9CFA400BAE104 /* TrackingPointsRenderModule.swift in Sources */,
 				7D6E6B691F8F1CC300EFC667 /* MeshData.swift in Sources */,
 				7D5B25A9206BFAC100EFA3C6 /* GazeTarget.swift in Sources */,
@@ -847,7 +817,6 @@
 				7DC785D71FED819C00F82FA4 /* UnanchoredRenderModule.swift in Sources */,
 				7D818909201EB5DB0021694F /* PathsRenderModule.swift in Sources */,
 				7DAD06C0207150B300B62B61 /* AKGeometricEntity.swift in Sources */,
-				7D282F141FD11DE700D00B86 /* Serialize.swift in Sources */,
 				7D8D4DE5209E8E6900F98072 /* AKAnimatable.swift in Sources */,
 				7D5FDA3E1FC9FB4400BAE104 /* Renderer.swift in Sources */,
 				7D6E6B6C1F8F1CDB00EFC667 /* LocationManager.swift in Sources */,
@@ -881,6 +850,7 @@
 				7DCA03F2207F19D30096F7C6 /* zip.c in Sources */,
 				7D3263791FF7FB530040375C /* Zip.swift in Sources */,
 				7D88D7AB1F0AFD550009A154 /* AppDelegate.swift in Sources */,
+				7D81F47420F47687002FF4B7 /* RemoteModelLoader.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -984,7 +954,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
 				SKIP_INSTALL = YES;
 				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/AugmentKit/Renderer/**";
-				SWIFT_VERSION = 4.0;
+				SWIFT_VERSION = 4.2;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
 				VERSION_INFO_PREFIX = "";
@@ -1010,7 +980,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
 				SKIP_INSTALL = YES;
 				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/AugmentKit/Renderer/**";
-				SWIFT_VERSION = 4.0;
+				SWIFT_VERSION = 4.2;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
 				VERSION_INFO_PREFIX = "";
@@ -1171,7 +1141,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.tenthlettermade.AugmentKit2;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_INCLUDE_PATHS = "${SRCROOT}/Libraries/Zip/minizip";
-				SWIFT_VERSION = 4.0;
+				SWIFT_VERSION = 4.2;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -1187,7 +1157,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.tenthlettermade.AugmentKit2;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_INCLUDE_PATHS = "${SRCROOT}/Libraries/Zip/minizip";
-				SWIFT_VERSION = 4.0;
+				SWIFT_VERSION = 4.2;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;

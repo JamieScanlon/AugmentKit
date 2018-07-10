@@ -44,4 +44,5 @@ import simd
 public protocol AKTarget: AKGeometricEntity {
     var vectorDirection: AKVector { get }
     var position: AKRelativePosition { get }
+    func setIdentifier(_ identifier: UUID)
 }

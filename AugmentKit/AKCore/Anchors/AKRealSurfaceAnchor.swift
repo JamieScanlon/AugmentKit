@@ -38,14 +38,14 @@ public protocol AKRealSurfaceAnchor: AKRealAnchor {
     var orientation: ARPlaneAnchor.Alignment { get set }
 }
 
-public struct RealSurfaceAnchor: AKRealSurfaceAnchor {
+public class RealSurfaceAnchor: AKRealSurfaceAnchor {
     
     public static var type: String {
         return "RealSurface"
     }
     public var orientation: ARPlaneAnchor.Alignment = .horizontal
     public var worldLocation: AKWorldLocation
-    public var model: AKModel
+    public var asset: MDLAsset
     public var identifier: UUID?
     public var effects: [AnyEffect<Any>]?
     
@@ -55,31 +55,32 @@ public struct RealSurfaceAnchor: AKRealSurfaceAnchor {
         let asset = MDLAsset(bufferAllocator: metalAllocator)
         asset.add(mesh)
         
-        let mySurfaceModel = AKMDLAssetModel(asset: asset, vertexDescriptor: AKMDLAssetModel.newAnchorVertexDescriptor())
-        
-        self.model = mySurfaceModel
+        self.asset = asset
         self.worldLocation = location
         
     }
     
+    public func setIdentifier(_ identifier: UUID) {
+        self.identifier = identifier
+    }
+    
 }
 
-public struct GuideSurfaceAnchor: AKRealSurfaceAnchor {
+public class GuideSurfaceAnchor: AKRealSurfaceAnchor {
     
     public static var type: String {
         return "GuideSurface"
     }
     public var orientation: ARPlaneAnchor.Alignment = .horizontal
     public var worldLocation: AKWorldLocation
-    public var model: AKModel
+    public var asset: MDLAsset
     public var identifier: UUID?
     public var effects: [AnyEffect<Any>]?
     
-    public static func createModel(inBundle bundle: Bundle, withAllocator metalAllocator: MTKMeshBufferAllocator?) -> AKModel? {
+    public static func createModelAsset(inBundle bundle: Bundle, withAllocator metalAllocator: MTKMeshBufferAllocator?) -> MDLAsset? {
         
         if let asset = MDLAssetTools.assetFromImage(inBundle: bundle, withName: "plane_grid", extension: "png", allocator: metalAllocator) {
-            let mySurfaceModel = AKMDLAssetModel(asset: asset, vertexDescriptor: AKMDLAssetModel.newAnchorVertexDescriptor())
-            return mySurfaceModel
+            return asset
         }
         
         return nil
@@ -88,19 +89,19 @@ public struct GuideSurfaceAnchor: AKRealSurfaceAnchor {
     
     public init(inBundle bundle: Bundle, at location: AKWorldLocation, withAllocator metalAllocator: MTKMeshBufferAllocator? = nil) {
         
-        let mesh = MDLMesh(planeWithExtent: vector3(1, 0, 1), segments: vector2(1, 1), geometryType: .triangles, allocator: metalAllocator)
-        let asset = MDLAsset(bufferAllocator: metalAllocator)
-        asset.add(mesh)
+//        let mesh = MDLMesh(planeWithExtent: vector3(1, 0, 1), segments: vector2(1, 1), geometryType: .triangles, allocator: metalAllocator)
+//        let asset = MDLAsset(bufferAllocator: metalAllocator)
+//        asset.add(mesh)
         
-        let mySurfaceModel = GuideSurfaceAnchor.createModel(inBundle: bundle, withAllocator: metalAllocator)!
+        let mySurfaceModelAsset = GuideSurfaceAnchor.createModelAsset(inBundle: bundle, withAllocator: metalAllocator)!
         
-        self.model = mySurfaceModel
+        self.asset = mySurfaceModelAsset
         self.worldLocation = location
         
     }
     
-    public mutating func setIdentifier(_ uuid: UUID) {
-        identifier = uuid
+    public func setIdentifier(_ identifier: UUID) {
+        self.identifier = identifier
     }
     
 }

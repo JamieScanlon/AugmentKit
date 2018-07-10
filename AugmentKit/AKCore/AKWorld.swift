@@ -279,24 +279,20 @@ public class AKWorld: NSObject {
         renderer.initialize()
     }
     
-    @discardableResult
-    public func add(anchor: AKAugmentedAnchor) -> UUID {
-        return renderer.add(akAnchor: anchor)
+    public func add(anchor: AKAugmentedAnchor) {
+        renderer.add(akAnchor: anchor)
     }
     
-    @discardableResult
-    public func add(tracker: AKAugmentedTracker) -> UUID {
-        return renderer.add(akTracker: tracker)
+    public func add(tracker: AKAugmentedTracker) {
+        renderer.add(akTracker: tracker)
     }
     
-    @discardableResult
-    public func add(gazeTarget: GazeTarget) -> UUID {
-        return renderer.add(gazeTarget: gazeTarget)
+    public func add(gazeTarget: GazeTarget) {
+        renderer.add(gazeTarget: gazeTarget)
     }
     
-    @discardableResult
-    public func add(akPath: AKPath) -> UUID {
-        return renderer.add(akPath: akPath)
+    public func add(akPath: AKPath) {
+        renderer.add(akPath: akPath)
     }
     
     public func worldLocation(withLatitude latitude: Double, longitude: Double, elevation: Double?) -> AKWorldLocation? {

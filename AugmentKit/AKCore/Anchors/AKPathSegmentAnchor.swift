@@ -37,21 +37,25 @@ public protocol AKPathSegmentAnchor: AKAugmentedAnchor {
     
 }
 
-public struct PathSegmentAnchor: AKPathSegmentAnchor {
+public class PathSegmentAnchor: AKPathSegmentAnchor {
     
     public static var type: String {
         return "PathSegmentAnchor"
     }
     public var worldLocation: AKWorldLocation
-    public var model: AKModel
+    public var asset: MDLAsset
     public var identifier: UUID?
     public var effects: [AnyEffect<Any>]?
     
     public init(at location: AKWorldLocation, identifier: UUID? = nil, effects: [AnyEffect<Any>]? = nil) {
-        self.model = AKSimpleModel()
+        self.asset = MDLAsset()
         self.worldLocation = location
         self.identifier = identifier
         self.effects = effects
+    }
+    
+    public func setIdentifier(_ identifier: UUID) {
+        self.identifier = identifier
     }
     
 }

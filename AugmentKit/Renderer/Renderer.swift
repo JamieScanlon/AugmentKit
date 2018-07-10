@@ -133,7 +133,7 @@ public class Renderer {
     public var showGuides = false {
         didSet {
             if showGuides {
-                if renderModules.filter({$0 is TrackingPointsRenderModule}).count == 0 {
+                if renderModules.filter({$0 is TrackingPointsRenderModule}).isEmpty {
                     renderModules.append(TrackingPointsRenderModule())
                 }
             } else {
@@ -309,7 +309,7 @@ public class Renderer {
         if surfacesRenderModule == nil && showGuides && surfaceAnchors.count > 0  {
             
             let metalAllocator = MTKMeshBufferAllocator(device: device)
-            modelProvider?.registerModel(GuideSurfaceAnchor.createModel(inBundle: textureBundle, withAllocator: metalAllocator)!, forObjectType: GuideSurfaceAnchor.type, identifier: nil)
+            modelProvider?.registerAsset(GuideSurfaceAnchor.createModelAsset(inBundle: textureBundle, withAllocator: metalAllocator)!, forObjectType: GuideSurfaceAnchor.type, identifier: nil)
             
             addModule(forModuelIdentifier: SurfacesRenderModule.identifier)
             
@@ -347,19 +347,14 @@ public class Renderer {
         // Update Trackers
         //
         
-        let updatedTrackers: [AKAugmentedTracker] = trackers.map {
+        trackers.forEach {
             if let userTracker = $0 as? AKAugmentedUserTracker {
                 userTracker.userPosition()?.transform = cameraPositionTransform
                 userTracker.position.updateTransforms()
-                return userTracker
             } else {
-                var mutableTracker = $0
-                mutableTracker.position.updateTransforms()
-                return mutableTracker
+                $0.position.updateTransforms()
             }
         }
-        
-        trackers = updatedTrackers
         
         //
         // Update Gaze Targets
@@ -512,126 +507,103 @@ public class Renderer {
     // MARK: - Adding objects for render
     
     //  Add a new AKAugmentedAnchor to the AR world
-    @discardableResult
-    public func add(akAnchor: AKAugmentedAnchor) -> UUID {
+    public func add(akAnchor: AKAugmentedAnchor) {
         
         let arAnchor = ARAnchor(transform: akAnchor.worldLocation.transform)
-        let identifier = arAnchor.identifier
+        augmentedAnchors.append(akAnchor)
+        akAnchor.setIdentifier(arAnchor.identifier)
         
-        // Create an InternalAugmentedAnchor for internal use
-        let myAnchor = InternalAugmentedAnchor(withAKAugmentedAnchor: akAnchor)
-        myAnchor.identifier = identifier
-        augmentedAnchors.append(myAnchor)
-        
-        let anchorType = type(of: myAnchor).type
+        let anchorType = type(of: akAnchor).type
         
         // Resgister the AKModel with the model provider.
-        modelProvider?.registerModel(myAnchor.model, forObjectType: anchorType, identifier: myAnchor.identifier)
+        modelProvider?.registerAsset(akAnchor.asset, forObjectType: anchorType, identifier: akAnchor.identifier)
         
         // Keep track of the anchor bucketed by the RenderModule
         // This will be used to load individual models per anchor.
         if let existingGeometries = geometriesForRenderModule[AnchorsRenderModule.identifier] {
             var mutableExistingGeometries = existingGeometries
-            mutableExistingGeometries.append(myAnchor)
+            mutableExistingGeometries.append(akAnchor)
             geometriesForRenderModule[AnchorsRenderModule.identifier] = mutableExistingGeometries
             anchorsRenderModule?.isInitialized = false
             hasUninitializedModules = true
         } else {
-            geometriesForRenderModule[AnchorsRenderModule.identifier] = [myAnchor]
+            geometriesForRenderModule[AnchorsRenderModule.identifier] = [akAnchor]
         }
         
         // Add a new anchor to the session
         session.add(anchor: arAnchor)
         
-        return identifier
-        
     }
     
     //  Add a new AKAugmentedTracker to the AR world
-    @discardableResult
-    public func add(akTracker: AKAugmentedTracker) -> UUID {
+    public func add(akTracker: AKAugmentedTracker) {
         
         let identifier = UUID()
         
-        let myTracker: AKAugmentedTracker = {
-            if let userTracker = akTracker as? UserTracker {
-                // If a UserTracker instance was passed in, use that directly instead of the
-                // internal type
-                userTracker.identifier = identifier
-                return userTracker
-            } else {
-                // Create an InternalAugmentedAnchor for internal use
-                let aTracker = InternalAugmentedTracker(withAKAugmentedTracker: akTracker)
-                aTracker.identifier = identifier
-                return aTracker
-            }
-        }()
+        if let userTracker = akTracker as? UserTracker {
+            // If a UserTracker instance was passed in, use that directly instead of the
+            // internal type
+            userTracker.setIdentifier(identifier)
+        } else {
+            akTracker.setIdentifier(identifier)
+        }
         
-        let anchorType = type(of: myTracker).type
+        let anchorType = type(of: akTracker).type
         
         // Resgister the AKModel with the model provider.
-        modelProvider?.registerModel(myTracker.model, forObjectType: anchorType, identifier: myTracker.identifier)
+        modelProvider?.registerAsset(akTracker.asset, forObjectType: anchorType, identifier: akTracker.identifier)
         
-        trackers.append(myTracker)
+        trackers.append(akTracker)
         
         // Keep track of the tracker bucketed by the RenderModule
         // This will be used to load individual models per anchor.
         if let existingGeometries = geometriesForRenderModule[UnanchoredRenderModule.identifier] {
             var mutableExistingGeometries = existingGeometries
-            mutableExistingGeometries.append(myTracker)
+            mutableExistingGeometries.append(akTracker)
             geometriesForRenderModule[UnanchoredRenderModule.identifier] = mutableExistingGeometries
         } else {
-            geometriesForRenderModule[UnanchoredRenderModule.identifier] = [myTracker]
+            geometriesForRenderModule[UnanchoredRenderModule.identifier] = [akTracker]
         }
-        
-        return identifier
         
     }
     
     //  Add a new path to the AR world
-    @discardableResult
-    public func add(akPath: AKPath) -> UUID {
+    public func add(akPath: AKPath) {
         
         let identifier = UUID()
+    
+        akPath.setIdentifier(identifier)
         
-        // Create an InternalAugmentedAnchor for internal use
-        let myPath = InternalPath(withAKPath: akPath)
-        myPath.identifier = identifier
-        
-        let anchorType = type(of: myPath).type
+        let anchorType = type(of: akPath).type
         
         // Resgister the AKModel with the model provider.
-        modelProvider?.registerModel(myPath.model, forObjectType: anchorType, identifier: myPath.identifier)
+        modelProvider?.registerAsset(akPath.asset, forObjectType: anchorType, identifier: akPath.identifier)
         
         // Update the segment anchors by adding the ARAnchor identifier which will allow us
         // to trace back the ARAnchors to the path they belong to.
-        let updatedSegments: [PathSegmentAnchor] = myPath.segmentPoints.map {
+        akPath.segmentPoints.forEach {
             
             // Add a new anchor to the session
             let arAnchor = ARAnchor(transform: $0.worldLocation.transform)
             session.add(anchor: arAnchor)
             
-            return PathSegmentAnchor(at: $0.worldLocation, identifier: arAnchor.identifier, effects: $0.effects)
+            $0.setIdentifier(arAnchor.identifier)
             
             
         }
         
-        myPath.segmentPoints = updatedSegments
-        paths.append(myPath)
-        
-        return identifier
+        paths.append(akPath)
         
     }
     
-    @discardableResult
-    public func add(gazeTarget: GazeTarget) -> UUID {
+    public func add(gazeTarget: GazeTarget) {
         
         let theType = type(of: gazeTarget).type
         let identifier = UUID()
         gazeTarget.identifier = identifier
         
         // Resgister the AKModel with the model provider.
-        modelProvider?.registerModel(gazeTarget.model, forObjectType: theType, identifier: gazeTarget.identifier)
+        modelProvider?.registerAsset(gazeTarget.asset, forObjectType: theType, identifier: gazeTarget.identifier)
         
         gazeTargets.append(gazeTarget)
         
@@ -645,28 +617,26 @@ public class Renderer {
             geometriesForRenderModule[UnanchoredRenderModule.identifier] = [gazeTarget]
         }
         
-        return identifier
-        
     }
     
     // MARK: - Removing objects
     
-    public func remove(akAnchorWithID id: UUID) {
+    public func remove(akAnchor: AKAugmentedAnchor) {
         
-        guard let akAnchor = augmentedAnchors.filter({$0.identifier == id}).first, let akAnchorIndex = augmentedAnchors.index(where: {$0.identifier == id}) else {
+        guard let akAnchorIndex = augmentedAnchors.index(where: {$0.identifier == akAnchor.identifier}) else {
             return
         }
         
         augmentedAnchors.remove(at: akAnchorIndex)
         let anchorType = type(of: akAnchor).type
-        modelProvider?.unregisterModel(forObjectType: anchorType, identifier: akAnchor.identifier)
+        modelProvider?.unregisterAsset(forObjectType: anchorType, identifier: akAnchor.identifier)
         var existingGeometries = geometriesForRenderModule[AnchorsRenderModule.identifier]
-        if let index = existingGeometries?.index(where: {$0.identifier == id}) {
+        if let index = existingGeometries?.index(where: {$0.identifier == akAnchor.identifier}) {
             existingGeometries?.remove(at: index)
         }
         geometriesForRenderModule[AnchorsRenderModule.identifier] = existingGeometries
         
-        guard let arAnchor = session.currentFrame?.anchors.filter({$0.identifier == id}).first else {
+        guard let arAnchor = session.currentFrame?.anchors.first(where: {$0.identifier == akAnchor.identifier}) else {
             return
         }
         
@@ -674,52 +644,52 @@ public class Renderer {
         
     }
     
-    public func remove(akTrackerWithID id: UUID) {
+    public func remove(akTracker: AKAugmentedTracker) {
         
-        guard let akTracker = trackers.filter({$0.identifier == id}).first, let akTrackerIndex = trackers.index(where: {$0.identifier == id}) else {
+        guard let akTrackerIndex = trackers.index(where: {$0.identifier == akTracker.identifier}) else {
             return
         }
         
         trackers.remove(at: akTrackerIndex)
         let anchorType = type(of: akTracker).type
-        modelProvider?.unregisterModel(forObjectType: anchorType, identifier: akTracker.identifier)
+        modelProvider?.unregisterAsset(forObjectType: anchorType, identifier: akTracker.identifier)
         var existingGeometries = geometriesForRenderModule[UnanchoredRenderModule.identifier]
-        if let index = existingGeometries?.index(where: {$0.identifier == id}) {
+        if let index = existingGeometries?.index(where: {$0.identifier == akTracker.identifier}) {
             existingGeometries?.remove(at: index)
         }
         geometriesForRenderModule[UnanchoredRenderModule.identifier] = existingGeometries
         
     }
     
-    public func remove(akPathWithID id: UUID) {
+    public func remove(akPath: AKPath) {
         
-        guard let akPath = paths.filter({$0.identifier == id}).first, let akPathIndex = paths.index(where: {$0.identifier == id}) else {
+        guard let akPathIndex = paths.index(where: {$0.identifier == akPath.identifier}) else {
             return
         }
         
         akPath.segmentPoints.forEach { segment in
-            if let arAnchor = session.currentFrame?.anchors.filter({$0.identifier == segment.identifier}).first  {
+            if let arAnchor = session.currentFrame?.anchors.first(where: {$0.identifier == segment.identifier}) {
                 session.remove(anchor: arAnchor)
             }
         }
         
         paths.remove(at: akPathIndex)
         let anchorType = type(of: akPath).type
-        modelProvider?.unregisterModel(forObjectType: anchorType, identifier: akPath.identifier)
+        modelProvider?.unregisterAsset(forObjectType: anchorType, identifier: akPath.identifier)
         
     }
     
-    public func remove(gazeTargetWithID id: UUID) {
+    public func remove(gazeTarget: GazeTarget) {
         
-        guard let gazeTarget = gazeTargets.filter({$0.identifier == id}).first, let gazeTargetIndex = gazeTargets.index(where: {$0.identifier == id}) else {
+        guard let gazeTargetIndex = gazeTargets.index(where: {$0.identifier == gazeTarget.identifier}) else {
             return
         }
         
         gazeTargets.remove(at: gazeTargetIndex)
         let anchorType = type(of: gazeTarget).type
-        modelProvider?.unregisterModel(forObjectType: anchorType, identifier: gazeTarget.identifier)
+        modelProvider?.unregisterAsset(forObjectType: anchorType, identifier: gazeTarget.identifier)
         var existingGeometries = geometriesForRenderModule[UnanchoredRenderModule.identifier]
-        if let index = existingGeometries?.index(where: {$0.identifier == id}) {
+        if let index = existingGeometries?.index(where: {$0.identifier == gazeTarget.identifier}) {
             existingGeometries?.remove(at: index)
         }
         geometriesForRenderModule[UnanchoredRenderModule.identifier] = existingGeometries
@@ -984,77 +954,55 @@ public class Renderer {
 
 // An internal instance of a `InternalPath` that can be used and manipulated privately
 // This is a Class type so it can have reference symantics (i.e. properties can be updated)
-fileprivate class InternalPath: AKPath {
-    
-    static var type: String {
-        return "AnyPath"
-    }
-    
-    var worldLocation: AKWorldLocation
-    var model: AKModel
-    var identifier: UUID?
-    var effects: [AnyEffect<Any>]?
-    var segmentPoints: [AKPathSegmentAnchor]
-    var lineThickness: Double
-    
-    init(withAKPath akPath: AKPath) {
-        self.model = akPath.model
-        self.identifier = akPath.identifier
-        self.worldLocation = akPath.worldLocation
-        self.effects = akPath.effects
-        self.segmentPoints = akPath.segmentPoints
-        self.lineThickness = akPath.lineThickness
-    }
-    
-}
+//fileprivate class InternalPath: AKPath {
+//
+//    static var type: String {
+//        return "AnyPath"
+//    }
+//
+//    var worldLocation: AKWorldLocation
+//    var model: AKModel
+//    var asset: MDLAsset
+//    var identifier: UUID?
+//    var effects: [AnyEffect<Any>]?
+//    var segmentPoints: [AKPathSegmentAnchor]
+//    var lineThickness: Double
+//
+//    init(withAKPath akPath: AKPath) {
+//        self.model = akPath.model
+//        self.asset = akPath.asset
+//        self.identifier = akPath.identifier
+//        self.worldLocation = akPath.worldLocation
+//        self.effects = akPath.effects
+//        self.segmentPoints = akPath.segmentPoints
+//        self.lineThickness = akPath.lineThickness
+//    }
+//
+//}
 
 // MARK: - InternalAugmentedTracker
 
 // An internal instance of a `AKAugmentedTracker` that can be used and manipulated privately
 // This is a Class type so it can have reference symantics (i.e. properties can be updated)
-fileprivate class InternalAugmentedTracker: AKAugmentedTracker {
-    
-    static var type: String {
-        return "AnyTracker"
-    }
-    
-    var position: AKRelativePosition
-    var model: AKModel
-    var identifier: UUID?
-    var effects: [AnyEffect<Any>]?
-    
-    init(withAKAugmentedTracker akAugmentedTracker: AKAugmentedTracker) {
-        self.model = akAugmentedTracker.model
-        self.identifier = akAugmentedTracker.identifier
-        self.position = akAugmentedTracker.position
-        self.effects = akAugmentedTracker.effects
-    }
-    
-}
-
-// MARK: - InternalAugmentedAnchor
-
-// An internal instance of a `AKAugmentedAnchor` that can be used and manipulated privately
-// This is a Class type so it can have reference symantics (i.e. properties can be updated)
-fileprivate class InternalAugmentedAnchor: AKAugmentedAnchor {
-    
-    static var type: String {
-        return "AnyAnchor"
-    }
-    
-    var worldLocation: AKWorldLocation
-    var model: AKModel
-    var identifier: UUID?
-    var effects: [AnyEffect<Any>]?
-    
-    init(withAKAugmentedAnchor akAugmentedAnchor: AKAugmentedAnchor) {
-        self.model = akAugmentedAnchor.model
-        self.identifier = akAugmentedAnchor.identifier
-        self.worldLocation = akAugmentedAnchor.worldLocation
-        self.effects = akAugmentedAnchor.effects
-    }
-    
-}
+//fileprivate class InternalAugmentedTracker: AKAugmentedTracker {
+//    
+//    static var type: String {
+//        return "AnyTracker"
+//    }
+//    
+//    var position: AKRelativePosition
+//    var model: AKModel
+//    var identifier: UUID?
+//    var effects: [AnyEffect<Any>]?
+//    
+//    init(withAKAugmentedTracker akAugmentedTracker: AKAugmentedTracker) {
+//        self.model = akAugmentedTracker.model
+//        self.identifier = akAugmentedTracker.identifier
+//        self.position = akAugmentedTracker.position
+//        self.effects = akAugmentedTracker.effects
+//    }
+//    
+//}
 
 // MARK: - InterpolatingAugmentedAnchor
 
@@ -1064,7 +1012,23 @@ fileprivate class InternalAugmentedAnchor: AKAugmentedAnchor {
 // Call `update()` to do the terpolation calculations.
 // After calling `update()`, `currentLocation` contains the interpolated transform with
 // the `latitude`, `longitude`, and `elevation` set to the final values
-fileprivate class InterpolatingAugmentedAnchor: InternalAugmentedAnchor {
+fileprivate class InterpolatingAugmentedAnchor: AKAugmentedAnchor {
+    
+    static var type: String {
+        return "InterpolatingAugmentedAnchor"
+    }
+
+    var worldLocation: AKWorldLocation
+    var asset: MDLAsset
+    var identifier: UUID?
+    var effects: [AnyEffect<Any>]?
+
+    init(withAKAugmentedAnchor akAugmentedAnchor: AKAugmentedAnchor) {
+        self.asset = akAugmentedAnchor.asset
+        self.identifier = akAugmentedAnchor.identifier
+        self.worldLocation = akAugmentedAnchor.worldLocation
+        self.effects = akAugmentedAnchor.effects
+    }
     
     // When interpolating, this contains the old location
     var lastLocaion: AKWorldLocation?
@@ -1134,6 +1098,10 @@ fileprivate class InterpolatingAugmentedAnchor: InternalAugmentedAnchor {
         lastLocaion = worldLocation
         worldLocation = newWorldLocation
         calculateNextPosition()
+    }
+    
+    public func setIdentifier(_ identifier: UUID) {
+        self.identifier = identifier
     }
     
     // MARK: Private

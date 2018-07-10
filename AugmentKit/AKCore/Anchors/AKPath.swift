@@ -26,6 +26,7 @@
 //
 
 import Foundation
+import ModelIO
 
 public protocol AKPath: AKAugmentedAnchor {
     // Thickness measured in meters
@@ -33,24 +34,28 @@ public protocol AKPath: AKAugmentedAnchor {
     var segmentPoints: [AKPathSegmentAnchor] { get }
 }
 
-public struct PathAnchor: AKPath {
+public class PathAnchor: AKPath {
     
     public static var type: String {
         return "PathAnchor"
     }
     public var worldLocation: AKWorldLocation
-    public var model: AKModel
+    public var asset: MDLAsset
     public var identifier: UUID?
     public var effects: [AnyEffect<Any>]?
     public var lineThickness: Double = 0.1 // Default to 10cm line thickness
     public var segmentPoints: [AKPathSegmentAnchor]
     
     public init(withWorldLocaitons locations: [AKWorldLocation]) {
-        self.model = AKSimpleModel()
+        self.asset = MDLAsset()
         self.worldLocation = locations[0]
         self.segmentPoints = locations.map {
             return PathSegmentAnchor(at: $0)
         }
+    }
+    
+    public func setIdentifier(_ identifier: UUID) {
+        self.identifier = identifier
     }
     
 }

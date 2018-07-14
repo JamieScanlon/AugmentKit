@@ -168,7 +168,7 @@ class UnanchoredRenderModule: RenderModule {
             
             trackerMeshGPUData = {
                 if let trackerAsset = trackerAsset {
-                    return ModelIOTools.meshGPUData(from: trackerAsset, device: device, textureBundle: textureBundle)
+                    return ModelIOTools.meshGPUData(from: trackerAsset, device: device, textureBundle: textureBundle, vertexDescriptor: MetalUtilities.createStandardVertexDescriptor())
                 } else {
                     return nil
                 }
@@ -202,7 +202,7 @@ class UnanchoredRenderModule: RenderModule {
             for (drawIdx, drawData) in trackerMeshGPUData.drawData.enumerated() {
                 let trackerPipelineStateDescriptor = MTLRenderPipelineDescriptor()
                 do {
-                    let funcConstants = MetalUtilities.getFuncConstants(forDrawData: drawData, useMaterials: usesMaterials)
+                    let funcConstants = MetalUtilities.getFuncConstants(forDrawData: drawData)
                     // Specify which shader to use based on if the model has skinned puppet suppot
                     let vertexName = (drawData.paletteStartIndex != nil) ? "anchorGeometryVertexTransformSkinned" : "anchorGeometryVertexTransform"
                     let fragFunc = try metalLibrary.makeFunction(name: "anchorGeometryFragmentLighting", constantValues: funcConstants)
@@ -238,7 +238,7 @@ class UnanchoredRenderModule: RenderModule {
             
             targetMeshGPUData = {
                 if let targetAsset = targetAsset {
-                    return ModelIOTools.meshGPUData(from: targetAsset, device: device, textureBundle: textureBundle)
+                    return ModelIOTools.meshGPUData(from: targetAsset, device: device, textureBundle: textureBundle, vertexDescriptor: MetalUtilities.createStandardVertexDescriptor())
                 } else {
                     return nil
                 }
@@ -272,7 +272,7 @@ class UnanchoredRenderModule: RenderModule {
             for (drawIdx, drawData) in targetMeshGPUData.drawData.enumerated() {
                 let targetPipelineStateDescriptor = MTLRenderPipelineDescriptor()
                 do {
-                    let funcConstants = MetalUtilities.getFuncConstants(forDrawData: drawData, useMaterials: usesMaterials)
+                    let funcConstants = MetalUtilities.getFuncConstants(forDrawData: drawData)
                     // Specify which shader to use based on if the model has skinned puppet suppot
                     let vertexName = (drawData.paletteStartIndex != nil) ? "anchorGeometryVertexTransformSkinned" : "anchorGeometryVertexTransform"
                     let fragFunc = try metalLibrary.makeFunction(name: "anchorGeometryFragmentLighting", constantValues: funcConstants)
@@ -601,8 +601,6 @@ class UnanchoredRenderModule: RenderModule {
     
     // Addresses to write material uniforms to each frame
     private var effectsUniformBufferAddress: UnsafeMutableRawPointer?
-    
-    private var usesMaterials = true
     
     // number of frames in the tracker animation by index
     private var trackerAnimationFrameCount = [Int]()

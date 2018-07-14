@@ -158,7 +158,7 @@ class PathsRenderModule: RenderModule {
             return
         }
         
-        pathMeshGPUData = ModelIOTools.meshGPUData(from: pathSegmentAsset, device: device, textureBundle: textureBundle)
+        pathMeshGPUData = ModelIOTools.meshGPUData(from: pathSegmentAsset, device: device, textureBundle: textureBundle, vertexDescriptor: MetalUtilities.createStandardVertexDescriptor())
         
         guard let pathMeshGPUData = pathMeshGPUData else {
             print("Serious Error - ERROR: No meshGPUData for target found when trying to load the pipeline.")

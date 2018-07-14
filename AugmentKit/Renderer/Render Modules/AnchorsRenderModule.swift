@@ -176,7 +176,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             let uuid = item.key
             let mdlAsset = item.value
             
-            meshGPUDataForAnchorsByUUID[uuid] = ModelIOTools.meshGPUData(from: mdlAsset, device: device, textureBundle: textureBundle)
+            meshGPUDataForAnchorsByUUID[uuid] = ModelIOTools.meshGPUData(from: mdlAsset, device: device, textureBundle: textureBundle, vertexDescriptor: MetalUtilities.createStandardVertexDescriptor())
             
             guard let meshGPUData = meshGPUDataForAnchorsByUUID[uuid] else {
                 print("Serious Error - ERROR: No meshGPUData found for anchor when trying to load the pipeline.")
@@ -514,8 +514,6 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     // Addresses to write material uniforms to each frame
     private var effectsUniformBufferAddress: UnsafeMutableRawPointer?
     
-    private var usesMaterials = true
-    
     // number of frames in the anchor animation by anchor index
     private var anchorAnimationFrameCount = [Int]()
     
@@ -557,7 +555,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         for (drawIdx, drawData) in meshGPUData.drawData.enumerated() {
             let anchorPipelineStateDescriptor = MTLRenderPipelineDescriptor()
             do {
-                let funcConstants = MetalUtilities.getFuncConstants(forDrawData: drawData, useMaterials: usesMaterials)
+                let funcConstants = MetalUtilities.getFuncConstants(forDrawData: drawData)
                 // Specify which shader to use based on if the model has skinned puppet suppot
                 let vertexName = (drawData.paletteStartIndex != nil) ? "anchorGeometryVertexTransformSkinned" : "anchorGeometryVertexTransform"
                 let fragFunc = try metalLibrary.makeFunction(name: "anchorGeometryFragmentLighting", constantValues: funcConstants)
@@ -592,7 +590,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     }
     
     private func updatePuppetAnimation(from drawData: DrawData, frameNumber: Int) {
-        
+        return
         let capacity = Constants.alignedPaletteSize * Constants.maxPaletteSize
         
         let boundPaletteData = paletteBufferAddress?.bindMemory(to: matrix_float4x4.self, capacity: capacity)

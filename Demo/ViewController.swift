@@ -28,6 +28,7 @@
 import UIKit
 import Metal
 import MetalKit
+import ModelIO
 import ARKit
 import AugmentKit
 
@@ -283,6 +284,11 @@ class ViewController: UIViewController {
             print("ERROR: Could not load the SceneKit model")
             return
         }
+        
+//        guard let aPinAsset = MDLAssetTools.asset(named: "retrotv.usdz", inBundle: Bundle.main) else {
+//            print("ERROR: Could not load the USDZ model")
+//            return
+//        }
         
         guard let aShipAsset = AKSceneKitUtils.mdlAssetFromScene(named: "ship.scn", world: world) else {
             print("ERROR: Could not load the SceneKit model")

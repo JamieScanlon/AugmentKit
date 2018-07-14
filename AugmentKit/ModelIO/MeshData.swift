@@ -60,6 +60,21 @@ public struct DrawSubData {
     var clearcoatTextureIndex: Int?
     var clearcoatGlossTextureIndex: Int?
     
+//    var baseColorTexture: MTLTexture?
+//    var normalTexture: MTLTexture?
+//    var ambientOcclusionTexture: MTLTexture?
+//    var metallicTexture: MTLTexture?
+//    var roughnessTexture: MTLTexture?
+//    var irradianceTexture: MTLTexture?
+//    var subsurfaceTexture: MTLTexture?
+//    var specularTexture: MTLTexture?
+//    var specularTintTexture: MTLTexture?
+//    var anisotropicTexture: MTLTexture?
+//    var sheenTexture: MTLTexture?
+//    var sheenTintTexture: MTLTexture?
+//    var clearcoatTexture: MTLTexture?
+//    var clearcoatGlossTexture: MTLTexture?
+    
     var materialUniforms = MaterialUniforms()
     var materialBuffer: MTLBuffer?
 

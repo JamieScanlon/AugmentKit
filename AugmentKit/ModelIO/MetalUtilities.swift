@@ -36,7 +36,7 @@ import AugmentKitShader
 
 class MetalUtilities {
     
-    static func getFuncConstants(forDrawData drawData: DrawData?, useMaterials: Bool) -> MTLFunctionConstantValues {
+    static func getFuncConstants(forDrawData drawData: DrawData?) -> MTLFunctionConstantValues {
         
         var has_base_color_map = false
         var has_normal_map = false
@@ -53,7 +53,7 @@ class MetalUtilities {
         var has_clearcoat_map = false
         var has_clearcoatGloss_map = false
         
-        if let drawData = drawData, useMaterials {
+        if let drawData = drawData {
             has_base_color_map = has_base_color_map || drawData.hasBaseColorMap
             has_normal_map = has_normal_map || drawData.hasNormalMap
             has_metallic_map = has_metallic_map || drawData.hasMetallicMap

@@ -86,7 +86,7 @@ enum TextureIndices {
     kTextureIndexRoughness,
     kTextureIndexNormal,
     kTextureIndexAmbientOcclusion,
-    kTextureIndexIrradianceMap,
+    kTextureIndexEmissionMap,
     kTextureIndexSubsurfaceMap,
     kTextureIndexSpecularMap,
     kTextureIndexSpecularTintMap,
@@ -104,7 +104,7 @@ enum FunctionConstantIndices {
     kFunctionConstantMetallicMapIndex,
     kFunctionConstantRoughnessMapIndex,
     kFunctionConstantAmbientOcclusionMapIndex,
-    kFunctionConstantIrradianceMapIndex,
+    kFunctionConstantEmissionMapIndex,
     kFunctionConstantSubsurfaceMapIndex,
     kFunctionConstantSpecularMapIndex,
     kFunctionConstantSpecularTintMapIndex,
@@ -170,7 +170,7 @@ struct AnchorEffectsUniforms {
 
 struct MaterialUniforms {
     vector_float4 baseColor;
-    vector_float3 irradiatedColor;
+    vector_float3 emissionColor;
     float roughness;
     float metalness;
     float ambientOcclusion;

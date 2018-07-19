@@ -126,7 +126,7 @@ extension RenderModule {
             var materialUniforms = submeshData.materialUniforms
             
             // Set textures based off material flags
-            encodeTextures(with: meshGPUData, renderEncoder: renderEncoder, subData: submeshData)
+            encodeTextures(for: renderEncoder, subData: submeshData)
             
             renderEncoder.setFragmentBytes(&materialUniforms, length: RenderModuleConstants.alignedMaterialSize, index: Int(kBufferIndexMaterialUniforms.rawValue))
             renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: idxCount, indexType: idxType, indexBuffer: indexBuffer, indexBufferOffset: 0, instanceCount: drawData.instCount, baseVertex: 0, baseInstance: baseIndex)
@@ -143,61 +143,61 @@ extension RenderModule {
     
     // MARK: Encoding Textures
     
-    func encodeTextures(with meshData: MeshGPUData, renderEncoder: MTLRenderCommandEncoder, subData drawSubData: DrawSubData) {
-        if let baseColorTextureIndex = drawSubData.baseColorTextureIndex {
-            renderEncoder.setFragmentTexture(meshData.textures[baseColorTextureIndex], index: Int(kTextureIndexColor.rawValue))
+    func encodeTextures(for renderEncoder: MTLRenderCommandEncoder, subData drawSubData: DrawSubData) {
+        if let baseColorTexture = drawSubData.baseColorTexture {
+            renderEncoder.setFragmentTexture(baseColorTexture, index: Int(kTextureIndexColor.rawValue))
         }
         
-        if let ambientOcclusionTextureIndex = drawSubData.ambientOcclusionTextureIndex {
-            renderEncoder.setFragmentTexture(meshData.textures[ambientOcclusionTextureIndex], index: Int(kTextureIndexAmbientOcclusion.rawValue))
+        if let ambientOcclusionTexture = drawSubData.ambientOcclusionTexture {
+            renderEncoder.setFragmentTexture(ambientOcclusionTexture, index: Int(kTextureIndexAmbientOcclusion.rawValue))
         }
         
-        if let irradianceTextureIndex = drawSubData.irradianceTextureIndex {
-            renderEncoder.setFragmentTexture(meshData.textures[irradianceTextureIndex], index: Int(kTextureIndexIrradianceMap.rawValue))
+        if let emissionTexture = drawSubData.emissionTexture {
+            renderEncoder.setFragmentTexture(emissionTexture, index: Int(kTextureIndexEmissionMap.rawValue))
         }
         
-        if let normalTextureIndex = drawSubData.normalTextureIndex {
-            renderEncoder.setFragmentTexture(meshData.textures[normalTextureIndex], index: Int(kTextureIndexNormal.rawValue))
+        if let normalTexture = drawSubData.normalTexture {
+            renderEncoder.setFragmentTexture(normalTexture, index: Int(kTextureIndexNormal.rawValue))
         }
         
-        if let roughnessTextureIndex = drawSubData.roughnessTextureIndex {
-            renderEncoder.setFragmentTexture(meshData.textures[roughnessTextureIndex], index: Int(kTextureIndexRoughness.rawValue))
+        if let roughnessTexture = drawSubData.roughnessTexture {
+            renderEncoder.setFragmentTexture(roughnessTexture, index: Int(kTextureIndexRoughness.rawValue))
         }
         
-        if let metallicTextureIndex = drawSubData.metallicTextureIndex {
-            renderEncoder.setFragmentTexture(meshData.textures[metallicTextureIndex], index: Int(kTextureIndexMetallic.rawValue))
+        if let metallicTexture = drawSubData.metallicTexture {
+            renderEncoder.setFragmentTexture(metallicTexture, index: Int(kTextureIndexMetallic.rawValue))
         }
         
-        if let subsurfaceTextureIndex = drawSubData.subsurfaceTextureIndex {
-            renderEncoder.setFragmentTexture(meshData.textures[subsurfaceTextureIndex], index: Int(kTextureIndexSubsurfaceMap.rawValue))
+        if let subsurfaceTexture = drawSubData.subsurfaceTexture {
+            renderEncoder.setFragmentTexture(subsurfaceTexture, index: Int(kTextureIndexSubsurfaceMap.rawValue))
         }
         
-        if let specularTextureIndex = drawSubData.specularTextureIndex {
-            renderEncoder.setFragmentTexture(meshData.textures[specularTextureIndex], index: Int(kTextureIndexSpecularMap.rawValue))
+        if let specularTexture = drawSubData.specularTexture {
+            renderEncoder.setFragmentTexture(specularTexture, index: Int(kTextureIndexSpecularMap.rawValue))
         }
         
-        if let specularTintTextureIndex = drawSubData.specularTintTextureIndex {
-            renderEncoder.setFragmentTexture(meshData.textures[specularTintTextureIndex], index: Int(kTextureIndexSpecularTintMap.rawValue))
+        if let specularTintTexture = drawSubData.specularTintTexture {
+            renderEncoder.setFragmentTexture(specularTintTexture, index: Int(kTextureIndexSpecularTintMap.rawValue))
         }
         
-        if let anisotropicTextureIndex = drawSubData.anisotropicTextureIndex {
-            renderEncoder.setFragmentTexture(meshData.textures[anisotropicTextureIndex], index: Int(kTextureIndexAnisotropicMap.rawValue))
+        if let anisotropicTexture = drawSubData.anisotropicTexture {
+            renderEncoder.setFragmentTexture(anisotropicTexture, index: Int(kTextureIndexAnisotropicMap.rawValue))
         }
         
-        if let sheenTextureIndex = drawSubData.sheenTextureIndex {
-            renderEncoder.setFragmentTexture(meshData.textures[sheenTextureIndex], index: Int(kTextureIndexSheenMap.rawValue))
+        if let sheenTexture = drawSubData.sheenTexture {
+            renderEncoder.setFragmentTexture(sheenTexture, index: Int(kTextureIndexSheenMap.rawValue))
         }
         
-        if let sheenTintTextureIndex = drawSubData.sheenTintTextureIndex {
-            renderEncoder.setFragmentTexture(meshData.textures[sheenTintTextureIndex], index: Int(kTextureIndexSheenTintMap.rawValue))
+        if let sheenTintTexture = drawSubData.sheenTintTexture {
+            renderEncoder.setFragmentTexture(sheenTintTexture, index: Int(kTextureIndexSheenTintMap.rawValue))
         }
         
-        if let clearcoatTextureIndex = drawSubData.clearcoatTextureIndex {
-            renderEncoder.setFragmentTexture(meshData.textures[clearcoatTextureIndex], index: Int(kTextureIndexClearcoatMap.rawValue))
+        if let clearcoatTexture = drawSubData.clearcoatTexture {
+            renderEncoder.setFragmentTexture(clearcoatTexture, index: Int(kTextureIndexClearcoatMap.rawValue))
         }
         
-        if let clearcoatGlossTextureIndex = drawSubData.clearcoatGlossTextureIndex {
-            renderEncoder.setFragmentTexture(meshData.textures[clearcoatGlossTextureIndex], index: Int(kTextureIndexClearcoatGlossMap.rawValue))
+        if let clearcoatGlossTexture = drawSubData.clearcoatGlossTexture {
+            renderEncoder.setFragmentTexture(clearcoatGlossTexture, index: Int(kTextureIndexClearcoatGlossMap.rawValue))
         }
         
     }

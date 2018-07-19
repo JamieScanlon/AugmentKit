@@ -72,7 +72,7 @@ constant bool has_normal_map [[ function_constant(kFunctionConstantNormalMapInde
 constant bool has_metallic_map [[ function_constant(kFunctionConstantMetallicMapIndex) ]];
 constant bool has_roughness_map [[ function_constant(kFunctionConstantRoughnessMapIndex) ]];
 constant bool has_ambient_occlusion_map [[ function_constant(kFunctionConstantAmbientOcclusionMapIndex) ]];
-constant bool has_irradiance_map [[ function_constant(kFunctionConstantIrradianceMapIndex) ]];
+constant bool has_emission_map [[ function_constant(kFunctionConstantEmissionMapIndex) ]];
 constant bool has_subsurface_map [[ function_constant(kFunctionConstantSubsurfaceMapIndex) ]];
 constant bool has_specular_map [[ function_constant(kFunctionConstantSpecularMapIndex) ]];
 constant bool has_specularTint_map [[ function_constant(kFunctionConstantSpecularTintMapIndex) ]];
@@ -81,7 +81,7 @@ constant bool has_sheen_map [[ function_constant(kFunctionConstantSheenMapIndex)
 constant bool has_sheenTint_map [[ function_constant(kFunctionConstantSheenTintMapIndex) ]];
 constant bool has_clearcoat_map [[ function_constant(kFunctionConstantClearcoatMapIndex) ]];
 constant bool has_clearcoatGloss_map [[ function_constant(kFunctionConstantClearcoatGlossMapIndex) ]];
-constant bool has_any_map = has_base_color_map || has_normal_map || has_metallic_map || has_roughness_map || has_ambient_occlusion_map || has_irradiance_map || has_subsurface_map || has_specular_map || has_specularTint_map || has_anisotropic_map || has_sheen_map || has_sheenTint_map || has_clearcoat_map || has_clearcoatGloss_map;
+constant bool has_any_map = has_base_color_map || has_normal_map || has_metallic_map || has_roughness_map || has_ambient_occlusion_map || has_emission_map || has_subsurface_map || has_specular_map || has_specularTint_map || has_anisotropic_map || has_sheen_map || has_sheenTint_map || has_clearcoat_map || has_clearcoatGloss_map;
 
 constant float PI = 3.1415926535897932384626433832795;
 
@@ -129,7 +129,7 @@ struct LightingParameters {
     float3  reflectedVector;
     float3  normal;
     float3  reflectedColor;
-    float3  irradiatedColor;
+    float3  emissionColor;
     float3  ambientOcclusion;
     float4  baseColor;
     float   baseColorLuminance;
@@ -170,7 +170,7 @@ LightingParameters calculateParameters(ColorInOut in,
                                        texture2d<float> metallicMap [[ function_constant(has_metallic_map) ]],
                                        texture2d<float> roughnessMap [[ function_constant(has_roughness_map) ]],
                                        texture2d<float> ambientOcclusionMap [[ function_constant(has_ambient_occlusion_map) ]],
-                                       texturecube<float> irradianceMap [[ function_constant(has_irradiance_map) ]],
+                                       texture2d<float> emissionMap [[ function_constant(has_emission_map) ]],
                                        texture2d<float> subsurfaceMap [[ function_constant(has_subsurface_map) ]],
                                        texture2d<float> specularMap [[ function_constant(has_specular_map) ]],
                                        texture2d<float> specularTintMap [[ function_constant(has_specularTint_map) ]],
@@ -325,10 +325,10 @@ float3 computeSpecular(LightingParameters parameters) {
     float3 specularBDRF = (Ds * Gs * Fs) / (4 * parameters.nDotl * parameters.nDotv);
     
     // Method 1
-    float3 specularOutput = specularBDRF * parameters.irradiatedColor * parameters.directionalLightCol * mix(float3(1.0f), parameters.baseColor.rgb, parameters.metalness) * parameters.nDoth;
+    float3 specularOutput = specularBDRF * parameters.emissionColor * parameters.directionalLightCol * mix(float3(1.0f), parameters.baseColor.rgb, parameters.metalness) * parameters.nDoth;
     
     // Method 2
-//    float3 specularOutput = (Ds * Gs * Fs * parameters.irradiatedColor) * (1.0 + parameters.metalness * parameters.baseColor.rgb) + parameters.metalness * parameters.irradiatedColor * parameters.baseColor.rgb;
+//    float3 specularOutput = (Ds * Gs * Fs * parameters.emissionColor) * (1.0 + parameters.metalness * parameters.baseColor.rgb) + parameters.metalness * parameters.emissionColor * parameters.baseColor.rgb;
     
     return specularOutput;
     
@@ -352,7 +352,7 @@ float3 computeSheen(LightingParameters parameters) {
     float3 Csheen = mix(float3(1.0), parameters.baseColorHueSat, parameters.sheenTint);
     float3 Fsheen = Csheen * parameters.fresnelV * parameters.sheen;
     
-    //float3 light_color = float3(6.0) * parameters.nDotl + (float3(3.0) * parameters.irradiatedColor * (1.0 - parameters.nDotl));
+    //float3 light_color = float3(6.0) * parameters.nDotl + (float3(3.0) * parameters.emissionColor * (1.0 - parameters.nDotl));
     //float3 sheenOutput = Fsheen * (1.0 - parameters.metalness);
     float3 sheenOutput = Fsheen;
     return sheenOutput;
@@ -364,8 +364,8 @@ float4 illuminate(LightingParameters parameters) {
     
     // DIFFUSE
     // 2pi to integrate the entire dome, 0.5 as intensity
-    //float3 light_color = float3(2.0 * PI * 0.3) * (parameters.nDotl + (parameters.irradiatedColor - (parameters.irradiatedColor * parameters.nDotl)) * parameters.ambientOcclusion);
-    float3 light_color = float3(2.0 * PI * 0.3) * (parameters.nDotl + parameters.irradiatedColor - parameters.ambientOcclusion);
+    //float3 light_color = float3(2.0 * PI * 0.3) * (parameters.nDotl + (parameters.emissionColor - (parameters.emissionColor * parameters.nDotl)) * parameters.ambientOcclusion);
+    float3 light_color = float3(2.0 * PI * 0.3) * (parameters.nDotl + parameters.emissionColor - parameters.ambientOcclusion);
     float3 diffuseOut = computeDiffuse(parameters) * light_color;
     
     // AMBIENCE
@@ -392,7 +392,7 @@ LightingParameters calculateParameters(ColorInOut in,
                                        texture2d<float> metallicMap [[ function_constant(has_metallic_map) ]],
                                        texture2d<float> roughnessMap [[ function_constant(has_roughness_map) ]],
                                        texture2d<float> ambientOcclusionMap [[ function_constant(has_ambient_occlusion_map) ]],
-                                       texturecube<float> irradianceMap [[ function_constant(has_irradiance_map) ]],
+                                       texture2d<float> emissionMap [[ function_constant(has_emission_map) ]],
                                        texture2d<float> subsurfaceMap [[ function_constant(has_subsurface_map) ]],
                                        texture2d<float> specularMap [[ function_constant(has_specular_map) ]],
                                        texture2d<float> specularTintMap [[ function_constant(has_specularTint_map) ]],
@@ -436,8 +436,9 @@ LightingParameters calculateParameters(ColorInOut in,
     parameters.roughness = has_roughness_map ? max(roughnessMap.sample(linearSampler, in.texCoord.xy).x, 0.001f) : materialUniforms.roughness;
     parameters.metalness = has_metallic_map ? metallicMap.sample(linearSampler, in.texCoord.xy).x : materialUniforms.metalness;
     
-    uint8_t mipLevel = parameters.roughness * irradianceMap.get_num_mip_levels();
-    parameters.irradiatedColor = has_irradiance_map ? irradianceMap.sample(mipSampler, parameters.reflectedVector, level(mipLevel)).xyz : materialUniforms.irradiatedColor.xyz;
+//    uint8_t mipLevel = parameters.roughness * emissionMap.get_num_mip_levels();
+//    parameters.emissionColor = has_emission_map ? emissionMap.sample(mipSampler, parameters.reflectedVector, level(mipLevel)).xyz : materialUniforms.emissionColor.xyz;
+    parameters.emissionColor = has_emission_map ? emissionMap.sample(linearSampler, in.texCoord.xy).xyz : materialUniforms.emissionColor;
     parameters.ambientOcclusion = has_ambient_occlusion_map ? max(srgbToLinear(ambientOcclusionMap.sample(linearSampler, in.texCoord.xy)).x, 0.001f) : materialUniforms.ambientOcclusion;
     
     parameters.directionalLightCol = sharedUniforms.directionalLightColor;
@@ -569,7 +570,7 @@ fragment float4 anchorGeometryFragmentLighting(ColorInOut in [[stage_in]],
                                                texture2d<float> metallicMap  [[ texture(kTextureIndexMetallic), function_constant(has_metallic_map) ]],
                                                texture2d<float> roughnessMap  [[ texture(kTextureIndexRoughness), function_constant(has_roughness_map) ]],
                                                texture2d<float> ambientOcclusionMap  [[ texture(kTextureIndexAmbientOcclusion), function_constant(has_ambient_occlusion_map) ]],
-                                               texturecube<float> irradianceMap [[texture(kTextureIndexIrradianceMap), function_constant(has_irradiance_map)]],
+                                               texture2d<float> emissionMap [[texture(kTextureIndexEmissionMap), function_constant(has_emission_map)]],
                                                texture2d<float> subsurfaceMap [[texture(kTextureIndexSubsurfaceMap), function_constant(has_subsurface_map)]],
                                                texture2d<float> specularMap [[  texture(kTextureIndexSpecularMap), function_constant(has_specular_map) ]],
                                                texture2d<float> specularTintMap [[  texture(kTextureIndexSpecularTintMap), function_constant(has_specularTint_map) ]],
@@ -590,7 +591,7 @@ fragment float4 anchorGeometryFragmentLighting(ColorInOut in [[stage_in]],
                                                         metallicMap,
                                                         roughnessMap,
                                                         ambientOcclusionMap,
-                                                        irradianceMap,
+                                                        emissionMap,
                                                         subsurfaceMap,
                                                         specularMap,
                                                         specularTintMap,

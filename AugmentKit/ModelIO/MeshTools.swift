@@ -36,32 +36,6 @@ import AugmentKitShader
 // MARK: - MDLAsset extesntions
 
 extension MDLAsset {
-    
-    override open var debugDescription: String {
-        let myDescription = assetDescription()
-        return myDescription
-    }
-    
-    //  Pretty-print MDLAsset's scene graph
-    public func assetDescription() -> String {
-        var myDescription = ""
-        func subgraphDescription(object: MDLObject, indent: Int = 0) -> String {
-            var myDescription = "\(String(repeating: " ", count: indent)) \(object.name) \(object)"
-
-            for childIndex in 0..<object.children.count {
-                myDescription += "\n"
-                myDescription += subgraphDescription(object: object.children[childIndex], indent: indent + 2)
-            }
-            return myDescription
-        }
-
-        for childIndex in 0..<self.count {
-            myDescription += subgraphDescription(object: self.object(at: childIndex))
-            myDescription += "\n"
-        }
-        
-        return myDescription
-    }
 
     //  Find an MDLObject by its path from MDLAsset level
     func objectAtPath(_ path: String) -> MDLObject? {
@@ -209,6 +183,8 @@ class ModelIOTools {
     // Encodes an MDLAsset from ModelID into a MeshGPUData object which is used internally to set up the render pipeline.
     static func meshGPUData(from mdlAsset: MDLAsset, device: MTLDevice, textureBundle: Bundle, vertexDescriptor: MDLVertexDescriptor?) -> MeshGPUData {
         
+        let textureLoader = MTKTextureLoader(device: device)
+        
         var meshGPUData = MeshGPUData()
         var jointRootID = "root" // FIXME: This is hardcoded to 'root' but it should be dynamic
         var texturePaths = [String]()
@@ -268,21 +244,21 @@ class ModelIOTools {
                     var material = MaterialUniforms()
                     if let mdlMaterial = submesh.material {
                         
-                        let baseColorProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .baseColor, withPropertyFunction: getMaterialFloat3Value)
-                        let metallicProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .metallic, withPropertyFunction: getMaterialFloatValue)
-                        let roughnessProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .roughness, withPropertyFunction: getMaterialFloatValue)
-                        let ambientOcclusionProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .ambientOcclusion, withPropertyFunction: getMaterialFloatValue)
-                        let bumpProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .bump, withPropertyFunction: getMaterialFloat3Value)
-                        let emissionProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .emission, withPropertyFunction: getMaterialFloat3Value)
-                        let subsurfaceProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .subsurface, withPropertyFunction: getMaterialFloatValue)
-                        let specularProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .specular, withPropertyFunction: getMaterialFloatValue)
-                        let specularTintProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .specularTint, withPropertyFunction: getMaterialFloatValue)
-                        let anisotropicProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .anisotropic, withPropertyFunction: getMaterialFloatValue)
-                        let sheenProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .sheen, withPropertyFunction: getMaterialFloatValue)
-                        let sheenTintProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .sheenTint, withPropertyFunction: getMaterialFloatValue)
-                        let clearcoatProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .clearcoat, withPropertyFunction: getMaterialFloatValue)
-                        let clearcoatGlossProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .clearcoatGloss, withPropertyFunction: getMaterialFloatValue)
-                        let opacityProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .opacity, withPropertyFunction: getMaterialFloatValue)
+                        let baseColorProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .baseColor, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloat3Value)
+                        let metallicProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .metallic, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloatValue)
+                        let roughnessProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .roughness, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloatValue)
+                        let ambientOcclusionProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .ambientOcclusion, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloatValue)
+                        let bumpProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .bump, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloat3Value)
+                        let emissionProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .emission, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloat3Value)
+                        let subsurfaceProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .subsurface, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloatValue)
+                        let specularProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .specular, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloatValue)
+                        let specularTintProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .specularTint, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloatValue)
+                        let anisotropicProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .anisotropic, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloatValue)
+                        let sheenProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .sheen, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloatValue)
+                        let sheenTintProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .sheenTint, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloatValue)
+                        let clearcoatProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .clearcoat, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloatValue)
+                        let clearcoatGlossProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .clearcoatGloss, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloatValue)
+                        let opacityProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .opacity, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloatValue)
                         
                         // Encode the uniform values
                         let baseColor = baseColorProperty.uniform ?? float3(1.0, 1.0, 1.0)
@@ -290,7 +266,7 @@ class ModelIOTools {
                         material.metalness = metallicProperty.uniform ?? 0.0
                         material.roughness = roughnessProperty.uniform ?? 1.0
                         material.ambientOcclusion = ambientOcclusionProperty.uniform ?? 1.0
-                        material.irradiatedColor = emissionProperty.uniform ?? float3(1.0, 1.0, 1.0)
+                        material.emissionColor = emissionProperty.uniform ?? float3(0, 0, 0)
                         material.subsurface = subsurfaceProperty.uniform ?? 0.0
                         material.specular = specularProperty.uniform ?? 0.0
                         material.specularTint = specularTintProperty.uniform ?? 0.0
@@ -304,129 +280,68 @@ class ModelIOTools {
                         subData.materialUniforms = material
                         
                         // Encode the texture indexes corresponding to the texture maps. If a property has no texture map this value will be nil
-                        subData.baseColorTextureIndex = baseColorProperty.textureIndex
-                        subData.metallicTextureIndex = metallicProperty.textureIndex
-                        subData.ambientOcclusionTextureIndex = ambientOcclusionProperty.textureIndex
-                        subData.roughnessTextureIndex = roughnessProperty.textureIndex
-                        subData.normalTextureIndex = bumpProperty.textureIndex
-                        subData.irradianceTextureIndex = emissionProperty.textureIndex
-                        subData.subsurfaceTextureIndex = subsurfaceProperty.textureIndex
-                        subData.specularTextureIndex = specularProperty.textureIndex
-                        subData.specularTintTextureIndex = specularTintProperty.textureIndex
-                        subData.anisotropicTextureIndex = anisotropicProperty.textureIndex
-                        subData.sheenTextureIndex = sheenProperty.textureIndex
-                        subData.sheenTintTextureIndex = sheenTintProperty.textureIndex
-                        subData.clearcoatTextureIndex = clearcoatProperty.textureIndex
-                        subData.clearcoatGlossTextureIndex = clearcoatGlossProperty.textureIndex
-                        
-                        // Store the texture paths
-//                        if let texturePath = baseColorProperty.texturePath {
-//                            texturePaths.append(texturePath)
-//                        }
-//                        if let texturePath = metallicProperty.texturePath {
-//                            texturePaths.append(texturePath)
-//                        }
-//                        if let texturePath = roughnessProperty.texturePath {
-//                            texturePaths.append(texturePath)
-//                        }
-//                        if let texturePath = ambientOcclusionProperty.texturePath {
-//                            texturePaths.append(texturePath)
-//                        }
-//                        if let texturePath = bumpProperty.texturePath {
-//                            texturePaths.append(texturePath)
-//                        }
-//                        if let texturePath = emissionProperty.texturePath {
-//                            texturePaths.append(texturePath)
-//                        }
-//                        if let texturePath = subsurfaceProperty.texturePath {
-//                            texturePaths.append(texturePath)
-//                        }
-//                        if let texturePath = specularProperty.texturePath {
-//                            texturePaths.append(texturePath)
-//                        }
-//                        if let texturePath = specularTintProperty.texturePath {
-//                            texturePaths.append(texturePath)
-//                        }
-//                        if let texturePath = anisotropicProperty.texturePath {
-//                            texturePaths.append(texturePath)
-//                        }
-//                        if let texturePath = sheenProperty.texturePath {
-//                            texturePaths.append(texturePath)
-//                        }
-//                        if let texturePath = sheenTintProperty.texturePath {
-//                            texturePaths.append(texturePath)
-//                        }
-//                        if let texturePath = clearcoatProperty.texturePath {
-//                            texturePaths.append(texturePath)
-//                        }
-//                        if let texturePath = clearcoatGlossProperty.texturePath {
-//                            texturePaths.append(texturePath)
-//                        }
-
+                        subData.baseColorTexture = baseColorProperty.texture
+                        subData.metallicTexture = metallicProperty.texture
+                        subData.ambientOcclusionTexture = ambientOcclusionProperty.texture
+                        subData.roughnessTexture = roughnessProperty.texture
+                        subData.normalTexture = bumpProperty.texture
+                        subData.emissionTexture = emissionProperty.texture
+                        subData.subsurfaceTexture = subsurfaceProperty.texture
+                        subData.specularTexture = specularProperty.texture
+                        subData.specularTintTexture = specularTintProperty.texture
+                        subData.anisotropicTexture = anisotropicProperty.texture
+                        subData.sheenTexture = sheenProperty.texture
+                        subData.sheenTintTexture = sheenTintProperty.texture
+                        subData.clearcoatTexture = clearcoatProperty.texture
+                        subData.clearcoatGlossTexture = clearcoatGlossProperty.texture
 
                     } else {
                         
                         // Default uniforms
                         subData.materialUniforms = MaterialUniforms()
                         
-                        // No texture maps
-                        subData.baseColorTextureIndex = nil
-                        subData.normalTextureIndex = nil
-                        subData.ambientOcclusionTextureIndex = nil
-                        subData.roughnessTextureIndex = nil
-                        subData.metallicTextureIndex = nil
-                        subData.irradianceTextureIndex = nil
-                        subData.subsurfaceTextureIndex = nil
-                        subData.specularTextureIndex = nil
-                        subData.specularTintTextureIndex = nil
-                        subData.anisotropicTextureIndex = nil
-                        subData.sheenTextureIndex = nil
-                        subData.sheenTintTextureIndex = nil
-                        subData.clearcoatTextureIndex = nil
-                        subData.clearcoatGlossTextureIndex = nil
-                        
                     }
                     
-                    if subData.baseColorTextureIndex != nil {
+                    if subData.baseColorTexture != nil {
                         drawData.hasBaseColorMap = true
                     }
-                    if subData.normalTextureIndex != nil {
+                    if subData.normalTexture != nil {
                         drawData.hasNormalMap = true
                     }
-                    if subData.ambientOcclusionTextureIndex != nil {
+                    if subData.ambientOcclusionTexture != nil {
                         drawData.hasAmbientOcclusionMap = true
                     }
-                    if subData.roughnessTextureIndex != nil {
+                    if subData.roughnessTexture != nil {
                         drawData.hasRoughnessMap = true
                     }
-                    if subData.metallicTextureIndex != nil {
+                    if subData.metallicTexture != nil {
                         drawData.hasMetallicMap = true
                     }
-                    if subData.irradianceTextureIndex != nil {
-                        drawData.hasIrradianceMap = true
+                    if subData.emissionTexture != nil {
+                        drawData.hasEmissionMap = true
                     }
-                    if subData.subsurfaceTextureIndex != nil {
+                    if subData.subsurfaceTexture != nil {
                         drawData.hasSubsurfaceMap = true
                     }
-                    if subData.specularTextureIndex != nil {
+                    if subData.specularTexture != nil {
                         drawData.hasSpecularMap = true
                     }
-                    if subData.specularTintTextureIndex != nil {
+                    if subData.specularTintTexture != nil {
                         drawData.hasSpecularTintMap = true
                     }
-                    if subData.anisotropicTextureIndex != nil {
+                    if subData.anisotropicTexture != nil {
                         drawData.hasAnisotropicMap = true
                     }
-                    if subData.sheenTextureIndex != nil {
+                    if subData.sheenTexture != nil {
                         drawData.hasSheenMap = true
                     }
-                    if subData.sheenTintTextureIndex != nil {
+                    if subData.sheenTintTexture != nil {
                         drawData.hasSheenTintMap = true
                     }
-                    if subData.clearcoatTextureIndex != nil {
+                    if subData.clearcoatTexture != nil {
                         drawData.hasClearcoatMap = true
                     }
-                    if subData.clearcoatGlossTextureIndex != nil {
+                    if subData.clearcoatGlossTexture != nil {
                         drawData.hasClearcoatGlossMap = true
                     }
                     
@@ -441,8 +356,8 @@ class ModelIOTools {
         
         // Read a material's property of a particular semantic (e.g. .baseColor),
         // and return tuple of uniform value or texture index
-        func readMaterialProperty<T>(fromAsset asset: MDLAsset, material mdlMaterial: MDLMaterial, semantic: MDLMaterialSemantic, withPropertyFunction getPropertyValue: (MDLMaterialProperty) -> T) -> (uniform: T?, textureIndex: Int?, texturePath: String?) {
-            var result: (uniform: T?, textureIndex: Int?, texturePath: String?) = (nil, nil, nil)
+        func readMaterialProperty<T>(fromAsset asset: MDLAsset, material mdlMaterial: MDLMaterial, semantic: MDLMaterialSemantic, textureLoader: MTKTextureLoader, bundle: Bundle, withPropertyFunction getPropertyValue: (MDLMaterialProperty) -> T) -> (uniform: T?, texture: MTLTexture?) {
+            var result: (uniform: T?, texture: MTLTexture?) = (nil, nil)
             
             for property in mdlMaterial.properties(with: semantic) {
                 switch property.type {
@@ -450,31 +365,7 @@ class ModelIOTools {
                     result.uniform = getPropertyValue(property)
                     return result
                 case .string, .URL:
-                    if let textureSampler = property.textureSamplerValue {
-                        
-                    } else if let path = property.urlValue?.absoluteString {
-                        if let index = texturePaths.index(of: path) {
-                            result.textureIndex = index
-                        } else {
-                            let index = texturePaths.count
-                            let fixedPath = fixupPath(asset, path: path)
-                            texturePaths.append(fixedPath)
-                            result.texturePath = fixedPath
-                            result.textureIndex = index
-                        }
-                    } else if let path = property.stringValue {
-                        if let index = texturePaths.index(of: path) {
-                            result.textureIndex = index
-                        } else {
-                            let index = texturePaths.count
-                            let fixedPath = fixupPath(asset, path: path)
-                            texturePaths.append(fixedPath)
-                            result.texturePath = fixedPath
-                            result.textureIndex = index
-                        }
-                    } else {
-                        result.textureIndex = nil
-                    }
+                    result.texture = createMTLTexture(fromMaterialProperty: property, asset: asset, inBundle: bundle, withTextureLoader: textureLoader)
                 default: break
                 }
             }
@@ -610,34 +501,76 @@ class ModelIOTools {
             return localTransform
         }
         
-        func createMTLTexture(inBundle bundle: Bundle, fromAssetPath assetPath: String, withTextureLoader textureLoader: MTKTextureLoader?) -> MTLTexture? {
-            do {
+        func createMTLTexture(fromMaterialProperty property: MDLMaterialProperty, asset: MDLAsset, inBundle bundle: Bundle, withTextureLoader textureLoader: MTKTextureLoader) -> MTLTexture? {
+            
+            if let assetURL = mdlAsset.url, let fileName = property.stringValue, let archive = Archive(url: assetURL, accessMode: .read), let entry = archive[fileName], assetURL.absoluteString.hasSuffix(".usdz") {
                 
-                let textureURL: URL? = {
-                    guard let aURL = URL(string: assetPath) else {
-                        return nil
-                    }
-                    if aURL.scheme == nil {
-                        // If there is no scheme, assume it's a file in the bundle.
-                        let last = aURL.lastPathComponent
-                        if let bundleURL = bundle.url(forResource: last, withExtension: nil) {
-                            return bundleURL
-                        } else if let bundleURL = bundle.url(forResource: aURL.path, withExtension: nil) {
-                            return bundleURL
-                        } else {
-                            return aURL
-                        }
-                    } else {
-                        return aURL
-                    }
-                }()
+                let tempUUID = UUID().uuidString
+                guard let tempFolder = createTempDirectory(withName: tempUUID) else {
+                    return nil
+                }
+                let tempFileURL = tempFolder.appendingPathComponent(fileName)
                 
-                guard let aURL = textureURL else {
+                do {
+                    let _ = try archive.extract(entry, to: tempFileURL)
+                } catch {
                     return nil
                 }
                 
-                return try textureLoader?.newTexture(URL: aURL, options: nil)
+                do {
+                    return try textureLoader.newTexture(URL: tempFileURL, options: nil)
+                } catch {
+                    print("Unable to loader texture for asset \(asset.url) with error \(error)")
+                    //                let newError = AKError.recoverableError(.modelError(.unableToLoadTexture(AssetErrorInfo(path: assetPath, underlyingError: error))))
+                    //                recordNewError(newError)
+                    return nil
+                }
                 
+            } else {
+            
+                if let textureSampler = property.textureSamplerValue, let texture = textureSampler.texture {
+                    return try? textureLoader.newTexture(texture: texture)
+                } else if let path = property.urlValue?.absoluteString {
+                    let fixedPath = fixupPath(asset, path: path)
+                    return createMTLTexture(inBundle: bundle, fromAssetPath: fixedPath, withTextureLoader: textureLoader)
+                } else if let path = property.stringValue {
+                    let fixedPath = fixupPath(asset, path: path)
+                    return createMTLTexture(inBundle: bundle, fromAssetPath: fixedPath, withTextureLoader: textureLoader)
+                } else {
+                    return nil
+                }
+                
+            }
+            
+        }
+        
+        func createMTLTexture(inBundle bundle: Bundle, fromAssetPath assetPath: String, withTextureLoader textureLoader: MTKTextureLoader) -> MTLTexture? {
+            
+            let textureURL: URL? = {
+                guard let aURL = URL(string: assetPath) else {
+                    return nil
+                }
+                if aURL.scheme == nil {
+                    // If there is no scheme, assume it's a file in the bundle.
+                    let last = aURL.lastPathComponent
+                    if let bundleURL = bundle.url(forResource: last, withExtension: nil) {
+                        return bundleURL
+                    } else if let bundleURL = bundle.url(forResource: aURL.path, withExtension: nil) {
+                        return bundleURL
+                    } else {
+                        return aURL
+                    }
+                } else {
+                    return aURL
+                }
+            }()
+            
+            guard let aURL = textureURL else {
+                return nil
+            }
+            
+            do {
+                return try textureLoader.newTexture(URL: aURL, options: nil)
             } catch {
                 print("Unable to loader texture with assetPath \(assetPath) with error \(error)")
 //                let newError = AKError.recoverableError(.modelError(.unableToLoadTexture(AssetErrorInfo(path: assetPath, underlyingError: error))))
@@ -645,6 +578,17 @@ class ModelIOTools {
             }
             
             return nil
+        }
+        
+        func createTempDirectory(withName name: String) -> URL? {
+            let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(name)
+            do {
+                try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true, attributes: nil)
+            } catch {
+                print(error)
+                return nil
+            }
+            return url
         }
         
         //
@@ -759,12 +703,6 @@ class ModelIOTools {
                 }
                 meshGPUData.indexBuffers.append(aIDXBuffer)
             }
-        }
-        
-        // Create Texture Buffers
-        let textureLoader = MTKTextureLoader(device: device)
-        for texturePath in texturePaths {
-            meshGPUData.textures.append(createMTLTexture(inBundle: textureBundle, fromAssetPath: texturePath, withTextureLoader: textureLoader))
         }
         
         return meshGPUData

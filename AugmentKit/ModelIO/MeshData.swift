@@ -44,36 +44,20 @@ public struct DrawSubData {
     var idxCount = 0
     var idxType = MTLIndexType.uint16
     
-    // Texture Indexes
-    var baseColorTextureIndex: Int?
-    var normalTextureIndex: Int?
-    var ambientOcclusionTextureIndex: Int?
-    var metallicTextureIndex: Int?
-    var roughnessTextureIndex: Int?
-    var irradianceTextureIndex: Int?
-    var subsurfaceTextureIndex: Int?
-    var specularTextureIndex: Int?
-    var specularTintTextureIndex: Int?
-    var anisotropicTextureIndex: Int?
-    var sheenTextureIndex: Int?
-    var sheenTintTextureIndex: Int?
-    var clearcoatTextureIndex: Int?
-    var clearcoatGlossTextureIndex: Int?
-    
-//    var baseColorTexture: MTLTexture?
-//    var normalTexture: MTLTexture?
-//    var ambientOcclusionTexture: MTLTexture?
-//    var metallicTexture: MTLTexture?
-//    var roughnessTexture: MTLTexture?
-//    var irradianceTexture: MTLTexture?
-//    var subsurfaceTexture: MTLTexture?
-//    var specularTexture: MTLTexture?
-//    var specularTintTexture: MTLTexture?
-//    var anisotropicTexture: MTLTexture?
-//    var sheenTexture: MTLTexture?
-//    var sheenTintTexture: MTLTexture?
-//    var clearcoatTexture: MTLTexture?
-//    var clearcoatGlossTexture: MTLTexture?
+    var baseColorTexture: MTLTexture?
+    var normalTexture: MTLTexture?
+    var ambientOcclusionTexture: MTLTexture?
+    var metallicTexture: MTLTexture?
+    var roughnessTexture: MTLTexture?
+    var emissionTexture: MTLTexture?
+    var subsurfaceTexture: MTLTexture?
+    var specularTexture: MTLTexture?
+    var specularTintTexture: MTLTexture?
+    var anisotropicTexture: MTLTexture?
+    var sheenTexture: MTLTexture?
+    var sheenTintTexture: MTLTexture?
+    var clearcoatTexture: MTLTexture?
+    var clearcoatGlossTexture: MTLTexture?
     
     var materialUniforms = MaterialUniforms()
     var materialBuffer: MTLBuffer?
@@ -101,8 +85,8 @@ public struct DrawSubData {
             return kFunctionConstantMetallicMapIndex
         case kTextureIndexAmbientOcclusion:
             return kFunctionConstantAmbientOcclusionMapIndex
-        case kTextureIndexIrradianceMap:
-            return kFunctionConstantIrradianceMapIndex
+        case kTextureIndexEmissionMap:
+            return kFunctionConstantEmissionMapIndex
         case kTextureIndexRoughness:
             return kFunctionConstantRoughnessMapIndex
         case kTextureIndexSubsurfaceMap:
@@ -144,7 +128,7 @@ public struct DrawData {
     var hasMetallicMap = false
     var hasRoughnessMap = false
     var hasAmbientOcclusionMap = false
-    var hasIrradianceMap = false
+    var hasEmissionMap = false
     var hasSubsurfaceMap = false
     var hasSpecularMap = false
     var hasSpecularTintMap = false
@@ -159,7 +143,7 @@ public struct MeshGPUData {
     var vertexBuffers = [MTLBuffer]()
     var vertexDescriptors = [MTLVertexDescriptor]()
     var indexBuffers = [MTLBuffer]()
-    var textures = [MTLTexture?]()
+//    var textures = [MTLTexture?]()
     var drawData = [DrawData]()
 }
 

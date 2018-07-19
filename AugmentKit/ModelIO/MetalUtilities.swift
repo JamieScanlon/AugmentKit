@@ -34,6 +34,8 @@ import simd
 import GLKit
 import AugmentKitShader
 
+// MARK: - MetalUtilities
+
 class MetalUtilities {
     
     static func getFuncConstants(forDrawData drawData: DrawData?) -> MTLFunctionConstantValues {
@@ -43,7 +45,7 @@ class MetalUtilities {
         var has_metallic_map = false
         var has_roughness_map = false
         var has_ambient_occlusion_map = false
-        var has_irradiance_map = false
+        var has_emission_map = false
         var has_subsurface_map = false
         var has_specular_map = false
         var has_specularTint_map = false
@@ -59,7 +61,7 @@ class MetalUtilities {
             has_metallic_map = has_metallic_map || drawData.hasMetallicMap
             has_roughness_map = has_roughness_map || drawData.hasRoughnessMap
             has_ambient_occlusion_map = has_ambient_occlusion_map || drawData.hasAmbientOcclusionMap
-            has_irradiance_map = has_irradiance_map || drawData.hasIrradianceMap
+            has_emission_map = has_emission_map || drawData.hasEmissionMap
             has_subsurface_map = has_subsurface_map || drawData.hasSubsurfaceMap
             has_specular_map = has_specular_map || drawData.hasSpecularMap
             has_specularTint_map = has_specularTint_map || drawData.hasSpecularTintMap
@@ -76,7 +78,7 @@ class MetalUtilities {
         constantValues.setConstantValue(&has_metallic_map, type: .bool, index: Int(kFunctionConstantMetallicMapIndex.rawValue))
         constantValues.setConstantValue(&has_roughness_map, type: .bool, index: Int(kFunctionConstantRoughnessMapIndex.rawValue))
         constantValues.setConstantValue(&has_ambient_occlusion_map, type: .bool, index: Int(kFunctionConstantAmbientOcclusionMapIndex.rawValue))
-        constantValues.setConstantValue(&has_irradiance_map, type: .bool, index: Int(kFunctionConstantIrradianceMapIndex.rawValue))
+        constantValues.setConstantValue(&has_emission_map, type: .bool, index: Int(kFunctionConstantEmissionMapIndex.rawValue))
         constantValues.setConstantValue(&has_subsurface_map, type: .bool, index: Int(kFunctionConstantSubsurfaceMapIndex.rawValue))
         constantValues.setConstantValue(&has_specular_map, type: .bool, index: Int(kFunctionConstantSpecularMapIndex.rawValue))
         constantValues.setConstantValue(&has_specularTint_map, type: .bool, index: Int(kFunctionConstantSpecularTintMapIndex.rawValue))
@@ -109,7 +111,7 @@ class MetalUtilities {
         switch propertyIndex {
         case kFunctionConstantBaseColorMapIndex:
             fallthrough
-        case kFunctionConstantIrradianceMapIndex:
+        case kFunctionConstantEmissionMapIndex:
             minLevelForProperty = kQualityLevelMedium
         default:
             break
@@ -344,4 +346,284 @@ class QuaternionUtilities {
     }
     
 }
+
+// MARK: - Debugging Extensions
+
+extension MDLObject {
+    
+    override open var description: String {
+        return debugDescription
+    }
+    
+    override open var debugDescription: String {
+        var myDescription = "<\(type(of: self)): \(Unmanaged.passUnretained(self).toOpaque())> Name: \(name), Path:\(path), Hidden: \(hidden), Components: \(components)"
+        for childIndex in 0..<children.count {
+            myDescription += "\n"
+            myDescription += "    Child \(childIndex) - \(children[childIndex])"
+        }
+        return myDescription
+    }
+    
+}
+
+extension MDLAsset {
+    
+    override open var description: String {
+        return debugDescription
+    }
+    
+    override open var debugDescription: String {
+        var myDescription = "<\(type(of: self)): \(Unmanaged.passUnretained(self).toOpaque())> URL: \(url?.absoluteString ?? "none"), Count: \(count), VertedDescriptor: \(vertexDescriptor?.debugDescription ?? "none"), Masters: \(masters)"
+        for childIndex in 0..<self.count {
+            myDescription += "\n"
+            myDescription += "    Child \(childIndex) - \(self.object(at: childIndex))"
+        }
+        return myDescription
+    }
+    
+    public func transformsDescription() -> String {
+        var myDescription = "<\(type(of: self)): \(Unmanaged.passUnretained(self).toOpaque())>"
+        for childIndex in 0..<self.count {
+            myDescription += "\n"
+            myDescription += childString(forObject: self.object(at: childIndex), withIndentLevel: 1)
+        }
+        return myDescription
+    }
+    
+    fileprivate func childString(forObject object: MDLObject, withIndentLevel indentLevel: Int) -> String {
+        var myDescription = String(repeating: "   | ", count: indentLevel)
+        myDescription += "\(object.name) \(object.transform?.debugDescription ?? "none")"
+        for childIndex in 0..<object.children.count {
+            myDescription += "\n"
+            myDescription += childString(forObject: object.children[childIndex], withIndentLevel: indentLevel + 1)
+        }
+        return myDescription
+    }
+
+}
+
+extension MDLMesh {
+    
+    override open var description: String {
+        return debugDescription
+    }
+    
+    override open var debugDescription: String {
+        var myDescription = "\(super.debugDescription), Submeshes: \(submeshes?.debugDescription ?? "none"), VertexCount: \(vertexCount), VertexDescriptor: \(vertexDescriptor)"
+        for childIndex in 0..<children.count {
+            myDescription += "\n"
+            myDescription += "    Child \(childIndex) - \(children[childIndex])"
+        }
+        return myDescription
+    }
+    
+}
+
+extension MDLMaterial {
+    
+    override open var description: String {
+        return debugDescription
+    }
+    
+    override open var debugDescription: String {
+        var myDescription = "<\(type(of: self)): \(Unmanaged.passUnretained(self).toOpaque())> Name: \(name)"
+        for childIndex in 0..<count {
+            myDescription += "\n"
+            myDescription += "    Property \(childIndex) - \(self[childIndex]?.debugDescription ?? "none")"
+        }
+        return myDescription
+    }
+    
+}
+
+extension MDLMaterialProperty {
+    
+    override open var description: String {
+        return debugDescription
+    }
+    
+    override open var debugDescription: String {
+        var myDescription = "<MDLMaterialProperty: \(Unmanaged.passUnretained(self).toOpaque())> Name: \(name), Semantic: \(semantic) "
+        switch type {
+        case .none:
+            myDescription += "Value: none"
+        case .string:
+            myDescription += "Value: \(stringValue?.debugDescription ?? "none")"
+        case .URL:
+            myDescription += "Value: \(urlValue?.debugDescription ?? "none")"
+        case .texture:
+            myDescription += "Value: \(textureSamplerValue?.debugDescription ?? "none")"
+        case .color:
+            myDescription += "Value: \(color?.debugDescription ?? "none")"
+        case .float:
+            myDescription += "Value: \(floatValue)"
+        case .float2:
+            myDescription += "Value: \(float2Value)"
+        case .float3:
+            myDescription += "Value: \(float3Value)"
+        case .float4:
+            myDescription += "Value: \(float4Value)"
+        case .matrix44:
+            myDescription += "Value: \(matrix4x4)"
+        }
+        return myDescription
+    }
+    
+}
+
+extension MDLMaterialSemantic: CustomDebugStringConvertible, CustomStringConvertible {
+    
+    public var description: String {
+        return debugDescription
+    }
+    
+    public var debugDescription: String {
+        var myDescription = ""
+        switch self {
+        case .none:
+            myDescription += "none"
+        case .baseColor:
+            myDescription += "baseColor"
+        case .subsurface:
+            myDescription += "subsurface"
+        case .metallic:
+            myDescription += "metallic"
+        case .specular:
+            myDescription += "specular"
+        case .specularExponent:
+            myDescription += "specularExponent"
+        case .specularTint:
+            myDescription += "specularTint"
+        case .roughness:
+            myDescription += "roughness"
+        case .anisotropic:
+            myDescription += "anisotropic"
+        case .anisotropicRotation:
+            myDescription += "anisotropicRotation"
+        case .sheen:
+            myDescription += "sheen"
+        case .sheenTint:
+            myDescription += "sheenTint"
+        case .clearcoat:
+            myDescription += "clearcoat"
+        case .clearcoatGloss:
+            myDescription += "clearcoatGloss"
+        case .emission:
+            myDescription += "emission"
+        case .bump:
+            myDescription += "bump"
+        case .opacity:
+            myDescription += "opacity"
+        case .interfaceIndexOfRefraction:
+            myDescription += "interfaceIndexOfRefraction"
+        case .materialIndexOfRefraction:
+            myDescription += "materialIndexOfRefraction"
+        case .objectSpaceNormal:
+            myDescription += "objectSpaceNormal"
+        case .tangentSpaceNormal:
+            myDescription += "tangentSpaceNormal"
+        case .displacement:
+            myDescription += "displacement"
+        case .displacementScale:
+            myDescription += "displacementScale"
+        case .ambientOcclusion:
+            myDescription += "ambientOcclusion"
+        case .ambientOcclusionScale:
+            myDescription += "ambientOcclusionScale"
+        case .userDefined:
+            myDescription += "userDefined"
+        }
+        return myDescription
+    }
+    
+}
+
+extension MDLTransformStack {
+    
+    override open var description: String {
+        return debugDescription
+    }
+    
+    override open var debugDescription: String {
+        let myDescription = "<\(type(of: self)): \(Unmanaged.passUnretained(self).toOpaque())> Matrixremo: \(float4x4(atTime: 0))"
+        return myDescription
+    }
+    
+}
+
+extension MDLTransform {
+    
+    override open var description: String {
+        return debugDescription
+    }
+    
+    override open var debugDescription: String {
+        let myDescription = "<\(type(of: self)): \(Unmanaged.passUnretained(self).toOpaque())> Matrix @ 0s: \(matrix))"
+        return myDescription
+    }
+    
+}
+
+extension MDLSubmesh {
+    
+    override open var description: String {
+        return debugDescription
+    }
+    
+    override open var debugDescription: String {
+        let myDescription = "<\(type(of: self)): \(Unmanaged.passUnretained(self).toOpaque())> Name: \(name), IndexCount: \(indexCount), Material: \(material?.debugDescription ?? "none")"
+        return myDescription
+    }
+    
+}
+
+extension MDLObjectContainer {
+    
+    override open var description: String {
+        return debugDescription
+    }
+    
+    override open var debugDescription: String {
+        var myDescription = "<\(type(of: self)): \(Unmanaged.passUnretained(self).toOpaque())> Count: \(count)"
+        for childIndex in 0..<self.count {
+            myDescription += "\n"
+            myDescription += "    Child \(childIndex) - \(objects[childIndex])"
+        }
+        return myDescription
+    }
+    
+}
+
+extension CGColor: CustomDebugStringConvertible, CustomStringConvertible {
+    public var description: String {
+        return debugDescription
+    }
+    
+    public var debugDescription: String {
+        if let components = self.components {
+            return "\(components)"
+        } else {
+            return "unknown"
+        }
+    }
+}
+
+extension matrix_float4x4: CustomStringConvertible {
+    public var description: String {
+        return debugDescription
+    }
+    
+    public var debugDescription: String {
+        var myDescription = "\n"
+        myDescription += "[\(self.columns.0.x), \(self.columns.1.x), \(self.columns.2.x), \(self.columns.3.x)]"
+        myDescription += "\n"
+        myDescription += "[\(self.columns.0.y), \(self.columns.1.y), \(self.columns.2.y), \(self.columns.3.y)]"
+        myDescription += "\n"
+        myDescription += "[\(self.columns.0.z), \(self.columns.1.z), \(self.columns.2.z), \(self.columns.3.z)]"
+        myDescription += "\n"
+        myDescription += "[\(self.columns.0.w), \(self.columns.1.w), \(self.columns.2.w), \(self.columns.3.w)]"
+        return myDescription
+    }
+}
+
 

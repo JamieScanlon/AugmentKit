@@ -369,8 +369,15 @@ class UnanchoredRenderModule: RenderModule {
             if let trackerMeshGPUData = trackerMeshGPUData {
                 // Apply the world transform (as defined in the imported model) if applicable
                 // We currenly only support a single mesh so we just use the first item
-                if trackerMeshGPUData.drawData.count > 0 {
-                    let worldTransform = trackerMeshGPUData.drawData[0].worldTransform
+                if let drawData = trackerMeshGPUData.drawData.first {
+                    let worldTransform: matrix_float4x4 = {
+                        if drawData.worldTransformAnimations.count > 0 {
+                            let index = Int(cameraProperties.currentFrame % UInt(drawData.worldTransformAnimations.count))
+                            return drawData.worldTransformAnimations[index]
+                        } else {
+                            return drawData.worldTransform
+                        }
+                    }()
                     coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
                 }
                 
@@ -429,8 +436,15 @@ class UnanchoredRenderModule: RenderModule {
             if let targetMeshGPUData = targetMeshGPUData {
                 // Apply the world transform (as defined in the imported model) if applicable
                 // We currenly only support a single mesh so we just use the first item
-                if targetMeshGPUData.drawData.count > 0 {
-                    let worldTransform = targetMeshGPUData.drawData[0].worldTransform
+                if let drawData = targetMeshGPUData.drawData.first {
+                    let worldTransform: matrix_float4x4 = {
+                        if drawData.worldTransformAnimations.count > 0 {
+                            let index = Int(cameraProperties.currentFrame % UInt(drawData.worldTransformAnimations.count))
+                            return drawData.worldTransformAnimations[index]
+                        } else {
+                            return drawData.worldTransform
+                        }
+                    }()
                     coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
                 }
                 

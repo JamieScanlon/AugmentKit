@@ -449,11 +449,14 @@ class ModelIOTools {
         func updateWorldTransforms() {
             
             if sampleTimes.count > 0 {
-                var myTransform = [[matrix_float4x4]]()
+                var myTransforms = [[matrix_float4x4]](repeating: [], count: meshNodeIndices.count)
                 for time in sampleTimes {
-                    myTransform.append(calculateWorldTransforms(atTime: time))
+                    let allModelTransformsForTime = calculateWorldTransforms(atTime: time)
+                    for meshIndex in 0..<allModelTransformsForTime.count {
+                        myTransforms[meshIndex].append(allModelTransformsForTime[meshIndex])
+                    }
                 }
-                worldTransformAnimations = myTransform
+                worldTransformAnimations = myTransforms
             } else {
                 worldTransforms = calculateWorldTransforms(atTime: 0)
                 worldTransformAnimations = []
@@ -473,7 +476,7 @@ class ModelIOTools {
                     var parentIndex = parentIndices[currentIndex]
                     var currentTransform = matrix_identity_float4x4
                     while parentIndex != nil {
-                        let aTransform = getLocalTransform(atTime: time, index: meshIndex)
+                        let aTransform = getLocalTransform(atTime: time, index: parentIndex!)
                         currentTransform = simd_mul(currentTransform, aTransform)
                         currentIndex = parentIndex!
                         parentIndex = parentIndices[currentIndex]
@@ -679,6 +682,9 @@ class ModelIOTools {
         // Attach world transform to the DrawData object
         for (nodeIndex, transform) in worldTransforms.enumerated() {
             meshGPUData.drawData[nodeIndex].worldTransform = transform
+        }
+        for (nodeIndex, transforms) in worldTransformAnimations.enumerated() {
+            meshGPUData.drawData[nodeIndex].worldTransformAnimations = transforms
         }
         
         // Create Vertex Buffers

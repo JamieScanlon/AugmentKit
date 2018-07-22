@@ -545,7 +545,7 @@ extension MDLTransformStack {
     }
     
     override open var debugDescription: String {
-        let myDescription = "<\(type(of: self)): \(Unmanaged.passUnretained(self).toOpaque())> Matrixremo: \(float4x4(atTime: 0))"
+        let myDescription = "<\(type(of: self)): \(Unmanaged.passUnretained(self).toOpaque())> Matrix: \(float4x4(atTime: 0))"
         return myDescription
     }
     
@@ -608,7 +608,7 @@ extension CGColor: CustomDebugStringConvertible, CustomStringConvertible {
     }
 }
 
-extension matrix_float4x4: CustomStringConvertible {
+extension simd_float4x4: CustomStringConvertible {
     public var description: String {
         return debugDescription
     }
@@ -625,5 +625,4 @@ extension matrix_float4x4: CustomStringConvertible {
         return myDescription
     }
 }
-
 

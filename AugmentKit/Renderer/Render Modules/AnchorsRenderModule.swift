@@ -316,11 +316,17 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                 
                 // Apply the world transform (as defined in the imported model) if applicable
                 // We currenly only support a single mesh so we just use the first item
-//                if model.meshNodeIndices.count > 0, model.meshNodeIndices[0] < model.worldTransforms.count {
-//                    let modelIndex = model.meshNodeIndices[0]
-//                    let worldTransform = model.worldTransforms[modelIndex]
-//                    coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
-//                }
+                if let drawData = meshGPUDataForAnchorsByUUID[uuid]?.drawData.first {
+                    let worldTransform: matrix_float4x4 = {
+                        if drawData.worldTransformAnimations.count > 0 {
+                            let index = Int(cameraProperties.currentFrame % UInt(drawData.worldTransformAnimations.count))
+                            return drawData.worldTransformAnimations[index]
+                        } else {
+                            return drawData.worldTransform
+                        }
+                    }()
+                    coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
+                }
                 
                 let modelMatrix = anchor.transform * coordinateSpaceTransform
                 let anchorUniforms = anchorUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: anchorIndex)
@@ -589,7 +595,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         
     }
     
-    private func updatePuppetAnimation(from drawData: DrawData, frameNumber: Int) {
+    private func updatePuppetAnimation(from drawData: DrawData, frameNumber: UInt) {
         return
         let capacity = Constants.alignedPaletteSize * Constants.maxPaletteSize
         

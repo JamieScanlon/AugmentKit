@@ -261,13 +261,15 @@ class ViewController: UIViewController {
     fileprivate func loadAnchorModels() {
         
         //
-        // Download a zipped Model
+        // Download a usdz Model
         //
         
-//        let url = URL(string: "https://s3-us-west-2.amazonaws.com/com.tenthlettermade.public/PinAKModelArchive.zip")!
-//        let remoteModel = AKRemoteArchivedModel(remoteURL: url)
-//        remoteModel.compressor = Compressor()
-//        pinModel = remoteModel
+//        let url = URL(string: "https://example.com/path/to/model.usdz")!
+//        let remoteModel = RemoteModelLoader().loadModel(withURL: url) { (filePath, error) in
+//            let url = URL(fileURLWithPath: filePath)
+//            let remoteAsset = MDLAsset(url: url)
+//            self.pinModel = remoteAsset
+//        }
         
         
         //
@@ -289,6 +291,10 @@ class ViewController: UIViewController {
 //            print("ERROR: Could not load the USDZ model")
 //            return
 //        }
+//        for childIndex in 0..<aPinAsset.count {
+//            aPinAsset.object(at: childIndex).transform = MDLTransform(matrix: matrix_identity_float4x4.scale(x: 0.2, y: 0.2, z: 0.2))
+//        }
+//        print(aPinAsset)
         
         guard let aShipAsset = AKSceneKitUtils.mdlAssetFromScene(named: "ship.scn", world: world) else {
             print("ERROR: Could not load the SceneKit model")

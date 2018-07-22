@@ -74,7 +74,7 @@ public struct CameraProperties {
     var viewportSize: CGSize
     var viewportSizeDidChange: Bool
     var position: float3
-    var currentFrame: Int
+    var currentFrame: UInt
 }
 
 // MARK: - Renderer
@@ -165,14 +165,14 @@ public class Renderer {
     public fileprivate(set) var currentCameraQuaternionRotation: GLKQuaternion?
     public fileprivate(set) var currentCameraHeading: Double?
     public fileprivate(set) var lowestHorizPlaneAnchor: ARPlaneAnchor?
-    public var currentFrameNumber: Int {
+    public var currentFrameNumber: UInt {
         guard worldInitiationTime > 0 && lastFrameTime > 0 else {
             return 0
         }
         
-        let elapsedTime = lastFrameTime - worldInitiationTime
+        let elapsedTime = lastFrameTime + worldInitiationTime
         let fps = 1.0/60.0
-        return Int(floor(elapsedTime * fps))
+        return UInt(floor(elapsedTime * fps))
     }
     
     public init(session: ARSession, metalDevice device: MTLDevice, renderDestination: RenderDestinationProvider, textureBundle: Bundle) {

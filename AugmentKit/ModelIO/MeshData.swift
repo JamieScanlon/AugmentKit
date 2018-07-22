@@ -121,6 +121,7 @@ public struct DrawData {
     var paletteSize = 0
     var subData = [DrawSubData]()
     var worldTransform: matrix_float4x4 = matrix_identity_float4x4
+    var worldTransformAnimations: [matrix_float4x4] = []
     var skins = [SkinData]()
     var skeletonAnimations = [AnimatedSkeleton]()
     var hasBaseColorMap = false

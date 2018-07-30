@@ -68,6 +68,7 @@ class UnanchoredRenderModule: RenderModule {
         let unanchoredUniformBufferSize = Constants.alignedInstanceUniformsSize * maxInFlightBuffers
         let materialUniformBufferSize = RenderModuleConstants.alignedMaterialSize * maxInFlightBuffers
         let effectsUniformBufferSize = Constants.alignedEffectsUniformSize * maxInFlightBuffers
+        let environmentUniformBufferSize = Constants.alignedEnvironmentUniformSize * maxInFlightBuffers
         
         // Create and allocate our uniform buffer objects. Indicate shared storage so that both the
         // CPU can access the buffer
@@ -79,6 +80,9 @@ class UnanchoredRenderModule: RenderModule {
         
         effectsUniformBuffer = device?.makeBuffer(length: effectsUniformBufferSize, options: .storageModeShared)
         effectsUniformBuffer?.label = "EffectsUniformBuffer"
+        
+        environmentUniformBuffer = device?.makeBuffer(length: environmentUniformBufferSize, options: .storageModeShared)
+        environmentUniformBuffer?.label = "EnvironmentUniformBuffer"
         
     }
     
@@ -199,7 +203,7 @@ class UnanchoredRenderModule: RenderModule {
                 return
             }
             
-            for (drawIdx, drawData) in trackerMeshGPUData.drawData.enumerated() {
+            for (_ , drawData) in trackerMeshGPUData.drawData.enumerated() {
                 let trackerPipelineStateDescriptor = MTLRenderPipelineDescriptor()
                 do {
                     let funcConstants = MetalUtilities.getFuncConstants(forDrawData: drawData)
@@ -269,7 +273,7 @@ class UnanchoredRenderModule: RenderModule {
                 return
             }
         
-            for (drawIdx, drawData) in targetMeshGPUData.drawData.enumerated() {
+            for (_, drawData) in targetMeshGPUData.drawData.enumerated() {
                 let targetPipelineStateDescriptor = MTLRenderPipelineDescriptor()
                 do {
                     let funcConstants = MetalUtilities.getFuncConstants(forDrawData: drawData)
@@ -323,18 +327,37 @@ class UnanchoredRenderModule: RenderModule {
         unanchoredUniformBufferOffset = Constants.alignedInstanceUniformsSize * bufferIndex
         materialUniformBufferOffset = RenderModuleConstants.alignedMaterialSize * bufferIndex
         effectsUniformBufferOffset = Constants.alignedEffectsUniformSize * bufferIndex
+        environmentUniformBufferOffset = Constants.alignedEnvironmentUniformSize * bufferIndex
         
         unanchoredUniformBufferAddress = unanchoredUniformBuffer?.contents().advanced(by: unanchoredUniformBufferOffset)
         materialUniformBufferAddress = materialUniformBuffer?.contents().advanced(by: materialUniformBufferOffset)
         effectsUniformBufferAddress = effectsUniformBuffer?.contents().advanced(by: effectsUniformBufferOffset)
+        environmentUniformBufferAddress = environmentUniformBuffer?.contents().advanced(by: environmentUniformBufferOffset)
         
     }
     
-    func updateBuffers(withARFrame frame: ARFrame, cameraProperties: CameraProperties) {
-        // Do Nothing
+    func updateBuffers(withARFrame frame: ARFrame, cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+        
+        // Set up lighting for the scene using the ambient intensity if provided
+        ambientIntensity = {
+            if let lightEstimate = frame.lightEstimate {
+                return Float(lightEstimate.ambientIntensity) / 1000.0
+            } else {
+                return 1
+            }
+        }()
+        
+        ambientLightColor = {
+            if let lightEstimate = frame.lightEstimate {
+                return getRGB(from: lightEstimate.ambientColorTemperature)
+            } else {
+                return vector3(0.5, 0.5, 0.5)
+            }
+        }()
+        
     }
     
-    func updateBuffers(withTrackers trackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties) {
+    func updateBuffers(withTrackers trackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
         
         // Update the uniform buffer with transforms of the current frame's trackers
         
@@ -343,6 +366,7 @@ class UnanchoredRenderModule: RenderModule {
         for index in 0..<trackers.count {
             
             let tracker = trackers[index]
+            let uuid = tracker.identifier!
             
             // Apply the transform of the tracker relative to the reference transform
             let trackerAbsoluteTransform = tracker.position.referenceTransform * tracker.position.transform
@@ -388,6 +412,39 @@ class UnanchoredRenderModule: RenderModule {
             }
             
             //
+            // Update Environment
+            //
+            
+            environmentData = {
+                var myEnvironmentData = EnvironmentData()
+                if let texture = environmentTextureByUUID[uuid] {
+                    myEnvironmentData.environmentTexture = texture
+                    myEnvironmentData.hasEnvironmentMap = true
+                    return myEnvironmentData
+                } else {
+                    myEnvironmentData.hasEnvironmentMap = false
+                }
+                return myEnvironmentData
+            }()
+            
+            let environmentUniforms = environmentUniformBufferAddress?.assumingMemoryBound(to: EnvironmentUniforms.self).advanced(by: trackerIndex)
+            
+            environmentUniforms?.pointee.ambientLightColor = ambientLightColor ?? vector3(0.5, 0.5, 0.5)
+            
+            var directionalLightDirection : vector_float3 = vector3(0.0, -1.0, 0.0)
+            directionalLightDirection = simd_normalize(directionalLightDirection)
+            environmentUniforms?.pointee.directionalLightDirection = directionalLightDirection
+            
+            let directionalLightColor: vector_float3 = vector3(0.6, 0.6, 0.6)
+            environmentUniforms?.pointee.directionalLightColor = directionalLightColor * (ambientIntensity ?? 1)
+            
+            if environmentData?.hasEnvironmentMap == true {
+                environmentUniforms?.pointee.hasEnvironmentMap = 1
+            } else {
+                environmentUniforms?.pointee.hasEnvironmentMap = 0
+            }
+            
+            //
             // Update the Effects uniform
             //
             
@@ -409,6 +466,7 @@ class UnanchoredRenderModule: RenderModule {
             //
             
             let target = targets[index]
+            let uuid = target.identifier!
             
             // Apply the transform of the target relative to the reference transform
             let targetAbsoluteTransform = target.position.referenceTransform * target.position.transform
@@ -452,7 +510,43 @@ class UnanchoredRenderModule: RenderModule {
                 
                 let targetUniforms = unanchoredUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: adjustedIndex)
                 targetUniforms?.pointee.modelMatrix = modelMatrix
+                
+                //
+                // Update Environment
+                //
+                
+                environmentData = {
+                    var myEnvironmentData = EnvironmentData()
+                    if let texture = environmentTextureByUUID[uuid] {
+                        myEnvironmentData.environmentTexture = texture
+                        myEnvironmentData.hasEnvironmentMap = true
+                        return myEnvironmentData
+                    } else {
+                        myEnvironmentData.hasEnvironmentMap = false
+                    }
+                    return myEnvironmentData
+                }()
+                
+                let environmentUniforms = environmentUniformBufferAddress?.assumingMemoryBound(to: EnvironmentUniforms.self).advanced(by: adjustedIndex)
+                
+                environmentUniforms?.pointee.ambientLightColor = ambientLightColor ?? vector3(0.5, 0.5, 0.5)
+                
+                var directionalLightDirection : vector_float3 = vector3(0.0, -1.0, 0.0)
+                directionalLightDirection = simd_normalize(directionalLightDirection)
+                environmentUniforms?.pointee.directionalLightDirection = directionalLightDirection
+                
+                let directionalLightColor: vector_float3 = vector3(0.6, 0.6, 0.6)
+                environmentUniforms?.pointee.directionalLightColor = directionalLightColor * (ambientIntensity ?? 1)
+                
+                if environmentData?.hasEnvironmentMap == true {
+                    environmentUniforms?.pointee.hasEnvironmentMap = 1
+                } else {
+                    environmentUniforms?.pointee.hasEnvironmentMap = 0
+                }
+                
             }
+            
+            
             
             //
             // Update the Effects uniform
@@ -467,7 +561,7 @@ class UnanchoredRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties) {
+    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
         // Do Nothing
     }
     
@@ -498,6 +592,17 @@ class UnanchoredRenderModule: RenderModule {
             renderEncoder.setVertexBuffer(sharedBuffer.sharedUniformBuffer, offset: sharedBuffer.sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
             renderEncoder.setFragmentBuffer(sharedBuffer.sharedUniformBuffer, offset: sharedBuffer.sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
             
+            renderEncoder.popDebugGroup()
+            
+        }
+        
+        if let environmentUniformBuffer = environmentUniformBuffer {
+            
+            renderEncoder.pushDebugGroup("Draw Environment Uniforms")
+            if let environmentTexture = environmentData?.environmentTexture, environmentData?.hasEnvironmentMap == true {
+                renderEncoder.setFragmentTexture(environmentTexture, index: Int(kTextureIndexEnvironmentMap.rawValue))
+            }
+            renderEncoder.setFragmentBuffer(environmentUniformBuffer, offset: environmentUniformBufferOffset, index: Int(kBufferIndexEnvironmentUniforms.rawValue))
             renderEncoder.popDebugGroup()
             
         }
@@ -577,6 +682,7 @@ class UnanchoredRenderModule: RenderModule {
         static let maxTargetInstanceCount = 64
         static let alignedInstanceUniformsSize = ((MemoryLayout<AnchorInstanceUniforms>.stride * (Constants.maxTrackerInstanceCount + Constants.maxTargetInstanceCount)) & ~0xFF) + 0x100
         static let alignedEffectsUniformSize = ((MemoryLayout<AnchorEffectsUniforms>.stride * (Constants.maxTrackerInstanceCount + Constants.maxTargetInstanceCount)) & ~0xFF) + 0x100
+        static let alignedEnvironmentUniformSize = ((MemoryLayout<EnvironmentUniforms>.stride * (Constants.maxTrackerInstanceCount + Constants.maxTargetInstanceCount)) & ~0xFF) + 0x100
     }
     
     private var device: MTLDevice?
@@ -584,11 +690,16 @@ class UnanchoredRenderModule: RenderModule {
     // TODO: Support per-instance models for trackers and targets
     private var trackerAsset: MDLAsset?
     private var targetAsset: MDLAsset?
+    private var environmentTextureByUUID = [UUID: MTLTexture]()
+    private var ambientIntensity: Float?
+    private var ambientLightColor: vector_float3?
     private var unanchoredUniformBuffer: MTLBuffer?
     private var materialUniformBuffer: MTLBuffer?
     private var effectsUniformBuffer: MTLBuffer?
+    private var environmentUniformBuffer: MTLBuffer?
     private var unanchoredPipelineStates = [MTLRenderPipelineState]() // Store multiple states
     private var unanchoredDepthState: MTLDepthStencilState?
+    private var environmentData: EnvironmentData?
     
     // MetalKit meshes containing vertex data and index buffer for our tracker geometry
     // TODO: Support per-instance models for trackers and targets
@@ -607,14 +718,20 @@ class UnanchoredRenderModule: RenderModule {
     // Offset within effectsUniformBuffer to set for the current frame
     private var effectsUniformBufferOffset: Int = 0
     
+    // Offset within environmentUniformBuffer to set for the current frame
+    private var environmentUniformBufferOffset: Int = 0
+    
     // Addresses to write uniforms to each frame
     private var unanchoredUniformBufferAddress: UnsafeMutableRawPointer?
     
     // Addresses to write material uniforms to each frame
     private var materialUniformBufferAddress: UnsafeMutableRawPointer?
     
-    // Addresses to write material uniforms to each frame
+    // Addresses to write effects uniforms to each frame
     private var effectsUniformBufferAddress: UnsafeMutableRawPointer?
+    
+    // Addresses to write environment uniforms to each frame
+    private var environmentUniformBufferAddress: UnsafeMutableRawPointer?
     
     // number of frames in the tracker animation by index
     private var trackerAnimationFrameCount = [Int]()

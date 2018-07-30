@@ -185,7 +185,7 @@ class PathsRenderModule: RenderModule {
             return
         }
         
-        for (drawIdx, drawData) in pathMeshGPUData.drawData.enumerated() {
+        for (_, _) in pathMeshGPUData.drawData.enumerated() {
             let pathPipelineStateDescriptor = MTLRenderPipelineDescriptor()
             pathPipelineStateDescriptor.vertexDescriptor = pathVertexDescriptor
             pathPipelineStateDescriptor.vertexFunction = pointVertexShader
@@ -232,15 +232,15 @@ class PathsRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withARFrame frame: ARFrame, cameraProperties: CameraProperties) {
+    func updateBuffers(withARFrame frame: ARFrame, cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
         // Do Nothing
     }
     
-    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties) {
+    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
         // Do Nothing
     }
     
-    func updateBuffers(withPaths paths: [AKPath], cameraProperties theCameraProperties: CameraProperties) {
+    func updateBuffers(withPaths paths: [AKPath], cameraProperties theCameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
         
         // Update the anchor uniform buffer with transforms of the current frame's anchors
         pathSegmentInstanceCount = 0

@@ -328,7 +328,7 @@ class QuaternionUtilities {
         // (y-axis rotation)
         let sinp = 2 * (quaternion.w * quaternion.y - quaternion.z * quaternion.x)
         let yaw: Float = {
-            if fabs(sinp) >= 1 {
+            if abs(sinp) >= 1 {
                 return copysign(Float.pi / 2, sinp) // use 90 degrees if out of range
             } else {
                 return asin(sinp)

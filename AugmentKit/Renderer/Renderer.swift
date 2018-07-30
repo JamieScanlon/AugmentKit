@@ -77,6 +77,12 @@ public struct CameraProperties {
     var currentFrame: UInt
 }
 
+// MARK: - EnvironmentProperties
+
+public struct EnvironmentProperties {
+    var environmentAnchorsWithReatedAnchors: [AREnvironmentProbeAnchor: [UUID]] = [:]
+}
+
 // MARK: - Renderer
 
 public class Renderer {
@@ -257,7 +263,8 @@ public class Renderer {
         lastFrameTime = currentFrame.timestamp
         
         let surfaceAnchors = currentFrame.anchors.filter({$0 is ARPlaneAnchor}) as! [ARPlaneAnchor]
-        let normalAnchors = currentFrame.anchors.filter({!($0 is ARPlaneAnchor)})
+        let normalAnchors = currentFrame.anchors.filter({!($0 is ARPlaneAnchor) && !($0 is AREnvironmentProbeAnchor)})
+        let environmentProbeAnchors = currentFrame.anchors.filter({$0 is AREnvironmentProbeAnchor}) as! [AREnvironmentProbeAnchor]
         
         hasDetectedSurfaces = hasDetectedSurfaces || (lowestHorizPlaneAnchor != nil) || (surfaceAnchors.count > 0)
         
@@ -411,6 +418,62 @@ public class Renderer {
         }
         
         //
+        // Update Environment Probes
+        //
+        struct Cube {
+            var position: simd_float3
+            var extent: simd_float3
+            func contains(_ point: simd_float3) -> Bool {
+                let minX = position.x - extent.x
+                let minY = position.y - extent.y
+                let minZ = position.z - extent.z
+                let maxX = position.x + extent.x
+                let maxY = position.y + extent.y
+                let maxZ = position.z + extent.z
+                
+                return ( point.x > minX && point.y > minY && point.z > minZ ) && ( point.x < maxX && point.y < maxY && point.z < maxZ )
+            }
+        }
+        
+        //
+        // Environment Properties
+        //
+        
+        // The AREnvironmentProbeAnchor probes that are provided by ARKit onlt apply
+        // to a certain range. This maps the AREnvironmentProbeAnchor's with the
+        // identifiers of the AKAnchors that fall inside
+        var environmentAnchorsWithReatedAnchors: [AREnvironmentProbeAnchor: [UUID]] = [:]
+        environmentProbeAnchors.forEach { environmentAnchor in
+            let environmentPosition = simd_float3(environmentAnchor.transform.columns.3.x, environmentAnchor.transform.columns.3.y, environmentAnchor.transform.columns.3.z)
+            let cube = Cube(position: environmentPosition, extent: environmentAnchor.extent)
+            let anchorIDs: [UUID] = normalAnchors.compactMap{ normalAnchor in
+                let anchorPosition = simd_float3(normalAnchor.transform.columns.3.x, normalAnchor.transform.columns.3.y, normalAnchor.transform.columns.3.z)
+                if cube.contains(anchorPosition) {
+                    return normalAnchor.identifier
+                } else {
+                    return nil
+                }
+            }
+            environmentAnchorsWithReatedAnchors[environmentAnchor] = anchorIDs
+        }
+        var environmentProperties = EnvironmentProperties()
+        environmentProperties.environmentAnchorsWithReatedAnchors = environmentAnchorsWithReatedAnchors
+        
+        //
+        // Camera Properties
+        //
+        
+        let cameraPosition: float3 = {
+            if let currentCameraPositionTransform = currentCameraPositionTransform {
+                return float3(currentCameraPositionTransform.columns.3.x, currentCameraPositionTransform.columns.3.y, currentCameraPositionTransform.columns.3.z)
+            } else {
+                return float3(0, 0, 0)
+            }
+        }()
+        
+        let cameraProperties = CameraProperties(orientation: orientation, viewportSize: viewportSize, viewportSizeDidChange: viewportSizeDidChange, position: cameraPosition, currentFrame: currentFrameNumber)
+        
+        //
         // Encode Cammand Buffer
         //
         
@@ -445,22 +508,12 @@ public class Renderer {
                 }
             }
             
-            let cameraPosition: float3 = {
-                if let currentCameraPositionTransform = currentCameraPositionTransform {
-                    return float3(currentCameraPositionTransform.columns.3.x, currentCameraPositionTransform.columns.3.y, currentCameraPositionTransform.columns.3.z)
-                } else {
-                    return float3(0, 0, 0)
-                }
-            }()
-            
-            let cameraProperties = CameraProperties(orientation: orientation, viewportSize: viewportSize, viewportSizeDidChange: viewportSizeDidChange, position: cameraPosition, currentFrame: currentFrameNumber)
-            
             // Update Buffers
             for module in renderModules {
                 if module.isInitialized {
-                    module.updateBuffers(withARFrame: currentFrame, cameraProperties: cameraProperties)
-                    module.updateBuffers(withTrackers: trackers, targets: gazeTargets, cameraProperties: cameraProperties)
-                    module.updateBuffers(withPaths: paths, cameraProperties: cameraProperties)
+                    module.updateBuffers(withARFrame: currentFrame, cameraProperties: cameraProperties, environmentProperties: environmentProperties)
+                    module.updateBuffers(withTrackers: trackers, targets: gazeTargets, cameraProperties: cameraProperties, environmentProperties: environmentProperties)
+                    module.updateBuffers(withPaths: paths, cameraProperties: cameraProperties, environmentProperties: environmentProperties)
                 }
             }
             
@@ -728,7 +781,6 @@ public class Renderer {
     fileprivate var commandQueue: MTLCommandQueue?
     
     // Keeping track of objects to render
-    //fileprivate var anchorIdentifiersForType = [String: Set<UUID>]()
     fileprivate var geometriesForRenderModule = [String: [AKGeometricEntity]]()
     fileprivate var augmentedAnchors = [AKAugmentedAnchor]()
     fileprivate var trackers = [AKAugmentedTracker]()
@@ -746,6 +798,9 @@ public class Renderer {
         
         // Enable horizontal plane detection
         configuration.planeDetection = [.horizontal, .vertical]
+        
+        // Enable environment texturing
+        configuration.environmentTexturing = .automatic
         
         return configuration
     }

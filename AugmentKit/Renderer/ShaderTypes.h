@@ -48,6 +48,7 @@ enum BufferIndices {
     kBufferIndexMeshPaletteIndex,
     kBufferIndexMeshPaletteSize,
     kBufferIndexAnchorEffectsUniforms,
+    kBufferIndexEnvironmentUniforms,
 };
 
 // Attribute index values shared between shader and C code to ensure Metal shader vertex
@@ -95,6 +96,8 @@ enum TextureIndices {
     kTextureIndexSheenTintMap,
     kTextureIndexClearcoatMap,
     kTextureIndexClearcoatGlossMap,
+    // Environment
+    kTextureIndexEnvironmentMap,
     kNumTextureIndices,
 };
 
@@ -124,7 +127,7 @@ enum VertexConstantIndices {
     kVertexConstantBitangent
 };
 
-// MARK: AR/VR goggle support for left and right eyes.
+// MARK: - AR/VR goggle support for left and right eyes.
 
 enum Viewports {
     kViewportLeft  = 0,
@@ -132,7 +135,7 @@ enum Viewports {
     kViewportNumViewports
 };
 
-// MARK: Leavel of Detail (LOD)
+// MARK: - Leavel of Detail (LOD)
 
 enum QualityLevel {
     kQualityLevelHigh   = 0,
@@ -143,31 +146,40 @@ enum QualityLevel {
 
 // MARK: - Uniforms
 
-// Structure shared between shader and C code to ensure the layout of shared uniform data accessed in
-//    Metal shaders matches the layout of uniform data set in C code
+// Structure shared between shader and C code that contains general information like camera (eye) transforms
 struct SharedUniforms {
     // Camera (eye) Position Uniforms
     matrix_float4x4 projectionMatrix; // A transform matrix to convert to 'clip space' for the devices screen taking into account the properties of the camera.
     matrix_float4x4 viewMatrix; // A transform matrix for converting from world space to camera (eye) space.
-    
+};
+
+// Structure shared between shader and C code that contains information about the environment like lighting
+//   and environment texture cubemaps
+struct EnvironmentUniforms {
     // Lighting Properties
     vector_float3 ambientLightColor;
     vector_float3 directionalLightDirection;
     vector_float3 directionalLightColor;
+    // Environment
+    int hasEnvironmentMap;
 };
 
-// Structure shared between shader and C code to ensure the layout of instance uniform data accessed in
-//    Metal shaders matches the layout of uniform data set in C code
+// Structure shared between shader and C code that contains information pertaining to a single model like
+//   the model matrix transform
 struct AnchorInstanceUniforms {
     matrix_float4x4 modelMatrix; // A transform matrix for the anchor model in world space.
 };
 
+// Structure shared between shader and C code that contains information about effects that should be
+//   applied to a model
 struct AnchorEffectsUniforms {
     float alpha;
     float glow;
     vector_float3 tint;
 };
 
+// Structure shared between shader and C code that contains information about the material that should be
+//   used to render a model
 struct MaterialUniforms {
     vector_float4 baseColor;
     vector_float3 emissionColor;

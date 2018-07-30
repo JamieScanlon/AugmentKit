@@ -305,6 +305,7 @@ class ViewController: UIViewController {
             print("ERROR: Could not load the SceneKit model")
             return
         }
+        print(aMaxAsset)
         
         pinAsset = aPinAsset
         shipAsset = aShipAsset

@@ -161,7 +161,7 @@ class SurfacesRenderModule: RenderModule {
             return
         }
         
-        for (drawIdx, drawData) in surfaceMeshGPUData.drawData.enumerated() {
+        for (_, drawData) in surfaceMeshGPUData.drawData.enumerated() {
             let surfacePipelineStateDescriptor = MTLRenderPipelineDescriptor()
             do {
                 let funcConstants = MetalUtilities.getFuncConstants(forDrawData: drawData)
@@ -214,7 +214,7 @@ class SurfacesRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withARFrame frame: ARFrame, cameraProperties: CameraProperties) {
+    func updateBuffers(withARFrame frame: ARFrame, cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
         
         // Update the anchor uniform buffer with transforms of the current frame's anchors
         surfaceInstanceCount = 0
@@ -293,11 +293,11 @@ class SurfacesRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties) {
+    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
         // Do Nothing
     }
     
-    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties) {
+    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
         // Do Nothing
     }
     

@@ -153,18 +153,15 @@ struct LightingParameters {
     float   clearcoatGloss;
 };
 
-constexpr sampler linearSampler (mip_filter::linear,
-                                 mag_filter::linear,
-                                 address::repeat,
-                                 min_filter::linear);
-
-constexpr sampler nearestSampler(min_filter::linear, mag_filter::linear, mip_filter::none, address::repeat);
-
-constexpr sampler mipSampler(address::clamp_to_edge, min_filter::linear, mag_filter::linear, mip_filter::linear);
+constexpr sampler linearSampler (address::repeat, min_filter::linear, mag_filter::linear, mip_filter::linear);
+constexpr sampler nearestSampler(address::repeat, min_filter::linear, mag_filter::linear, mip_filter::none);
+//constexpr sampler mipSampler(address::clamp_to_edge, min_filter::linear, mag_filter::linear, mip_filter::linear);
+constexpr sampler reflectiveEnvironmentSampler(address::clamp_to_edge, min_filter::nearest, mag_filter::linear, mip_filter::none);
 
 LightingParameters calculateParameters(ColorInOut in,
                                        constant SharedUniforms & uniforms,
                                        constant MaterialUniforms & materialUniforms,
+                                       constant EnvironmentUniforms & environmentUniforms,
                                        texture2d<float> baseColorMap [[ function_constant(has_base_color_map) ]],
                                        texture2d<float> normalMap [[ function_constant(has_normal_map) ]],
                                        texture2d<float> metallicMap [[ function_constant(has_metallic_map) ]],
@@ -178,7 +175,8 @@ LightingParameters calculateParameters(ColorInOut in,
                                        texture2d<float> sheenMap [[ function_constant(has_sheen_map) ]],
                                        texture2d<float> sheenTintMap [[ function_constant(has_sheenTint_map) ]],
                                        texture2d<float> clearcoatMap [[ function_constant(has_clearcoat_map) ]],
-                                       texture2d<float> clearcoatGlossMap [[ function_constant(has_clearcoatGloss_map) ]]);
+                                       texture2d<float> clearcoatGlossMap [[ function_constant(has_clearcoatGloss_map) ]],
+                                       texturecube<float> environmentCubemap [[ texture(kTextureIndexEnvironmentMap) ]]);
 
 float4 srgbToLinear(float4 c);
 float4 linearToSrgba(float4 c);
@@ -381,12 +379,16 @@ float4 illuminate(LightingParameters parameters) {
     // SHEEN
     float3 sheenOut = computeSheen(parameters) * light_color;
     
-    return float4(diffuseOut + ambienceOutput + clearcoatOut + specularOut + sheenOut, 1);
+    // REFLECTED ENVIRONMENT
+    float3 reflectedEnvironment = parameters.reflectedColor * parameters.metalness;
+    
+    return float4(diffuseOut + ambienceOutput + clearcoatOut + specularOut + sheenOut + reflectedEnvironment, 1);
 }
 
 LightingParameters calculateParameters(ColorInOut in,
                                        constant SharedUniforms & sharedUniforms,
                                        constant MaterialUniforms & materialUniforms,
+                                       constant EnvironmentUniforms & environmentUniforms,
                                        texture2d<float> baseColorMap [[ function_constant(has_base_color_map) ]],
                                        texture2d<float> normalMap [[ function_constant(has_normal_map) ]],
                                        texture2d<float> metallicMap [[ function_constant(has_metallic_map) ]],
@@ -400,7 +402,8 @@ LightingParameters calculateParameters(ColorInOut in,
                                        texture2d<float> sheenMap [[ function_constant(has_sheen_map) ]],
                                        texture2d<float> sheenTintMap [[ function_constant(has_sheenTint_map) ]],
                                        texture2d<float> clearcoatMap [[ function_constant(has_clearcoat_map) ]],
-                                       texture2d<float> clearcoatGlossMap [[ function_constant(has_clearcoatGloss_map) ]]
+                                       texture2d<float> clearcoatGlossMap [[ function_constant(has_clearcoatGloss_map) ]],
+                                       texturecube<float> environmentCubemap [[ texture(kTextureIndexEnvironmentMap) ]]
                                        ) {
     LightingParameters parameters;
     
@@ -431,7 +434,8 @@ LightingParameters calculateParameters(ColorInOut in,
     // TODO: ??? - not sure if this is correct. float3(in.eyePosition) or -float3(in.eyePosition) ?
     parameters.viewDir = float3(in.eyePosition);
     parameters.reflectedVector = reflect(-parameters.viewDir, parameters.normal);
-    parameters.reflectedColor = float3(0, 0, 0); // reflectionMap.sample(reflectiveEnvironmentSampler, dsv.reflectedVector).xyz;
+//    parameters.reflectedColor = float3(0, 0, 0); //
+    parameters.reflectedColor = (environmentUniforms.hasEnvironmentMap == 1) ? environmentCubemap.sample(reflectiveEnvironmentSampler, parameters.reflectedVector).xyz : float3(0, 0, 0);
     
     parameters.roughness = has_roughness_map ? max(roughnessMap.sample(linearSampler, in.texCoord.xy).x, 0.001f) : materialUniforms.roughness;
     parameters.metalness = has_metallic_map ? metallicMap.sample(linearSampler, in.texCoord.xy).x : materialUniforms.metalness;
@@ -441,9 +445,9 @@ LightingParameters calculateParameters(ColorInOut in,
     parameters.emissionColor = has_emission_map ? emissionMap.sample(linearSampler, in.texCoord.xy).xyz : materialUniforms.emissionColor;
     parameters.ambientOcclusion = has_ambient_occlusion_map ? max(srgbToLinear(ambientOcclusionMap.sample(linearSampler, in.texCoord.xy)).x, 0.001f) : materialUniforms.ambientOcclusion;
     
-    parameters.directionalLightCol = sharedUniforms.directionalLightColor;
-    parameters.ambientLightCol = sharedUniforms.ambientLightColor;
-    parameters.lightDirection = -sharedUniforms.directionalLightDirection;
+    parameters.directionalLightCol = environmentUniforms.directionalLightColor;
+    parameters.ambientLightCol = environmentUniforms.ambientLightColor;
+    parameters.lightDirection = -environmentUniforms.directionalLightDirection;
     
     // Light falls off based on how closely aligned the surface normal is to the light direction.
     // This is the dot product of the light direction vector and vertex normal.
@@ -562,8 +566,9 @@ vertex ColorInOut anchorGeometryVertexTransformSkinned(Vertex in [[stage_in]],
 // MARK: Anchor fragment function with materials
 
 fragment float4 anchorGeometryFragmentLighting(ColorInOut in [[stage_in]],
-                                               constant SharedUniforms &uniforms [[ buffer(kBufferIndexSharedUniforms) ]],
+                                               constant SharedUniforms &sharedUniforms [[ buffer(kBufferIndexSharedUniforms) ]],
                                                constant MaterialUniforms &materialUniforms [[ buffer(kBufferIndexMaterialUniforms) ]],
+                                               constant EnvironmentUniforms &environmentUniforms [[ buffer(kBufferIndexEnvironmentUniforms) ]],
                                                constant AnchorEffectsUniforms &anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]],
                                                texture2d<float> baseColorMap [[ texture(kTextureIndexColor), function_constant(has_base_color_map) ]],
                                                texture2d<float> normalMap    [[ texture(kTextureIndexNormal), function_constant(has_normal_map) ]],
@@ -578,14 +583,16 @@ fragment float4 anchorGeometryFragmentLighting(ColorInOut in [[stage_in]],
                                                texture2d<float> sheenMap [[  texture(kTextureIndexSheenMap), function_constant(has_sheen_map) ]],
                                                texture2d<float> sheenTintMap [[  texture(kTextureIndexSheenTintMap), function_constant(has_sheenTint_map) ]],
                                                texture2d<float> clearcoatMap [[  texture(kTextureIndexClearcoatMap), function_constant(has_clearcoat_map) ]],
-                                               texture2d<float> clearcoatGlossMap [[  texture(kTextureIndexClearcoatGlossMap), function_constant(has_clearcoatGloss_map) ]]
+                                               texture2d<float> clearcoatGlossMap [[  texture(kTextureIndexClearcoatGlossMap), function_constant(has_clearcoatGloss_map) ]],
+                                               texturecube<float> environmentCubemap [[  texture(kTextureIndexEnvironmentMap) ]]
                                                ) {
     
     float4 final_color = float4(0);
     
     LightingParameters parameters = calculateParameters(in,
-                                                        uniforms,
+                                                        sharedUniforms,
                                                         materialUniforms,
+                                                        environmentUniforms,
                                                         baseColorMap,
                                                         normalMap,
                                                         metallicMap,
@@ -599,7 +606,8 @@ fragment float4 anchorGeometryFragmentLighting(ColorInOut in [[stage_in]],
                                                         sheenMap,
                                                         sheenTintMap,
                                                         clearcoatMap,
-                                                        clearcoatGlossMap);
+                                                        clearcoatGlossMap,
+                                                        environmentCubemap);
     
     
     // FIXME: discard_fragment may have performance implications.

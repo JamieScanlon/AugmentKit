@@ -258,7 +258,7 @@ class ModelIOTools {
                         let sheenTintProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .sheenTint, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloatValue)
                         let clearcoatProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .clearcoat, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloatValue)
                         let clearcoatGlossProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .clearcoatGloss, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloatValue)
-                        let opacityProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .opacity, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloatValue)
+//                        let opacityProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .opacity, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloatValue)
                         
                         // Encode the uniform values
                         let baseColor = baseColorProperty.uniform ?? float3(1.0, 1.0, 1.0)
@@ -523,7 +523,7 @@ class ModelIOTools {
                 do {
                     return try textureLoader.newTexture(URL: tempFileURL, options: nil)
                 } catch {
-                    print("Unable to loader texture for asset \(asset.url) with error \(error)")
+                    print("Unable to loader texture for asset \(asset.url?.description ?? "") with error \(error)")
                     //                let newError = AKError.recoverableError(.modelError(.unableToLoadTexture(AssetErrorInfo(path: assetPath, underlyingError: error))))
                     //                recordNewError(newError)
                     return nil

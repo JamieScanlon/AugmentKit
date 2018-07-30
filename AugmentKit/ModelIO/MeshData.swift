@@ -38,8 +38,10 @@ import ModelIO
 import MetalKit
 import AugmentKitShader
 
-// MARK: - Data that will be submitted to the GPU
+// MARK: - Mesh Data
 
+// MARK: DrawSubData
+//  Data for an individual submesh
 public struct DrawSubData {
     var idxCount = 0
     var idxType = MTLIndexType.uint16
@@ -111,6 +113,8 @@ public struct DrawSubData {
     }
 }
 
+// MARK: DrawData
+//  Data for an individual mesh
 public struct DrawData {
     var vbCount = 0
     var vbStartIdx = 0
@@ -140,16 +144,18 @@ public struct DrawData {
     var hasClearcoatGlossMap = false
 }
 
+// MARK: DrawData
+//  Data for an object containing one or more meshes
 public struct MeshGPUData {
     var vertexBuffers = [MTLBuffer]()
     var vertexDescriptors = [MTLVertexDescriptor]()
     var indexBuffers = [MTLBuffer]()
-//    var textures = [MTLTexture?]()
     var drawData = [DrawData]()
 }
 
 // MARK: - Puppet Animation (Not currently supported by renderer)
 
+// MARK: SkinData
 //  Describes how a mesh is bound to a skeleton
 public struct SkinData: JointPathRemappable {
     var jointPaths = [String]()
@@ -158,6 +164,7 @@ public struct SkinData: JointPathRemappable {
     var animationIndex: Int?
 }
 
+// MARK: AnimatedSkeleton
 //  Stores skeleton data as well as its time-sampled animation
 public struct AnimatedSkeleton: JointPathRemappable {
     var jointPaths = [String]()
@@ -171,4 +178,12 @@ public struct AnimatedSkeleton: JointPathRemappable {
     var timeSampleCount: Int {
         return keyTimes.count
     }
+}
+
+// MARK: - Environment
+// MARK: EnvironmentData
+//  Stores any parameters rlated to the environment that may affect the rendered objects
+public struct EnvironmentData {
+    var hasEnvironmentMap = false
+    var environmentTexture: MTLTexture?
 }

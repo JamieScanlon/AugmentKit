@@ -70,6 +70,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         let materialUniformBufferSize = RenderModuleConstants.alignedMaterialSize * maxInFlightBuffers
         let paletteBufferSize = Constants.alignedPaletteSize * Constants.maxPaletteSize * maxInFlightBuffers
         let effectsUniformBufferSize = Constants.alignedEffectsUniformSize * maxInFlightBuffers
+        let environmentUniformBufferSize = Constants.alignedEnvironmentUniformSize * maxInFlightBuffers
         
         // Create and allocate our uniform buffer objects. Indicate shared storage so that both the
         // CPU can access the buffer
@@ -84,6 +85,9 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         
         effectsUniformBuffer = device?.makeBuffer(length: effectsUniformBufferSize, options: .storageModeShared)
         effectsUniformBuffer?.label = "EffectsUniformBuffer"
+        
+        environmentUniformBuffer = device?.makeBuffer(length: environmentUniformBufferSize, options: .storageModeShared)
+        environmentUniformBuffer?.label = "EnvironemtUniformBuffer"
         
     }
     
@@ -217,21 +221,22 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         materialUniformBufferOffset = RenderModuleConstants.alignedMaterialSize * bufferIndex
         paletteBufferOffset = Constants.alignedPaletteSize * Constants.maxPaletteSize * bufferIndex
         effectsUniformBufferOffset = Constants.alignedEffectsUniformSize * bufferIndex
+        environmentUniformBufferOffset = Constants.alignedEnvironmentUniformSize * bufferIndex
         
         anchorUniformBufferAddress = anchorUniformBuffer?.contents().advanced(by: anchorUniformBufferOffset)
         materialUniformBufferAddress = materialUniformBuffer?.contents().advanced(by: materialUniformBufferOffset)
         paletteBufferAddress = paletteBuffer?.contents().advanced(by: paletteBufferOffset)
         effectsUniformBufferAddress = effectsUniformBuffer?.contents().advanced(by: effectsUniformBufferOffset)
+        environmentUniformBufferAddress = environmentUniformBuffer?.contents().advanced(by: environmentUniformBufferOffset)
         
     }
     
-    func updateBuffers(withARFrame frame: ARFrame, cameraProperties: CameraProperties) {
+    func updateBuffers(withARFrame frame: ARFrame, cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
         
         // Update the anchor uniform buffer with transforms of the current frame's anchors
         anchorInstanceCount = 0
-        var horizPlaneInstanceCount = 0
-        var vertPlaneInstanceCount = 0
         anchorsByUUID = [:]
+        environmentTextureByUUID = [:]
         
         // In the buffer, the anchors ar layed out by UUID in sorted order. So if there are
         // 5 anchors with UUID = "A..." and 3 UUIDs = "B..." and 1 UUID = "C..." then that's
@@ -248,12 +253,10 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             let anchor = frame.anchors[index]
             var isAnchor = false
             
-            if let plane = anchor as? ARPlaneAnchor {
-                if plane.alignment == .horizontal {
-                    horizPlaneInstanceCount += 1
-                } else {
-                    vertPlaneInstanceCount += 1
-                }
+            if let _ = anchor as? ARPlaneAnchor {
+                //
+            } else if let _ = anchor as? AREnvironmentProbeAnchor {
+                //
             } else {
                 isAnchor = true
             }
@@ -289,6 +292,14 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                 anchorsByUUID[uuid] = mutableCurrentAnchors
             } else {
                 anchorsByUUID[uuid] = [anchor]
+            }
+            
+            let environmentProperty = environmentProperties.environmentAnchorsWithReatedAnchors.first(where: {
+                $0.value.contains(uuid)
+            })
+            
+            if let environmentProbeAnchor = environmentProperty?.key, let texture = environmentProbeAnchor.environmentTexture {
+                environmentTextureByUUID[uuid] = texture
             }
             
         }
@@ -348,6 +359,56 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                 }
                 
                 //
+                // Update Environment
+                //
+                
+                environmentData = {
+                    var myEnvironmentData = EnvironmentData()
+                    if let texture = environmentTextureByUUID[uuid] {
+                        myEnvironmentData.environmentTexture = texture
+                        myEnvironmentData.hasEnvironmentMap = true
+                        return myEnvironmentData
+                    } else {
+                        myEnvironmentData.hasEnvironmentMap = false
+                    }
+                    return myEnvironmentData
+                }()
+                
+                let environmentUniforms = environmentUniformBufferAddress?.assumingMemoryBound(to: EnvironmentUniforms.self).advanced(by: anchorIndex)
+                
+                // Set up lighting for the scene using the ambient intensity if provided
+                let ambientIntensity: Float = {
+                    if let lightEstimate = frame.lightEstimate {
+                        return Float(lightEstimate.ambientIntensity) / 1000.0
+                    } else {
+                        return 1
+                    }
+                }()
+                
+                let ambientLightColor: vector_float3 = {
+                    if let lightEstimate = frame.lightEstimate {
+                        return getRGB(from: lightEstimate.ambientColorTemperature)
+                    } else {
+                        return vector3(0.5, 0.5, 0.5)
+                    }
+                }()
+                
+                environmentUniforms?.pointee.ambientLightColor = ambientLightColor// * ambientIntensity
+                
+                var directionalLightDirection : vector_float3 = vector3(0.0, -1.0, 0.0)
+                directionalLightDirection = simd_normalize(directionalLightDirection)
+                environmentUniforms?.pointee.directionalLightDirection = directionalLightDirection
+                
+                let directionalLightColor: vector_float3 = vector3(0.6, 0.6, 0.6)
+                environmentUniforms?.pointee.directionalLightColor = directionalLightColor * ambientIntensity
+                
+                if environmentData?.hasEnvironmentMap == true {
+                    environmentUniforms?.pointee.hasEnvironmentMap = 1
+                } else {
+                    environmentUniforms?.pointee.hasEnvironmentMap = 0
+                }
+                
+                //
                 // Update Effects uniform
                 //
                 
@@ -364,11 +425,11 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         
     }
     
-    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties) {
+    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
         // Do Nothing
     }
     
-    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties) {
+    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
         // Do Nothing
     }
     
@@ -395,6 +456,17 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             
         }
         
+        if let environmentUniformBuffer = environmentUniformBuffer {
+            
+            renderEncoder.pushDebugGroup("Draw Environment Uniforms")
+            if let environmentTexture = environmentData?.environmentTexture, environmentData?.hasEnvironmentMap == true {
+                renderEncoder.setFragmentTexture(environmentTexture, index: Int(kTextureIndexEnvironmentMap.rawValue))
+            }
+            renderEncoder.setFragmentBuffer(environmentUniformBuffer, offset: environmentUniformBufferOffset, index: Int(kBufferIndexEnvironmentUniforms.rawValue))
+            renderEncoder.popDebugGroup()
+            
+        }
+        
         if let effectsBuffer = effectsUniformBuffer {
             
             renderEncoder.pushDebugGroup("Draw Effects Uniforms")
@@ -406,7 +478,6 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         let orderedArray = anchorsByUUID.sorted {
             $0.key.uuidString < $1.key.uuidString
         }
-        
         
         var baseIndex = 0
         
@@ -480,6 +551,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         static let alignedAnchorInstanceUniformsSize = ((MemoryLayout<AnchorInstanceUniforms>.stride * Constants.maxAnchorInstanceCount) & ~0xFF) + 0x100
         static let alignedPaletteSize = (MemoryLayout<matrix_float4x4>.stride & ~0xFF) + 0x100
         static let alignedEffectsUniformSize = ((MemoryLayout<AnchorEffectsUniforms>.stride * Constants.maxAnchorInstanceCount) & ~0xFF) + 0x100
+        static let alignedEnvironmentUniformSize = ((MemoryLayout<EnvironmentUniforms>.stride * Constants.maxAnchorInstanceCount) & ~0xFF) + 0x100
     }
     
     private var device: MTLDevice?
@@ -490,8 +562,10 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     private var materialUniformBuffer: MTLBuffer?
     private var paletteBuffer: MTLBuffer?
     private var effectsUniformBuffer: MTLBuffer?
+    private var environmentUniformBuffer: MTLBuffer?
     private var pipelineStatesForAnchorsByUUID = [UUID: [MTLRenderPipelineState]]()
     private var anchorDepthState: MTLDepthStencilState?
+    private var environmentData: EnvironmentData?
     
     // MetalKit meshes containing vertex data and index buffer for our anchor geometry
     private var meshGPUDataForAnchorsByUUID = [UUID: MeshGPUData]()
@@ -508,6 +582,9 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     // Offset within effectsUniformBuffer to set for the current frame
     private var effectsUniformBufferOffset: Int = 0
     
+    // Offset within environmentUniformBuffer to set for the current frame
+    private var environmentUniformBufferOffset: Int = 0
+    
     // Addresses to write anchor uniforms to each frame
     private var anchorUniformBufferAddress: UnsafeMutableRawPointer?
     
@@ -517,13 +594,17 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     // Addresses to write palette to each frame
     private var paletteBufferAddress: UnsafeMutableRawPointer?
     
-    // Addresses to write material uniforms to each frame
+    // Addresses to write effects uniforms to each frame
     private var effectsUniformBufferAddress: UnsafeMutableRawPointer?
+    
+    // Addresses to write environment uniforms to each frame
+    private var environmentUniformBufferAddress: UnsafeMutableRawPointer?
     
     // number of frames in the anchor animation by anchor index
     private var anchorAnimationFrameCount = [Int]()
     
     private var anchorsByUUID = [UUID: [ARAnchor]]()
+    private var environmentTextureByUUID = [UUID: MTLTexture]()
     
     private func createPipelineStates(forUUID uuid: UUID, withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider) {
         
@@ -558,7 +639,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         // renderer only supports one. So while we are saving all of the states
         // in the myPipelineStates array, only the first will be used.
         var myPipelineStates = [MTLRenderPipelineState]()
-        for (drawIdx, drawData) in meshGPUData.drawData.enumerated() {
+        for (_ , drawData) in meshGPUData.drawData.enumerated() {
             let anchorPipelineStateDescriptor = MTLRenderPipelineDescriptor()
             do {
                 let funcConstants = MetalUtilities.getFuncConstants(forDrawData: drawData)
@@ -596,7 +677,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     }
     
     private func updatePuppetAnimation(from drawData: DrawData, frameNumber: UInt) {
-        return
+        
         let capacity = Constants.alignedPaletteSize * Constants.maxPaletteSize
         
         let boundPaletteData = paletteBufferAddress?.bindMemory(to: matrix_float4x4.self, capacity: capacity)

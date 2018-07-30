@@ -70,13 +70,13 @@ protocol RenderModule {
     func updateBufferState(withBufferIndex: Int)
     
     // Update the buffer data for anchors
-    func updateBuffers(withARFrame: ARFrame, cameraProperties: CameraProperties)
+    func updateBuffers(withARFrame: ARFrame, cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties)
     
     // Update the buffer data for trackers
-    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties)
+    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties)
     
     // Update the buffer data for trackers
-    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties)
+    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties)
     
     // Update the render encoder for the draw call. At the end of this method it is expected that
     // drawPrimatives or drawIndexedPrimatives is called.
@@ -99,7 +99,7 @@ protocol RenderModule {
 
 extension RenderModule {
     
-    func encode(meshGPUData: MeshGPUData, fromDrawData drawData: DrawData, with renderEncoder: MTLRenderCommandEncoder, baseIndex: Int = 0) {
+    func encode(meshGPUData: MeshGPUData, fromDrawData drawData: DrawData, with renderEncoder: MTLRenderCommandEncoder, baseIndex: Int = 0, environmentData: EnvironmentData? = nil) {
         
         // Set mesh's vertex buffers
         for vtxBufferIdx in 0..<drawData.vbCount {
@@ -126,7 +126,7 @@ extension RenderModule {
             var materialUniforms = submeshData.materialUniforms
             
             // Set textures based off material flags
-            encodeTextures(for: renderEncoder, subData: submeshData)
+            encodeTextures(for: renderEncoder, subData: submeshData, environmentData: environmentData)
             
             renderEncoder.setFragmentBytes(&materialUniforms, length: RenderModuleConstants.alignedMaterialSize, index: Int(kBufferIndexMaterialUniforms.rawValue))
             renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: idxCount, indexType: idxType, indexBuffer: indexBuffer, indexBufferOffset: 0, instanceCount: drawData.instCount, baseVertex: 0, baseInstance: baseIndex)
@@ -143,7 +143,7 @@ extension RenderModule {
     
     // MARK: Encoding Textures
     
-    func encodeTextures(for renderEncoder: MTLRenderCommandEncoder, subData drawSubData: DrawSubData) {
+    func encodeTextures(for renderEncoder: MTLRenderCommandEncoder, subData drawSubData: DrawSubData, environmentData: EnvironmentData? = nil) {
         if let baseColorTexture = drawSubData.baseColorTexture {
             renderEncoder.setFragmentTexture(baseColorTexture, index: Int(kTextureIndexColor.rawValue))
         }
@@ -198,6 +198,10 @@ extension RenderModule {
         
         if let clearcoatGlossTexture = drawSubData.clearcoatGlossTexture {
             renderEncoder.setFragmentTexture(clearcoatGlossTexture, index: Int(kTextureIndexClearcoatGlossMap.rawValue))
+        }
+        
+        if let environmentTexture = environmentData?.environmentTexture {
+            renderEncoder.setFragmentTexture(environmentTexture, index: Int(kTextureIndexEnvironmentMap.rawValue))
         }
         
     }
@@ -302,6 +306,39 @@ extension RenderModule {
             // There are no intersections
             return SphereLineIntersection(isInside: false, point0: point0, point1: point1)
         }
+    }
+    
+    // MARK: Util
+    
+    func getRGB(from colorTemperature: CGFloat) -> vector_float3 {
+        
+        let temp = Float(colorTemperature) / 100
+        
+        var red: Float = 127
+        var green: Float = 127
+        var blue: Float = 127
+        
+        if temp <= 66 {
+            red = 255
+            green = temp
+            green = 99.4708025861 * log(green) - 161.1195681661
+            if temp <= 19 {
+                blue = 0
+            } else {
+                blue = temp - 10
+                blue = 138.5177312231 * log(blue) - 305.0447927307
+            }
+        } else {
+            red = temp - 60
+            red = 329.698727446 * pow(red, -0.1332047592)
+            green = temp - 60
+            green = 288.1221695283 * pow(green, -0.0755148492 )
+            blue = 255
+        }
+        
+        let clamped = clamp(float3(red, green, blue), min: 0, max: 255)
+        return vector3(clamped.x, clamped.y, clamped.z)
+        
     }
     
 }

@@ -53,10 +53,6 @@ class SurfacesRenderModule: RenderModule {
     // The number of surface instances to render
     private(set) var surfaceInstanceCount: Int = 0
     
-    // Then indexes of the surface in the ARFrame.anchors array which contain
-    // actual anchors as well as surfaces
-    private(set) var surfaceIndexes = [Int]()
-    
     func initializeBuffers(withDevice aDevice: MTLDevice, maxInFlightBuffers: Int) {
         
         device = aDevice
@@ -214,29 +210,22 @@ class SurfacesRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withARFrame frame: ARFrame, cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+    func updateBuffers(withAugmentedAnchors anchors: [AKAugmentedAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+        // Do Nothing
+    }
+    
+    func updateBuffers(withRealAnchors anchors: [AKRealAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
         
         // Update the anchor uniform buffer with transforms of the current frame's anchors
         surfaceInstanceCount = 0
-        surfaceIndexes = []
-        var anchorInstanceCount = 0
         
-        for index in 0..<frame.anchors.count {
+        for akAnchor in anchors {
             
-            let anchor = frame.anchors[index]
-            var isSurface = false
-            
-            if let _ = anchor as? ARPlaneAnchor {
-                surfaceInstanceCount += 1
-                surfaceIndexes.append(index)
-                isSurface = true
-            } else {
-                anchorInstanceCount += 1
-            }
-            
-            guard isSurface else {
+            guard let anchor = akAnchor.arAnchor else {
                 continue
             }
+            
+            surfaceInstanceCount += 1
             
             // Ignore anchors that are beyond the renderDistance
             let distance = anchorDistance(withTransform: anchor.transform, cameraProperties: cameraProperties)
@@ -256,7 +245,7 @@ class SurfacesRenderModule: RenderModule {
             // Flip Z axis to convert geometry from right handed to left handed
             var coordinateSpaceTransform = matrix_identity_float4x4
             //coordinateSpaceTransform.columns.2.z = -1.0
-                
+            
             let surfaceIndex = surfaceInstanceCount - 1
             
             // Apply the world transform (as defined in the imported model) if applicable

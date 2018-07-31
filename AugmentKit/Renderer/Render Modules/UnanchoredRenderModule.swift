@@ -336,11 +336,11 @@ class UnanchoredRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withARFrame frame: ARFrame, cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+    func updateBuffers(withAugmentedAnchors anchors: [AKAugmentedAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
         
         // Set up lighting for the scene using the ambient intensity if provided
         ambientIntensity = {
-            if let lightEstimate = frame.lightEstimate {
+            if let lightEstimate = environmentProperties.lightEstimate {
                 return Float(lightEstimate.ambientIntensity) / 1000.0
             } else {
                 return 1
@@ -348,13 +348,17 @@ class UnanchoredRenderModule: RenderModule {
         }()
         
         ambientLightColor = {
-            if let lightEstimate = frame.lightEstimate {
+            if let lightEstimate = environmentProperties.lightEstimate {
                 return getRGB(from: lightEstimate.ambientColorTemperature)
             } else {
                 return vector3(0.5, 0.5, 0.5)
             }
         }()
         
+    }
+    
+    func updateBuffers(withRealAnchors: [AKRealAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+        // Do Nothing
     }
     
     func updateBuffers(withTrackers trackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {

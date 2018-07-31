@@ -165,11 +165,11 @@ class TrackingPointsRenderModule: RenderModule {
     }
     
     // Update the buffer data
-    func updateBuffers(withARFrame frame: ARFrame, cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+    func updateBuffers(withAugmentedAnchors anchors: [AKAugmentedAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
         
         trackingPointCount = 0
         
-        guard let rawFeaturePoints = frame.rawFeaturePoints else {
+        guard let rawFeaturePoints = cameraProperties.rawFeaturePoints else {
             return
         }
         
@@ -199,6 +199,10 @@ class TrackingPointsRenderModule: RenderModule {
             }
         }
         
+    }
+    
+    func updateBuffers(withRealAnchors: [AKRealAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+        // Do Nothing
     }
     
     func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {

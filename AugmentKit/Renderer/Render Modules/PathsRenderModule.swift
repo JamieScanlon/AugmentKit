@@ -232,7 +232,11 @@ class PathsRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withARFrame frame: ARFrame, cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+    func updateBuffers(withAugmentedAnchors anchors: [AKAugmentedAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+        // Do Nothing
+    }
+    
+    func updateBuffers(withRealAnchors: [AKRealAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
         // Do Nothing
     }
     

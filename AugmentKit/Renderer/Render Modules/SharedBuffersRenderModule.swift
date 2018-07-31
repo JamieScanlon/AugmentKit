@@ -86,13 +86,14 @@ class SharedBuffersRenderModule: SharedRenderModule {
         sharedUniformBufferAddress = sharedUniformBuffer?.contents().advanced(by: sharedUniformBufferOffset)
     }
     
-    func updateBuffers(withARFrame frame: ARFrame, cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
-        
+    func updateBuffers(withAugmentedAnchors anchors: [AKAugmentedAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
         let uniforms = sharedUniformBufferAddress?.assumingMemoryBound(to: SharedUniforms.self)
-        
-        uniforms?.pointee.viewMatrix = frame.camera.viewMatrix(for: cameraProperties.orientation)
-        uniforms?.pointee.projectionMatrix = frame.camera.projectionMatrix(for: cameraProperties.orientation, viewportSize: cameraProperties.viewportSize, zNear: 0.001, zFar: CGFloat(renderDistance))
-        
+        uniforms?.pointee.viewMatrix = cameraProperties.arCamera.viewMatrix(for: cameraProperties.orientation)
+        uniforms?.pointee.projectionMatrix = cameraProperties.arCamera.projectionMatrix(for: cameraProperties.orientation, viewportSize: cameraProperties.viewportSize, zNear: 0.001, zFar: CGFloat(renderDistance))
+    }
+    
+    func updateBuffers(withRealAnchors: [AKRealAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+        // Do Nothing
     }
     
     func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {

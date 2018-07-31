@@ -30,6 +30,7 @@
 //  model so they cannot be rendered by themselves.
 //
 
+import ARKit
 import Foundation
 import ModelIO
 
@@ -46,6 +47,7 @@ public class PathSegmentAnchor: AKPathSegmentAnchor {
     public var asset: MDLAsset
     public var identifier: UUID?
     public var effects: [AnyEffect<Any>]?
+    public var arAnchor: ARAnchor?
     
     public init(at location: AKWorldLocation, identifier: UUID? = nil, effects: [AnyEffect<Any>]? = nil) {
         self.asset = MDLAsset()
@@ -56,6 +58,14 @@ public class PathSegmentAnchor: AKPathSegmentAnchor {
     
     public func setIdentifier(_ identifier: UUID) {
         self.identifier = identifier
+    }
+    
+    public func setARAnchor(_ arAnchor: ARAnchor) {
+        self.arAnchor = arAnchor
+        if identifier == nil {
+            identifier = arAnchor.identifier
+        }
+        worldLocation.transform = arAnchor.transform
     }
     
 }

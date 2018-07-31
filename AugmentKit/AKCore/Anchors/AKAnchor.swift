@@ -25,6 +25,7 @@
 //  SOFTWARE.
 //
 
+import ARKit
 import Foundation
 import ModelIO
 
@@ -48,7 +49,8 @@ public protocol AKAnchor: class, AKGeometricEntity {
 //  as opposed to a real anchor like a detected horizontal / vertical plane which exists
 //  in the physical world.
 public protocol AKAugmentedAnchor: AKAnchor {
-    
+    var arAnchor: ARAnchor? { get }
+    func setARAnchor(_ arachor: ARAnchor)
 }
 
 // MARK: - AKRealAnchor
@@ -56,5 +58,6 @@ public protocol AKAugmentedAnchor: AKAnchor {
 //  Represents an anchor in the AR world that is tied to an object in the real world
 //  for example a detected horizontal / vertical plane wich represents a table or wall
 public protocol AKRealAnchor: AKAnchor {
-    
+    var arAnchor: ARAnchor? { get }
+    func setARAnchor(_ arachor: ARAnchor)
 }

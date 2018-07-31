@@ -25,6 +25,7 @@
 //  SOFTWARE.
 //
 
+import ARKit
 import Foundation
 import ModelIO
 
@@ -45,6 +46,7 @@ public class PathAnchor: AKPath {
     public var effects: [AnyEffect<Any>]?
     public var lineThickness: Double = 0.1 // Default to 10cm line thickness
     public var segmentPoints: [AKPathSegmentAnchor]
+    public var arAnchor: ARAnchor?
     
     public init(withWorldLocaitons locations: [AKWorldLocation]) {
         self.asset = MDLAsset()
@@ -56,6 +58,14 @@ public class PathAnchor: AKPath {
     
     public func setIdentifier(_ identifier: UUID) {
         self.identifier = identifier
+    }
+    
+    public func setARAnchor(_ arAnchor: ARAnchor) {
+        self.arAnchor = arAnchor
+        if identifier == nil {
+            identifier = arAnchor.identifier
+        }
+        worldLocation.transform = arAnchor.transform
     }
     
 }

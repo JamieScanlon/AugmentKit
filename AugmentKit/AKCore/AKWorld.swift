@@ -258,7 +258,7 @@ public class AKWorld: NSObject {
         self.renderDestination.device = self.device
         self.renderer.monitor = self
         self.renderer.drawRectResized(size: renderDestination.bounds.size)
-        self.session.delegate = self
+        self.renderer.delegate = self
         self.renderDestination.delegate = self
         
         if configuration.usesLocation == true {
@@ -530,13 +530,12 @@ extension AKWorld: MTKViewDelegate {
 
 // MARK: - ARSessionDelegate
 
-extension AKWorld: ARSessionDelegate {
+extension AKWorld: RenderDelegate {
     
-    public func session(_ session: ARSession, didFailWithError error: Error) {
+    public func renderer(_ renderer: Renderer, didFailWithError error: AKError) {
         var newStatus = AKWorldStatus(timestamp: Date())
         var errors = worldStatus.errors
-        let newError = AKError.recoverableError(.arkitError(UnderlyingErrorInfo(underlyingError: error)))
-        errors.append(newError)
+        errors.append(error)
         newStatus.errors = errors
         if newStatus.getSeriousErrors().count > 0 {
             newStatus.status = .error
@@ -546,14 +545,14 @@ extension AKWorld: ARSessionDelegate {
         worldStatus = newStatus
     }
     
-    public func sessionWasInterrupted(_ session: ARSession) {
+    public func rendererWasInterrupted(_ renderer: Renderer) {
         var newStatus = AKWorldStatus(timestamp: Date())
         newStatus.status = .interupted
         newStatus.errors = worldStatus.errors
         worldStatus = newStatus
     }
     
-    public func sessionInterruptionEnded(_ session: ARSession) {
+    public func rendererInterruptionEnded(_ renderer: Renderer) {
         // Reset tracking and/or remove existing anchors if consistent tracking is required
         var newStatus = AKWorldStatus(timestamp: Date())
         newStatus.status = .interupted

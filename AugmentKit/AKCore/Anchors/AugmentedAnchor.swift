@@ -29,6 +29,7 @@
 //  and given to the AR engine to render in the AR world.
 //
 
+import ARKit
 import Foundation
 import ModelIO
 
@@ -41,6 +42,7 @@ public class AugmentedAnchor: AKAugmentedAnchor {
     public var asset: MDLAsset
     public var identifier: UUID?
     public var effects: [AnyEffect<Any>]?
+    public var arAnchor: ARAnchor?
     
     public init(withModelAsset asset: MDLAsset, at location: AKWorldLocation) {
         self.asset = asset
@@ -49,6 +51,14 @@ public class AugmentedAnchor: AKAugmentedAnchor {
     
     public func setIdentifier(_ identifier: UUID) {
         self.identifier = identifier
+    }
+    
+    public func setARAnchor(_ arAnchor: ARAnchor) {
+        self.arAnchor = arAnchor
+        if identifier == nil {
+            identifier = arAnchor.identifier
+        }
+        worldLocation.transform = arAnchor.transform
     }
     
 }

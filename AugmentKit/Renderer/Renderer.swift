@@ -50,7 +50,7 @@ public protocol RenderDestinationProvider {
     var sampleCount: Int { get set }
 }
 
-// MARK: - RenderMonitor
+// MARK: - RenderStats
 
 public struct RenderStats {
     public var arKitAnchorCount: Int
@@ -62,9 +62,21 @@ public struct RenderStats {
     public var numPathSegments: Int
 }
 
+// MARK: - RenderMonitor
+
 public protocol RenderMonitor {
     func update(renderStats: RenderStats)
     func update(renderErrors: [AKError])
+}
+
+// MARK: - RenderDelegate
+
+public protocol RenderDelegate {
+    
+    func renderer(_ renderer: Renderer, didFailWithError error: AKError)
+    func rendererWasInterrupted(_ renderer: Renderer)
+    func rendererInterruptionEnded(_ renderer: Renderer)
+    
 }
 
 // MARK: - CameraProperties
@@ -75,17 +87,34 @@ public struct CameraProperties {
     var viewportSizeDidChange: Bool
     var position: float3
     var currentFrame: UInt
+    var arCamera: ARCamera
+    var capturedImage: CVPixelBuffer
+    var displayTransform: CGAffineTransform
+    var rawFeaturePoints: ARPointCloud?
+    
+    init(orientation: UIInterfaceOrientation, viewportSize: CGSize, viewportSizeDidChange: Bool, position: float3, currentFrame: UInt, frame: ARFrame) {
+        self.orientation = orientation
+        self.viewportSize = viewportSize
+        self.viewportSizeDidChange = viewportSizeDidChange
+        self.position = position
+        self.currentFrame = currentFrame
+        self.arCamera = frame.camera
+        self.capturedImage = frame.capturedImage
+        self.displayTransform = frame.displayTransform(for: orientation, viewportSize: viewportSize)
+        self.rawFeaturePoints = frame.rawFeaturePoints
+    }
 }
 
 // MARK: - EnvironmentProperties
 
 public struct EnvironmentProperties {
+    var lightEstimate: ARLightEstimate?
     var environmentAnchorsWithReatedAnchors: [AREnvironmentProbeAnchor: [UUID]] = [:]
 }
 
 // MARK: - Renderer
 
-public class Renderer {
+public class Renderer: NSObject {
     
     // Debugging
     public var monitor: RenderMonitor?
@@ -132,6 +161,7 @@ public class Renderer {
     public let textureBundle: Bundle
     
     public var modelProvider: ModelProvider? = AKModelProvider.sharedInstance
+    public var delegate: RenderDelegate?
     
     // Guides for debugging. Turning this on will show the tracking points used by
     // ARKit as well as detected surfaces. Setting this to true will
@@ -181,12 +211,68 @@ public class Renderer {
         return UInt(floor(elapsedTime * fps))
     }
     
+    public var currentGazeTransform: matrix_float4x4 {
+        
+        guard let currentFrame = session.currentFrame else {
+            return matrix_identity_float4x4
+        }
+        
+        let results = currentFrame.hitTest(CGPoint(x: 0.5, y: 0.5), types: [.existingPlaneUsingGeometry, .estimatedVerticalPlane, .estimatedHorizontalPlane])
+        hasDetectedSurfaces = hasDetectedSurfaces || results.count > 0
+        
+        let hitTestResult: ARHitTestResult? = {
+            
+            // 1. Check for a result on an existing plane using geometry.
+            if let existingPlaneUsingGeometryResult = results.first(where: { $0.type == .existingPlaneUsingGeometry }) {
+                return existingPlaneUsingGeometryResult
+            }
+            
+            // 2. Check for a result on the ground plane, assuming its dimensions are infinite.
+            //    Loop through all hits against infinite existing planes and either return the
+            //    nearest one (vertical planes) or return the nearest one which is within 5 cm
+            //    of the object's position.
+            
+            let infinitePlaneResults = currentFrame.hitTest(CGPoint(x: 0.5, y: 0.5), types: .existingPlane)
+            hasDetectedSurfaces = hasDetectedSurfaces || infinitePlaneResults.count > 0
+            
+            for infinitePlaneResult in infinitePlaneResults {
+                if let planeAnchor = infinitePlaneResult.anchor as? ARPlaneAnchor, planeAnchor.alignment == .horizontal {
+                    if let lowestHorizPlaneAnchor = lowestHorizPlaneAnchor, planeAnchor.identifier == lowestHorizPlaneAnchor.identifier {
+                        return infinitePlaneResult
+                    }
+                }
+            }
+            
+            // 3. As a final fallback, check for a result on estimated planes.
+            let vResult = results.first(where: { $0.type == .estimatedVerticalPlane })
+            let hResult = results.first(where: { $0.type == .estimatedHorizontalPlane })
+            if hResult != nil && vResult != nil {
+                return hResult!.distance < vResult!.distance ? hResult! : vResult!
+            } else {
+                return hResult ?? vResult
+            }
+            
+        }()
+        
+        if let hitTestResult = hitTestResult {
+            return hitTestResult.worldTransform
+        } else {
+            return matrix_identity_float4x4
+        }
+        
+    }
+    
     public init(session: ARSession, metalDevice device: MTLDevice, renderDestination: RenderDestinationProvider, textureBundle: Bundle) {
+        
         self.session = session
         self.device = device
         self.renderDestination = renderDestination
         self.textureBundle = textureBundle
         self.textureLoader = MTKTextureLoader(device: device)
+        super.init()
+        
+        self.session.delegate = self
+        
     }
     
     // MARK: - Viewport changes
@@ -262,11 +348,7 @@ public class Renderer {
         
         lastFrameTime = currentFrame.timestamp
         
-        let surfaceAnchors = currentFrame.anchors.filter({$0 is ARPlaneAnchor}) as! [ARPlaneAnchor]
-        let normalAnchors = currentFrame.anchors.filter({!($0 is ARPlaneAnchor) && !($0 is AREnvironmentProbeAnchor)})
-        let environmentProbeAnchors = currentFrame.anchors.filter({$0 is AREnvironmentProbeAnchor}) as! [AREnvironmentProbeAnchor]
-        
-        hasDetectedSurfaces = hasDetectedSurfaces || (lowestHorizPlaneAnchor != nil) || (surfaceAnchors.count > 0)
+        hasDetectedSurfaces = hasDetectedSurfaces || (lowestHorizPlaneAnchor != nil) || (realAnchors.count > 0)
         
         // Update current camera position and heading
         //
@@ -291,29 +373,11 @@ public class Renderer {
         currentCameraHeading = Double(currentFrame.camera.eulerAngles.y)
         
         //
-        // Update the lowest surface plane
-        //
-        
-        for index in 0..<surfaceAnchors.count {
-            let plane = surfaceAnchors[index]
-            if plane.alignment == .horizontal {
-                // Keep track of the lowest horizontal plane. This can be assumed to be the ground.
-                if lowestHorizPlaneAnchor != nil {
-                    if plane.transform.columns.1.y < lowestHorizPlaneAnchor?.transform.columns.1.y ?? 0 {
-                        lowestHorizPlaneAnchor = plane
-                    }
-                } else {
-                    lowestHorizPlaneAnchor = plane
-                }
-            }
-        }
-        
-        //
         // Initialize Modules
         //
         
         // Add surface modules for rendering if necessary
-        if surfacesRenderModule == nil && showGuides && surfaceAnchors.count > 0  {
+        if surfacesRenderModule == nil && showGuides && realAnchors.count > 0  {
             
             let metalAllocator = MTKMeshBufferAllocator(device: device)
             modelProvider?.registerAsset(GuideSurfaceAnchor.createModelAsset(inBundle: textureBundle, withAllocator: metalAllocator)!, forObjectType: GuideSurfaceAnchor.type, identifier: nil)
@@ -327,7 +391,7 @@ public class Renderer {
         //
         
         // Add anchor modules if necessary
-        if anchorsRenderModule == nil && normalAnchors.count > 0 {
+        if anchorsRenderModule == nil && augmentedAnchors.count > 0 {
             addModule(forModuelIdentifier: AnchorsRenderModule.identifier)
         }
         
@@ -372,43 +436,10 @@ public class Renderer {
         
         if gazeTargets.count > 0 {
             
-            let hitTestResult: ARHitTestResult? = {
-                
-                // 1. Check for a result on an existing plane using geometry.
-                if let existingPlaneUsingGeometryResult = results.first(where: { $0.type == .existingPlaneUsingGeometry }) {
-                    return existingPlaneUsingGeometryResult
-                }
-                
-                // 2. Check for a result on the ground plane, assuming its dimensions are infinite.
-                //    Loop through all hits against infinite existing planes and either return the
-                //    nearest one (vertical planes) or return the nearest one which is within 5 cm
-                //    of the object's position.
-                
-                let infinitePlaneResults = currentFrame.hitTest(CGPoint(x: 0.5, y: 0.5), types: .existingPlane)
-                hasDetectedSurfaces = hasDetectedSurfaces || infinitePlaneResults.count > 0
-                
-                for infinitePlaneResult in infinitePlaneResults {
-                    if let planeAnchor = infinitePlaneResult.anchor as? ARPlaneAnchor, planeAnchor.alignment == .horizontal {
-                        if let lowestHorizPlaneAnchor = lowestHorizPlaneAnchor, planeAnchor.identifier == lowestHorizPlaneAnchor.identifier {
-                            return infinitePlaneResult
-                        }
-                    }
-                }
-                
-                // 3. As a final fallback, check for a result on estimated planes.
-                let vResult = results.first(where: { $0.type == .estimatedVerticalPlane })
-                let hResult = results.first(where: { $0.type == .estimatedHorizontalPlane })
-                if hResult != nil && vResult != nil {
-                    return hResult!.distance < vResult!.distance ? hResult! : vResult!
-                } else {
-                    return hResult ?? vResult
-                }
-                
-            }()
-            
-            if let hitTestResult = hitTestResult {
+            let gazeTransform = currentGazeTransform
+            if gazeTransform != matrix_identity_float4x4 {
                 let updatedGazeTargets: [GazeTarget] = gazeTargets.map {
-                    $0.position.parentPosition?.transform = hitTestResult.worldTransform
+                    $0.position.parentPosition?.transform = gazeTransform
                     $0.position.updateTransforms()
                     return $0
                 }
@@ -418,46 +449,12 @@ public class Renderer {
         }
         
         //
-        // Update Environment Probes
-        //
-        struct Cube {
-            var position: simd_float3
-            var extent: simd_float3
-            func contains(_ point: simd_float3) -> Bool {
-                let minX = position.x - extent.x
-                let minY = position.y - extent.y
-                let minZ = position.z - extent.z
-                let maxX = position.x + extent.x
-                let maxY = position.y + extent.y
-                let maxZ = position.z + extent.z
-                
-                return ( point.x > minX && point.y > minY && point.z > minZ ) && ( point.x < maxX && point.y < maxY && point.z < maxZ )
-            }
-        }
-        
-        //
         // Environment Properties
         //
         
-        // The AREnvironmentProbeAnchor probes that are provided by ARKit onlt apply
-        // to a certain range. This maps the AREnvironmentProbeAnchor's with the
-        // identifiers of the AKAnchors that fall inside
-        var environmentAnchorsWithReatedAnchors: [AREnvironmentProbeAnchor: [UUID]] = [:]
-        environmentProbeAnchors.forEach { environmentAnchor in
-            let environmentPosition = simd_float3(environmentAnchor.transform.columns.3.x, environmentAnchor.transform.columns.3.y, environmentAnchor.transform.columns.3.z)
-            let cube = Cube(position: environmentPosition, extent: environmentAnchor.extent)
-            let anchorIDs: [UUID] = normalAnchors.compactMap{ normalAnchor in
-                let anchorPosition = simd_float3(normalAnchor.transform.columns.3.x, normalAnchor.transform.columns.3.y, normalAnchor.transform.columns.3.z)
-                if cube.contains(anchorPosition) {
-                    return normalAnchor.identifier
-                } else {
-                    return nil
-                }
-            }
-            environmentAnchorsWithReatedAnchors[environmentAnchor] = anchorIDs
-        }
         var environmentProperties = EnvironmentProperties()
         environmentProperties.environmentAnchorsWithReatedAnchors = environmentAnchorsWithReatedAnchors
+        environmentProperties.lightEstimate = currentFrame.lightEstimate
         
         //
         // Camera Properties
@@ -471,7 +468,7 @@ public class Renderer {
             }
         }()
         
-        let cameraProperties = CameraProperties(orientation: orientation, viewportSize: viewportSize, viewportSizeDidChange: viewportSizeDidChange, position: cameraPosition, currentFrame: currentFrameNumber)
+        let cameraProperties = CameraProperties(orientation: orientation, viewportSize: viewportSize, viewportSizeDidChange: viewportSizeDidChange, position: cameraPosition, currentFrame: currentFrameNumber, frame: currentFrame)
         
         //
         // Encode Cammand Buffer
@@ -511,7 +508,8 @@ public class Renderer {
             // Update Buffers
             for module in renderModules {
                 if module.isInitialized {
-                    module.updateBuffers(withARFrame: currentFrame, cameraProperties: cameraProperties, environmentProperties: environmentProperties)
+                    module.updateBuffers(withAugmentedAnchors: augmentedAnchors, cameraProperties: cameraProperties, environmentProperties: environmentProperties)
+                    module.updateBuffers(withRealAnchors: realAnchors, cameraProperties: cameraProperties, environmentProperties: environmentProperties)
                     module.updateBuffers(withTrackers: trackers, targets: gazeTargets, cameraProperties: cameraProperties, environmentProperties: environmentProperties)
                     module.updateBuffers(withPaths: paths, cameraProperties: cameraProperties, environmentProperties: environmentProperties)
                 }
@@ -563,7 +561,6 @@ public class Renderer {
     public func add(akAnchor: AKAugmentedAnchor) {
         
         let arAnchor = ARAnchor(transform: akAnchor.worldLocation.transform)
-        augmentedAnchors.append(akAnchor)
         akAnchor.setIdentifier(arAnchor.identifier)
         
         let anchorType = type(of: akAnchor).type
@@ -582,6 +579,8 @@ public class Renderer {
         } else {
             geometriesForRenderModule[AnchorsRenderModule.identifier] = [akAnchor]
         }
+        
+        augmentedAnchors.append(akAnchor)
         
         // Add a new anchor to the session
         session.add(anchor: arAnchor)
@@ -606,8 +605,6 @@ public class Renderer {
         // Resgister the AKModel with the model provider.
         modelProvider?.registerAsset(akTracker.asset, forObjectType: anchorType, identifier: akTracker.identifier)
         
-        trackers.append(akTracker)
-        
         // Keep track of the tracker bucketed by the RenderModule
         // This will be used to load individual models per anchor.
         if let existingGeometries = geometriesForRenderModule[UnanchoredRenderModule.identifier] {
@@ -617,6 +614,8 @@ public class Renderer {
         } else {
             geometriesForRenderModule[UnanchoredRenderModule.identifier] = [akTracker]
         }
+        
+        trackers.append(akTracker)
         
     }
     
@@ -642,7 +641,6 @@ public class Renderer {
             
             $0.setIdentifier(arAnchor.identifier)
             
-            
         }
         
         paths.append(akPath)
@@ -658,8 +656,6 @@ public class Renderer {
         // Resgister the AKModel with the model provider.
         modelProvider?.registerAsset(gazeTarget.asset, forObjectType: theType, identifier: gazeTarget.identifier)
         
-        gazeTargets.append(gazeTarget)
-        
         // Keep track of the tracker bucketed by the RenderModule
         // This will be used to load individual models per anchor.
         if let existingGeometries = geometriesForRenderModule[UnanchoredRenderModule.identifier] {
@@ -669,6 +665,8 @@ public class Renderer {
         } else {
             geometriesForRenderModule[UnanchoredRenderModule.identifier] = [gazeTarget]
         }
+        
+        gazeTargets.append(gazeTarget)
         
     }
     
@@ -681,6 +679,7 @@ public class Renderer {
         }
         
         augmentedAnchors.remove(at: akAnchorIndex)
+        
         let anchorType = type(of: akAnchor).type
         modelProvider?.unregisterAsset(forObjectType: anchorType, identifier: akAnchor.identifier)
         var existingGeometries = geometriesForRenderModule[AnchorsRenderModule.identifier]
@@ -704,6 +703,7 @@ public class Renderer {
         }
         
         trackers.remove(at: akTrackerIndex)
+        
         let anchorType = type(of: akTracker).type
         modelProvider?.unregisterAsset(forObjectType: anchorType, identifier: akTracker.identifier)
         var existingGeometries = geometriesForRenderModule[UnanchoredRenderModule.identifier]
@@ -720,13 +720,14 @@ public class Renderer {
             return
         }
         
+        paths.remove(at: akPathIndex)
+        
         akPath.segmentPoints.forEach { segment in
             if let arAnchor = session.currentFrame?.anchors.first(where: {$0.identifier == segment.identifier}) {
                 session.remove(anchor: arAnchor)
             }
         }
         
-        paths.remove(at: akPathIndex)
         let anchorType = type(of: akPath).type
         modelProvider?.unregisterAsset(forObjectType: anchorType, identifier: akPath.identifier)
         
@@ -739,6 +740,7 @@ public class Renderer {
         }
         
         gazeTargets.remove(at: gazeTargetIndex)
+        
         let anchorType = type(of: gazeTarget).type
         modelProvider?.unregisterAsset(forObjectType: anchorType, identifier: gazeTarget.identifier)
         var existingGeometries = geometriesForRenderModule[UnanchoredRenderModule.identifier]
@@ -783,9 +785,12 @@ public class Renderer {
     // Keeping track of objects to render
     fileprivate var geometriesForRenderModule = [String: [AKGeometricEntity]]()
     fileprivate var augmentedAnchors = [AKAugmentedAnchor]()
+    fileprivate var realAnchors = [AKRealAnchor]()
     fileprivate var trackers = [AKAugmentedTracker]()
     fileprivate var paths = [AKPath]()
     fileprivate var gazeTargets = [GazeTarget]()
+    fileprivate var environmentProbeAnchors = [AREnvironmentProbeAnchor]()
+    fileprivate var environmentAnchorsWithReatedAnchors = [AREnvironmentProbeAnchor: [UUID]]()
     
     fileprivate var moduleErrors = [AKError]()
     
@@ -1005,59 +1010,196 @@ public class Renderer {
     
 }
 
-// MARK: - InternalPath
+// MARK: - ARSessionDelegate
 
-// An internal instance of a `InternalPath` that can be used and manipulated privately
-// This is a Class type so it can have reference symantics (i.e. properties can be updated)
-//fileprivate class InternalPath: AKPath {
-//
-//    static var type: String {
-//        return "AnyPath"
-//    }
-//
-//    var worldLocation: AKWorldLocation
-//    var model: AKModel
-//    var asset: MDLAsset
-//    var identifier: UUID?
-//    var effects: [AnyEffect<Any>]?
-//    var segmentPoints: [AKPathSegmentAnchor]
-//    var lineThickness: Double
-//
-//    init(withAKPath akPath: AKPath) {
-//        self.model = akPath.model
-//        self.asset = akPath.asset
-//        self.identifier = akPath.identifier
-//        self.worldLocation = akPath.worldLocation
-//        self.effects = akPath.effects
-//        self.segmentPoints = akPath.segmentPoints
-//        self.lineThickness = akPath.lineThickness
-//    }
-//
-//}
-
-// MARK: - InternalAugmentedTracker
-
-// An internal instance of a `AKAugmentedTracker` that can be used and manipulated privately
-// This is a Class type so it can have reference symantics (i.e. properties can be updated)
-//fileprivate class InternalAugmentedTracker: AKAugmentedTracker {
-//    
-//    static var type: String {
-//        return "AnyTracker"
-//    }
-//    
-//    var position: AKRelativePosition
-//    var model: AKModel
-//    var identifier: UUID?
-//    var effects: [AnyEffect<Any>]?
-//    
-//    init(withAKAugmentedTracker akAugmentedTracker: AKAugmentedTracker) {
-//        self.model = akAugmentedTracker.model
-//        self.identifier = akAugmentedTracker.identifier
-//        self.position = akAugmentedTracker.position
-//        self.effects = akAugmentedTracker.effects
-//    }
-//    
-//}
+extension Renderer: ARSessionDelegate {
+    
+    public func session(_ session: ARSession, didFailWithError error: Error) {
+        let newError = AKError.recoverableError(.arkitError(UnderlyingErrorInfo(underlyingError: error)))
+        delegate?.renderer(self, didFailWithError: newError)
+    }
+    
+    public func sessionWasInterrupted(_ session: ARSession) {
+        delegate?.rendererWasInterrupted(self)
+    }
+    
+    public func sessionInterruptionEnded(_ session: ARSession) {
+        delegate?.rendererWasInterrupted(self)
+    }
+    
+    /**
+     This is called when a new frame has been updated.
+     
+     @param session The session being run.
+     @param frame The frame that has been updated.
+     */
+//    func session(_ session: ARSession, didUpdate frame: ARFrame)
+    
+    
+    /**
+     This is called when new anchors are added to the session.
+     
+     @param session The session being run.
+     @param anchors An array of added anchors.
+     */
+    public func session(_ session: ARSession, didAdd anchors: [ARAnchor]) {
+        anchors.forEach { anchor in
+            if let planeAnchor = anchor as? ARPlaneAnchor {
+                
+                if let akAnchor = realAnchors.first(where: { k in
+                    k.identifier == planeAnchor.identifier
+                }) {
+                    akAnchor.setARAnchor(planeAnchor)
+                } else {
+                    let newRealAnchor = RealSurfaceAnchor(at: WorldLocation(transform: planeAnchor.transform))
+                    newRealAnchor.setARAnchor(planeAnchor)
+                    newRealAnchor.setIdentifier(planeAnchor.identifier)
+                    realAnchors.append(newRealAnchor)
+                }
+                
+                //
+                // Update the lowest surface plane
+                //
+                
+                for index in 0..<realAnchors.count {
+                    let realAnchor = realAnchors[index]
+                    if let plane = realAnchor as? AKRealSurfaceAnchor, plane.orientation == .horizontal {
+                        // Keep track of the lowest horizontal plane. This can be assumed to be the ground.
+                        if lowestHorizPlaneAnchor != nil {
+                            if plane.worldLocation.transform.columns.1.y < lowestHorizPlaneAnchor?.transform.columns.1.y ?? 0 {
+                                lowestHorizPlaneAnchor = plane.arAnchor as? ARPlaneAnchor
+                            }
+                        } else {
+                            lowestHorizPlaneAnchor = plane.arAnchor as? ARPlaneAnchor
+                        }
+                    }
+                }
+                
+            } else if let environmentProbeAnchor = anchor as? AREnvironmentProbeAnchor {
+                
+                environmentProbeAnchors.append(environmentProbeAnchor)
+                
+                // The AREnvironmentProbeAnchor probes that are provided by ARKit onlt apply
+                // to a certain range. This maps the AREnvironmentProbeAnchor's with the
+                // identifiers of the AKAnchors that fall inside
+                environmentAnchorsWithReatedAnchors = [:]
+                environmentProbeAnchors.forEach { environmentAnchor in
+                    let environmentPosition = simd_float3(environmentAnchor.transform.columns.3.x, environmentAnchor.transform.columns.3.y, environmentAnchor.transform.columns.3.z)
+                    let cube = Cube(position: environmentPosition, extent: environmentAnchor.extent)
+                    let anchorIDs: [UUID] = augmentedAnchors.compactMap{ normalAnchor in
+                        let anchorPosition = simd_float3(normalAnchor.worldLocation.transform.columns.3.x, normalAnchor.worldLocation.transform.columns.3.y, normalAnchor.worldLocation.transform.columns.3.z)
+                        if cube.contains(anchorPosition) {
+                            return normalAnchor.identifier
+                        } else {
+                            return nil
+                        }
+                    }
+                    environmentAnchorsWithReatedAnchors[environmentAnchor] = anchorIDs
+                }
+                
+            } else if let _ = anchor as? ARObjectAnchor {
+                
+            } else if let _ = anchor as? ARImageAnchor {
+                
+            } else if let _ = anchor as? ARFaceAnchor {
+                
+            } else {
+                if let akAnchor = augmentedAnchors.first(where: { k in
+                    k.identifier == anchor.identifier
+                }) {
+                    akAnchor.setARAnchor(anchor)
+                }
+            }
+        }
+    }
+    
+    
+    /**
+     This is called when anchors are updated.
+     
+     @param session The session being run.
+     @param anchors An array of updated anchors.
+     */
+    public func session(_ session: ARSession, didUpdate anchors: [ARAnchor]) {
+        anchors.forEach { anchor in
+            if let planeAnchor = anchor as? ARPlaneAnchor {
+                
+                if let akAnchor = realAnchors.first(where: { k in
+                    k.identifier == planeAnchor.identifier
+                }) {
+                    akAnchor.setARAnchor(planeAnchor)
+                }
+                
+                //
+                // Update the lowest surface plane
+                //
+                
+                for index in 0..<realAnchors.count {
+                    let realAnchor = realAnchors[index]
+                    if let plane = realAnchor as? AKRealSurfaceAnchor, plane.orientation == .horizontal {
+                        // Keep track of the lowest horizontal plane. This can be assumed to be the ground.
+                        if lowestHorizPlaneAnchor != nil {
+                            if plane.worldLocation.transform.columns.1.y < lowestHorizPlaneAnchor?.transform.columns.1.y ?? 0 {
+                                lowestHorizPlaneAnchor = plane.arAnchor as? ARPlaneAnchor
+                            }
+                        } else {
+                            lowestHorizPlaneAnchor = plane.arAnchor as? ARPlaneAnchor
+                        }
+                    }
+                }
+                
+            } else if let environmentProbeAnchor = anchor as? AREnvironmentProbeAnchor {
+                
+                if let index = environmentProbeAnchors.firstIndex(of: environmentProbeAnchor) {
+                    
+                    environmentProbeAnchors.replaceSubrange(index..<(index + 1), with: [environmentProbeAnchor])
+                    
+                    // The AREnvironmentProbeAnchor probes that are provided by ARKit onlt apply
+                    // to a certain range. This maps the AREnvironmentProbeAnchor's with the
+                    // identifiers of the AKAnchors that fall inside
+                    environmentAnchorsWithReatedAnchors = [:]
+                    environmentProbeAnchors.forEach { environmentAnchor in
+                        let environmentPosition = simd_float3(environmentAnchor.transform.columns.3.x, environmentAnchor.transform.columns.3.y, environmentAnchor.transform.columns.3.z)
+                        let cube = Cube(position: environmentPosition, extent: environmentAnchor.extent)
+                        let anchorIDs: [UUID] = augmentedAnchors.compactMap{ normalAnchor in
+                            let anchorPosition = simd_float3(normalAnchor.worldLocation.transform.columns.3.x, normalAnchor.worldLocation.transform.columns.3.y, normalAnchor.worldLocation.transform.columns.3.z)
+                            if cube.contains(anchorPosition) {
+                                return normalAnchor.identifier
+                            } else {
+                                return nil
+                            }
+                        }
+                        environmentAnchorsWithReatedAnchors[environmentAnchor] = anchorIDs
+                    }
+                    
+                }
+                
+            } else if let _ = anchor as? ARObjectAnchor {
+                
+            } else if let _ = anchor as? ARImageAnchor {
+                
+            } else if let _ = anchor as? ARFaceAnchor {
+                
+            } else {
+                if let akAnchor = augmentedAnchors.first(where: { k in
+                    k.identifier == anchor.identifier
+                }) {
+                    akAnchor.setARAnchor(anchor)
+                }
+            }
+        }
+    }
+    
+    
+    /**
+     This is called when anchors are removed from the session.
+     
+     @param session The session being run.
+     @param anchors An array of removed anchors.
+     */
+//    public func session(_ session: ARSession, didRemove anchors: [ARAnchor]) {}
+    
+}
 
 // MARK: - InterpolatingAugmentedAnchor
 
@@ -1077,6 +1219,7 @@ fileprivate class InterpolatingAugmentedAnchor: AKAugmentedAnchor {
     var asset: MDLAsset
     var identifier: UUID?
     var effects: [AnyEffect<Any>]?
+    var arAnchor: ARAnchor?
 
     init(withAKAugmentedAnchor akAugmentedAnchor: AKAugmentedAnchor) {
         self.asset = akAugmentedAnchor.asset
@@ -1159,8 +1302,32 @@ fileprivate class InterpolatingAugmentedAnchor: AKAugmentedAnchor {
         self.identifier = identifier
     }
     
+    func setARAnchor(_ arAnchor: ARAnchor) {
+        self.arAnchor = arAnchor
+        if identifier == nil {
+            identifier = arAnchor.identifier
+        }
+        worldLocation.transform = arAnchor.transform
+    }
+    
     // MARK: Private
     
     private var needsUpdate = false
     
+}
+
+// MARK: - Cube
+fileprivate struct Cube {
+    var position: simd_float3
+    var extent: simd_float3
+    func contains(_ point: simd_float3) -> Bool {
+        let minX = position.x - extent.x
+        let minY = position.y - extent.y
+        let minZ = position.z - extent.z
+        let maxX = position.x + extent.x
+        let maxY = position.y + extent.y
+        let maxZ = position.z + extent.z
+        
+        return ( point.x > minX && point.y > minY && point.z > minZ ) && ( point.x < maxX && point.y < maxY && point.z < maxZ )
+    }
 }

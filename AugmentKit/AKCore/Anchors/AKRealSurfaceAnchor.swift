@@ -48,6 +48,7 @@ public class RealSurfaceAnchor: AKRealSurfaceAnchor {
     public var asset: MDLAsset
     public var identifier: UUID?
     public var effects: [AnyEffect<Any>]?
+    public var arAnchor: ARAnchor?
     
     public init(at location: AKWorldLocation, withAllocator metalAllocator: MTKMeshBufferAllocator? = nil) {
         
@@ -64,6 +65,14 @@ public class RealSurfaceAnchor: AKRealSurfaceAnchor {
         self.identifier = identifier
     }
     
+    public func setARAnchor(_ arAnchor: ARAnchor) {
+        self.arAnchor = arAnchor
+        if identifier == nil {
+            identifier = arAnchor.identifier
+        }
+        worldLocation.transform = arAnchor.transform
+    }
+    
 }
 
 public class GuideSurfaceAnchor: AKRealSurfaceAnchor {
@@ -76,6 +85,7 @@ public class GuideSurfaceAnchor: AKRealSurfaceAnchor {
     public var asset: MDLAsset
     public var identifier: UUID?
     public var effects: [AnyEffect<Any>]?
+    public var arAnchor: ARAnchor?
     
     public static func createModelAsset(inBundle bundle: Bundle, withAllocator metalAllocator: MTKMeshBufferAllocator?) -> MDLAsset? {
         
@@ -102,6 +112,14 @@ public class GuideSurfaceAnchor: AKRealSurfaceAnchor {
     
     public func setIdentifier(_ identifier: UUID) {
         self.identifier = identifier
+    }
+    
+    public func setARAnchor(_ arAnchor: ARAnchor) {
+        self.arAnchor = arAnchor
+        if identifier == nil {
+            identifier = arAnchor.identifier
+        }
+        worldLocation.transform = arAnchor.transform
     }
     
 }

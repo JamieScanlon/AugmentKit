@@ -231,7 +231,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         
     }
     
-    func updateBuffers(withARFrame frame: ARFrame, cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+    func updateBuffers(withAugmentedAnchors anchors: [AKAugmentedAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
         
         // Update the anchor uniform buffer with transforms of the current frame's anchors
         anchorInstanceCount = 0
@@ -248,20 +248,9 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         // Gather the UUID's
         //
         
-        for index in 0..<frame.anchors.count {
+        for akAnchor in anchors {
             
-            let anchor = frame.anchors[index]
-            var isAnchor = false
-            
-            if let _ = anchor as? ARPlaneAnchor {
-                //
-            } else if let _ = anchor as? AREnvironmentProbeAnchor {
-                //
-            } else {
-                isAnchor = true
-            }
-            
-            guard isAnchor else {
+            guard let anchor = akAnchor.arAnchor else {
                 continue
             }
             
@@ -378,7 +367,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                 
                 // Set up lighting for the scene using the ambient intensity if provided
                 let ambientIntensity: Float = {
-                    if let lightEstimate = frame.lightEstimate {
+                    if let lightEstimate = environmentProperties.lightEstimate {
                         return Float(lightEstimate.ambientIntensity) / 1000.0
                     } else {
                         return 1
@@ -386,7 +375,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                 }()
                 
                 let ambientLightColor: vector_float3 = {
-                    if let lightEstimate = frame.lightEstimate {
+                    if let lightEstimate = environmentProperties.lightEstimate {
                         return getRGB(from: lightEstimate.ambientColorTemperature)
                     } else {
                         return vector3(0.5, 0.5, 0.5)
@@ -423,6 +412,10 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             
         }
         
+    }
+    
+    func updateBuffers(withRealAnchors: [AKRealAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+        // Do Nothing
     }
     
     func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {

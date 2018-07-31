@@ -69,8 +69,11 @@ protocol RenderModule {
     // The buffer index is the index into the ring on in flight buffers
     func updateBufferState(withBufferIndex: Int)
     
-    // Update the buffer data for anchors
-    func updateBuffers(withARFrame: ARFrame, cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties)
+    // Update the buffer data for augmented anchors
+    func updateBuffers(withAugmentedAnchors: [AKAugmentedAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties)
+    
+    // Update the buffer data for real anchors
+    func updateBuffers(withRealAnchors: [AKRealAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties)
     
     // Update the buffer data for trackers
     func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties)

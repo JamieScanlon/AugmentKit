@@ -191,6 +191,26 @@ public class AKWorld: NSObject {
         
     }
     
+    //  Returns the current AKWorldLocation of the user's gaze, the point where a vector from
+    //  the center of the device intersects the closes detected surface. The transform is relative
+    //  to the ARKit origin which was the position of the camera when the AR session starts.
+    //  When usesLocation = true, the axis are rotated such that z points due south.
+    public var currentGazeLocation: AKWorldLocation? {
+        
+        if configuration?.usesLocation == true {
+            if let originLocation = referenceWorldLocation {
+                let currentGazePosition = renderer.currentGazeTransform
+                let worldDistance = AKWorldDistance(metersX: Double(currentGazePosition.columns.3.x), metersY: Double(currentGazePosition.columns.3.y), metersZ: Double(currentGazePosition.columns.3.z))
+                return AKLocationUtility.worldLocation(from: originLocation, translatedBy: worldDistance)
+            } else {
+                return nil
+            }
+        } else {
+            return WorldLocation(transform: renderer.currentGazeTransform)
+        }
+        
+    }
+    
     //  Returns the lowest horizontal surface anchor which is assumed to be ground.
     //  If no horizontal surfaces have been detected, this returns a horizontal
     //  surface 3m below the current device position.

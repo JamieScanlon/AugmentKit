@@ -205,11 +205,11 @@ class ViewController: UIViewController {
             return
         }
         
-        guard let currentWorldLocation = world.currentWorldLocation else {
+        guard let location = world.currentGazeLocation else {
             return
         }
         
-        let anchorLocation = GroundFixedWorldLocation(worldLocation: currentWorldLocation, world: world)
+        let anchorLocation = GroundFixedWorldLocation(worldLocation: location, world: world)
         let newObject = AugmentedAnchor(withModelAsset: anchorModel, at: anchorLocation)
         world.add(anchor: newObject)
         
@@ -227,11 +227,11 @@ class ViewController: UIViewController {
             return
         }
         
-        guard let currentWorldLocation = world.currentWorldLocation else {
+        guard let location = world.currentGazeLocation else {
             return
         }
         
-        let anchorLocation = GroundFixedWorldLocation(worldLocation: currentWorldLocation, world: world)
+        let anchorLocation = GroundFixedWorldLocation(worldLocation: location, world: world)
         let newObject = AugmentedAnchor(withModelAsset: anchorModel, at: anchorLocation)
         world.add(anchor: newObject)
         
@@ -249,11 +249,11 @@ class ViewController: UIViewController {
             return
         }
         
-        guard let currentWorldLocation = world.currentWorldLocation else {
+        guard let location = world.currentGazeLocation else {
             return
         }
         
-        let newObject = AugmentedAnchor(withModelAsset: anchorModel, at: currentWorldLocation)
+        let newObject = AugmentedAnchor(withModelAsset: anchorModel, at: location)
         world.add(anchor: newObject)
         
     }
@@ -305,7 +305,6 @@ class ViewController: UIViewController {
             print("ERROR: Could not load the SceneKit model")
             return
         }
-        print(aMaxAsset)
         
         pinAsset = aPinAsset
         shipAsset = aShipAsset

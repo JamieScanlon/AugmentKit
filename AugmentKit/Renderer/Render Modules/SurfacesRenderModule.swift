@@ -65,6 +65,8 @@ class SurfacesRenderModule: RenderModule {
         // argument in the constant address space of our shading functions.
         let surfaceUniformBufferSize = Constants.alignedSurfaceInstanceUniformsSize * maxInFlightBuffers
         let materialUniformBufferSize = RenderModuleConstants.alignedMaterialSize * maxInFlightBuffers
+        let effectsUniformBufferSize = Constants.alignedEffectsUniformSize * maxInFlightBuffers
+        let environmentUniformBufferSize = Constants.alignedEnvironmentUniformSize * maxInFlightBuffers
         
         // Create and allocate our uniform buffer objects. Indicate shared storage so that both the
         // CPU can access the buffer
@@ -73,6 +75,12 @@ class SurfacesRenderModule: RenderModule {
         
         materialUniformBuffer = device?.makeBuffer(length: materialUniformBufferSize, options: .storageModeShared)
         materialUniformBuffer?.label = "MaterialUniformBuffer"
+        
+        effectsUniformBuffer = device?.makeBuffer(length: effectsUniformBufferSize, options: .storageModeShared)
+        effectsUniformBuffer?.label = "EffectsUniformBuffer"
+        
+        environmentUniformBuffer = device?.makeBuffer(length: environmentUniformBufferSize, options: .storageModeShared)
+        environmentUniformBuffer?.label = "EnvironemtUniformBuffer"
         
     }
     
@@ -204,9 +212,13 @@ class SurfacesRenderModule: RenderModule {
         
         surfaceUniformBufferOffset = Constants.alignedSurfaceInstanceUniformsSize * bufferIndex
         materialUniformBufferOffset = RenderModuleConstants.alignedMaterialSize * bufferIndex
+        effectsUniformBufferOffset = Constants.alignedEffectsUniformSize * bufferIndex
+        environmentUniformBufferOffset = Constants.alignedEnvironmentUniformSize * bufferIndex
         
         surfaceUniformBufferAddress = surfaceUniformBuffer?.contents().advanced(by: surfaceUniformBufferOffset)
         materialUniformBufferAddress = materialUniformBuffer?.contents().advanced(by: materialUniformBufferOffset)
+        effectsUniformBufferAddress = effectsUniformBuffer?.contents().advanced(by: effectsUniformBufferOffset)
+        environmentUniformBufferAddress = environmentUniformBuffer?.contents().advanced(by: environmentUniformBufferOffset)
         
     }
     
@@ -218,6 +230,7 @@ class SurfacesRenderModule: RenderModule {
         
         // Update the anchor uniform buffer with transforms of the current frame's anchors
         surfaceInstanceCount = 0
+        environmentTextureByUUID = [:]
         
         for akAnchor in anchors {
             
@@ -240,6 +253,10 @@ class SurfacesRenderModule: RenderModule {
             if surfaceInstanceCount > Constants.maxSurfaceInstanceCount {
                 surfaceInstanceCount = Constants.maxSurfaceInstanceCount
                 break
+            }
+            
+            guard let uuid = akAnchor.identifier else {
+                continue
             }
             
             // Flip Z axis to convert geometry from right handed to left handed
@@ -277,6 +294,73 @@ class SurfacesRenderModule: RenderModule {
             // Surfaces use the same uniform struct as anchors
             let surfaceUniforms = surfaceUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: surfaceIndex)
             surfaceUniforms?.pointee.modelMatrix = modelMatrix
+            
+            //
+            // Update Environment
+            //
+            
+            let environmentProperty = environmentProperties.environmentAnchorsWithReatedAnchors.first(where: {
+                $0.value.contains(uuid)
+            })
+            
+            if let environmentProbeAnchor = environmentProperty?.key, let texture = environmentProbeAnchor.environmentTexture {
+                environmentTextureByUUID[uuid] = texture
+            }
+            
+            environmentData = {
+                var myEnvironmentData = EnvironmentData()
+                if let texture = environmentTextureByUUID[uuid] {
+                    myEnvironmentData.environmentTexture = texture
+                    myEnvironmentData.hasEnvironmentMap = true
+                    return myEnvironmentData
+                } else {
+                    myEnvironmentData.hasEnvironmentMap = false
+                }
+                return myEnvironmentData
+            }()
+            
+            let environmentUniforms = environmentUniformBufferAddress?.assumingMemoryBound(to: EnvironmentUniforms.self).advanced(by: surfaceIndex)
+            
+            // Set up lighting for the scene using the ambient intensity if provided
+            let ambientIntensity: Float = {
+                if let lightEstimate = environmentProperties.lightEstimate {
+                    return Float(lightEstimate.ambientIntensity) / 1000.0
+                } else {
+                    return 1
+                }
+            }()
+            
+            let ambientLightColor: vector_float3 = {
+                if let lightEstimate = environmentProperties.lightEstimate {
+                    return getRGB(from: lightEstimate.ambientColorTemperature)
+                } else {
+                    return vector3(0.5, 0.5, 0.5)
+                }
+            }()
+            
+            environmentUniforms?.pointee.ambientLightColor = ambientLightColor// * ambientIntensity
+            
+            var directionalLightDirection : vector_float3 = vector3(0.0, -1.0, 0.0)
+            directionalLightDirection = simd_normalize(directionalLightDirection)
+            environmentUniforms?.pointee.directionalLightDirection = directionalLightDirection
+            
+            let directionalLightColor: vector_float3 = vector3(0.6, 0.6, 0.6)
+            environmentUniforms?.pointee.directionalLightColor = directionalLightColor * ambientIntensity
+            
+            if environmentData?.hasEnvironmentMap == true {
+                environmentUniforms?.pointee.hasEnvironmentMap = 1
+            } else {
+                environmentUniforms?.pointee.hasEnvironmentMap = 0
+            }
+            
+            //
+            // Update Effects uniform
+            //
+            
+            let effectsUniforms = effectsUniformBufferAddress?.assumingMemoryBound(to: AnchorEffectsUniforms.self).advanced(by: surfaceIndex)
+            effectsUniforms?.pointee.alpha = 1 // TODO: Implement
+            effectsUniforms?.pointee.glow = 0 // TODO: Implement
+            effectsUniforms?.pointee.tint = float3(1,1,1) // TODO: Implement
             
         }
         
@@ -317,6 +401,25 @@ class SurfacesRenderModule: RenderModule {
             renderEncoder.setVertexBuffer(sharedBuffer.sharedUniformBuffer, offset: sharedBuffer.sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
             renderEncoder.setFragmentBuffer(sharedBuffer.sharedUniformBuffer, offset: sharedBuffer.sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
             
+            renderEncoder.popDebugGroup()
+            
+        }
+        
+        if let effectsBuffer = effectsUniformBuffer {
+            
+            renderEncoder.pushDebugGroup("Draw Effects Uniforms")
+            renderEncoder.setFragmentBuffer(effectsBuffer, offset: effectsUniformBufferOffset, index: Int(kBufferIndexAnchorEffectsUniforms.rawValue))
+            renderEncoder.popDebugGroup()
+            
+        }
+        
+        if let environmentUniformBuffer = environmentUniformBuffer {
+            
+            renderEncoder.pushDebugGroup("Draw Environment Uniforms")
+            if let environmentTexture = environmentData?.environmentTexture, environmentData?.hasEnvironmentMap == true {
+                renderEncoder.setFragmentTexture(environmentTexture, index: Int(kTextureIndexEnvironmentMap.rawValue))
+            }
+            renderEncoder.setFragmentBuffer(environmentUniformBuffer, offset: environmentUniformBufferOffset, index: Int(kBufferIndexEnvironmentUniforms.rawValue))
             renderEncoder.popDebugGroup()
             
         }
@@ -362,6 +465,8 @@ class SurfacesRenderModule: RenderModule {
         static let maxSurfaceInstanceCount = 64
         // Surfaces use the same uniform struct as anchors
         static let alignedSurfaceInstanceUniformsSize = ((MemoryLayout<AnchorInstanceUniforms>.stride * Constants.maxSurfaceInstanceCount) & ~0xFF) + 0x100
+        static let alignedEffectsUniformSize = ((MemoryLayout<AnchorEffectsUniforms>.stride * Constants.maxSurfaceInstanceCount) & ~0xFF) + 0x100
+        static let alignedEnvironmentUniformSize = ((MemoryLayout<EnvironmentUniforms>.stride * Constants.maxSurfaceInstanceCount) & ~0xFF) + 0x100
     }
     
     private var device: MTLDevice?
@@ -369,8 +474,11 @@ class SurfacesRenderModule: RenderModule {
     private var surfaceAsset: MDLAsset?
     private var surfaceUniformBuffer: MTLBuffer?
     private var materialUniformBuffer: MTLBuffer?
+    private var effectsUniformBuffer: MTLBuffer?
+    private var environmentUniformBuffer: MTLBuffer?
     private var surfacePipelineStates = [MTLRenderPipelineState]() // Store multiple states
     private var surfaceDepthState: MTLDepthStencilState?
+    private var environmentData: EnvironmentData?
     
     // MetalKit meshes containing vertex data and index buffer for our surface geometry
     private var surfaceMeshGPUData: MeshGPUData?
@@ -381,13 +489,27 @@ class SurfacesRenderModule: RenderModule {
     // Offset within materialUniformBuffer to set for the current frame
     private var materialUniformBufferOffset: Int = 0
     
+    // Offset within effectsUniformBuffer to set for the current frame
+    private var effectsUniformBufferOffset: Int = 0
+    
+    // Offset within environmentUniformBuffer to set for the current frame
+    private var environmentUniformBufferOffset: Int = 0
+    
     // Addresses to write surface uniforms to each frame
     private var surfaceUniformBufferAddress: UnsafeMutableRawPointer?
     
     // Addresses to write surface uniforms to each frame
     private var materialUniformBufferAddress: UnsafeMutableRawPointer?
     
+    // Addresses to write effects uniforms to each frame
+    private var effectsUniformBufferAddress: UnsafeMutableRawPointer?
+    
+    // Addresses to write environment uniforms to each frame
+    private var environmentUniformBufferAddress: UnsafeMutableRawPointer?
+    
     // number of frames in the surface animation by surface index
     private var surfaceAnimationFrameCount = [Int]()
+    
+    private var environmentTextureByUUID = [UUID: MTLTexture]()
     
 }

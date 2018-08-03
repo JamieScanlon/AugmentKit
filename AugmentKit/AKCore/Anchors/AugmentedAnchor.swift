@@ -62,3 +62,16 @@ public class AugmentedAnchor: AKAugmentedAnchor {
     }
     
 }
+
+extension AugmentedAnchor: CustomDebugStringConvertible, CustomStringConvertible {
+    
+    public var description: String {
+        return debugDescription
+    }
+    
+    public var debugDescription: String {
+        let myDescription = "<AugmentedAnchor: \(Unmanaged.passUnretained(self).toOpaque())> worldLocation: \(worldLocation), identifier:\(identifier), effects: \(effects), arAnchor: \(arAnchor), asset: \(asset)"
+        return myDescription
+    }
+    
+}

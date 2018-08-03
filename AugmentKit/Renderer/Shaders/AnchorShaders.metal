@@ -260,7 +260,7 @@ float3 computeDiffuse(LightingParameters parameters) {
     // 1.25 scale is used to (roughly) preserve albedo
     float ss = 1.25 * (Fss * (1.0 / (parameters.nDotl + parameters.nDotv) - 0.5) + 0.5);
 
-    float subsurface = 0.0; // TODO: parameters.subsurface
+    float subsurface = 0.5; // TODO: parameters.subsurface
     float3 diffuseOutput = ((1.0/PI) * mix(Fd, ss, subsurface) * parameters.baseColor.rgb) * (1.0 - parameters.metalness);
     return parameters.directionalLightCol * diffuseOutput;
     

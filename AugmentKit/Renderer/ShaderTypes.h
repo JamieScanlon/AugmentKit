@@ -119,14 +119,6 @@ enum FunctionConstantIndices {
     kNumFunctionConstantIndices
 };
 
-enum VertexConstantIndices {
-    kVertexConstantPosition = kNumFunctionConstantIndices,
-    kVertexConstantTexcoord,
-    kVertexConstantNormal,
-    kVertexConstantTangent,
-    kVertexConstantBitangent
-};
-
 // MARK: - AR/VR goggle support for left and right eyes.
 
 enum Viewports {

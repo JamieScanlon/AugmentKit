@@ -292,7 +292,7 @@ class ViewController: UIViewController {
 //            return
 //        }
 //        for childIndex in 0..<aPinAsset.count {
-//            aPinAsset.object(at: childIndex).transform = MDLTransform(matrix: matrix_identity_float4x4.scale(x: 0.2, y: 0.2, z: 0.2))
+//            aPinAsset.object(at: childIndex).transform = MDLTransform(matrix: matrix_identity_float4x4.scale(x: 0.01, y: 0.01, z: 0.01))
 //        }
 //        print(aPinAsset)
         

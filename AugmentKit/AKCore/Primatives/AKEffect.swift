@@ -26,11 +26,13 @@
 //
 
 import Foundation
+import simd
 
 public enum AKEffectType {
     case alpha
     case glow
     case tint
+    case scale
 }
 
 public protocol AKEffect: AKAnimatable {
@@ -79,8 +81,8 @@ private final class _AnyEffectBox<Concrete: AKEffect>: _AnyEffectBase<Concrete.V
 public final class AnyEffect<Value>: AKEffect {
     private let box: _AnyEffectBase<Value>
     
-    // Initializer takes our concrete implementer of Row i.e. FileCell
-    init<Concrete: AKEffect>(_ concrete: Concrete) where Concrete.Value == Value {
+    // Initializer takes a concrete implementation
+    public init<Concrete: AKEffect>(_ concrete: Concrete) where Concrete.Value == Value {
         box = _AnyEffectBox(concrete)
     }
     
@@ -90,5 +92,61 @@ public final class AnyEffect<Value>: AKEffect {
     
     public var effectType: AKEffectType {
         return box.effectType
+    }
+}
+
+//
+// Default Implementations
+//
+
+// MARK: - ConstantScaleEffect
+
+public struct ConstantScaleEffect: AKEffect {
+    public var effectType: AKEffectType = .scale
+    private var scaleValue: Float
+    public init(scaleValue: Float) {
+        self.scaleValue = scaleValue
+    }
+    public func value(forTime: TimeInterval) -> Any {
+        return scaleValue
+    }
+}
+
+// MARK: - ConstantAlphaEffect
+
+public struct ConstantAlphaEffect: AKEffect {
+    public var effectType: AKEffectType = .alpha
+    private var alphaValue: Float
+    public init(alphaValue: Float) {
+        self.alphaValue = alphaValue
+    }
+    public func value(forTime: TimeInterval) -> Any {
+        return alphaValue
+    }
+}
+
+// MARK: - ConstantTintEffect
+
+public struct ConstantTintEffect: AKEffect {
+    public var effectType: AKEffectType = .tint
+    private var tintValue: simd_float3
+    public init(tintValue: simd_float3) {
+        self.tintValue = tintValue
+    }
+    public func value(forTime: TimeInterval) -> Any {
+        return tintValue
+    }
+}
+
+// MARK: - ConstantGlowEffect
+
+public struct ConstantGlowEffect: AKEffect {
+    public var effectType: AKEffectType = .glow
+    private var glowValue: Float
+    public init(glowValue: Float) {
+        self.glowValue = glowValue
+    }
+    public func value(forTime: TimeInterval) -> Any {
+        return glowValue
     }
 }

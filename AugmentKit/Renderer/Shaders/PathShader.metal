@@ -45,6 +45,7 @@ struct PathFragmentInOut {
 vertex PathFragmentInOut pathVertexShader(PathVertexIn in [[stage_in]],
                                           constant SharedUniforms &sharedUniforms [[ buffer(kBufferIndexSharedUniforms) ]],
                                           constant AnchorInstanceUniforms *anchorInstanceUniforms [[ buffer(kBufferIndexAnchorInstanceUniforms) ]],
+                                          constant AnchorEffectsUniforms &anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]],
                                           uint vid [[vertex_id]],
                                           ushort iid [[instance_id]]
                                           ){
@@ -56,6 +57,11 @@ vertex PathFragmentInOut pathVertexShader(PathVertexIn in [[stage_in]],
     
     // Get the anchor model's orientation in world space
     float4x4 modelMatrix = anchorInstanceUniforms[iid].modelMatrix;
+    
+    // Apply effects that affect geometry
+    float4x4 scaleMatrix = float4x4(anchorEffectsUniforms.scale);
+    scaleMatrix[3][3] = 1;
+    modelMatrix = modelMatrix * scaleMatrix;
     
     // Transform the model's orientation from world space to camera space.
     float4x4 modelViewMatrix = sharedUniforms.viewMatrix * modelMatrix;

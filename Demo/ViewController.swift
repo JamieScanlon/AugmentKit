@@ -211,6 +211,8 @@ class ViewController: UIViewController {
         
         let anchorLocation = GroundFixedWorldLocation(worldLocation: location, world: world)
         let newObject = AugmentedAnchor(withModelAsset: anchorModel, at: anchorLocation)
+//        let scaleEffect = ConstantScaleEffect(scaleValue: 0.01)
+//        newObject.effects = [AnyEffect(scaleEffect)]
         world.add(anchor: newObject)
         
     }
@@ -291,10 +293,6 @@ class ViewController: UIViewController {
 //            print("ERROR: Could not load the USDZ model")
 //            return
 //        }
-//        for childIndex in 0..<aPinAsset.count {
-//            aPinAsset.object(at: childIndex).transform = MDLTransform(matrix: matrix_identity_float4x4.scale(x: 0.01, y: 0.01, z: 0.01))
-//        }
-//        print(aPinAsset)
         
         guard let aShipAsset = AKSceneKitUtils.mdlAssetFromScene(named: "ship.scn", world: world) else {
             print("ERROR: Could not load the SceneKit model")

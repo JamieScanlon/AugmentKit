@@ -168,6 +168,7 @@ struct AnchorEffectsUniforms {
     float alpha;
     float glow;
     vector_float3 tint;
+    float scale;
 };
 
 // Structure shared between shader and C code that contains information about the material that should be

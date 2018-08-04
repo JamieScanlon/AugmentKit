@@ -240,7 +240,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         
         // In the buffer, the anchors ar layed out by UUID in sorted order. So if there are
         // 5 anchors with UUID = "A..." and 3 UUIDs = "B..." and 1 UUID = "C..." then that's
-        // how they will layed out in memory. Therefor updating the buffers is a 2 step process.
+        // how they will layed out in memory. Therefore updating the buffers is a 2 step process.
         // First, loop through all of the ARAnchors and gather the UUIDs as well as the counts for each.
         // Second, layout and update the buffers in the desired order.
         
@@ -277,10 +277,10 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             
             if let currentAnchors = anchorsByUUID[uuid] {
                 var mutableCurrentAnchors = currentAnchors
-                mutableCurrentAnchors.append(anchor)
+                mutableCurrentAnchors.append(akAnchor)
                 anchorsByUUID[uuid] = mutableCurrentAnchors
             } else {
-                anchorsByUUID[uuid] = [anchor]
+                anchorsByUUID[uuid] = [akAnchor]
             }
             
             let environmentProperty = environmentProperties.environmentAnchorsWithReatedAnchors.first(where: {
@@ -306,9 +306,13 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         for item in orderedArray {
             
             let uuid = item.key
-            let anchors = item.value
+            let akAnchors = item.value
             
-            for anchor in anchors {
+            for akAnchor in akAnchors {
+                
+                guard let arAnchor = akAnchor.arAnchor else {
+                    continue
+                }
                 
                 // Flip Z axis to convert geometry from right handed to left handed
                 var coordinateSpaceTransform = matrix_identity_float4x4
@@ -328,7 +332,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                     coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
                 }
                 
-                let modelMatrix = anchor.transform * coordinateSpaceTransform
+                let modelMatrix = arAnchor.transform * coordinateSpaceTransform
                 let anchorUniforms = anchorUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: anchorIndex)
                 anchorUniforms?.pointee.modelMatrix = modelMatrix
                 
@@ -338,7 +342,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                 
                 let uuid: UUID = {
                     if modelAssetsForAnchorsByUUID[uuid] != nil {
-                        return anchor.identifier
+                        return arAnchor.identifier
                     } else {
                         return generalUUID
                     }
@@ -402,9 +406,48 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                 //
                 
                 let effectsUniforms = effectsUniformBufferAddress?.assumingMemoryBound(to: AnchorEffectsUniforms.self).advanced(by: anchorIndex)
-                effectsUniforms?.pointee.alpha = 1 // TODO: Implement
-                effectsUniforms?.pointee.glow = 0 // TODO: Implement
-                effectsUniforms?.pointee.tint = float3(1,1,1) // TODO: Implement
+                var hasSetAlpha = false
+                var hasSetGlow = false
+                var hasSetTint = false
+                var hasSetScale = false
+                if let effects = akAnchor.effects {
+                    for effect in effects {
+                        switch effect.effectType {
+                        case .alpha:
+                            if let value = effect.value(forTime: TimeInterval(cameraProperties.currentFrame)) as? Float {
+                                effectsUniforms?.pointee.alpha = value
+                                hasSetAlpha = true
+                            }
+                        case .glow:
+                            if let value = effect.value(forTime: TimeInterval(cameraProperties.currentFrame)) as? Float {
+                                effectsUniforms?.pointee.glow = value
+                                hasSetGlow = true
+                            }
+                        case .tint:
+                            if let value = effect.value(forTime: TimeInterval(cameraProperties.currentFrame)) as? float3 {
+                                effectsUniforms?.pointee.tint = value
+                                hasSetTint = true
+                            }
+                        case .scale:
+                            if let value = effect.value(forTime: TimeInterval(cameraProperties.currentFrame)) as? Float {
+                                effectsUniforms?.pointee.scale = value
+                                hasSetScale = true
+                            }
+                        }
+                    }
+                }
+                if !hasSetAlpha {
+                    effectsUniforms?.pointee.alpha = 1
+                }
+                if !hasSetGlow {
+                    effectsUniforms?.pointee.glow = 0
+                }
+                if !hasSetTint {
+                    effectsUniforms?.pointee.tint = float3(1,1,1)
+                }
+                if !hasSetScale {
+                    effectsUniforms?.pointee.scale = 1
+                }
                 
                 anchorIndex += 1
                 
@@ -463,6 +506,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         if let effectsBuffer = effectsUniformBuffer {
             
             renderEncoder.pushDebugGroup("Draw Effects Uniforms")
+            renderEncoder.setVertexBuffer(effectsBuffer, offset: effectsUniformBufferOffset, index: Int(kBufferIndexAnchorEffectsUniforms.rawValue))
             renderEncoder.setFragmentBuffer(effectsBuffer, offset: effectsUniformBufferOffset, index: Int(kBufferIndexAnchorEffectsUniforms.rawValue))
             renderEncoder.popDebugGroup()
             
@@ -596,7 +640,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     // number of frames in the anchor animation by anchor index
     private var anchorAnimationFrameCount = [Int]()
     
-    private var anchorsByUUID = [UUID: [ARAnchor]]()
+    private var anchorsByUUID = [UUID: [AKAugmentedAnchor]]()
     private var environmentTextureByUUID = [UUID: MTLTexture]()
     
     private func createPipelineStates(forUUID uuid: UUID, withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider) {

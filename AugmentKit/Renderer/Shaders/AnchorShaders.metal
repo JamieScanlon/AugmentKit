@@ -260,7 +260,7 @@ float3 computeDiffuse(LightingParameters parameters) {
     // 1.25 scale is used to (roughly) preserve albedo
     float ss = 1.25 * (Fss * (1.0 / (parameters.nDotl + parameters.nDotv) - 0.5) + 0.5);
 
-    float subsurface = 0.5; // TODO: parameters.subsurface
+    float subsurface = 0.1; // TODO: parameters.subsurface
     float3 diffuseOutput = ((1.0/PI) * mix(Fd, ss, subsurface) * parameters.baseColor.rgb) * (1.0 - parameters.metalness);
     return parameters.directionalLightCol * diffuseOutput;
     
@@ -476,6 +476,7 @@ LightingParameters calculateParameters(ColorInOut in,
 vertex ColorInOut anchorGeometryVertexTransform(Vertex in [[stage_in]],
                                                 constant SharedUniforms &sharedUniforms [[ buffer(kBufferIndexSharedUniforms) ]],
                                                 constant AnchorInstanceUniforms *anchorInstanceUniforms [[ buffer(kBufferIndexAnchorInstanceUniforms) ]],
+                                                constant AnchorEffectsUniforms &anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]],
                                                 uint vid [[vertex_id]],
                                                 ushort iid [[instance_id]]) {
     ColorInOut out;
@@ -485,6 +486,11 @@ vertex ColorInOut anchorGeometryVertexTransform(Vertex in [[stage_in]],
     
     // Get the anchor model's orientation in world space
     float4x4 modelMatrix = anchorInstanceUniforms[iid].modelMatrix;
+    
+    // Apply effects that affect geometry
+    float4x4 scaleMatrix = float4x4(anchorEffectsUniforms.scale);
+    scaleMatrix[3][3] = 1;
+    modelMatrix = modelMatrix * scaleMatrix;
     
     // Transform the model's orientation from world space to camera space.
     float4x4 modelViewMatrix = sharedUniforms.viewMatrix * modelMatrix;
@@ -515,6 +521,7 @@ vertex ColorInOut anchorGeometryVertexTransformSkinned(Vertex in [[stage_in]],
                                                        constant int &paletteStartIndex [[buffer(kBufferIndexMeshPaletteIndex)]],
                                                        constant int &paletteSize [[buffer(kBufferIndexMeshPaletteSize)]],
                                                        constant AnchorInstanceUniforms *anchorInstanceUniforms [[ buffer(kBufferIndexAnchorInstanceUniforms) ]],
+                                                       constant AnchorEffectsUniforms &anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]],
                                                        uint vid [[vertex_id]],
                                                        ushort iid [[instance_id]]) {
     
@@ -525,6 +532,11 @@ vertex ColorInOut anchorGeometryVertexTransformSkinned(Vertex in [[stage_in]],
     
     // Get the anchor model's orientation in world space
     float4x4 modelMatrix = anchorInstanceUniforms[iid].modelMatrix;
+    
+    // Apply effects that affect geometry
+    float4x4 scaleMatrix = float4x4(anchorEffectsUniforms.scale);
+    scaleMatrix[3][3] = 1;
+    modelMatrix = modelMatrix * scaleMatrix;
     
     // Transform the model's orientation from world space to camera space.
     float4x4 modelViewMatrix = sharedUniforms.viewMatrix * modelMatrix;

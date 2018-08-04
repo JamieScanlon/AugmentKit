@@ -449,13 +449,52 @@ class UnanchoredRenderModule: RenderModule {
             }
             
             //
-            // Update the Effects uniform
+            // Update Effects uniform
             //
             
             let effectsUniforms = effectsUniformBufferAddress?.assumingMemoryBound(to: AnchorEffectsUniforms.self).advanced(by: trackerIndex)
-            effectsUniforms?.pointee.alpha = 1 // TODO: Implement
-            effectsUniforms?.pointee.glow = 0 // TODO: Implement
-            effectsUniforms?.pointee.tint = float3(1,1,1) // TODO: Implement
+            var hasSetAlpha = false
+            var hasSetGlow = false
+            var hasSetTint = false
+            var hasSetScale = false
+            if let effects = tracker.effects {
+                for effect in effects {
+                    switch effect.effectType {
+                    case .alpha:
+                        if let value = effect.value(forTime: TimeInterval(cameraProperties.currentFrame)) as? Float {
+                            effectsUniforms?.pointee.alpha = value
+                            hasSetAlpha = true
+                        }
+                    case .glow:
+                        if let value = effect.value(forTime: TimeInterval(cameraProperties.currentFrame)) as? Float {
+                            effectsUniforms?.pointee.glow = value
+                            hasSetGlow = true
+                        }
+                    case .tint:
+                        if let value = effect.value(forTime: TimeInterval(cameraProperties.currentFrame)) as? float3 {
+                            effectsUniforms?.pointee.tint = value
+                            hasSetTint = true
+                        }
+                    case .scale:
+                        if let value = effect.value(forTime: TimeInterval(cameraProperties.currentFrame)) as? Float {
+                            effectsUniforms?.pointee.scale = value
+                            hasSetScale = true
+                        }
+                    }
+                }
+            }
+            if !hasSetAlpha {
+                effectsUniforms?.pointee.alpha = 1
+            }
+            if !hasSetGlow {
+                effectsUniforms?.pointee.glow = 0
+            }
+            if !hasSetTint {
+                effectsUniforms?.pointee.tint = float3(1,1,1)
+            }
+            if !hasSetScale {
+                effectsUniforms?.pointee.scale = 1
+            }
             
         }
         
@@ -550,16 +589,53 @@ class UnanchoredRenderModule: RenderModule {
                 
             }
             
-            
-            
             //
-            // Update the Effects uniform
+            // Update Effects uniform
             //
             
             let effectsUniforms = effectsUniformBufferAddress?.assumingMemoryBound(to: AnchorEffectsUniforms.self).advanced(by: adjustedIndex)
-            effectsUniforms?.pointee.alpha = 1 // TODO: Implement
-            effectsUniforms?.pointee.glow = 0 // TODO: Implement
-            effectsUniforms?.pointee.tint = float3(1,1,1) // TODO: Implement
+            var hasSetAlpha = false
+            var hasSetGlow = false
+            var hasSetTint = false
+            var hasSetScale = false
+            if let effects = target.effects {
+                for effect in effects {
+                    switch effect.effectType {
+                    case .alpha:
+                        if let value = effect.value(forTime: TimeInterval(cameraProperties.currentFrame)) as? Float {
+                            effectsUniforms?.pointee.alpha = value
+                            hasSetAlpha = true
+                        }
+                    case .glow:
+                        if let value = effect.value(forTime: TimeInterval(cameraProperties.currentFrame)) as? Float {
+                            effectsUniforms?.pointee.glow = value
+                            hasSetGlow = true
+                        }
+                    case .tint:
+                        if let value = effect.value(forTime: TimeInterval(cameraProperties.currentFrame)) as? float3 {
+                            effectsUniforms?.pointee.tint = value
+                            hasSetTint = true
+                        }
+                    case .scale:
+                        if let value = effect.value(forTime: TimeInterval(cameraProperties.currentFrame)) as? Float {
+                            effectsUniforms?.pointee.scale = value
+                            hasSetScale = true
+                        }
+                    }
+                }
+            }
+            if !hasSetAlpha {
+                effectsUniforms?.pointee.alpha = 1
+            }
+            if !hasSetGlow {
+                effectsUniforms?.pointee.glow = 0
+            }
+            if !hasSetTint {
+                effectsUniforms?.pointee.tint = float3(1,1,1)
+            }
+            if !hasSetScale {
+                effectsUniforms?.pointee.scale = 1
+            }
             
         }
         
@@ -614,6 +690,7 @@ class UnanchoredRenderModule: RenderModule {
         if let effectsBuffer = effectsUniformBuffer {
             
             renderEncoder.pushDebugGroup("Draw Effects Uniforms")
+            renderEncoder.setVertexBuffer(effectsBuffer, offset: effectsUniformBufferOffset, index: Int(kBufferIndexAnchorEffectsUniforms.rawValue))
             renderEncoder.setFragmentBuffer(effectsBuffer, offset: effectsUniformBufferOffset, index: Int(kBufferIndexAnchorEffectsUniforms.rawValue))
             renderEncoder.popDebugGroup()
             

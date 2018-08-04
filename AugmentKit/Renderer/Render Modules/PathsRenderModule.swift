@@ -244,7 +244,7 @@ class PathsRenderModule: RenderModule {
         // Do Nothing
     }
     
-    func updateBuffers(withPaths paths: [AKPath], cameraProperties theCameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+    func updateBuffers(withPaths paths: [AKPath], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
         
         // Update the anchor uniform buffer with transforms of the current frame's anchors
         pathSegmentInstanceCount = 0
@@ -269,7 +269,7 @@ class PathsRenderModule: RenderModule {
                 // Clip the paths to the render sphere
                 let p0 = float3(myLastAnchor.worldLocation.transform.columns.3.x, myLastAnchor.worldLocation.transform.columns.3.y, myLastAnchor.worldLocation.transform.columns.3.z)
                 let p1 = float3(anchor.worldLocation.transform.columns.3.x, anchor.worldLocation.transform.columns.3.y, anchor.worldLocation.transform.columns.3.z)
-                let sphereIntersection = renderShpereIntersectionOfPath(withPoint0: p0, point1: p1, cameraProperties: theCameraProperties)
+                let sphereIntersection = renderShpereIntersectionOfPath(withPoint0: p0, point1: p1, cameraProperties: cameraProperties)
                 guard sphereIntersection.isInside else {
                     lastAnchor = anchor
                     continue
@@ -341,15 +341,52 @@ class PathsRenderModule: RenderModule {
                 pathUniforms?.pointee.modelMatrix = modelMatrix
                 
                 //
-                // Update the Effects uniform
+                // Update Effects uniform
                 //
                 
                 let effectsUniforms = effectsUniformBufferAddress?.assumingMemoryBound(to: AnchorEffectsUniforms.self).advanced(by: pathSegmentIndex)
-                effectsUniforms?.pointee.alpha = 1 // TODO: Implement
-                effectsUniforms?.pointee.glow = 0 // TODO: Implement
-                effectsUniforms?.pointee.tint = float3(1,0.25,0.25) // TODO: Implement
-                
-                lastAnchor = anchor
+                var hasSetAlpha = false
+                var hasSetGlow = false
+                var hasSetTint = false
+                var hasSetScale = false
+                if let effects = anchor.effects {
+                    for effect in effects {
+                        switch effect.effectType {
+                        case .alpha:
+                            if let value = effect.value(forTime: TimeInterval(cameraProperties.currentFrame)) as? Float {
+                                effectsUniforms?.pointee.alpha = value
+                                hasSetAlpha = true
+                            }
+                        case .glow:
+                            if let value = effect.value(forTime: TimeInterval(cameraProperties.currentFrame)) as? Float {
+                                effectsUniforms?.pointee.glow = value
+                                hasSetGlow = true
+                            }
+                        case .tint:
+                            if let value = effect.value(forTime: TimeInterval(cameraProperties.currentFrame)) as? float3 {
+                                effectsUniforms?.pointee.tint = value
+                                hasSetTint = true
+                            }
+                        case .scale:
+                            if let value = effect.value(forTime: TimeInterval(cameraProperties.currentFrame)) as? Float {
+                                effectsUniforms?.pointee.scale = value
+                                hasSetScale = true
+                            }
+                        }
+                    }
+                }
+                if !hasSetAlpha {
+                    effectsUniforms?.pointee.alpha = 1
+                }
+                if !hasSetGlow {
+                    effectsUniforms?.pointee.glow = 0
+                }
+                if !hasSetTint {
+                    effectsUniforms?.pointee.tint = float3(1,1,1)
+                }
+                if !hasSetScale {
+                    effectsUniforms?.pointee.scale = 1
+                }
                 
             }
             
@@ -395,6 +432,7 @@ class PathsRenderModule: RenderModule {
         if let effectsBuffer = effectsUniformBuffer {
             
             renderEncoder.pushDebugGroup("Draw Effects Uniforms")
+            renderEncoder.setVertexBuffer(effectsBuffer, offset: effectsUniformBufferOffset, index: Int(kBufferIndexAnchorEffectsUniforms.rawValue))
             renderEncoder.setFragmentBuffer(effectsBuffer, offset: effectsUniformBufferOffset, index: Int(kBufferIndexAnchorEffectsUniforms.rawValue))
             renderEncoder.popDebugGroup()
             

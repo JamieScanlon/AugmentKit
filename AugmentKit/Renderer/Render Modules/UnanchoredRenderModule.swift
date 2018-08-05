@@ -458,25 +458,26 @@ class UnanchoredRenderModule: RenderModule {
             var hasSetTint = false
             var hasSetScale = false
             if let effects = tracker.effects {
+                let currentTime: TimeInterval = Double(cameraProperties.currentFrame) / cameraProperties.frameRate
                 for effect in effects {
                     switch effect.effectType {
                     case .alpha:
-                        if let value = effect.value(forTime: TimeInterval(cameraProperties.currentFrame)) as? Float {
+                        if let value = effect.value(forTime: currentTime) as? Float {
                             effectsUniforms?.pointee.alpha = value
                             hasSetAlpha = true
                         }
                     case .glow:
-                        if let value = effect.value(forTime: TimeInterval(cameraProperties.currentFrame)) as? Float {
+                        if let value = effect.value(forTime: currentTime) as? Float {
                             effectsUniforms?.pointee.glow = value
                             hasSetGlow = true
                         }
                     case .tint:
-                        if let value = effect.value(forTime: TimeInterval(cameraProperties.currentFrame)) as? float3 {
+                        if let value = effect.value(forTime: currentTime) as? float3 {
                             effectsUniforms?.pointee.tint = value
                             hasSetTint = true
                         }
                     case .scale:
-                        if let value = effect.value(forTime: TimeInterval(cameraProperties.currentFrame)) as? Float {
+                        if let value = effect.value(forTime: currentTime) as? Float {
                             effectsUniforms?.pointee.scale = value
                             hasSetScale = true
                         }
@@ -587,54 +588,55 @@ class UnanchoredRenderModule: RenderModule {
                     environmentUniforms?.pointee.hasEnvironmentMap = 0
                 }
                 
-            }
-            
-            //
-            // Update Effects uniform
-            //
-            
-            let effectsUniforms = effectsUniformBufferAddress?.assumingMemoryBound(to: AnchorEffectsUniforms.self).advanced(by: adjustedIndex)
-            var hasSetAlpha = false
-            var hasSetGlow = false
-            var hasSetTint = false
-            var hasSetScale = false
-            if let effects = target.effects {
-                for effect in effects {
-                    switch effect.effectType {
-                    case .alpha:
-                        if let value = effect.value(forTime: TimeInterval(cameraProperties.currentFrame)) as? Float {
-                            effectsUniforms?.pointee.alpha = value
-                            hasSetAlpha = true
-                        }
-                    case .glow:
-                        if let value = effect.value(forTime: TimeInterval(cameraProperties.currentFrame)) as? Float {
-                            effectsUniforms?.pointee.glow = value
-                            hasSetGlow = true
-                        }
-                    case .tint:
-                        if let value = effect.value(forTime: TimeInterval(cameraProperties.currentFrame)) as? float3 {
-                            effectsUniforms?.pointee.tint = value
-                            hasSetTint = true
-                        }
-                    case .scale:
-                        if let value = effect.value(forTime: TimeInterval(cameraProperties.currentFrame)) as? Float {
-                            effectsUniforms?.pointee.scale = value
-                            hasSetScale = true
+                //
+                // Update Effects uniform
+                //
+                
+                let effectsUniforms = effectsUniformBufferAddress?.assumingMemoryBound(to: AnchorEffectsUniforms.self).advanced(by: adjustedIndex)
+                var hasSetAlpha = false
+                var hasSetGlow = false
+                var hasSetTint = false
+                var hasSetScale = false
+                if let effects = target.effects {
+                    let currentTime: TimeInterval = Double(cameraProperties.currentFrame) / cameraProperties.frameRate
+                    for effect in effects {
+                        switch effect.effectType {
+                        case .alpha:
+                            if let value = effect.value(forTime: currentTime) as? Float {
+                                effectsUniforms?.pointee.alpha = value
+                                hasSetAlpha = true
+                            }
+                        case .glow:
+                            if let value = effect.value(forTime: currentTime) as? Float {
+                                effectsUniforms?.pointee.glow = value
+                                hasSetGlow = true
+                            }
+                        case .tint:
+                            if let value = effect.value(forTime: currentTime) as? float3 {
+                                effectsUniforms?.pointee.tint = value
+                                hasSetTint = true
+                            }
+                        case .scale:
+                            if let value = effect.value(forTime: currentTime) as? Float {
+                                effectsUniforms?.pointee.scale = value
+                                hasSetScale = true
+                            }
                         }
                     }
                 }
-            }
-            if !hasSetAlpha {
-                effectsUniforms?.pointee.alpha = 1
-            }
-            if !hasSetGlow {
-                effectsUniforms?.pointee.glow = 0
-            }
-            if !hasSetTint {
-                effectsUniforms?.pointee.tint = float3(1,1,1)
-            }
-            if !hasSetScale {
-                effectsUniforms?.pointee.scale = 1
+                if !hasSetAlpha {
+                    effectsUniforms?.pointee.alpha = 1
+                }
+                if !hasSetGlow {
+                    effectsUniforms?.pointee.glow = 0
+                }
+                if !hasSetTint {
+                    effectsUniforms?.pointee.tint = float3(1,1,1)
+                }
+                if !hasSetScale {
+                    effectsUniforms?.pointee.scale = 1
+                }
+                
             }
             
         }

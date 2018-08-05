@@ -114,6 +114,7 @@ struct ColorInOut {
     float3 eyePosition;
     float3 normal;
     float2 texCoord [[ function_constant(has_any_map) ]];
+    ushort iid;
 };
 
 // MARK: - Pipeline Functions
@@ -161,7 +162,7 @@ constexpr sampler reflectiveEnvironmentSampler(address::clamp_to_edge, min_filte
 LightingParameters calculateParameters(ColorInOut in,
                                        constant SharedUniforms & uniforms,
                                        constant MaterialUniforms & materialUniforms,
-                                       constant EnvironmentUniforms & environmentUniforms,
+                                       constant EnvironmentUniforms *environmentUniforms,
                                        texture2d<float> baseColorMap [[ function_constant(has_base_color_map) ]],
                                        texture2d<float> normalMap [[ function_constant(has_normal_map) ]],
                                        texture2d<float> metallicMap [[ function_constant(has_metallic_map) ]],
@@ -388,7 +389,7 @@ float4 illuminate(LightingParameters parameters) {
 LightingParameters calculateParameters(ColorInOut in,
                                        constant SharedUniforms & sharedUniforms,
                                        constant MaterialUniforms & materialUniforms,
-                                       constant EnvironmentUniforms & environmentUniforms,
+                                       constant EnvironmentUniforms *environmentUniforms,
                                        texture2d<float> baseColorMap [[ function_constant(has_base_color_map) ]],
                                        texture2d<float> normalMap [[ function_constant(has_normal_map) ]],
                                        texture2d<float> metallicMap [[ function_constant(has_metallic_map) ]],
@@ -435,7 +436,7 @@ LightingParameters calculateParameters(ColorInOut in,
     parameters.viewDir = float3(in.eyePosition);
     parameters.reflectedVector = reflect(-parameters.viewDir, parameters.normal);
 //    parameters.reflectedColor = float3(0, 0, 0); //
-    parameters.reflectedColor = (environmentUniforms.hasEnvironmentMap == 1) ? environmentCubemap.sample(reflectiveEnvironmentSampler, parameters.reflectedVector).xyz : float3(0, 0, 0);
+    parameters.reflectedColor = (environmentUniforms[in.iid].hasEnvironmentMap == 1) ? environmentCubemap.sample(reflectiveEnvironmentSampler, parameters.reflectedVector).xyz : float3(0, 0, 0);
     
     parameters.roughness = has_roughness_map ? max(roughnessMap.sample(linearSampler, in.texCoord.xy).x, 0.001f) : materialUniforms.roughness;
     parameters.metalness = has_metallic_map ? metallicMap.sample(linearSampler, in.texCoord.xy).x : materialUniforms.metalness;
@@ -445,9 +446,9 @@ LightingParameters calculateParameters(ColorInOut in,
     parameters.emissionColor = has_emission_map ? emissionMap.sample(linearSampler, in.texCoord.xy).xyz : materialUniforms.emissionColor;
     parameters.ambientOcclusion = has_ambient_occlusion_map ? max(srgbToLinear(ambientOcclusionMap.sample(linearSampler, in.texCoord.xy)).x, 0.001f) : materialUniforms.ambientOcclusion;
     
-    parameters.directionalLightCol = environmentUniforms.directionalLightColor;
-    parameters.ambientLightCol = environmentUniforms.ambientLightColor;
-    parameters.lightDirection = -environmentUniforms.directionalLightDirection;
+    parameters.directionalLightCol = environmentUniforms[in.iid].directionalLightColor;
+    parameters.ambientLightCol = environmentUniforms[in.iid].ambientLightColor;
+    parameters.lightDirection = -environmentUniforms[in.iid].directionalLightDirection;
     
     // Light falls off based on how closely aligned the surface normal is to the light direction.
     // This is the dot product of the light direction vector and vertex normal.
@@ -476,7 +477,7 @@ LightingParameters calculateParameters(ColorInOut in,
 vertex ColorInOut anchorGeometryVertexTransform(Vertex in [[stage_in]],
                                                 constant SharedUniforms &sharedUniforms [[ buffer(kBufferIndexSharedUniforms) ]],
                                                 constant AnchorInstanceUniforms *anchorInstanceUniforms [[ buffer(kBufferIndexAnchorInstanceUniforms) ]],
-                                                constant AnchorEffectsUniforms &anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]],
+                                                constant AnchorEffectsUniforms *anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]],
                                                 uint vid [[vertex_id]],
                                                 ushort iid [[instance_id]]) {
     ColorInOut out;
@@ -488,7 +489,7 @@ vertex ColorInOut anchorGeometryVertexTransform(Vertex in [[stage_in]],
     float4x4 modelMatrix = anchorInstanceUniforms[iid].modelMatrix;
     
     // Apply effects that affect geometry
-    float4x4 scaleMatrix = float4x4(anchorEffectsUniforms.scale);
+    float4x4 scaleMatrix = float4x4(anchorEffectsUniforms[iid].scale);
     scaleMatrix[3][3] = 1;
     modelMatrix = modelMatrix * scaleMatrix;
     
@@ -511,6 +512,8 @@ vertex ColorInOut anchorGeometryVertexTransform(Vertex in [[stage_in]],
         out.texCoord = float2(in.texCoord.x, 1.0f - in.texCoord.y);
     }
     
+    out.iid = iid;
+    
     return out;
 }
 
@@ -521,7 +524,7 @@ vertex ColorInOut anchorGeometryVertexTransformSkinned(Vertex in [[stage_in]],
                                                        constant int &paletteStartIndex [[buffer(kBufferIndexMeshPaletteIndex)]],
                                                        constant int &paletteSize [[buffer(kBufferIndexMeshPaletteSize)]],
                                                        constant AnchorInstanceUniforms *anchorInstanceUniforms [[ buffer(kBufferIndexAnchorInstanceUniforms) ]],
-                                                       constant AnchorEffectsUniforms &anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]],
+                                                       constant AnchorEffectsUniforms *anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]],
                                                        uint vid [[vertex_id]],
                                                        ushort iid [[instance_id]]) {
     
@@ -534,7 +537,7 @@ vertex ColorInOut anchorGeometryVertexTransformSkinned(Vertex in [[stage_in]],
     float4x4 modelMatrix = anchorInstanceUniforms[iid].modelMatrix;
     
     // Apply effects that affect geometry
-    float4x4 scaleMatrix = float4x4(anchorEffectsUniforms.scale);
+    float4x4 scaleMatrix = float4x4(anchorEffectsUniforms[iid].scale);
     scaleMatrix[3][3] = 1;
     modelMatrix = modelMatrix * scaleMatrix;
     
@@ -571,6 +574,8 @@ vertex ColorInOut anchorGeometryVertexTransformSkinned(Vertex in [[stage_in]],
         out.texCoord = float2(in.texCoord.x, 1.0f - in.texCoord.y);
     }
     
+    out.iid = iid;
+    
     return out;
     
 }
@@ -580,8 +585,8 @@ vertex ColorInOut anchorGeometryVertexTransformSkinned(Vertex in [[stage_in]],
 fragment float4 anchorGeometryFragmentLighting(ColorInOut in [[stage_in]],
                                                constant SharedUniforms &sharedUniforms [[ buffer(kBufferIndexSharedUniforms) ]],
                                                constant MaterialUniforms &materialUniforms [[ buffer(kBufferIndexMaterialUniforms) ]],
-                                               constant EnvironmentUniforms &environmentUniforms [[ buffer(kBufferIndexEnvironmentUniforms) ]],
-                                               constant AnchorEffectsUniforms &anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]],
+                                               constant EnvironmentUniforms *environmentUniforms [[ buffer(kBufferIndexEnvironmentUniforms) ]],
+                                               constant AnchorEffectsUniforms *anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]],
                                                texture2d<float> baseColorMap [[ texture(kTextureIndexColor), function_constant(has_base_color_map) ]],
                                                texture2d<float> normalMap    [[ texture(kTextureIndexNormal), function_constant(has_normal_map) ]],
                                                texture2d<float> metallicMap  [[ texture(kTextureIndexMetallic), function_constant(has_metallic_map) ]],
@@ -600,6 +605,7 @@ fragment float4 anchorGeometryFragmentLighting(ColorInOut in [[stage_in]],
                                                ) {
     
     float4 final_color = float4(0);
+    ushort iid = in.iid;
     
     LightingParameters parameters = calculateParameters(in,
                                                         sharedUniforms,
@@ -631,7 +637,7 @@ fragment float4 anchorGeometryFragmentLighting(ColorInOut in [[stage_in]],
     float4 intermediate_color =  float4(parameters.baseColor * illuminate(parameters));
     
     // Apply effects
-    final_color = float4(intermediate_color.rgb * anchorEffectsUniforms.tint, intermediate_color.a * anchorEffectsUniforms.alpha);
+    final_color = float4(intermediate_color.rgb * anchorEffectsUniforms[iid].tint, intermediate_color.a * anchorEffectsUniforms[iid].alpha);
     
     return final_color;
     

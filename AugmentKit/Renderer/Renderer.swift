@@ -87,17 +87,19 @@ public struct CameraProperties {
     var viewportSizeDidChange: Bool
     var position: float3
     var currentFrame: UInt
+    var frameRate: Double = 60
     var arCamera: ARCamera
     var capturedImage: CVPixelBuffer
     var displayTransform: CGAffineTransform
     var rawFeaturePoints: ARPointCloud?
     
-    init(orientation: UIInterfaceOrientation, viewportSize: CGSize, viewportSizeDidChange: Bool, position: float3, currentFrame: UInt, frame: ARFrame) {
+    init(orientation: UIInterfaceOrientation, viewportSize: CGSize, viewportSizeDidChange: Bool, position: float3, currentFrame: UInt, frame: ARFrame, frameRate: Double = 60) {
         self.orientation = orientation
         self.viewportSize = viewportSize
         self.viewportSizeDidChange = viewportSizeDidChange
         self.position = position
         self.currentFrame = currentFrame
+        self.frameRate = frameRate
         self.arCamera = frame.camera
         self.capturedImage = frame.capturedImage
         self.displayTransform = frame.displayTransform(for: orientation, viewportSize: viewportSize)
@@ -206,11 +208,12 @@ public class Renderer: NSObject {
             return 0
         }
         
-        let elapsedTime = lastFrameTime + worldInitiationTime
-        let fps = 1.0/60.0
-        return UInt(floor(elapsedTime * fps))
+        let elapsedTime = lastFrameTime - worldInitiationTime
+        return UInt(floor(elapsedTime * frameRate))
     }
-    
+    public var frameRate: Double {
+        return 60
+    }
     public var currentGazeTransform: matrix_float4x4 {
         
         guard let currentFrame = session.currentFrame else {
@@ -343,7 +346,7 @@ public class Renderer: NSObject {
         }
         
         if worldInitiationTime == 0 {
-            worldInitiationTime = Date().timeIntervalSinceReferenceDate
+            worldInitiationTime = currentFrame.timestamp
         }
         
         lastFrameTime = currentFrame.timestamp
@@ -468,7 +471,7 @@ public class Renderer: NSObject {
             }
         }()
         
-        let cameraProperties = CameraProperties(orientation: orientation, viewportSize: viewportSize, viewportSizeDidChange: viewportSizeDidChange, position: cameraPosition, currentFrame: currentFrameNumber, frame: currentFrame)
+        let cameraProperties = CameraProperties(orientation: orientation, viewportSize: viewportSize, viewportSizeDidChange: viewportSizeDidChange, position: cameraPosition, currentFrame: currentFrameNumber, frame: currentFrame, frameRate: frameRate)
         
         //
         // Encode Cammand Buffer

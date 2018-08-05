@@ -150,3 +150,54 @@ public struct ConstantGlowEffect: AKEffect {
         return glowValue
     }
 }
+
+// MARK: - PulsingScaleEffect
+
+public struct PulsingScaleEffect: AKEffect, AKPulsingAnimatable {
+    public typealias Value = Any
+    public var minValue: Any
+    public var maxValue: Any
+    public var period: TimeInterval
+    public var periodOffset: TimeInterval = 0
+    public var effectType: AKEffectType = .scale
+    public init(minValue: Float, maxValue: Float, period: TimeInterval = 2, periodOffset: TimeInterval = 0) {
+        self.minValue = minValue
+        self.maxValue = maxValue
+        self.period = period
+        self.periodOffset = periodOffset
+    }
+}
+
+// MARK: - PulsingGlowEffect
+
+public struct PulsingGlowEffect: AKEffect, AKPulsingAnimatable {
+    public typealias Value = Any
+    public var minValue: Any
+    public var maxValue: Any
+    public var period: TimeInterval
+    public var periodOffset: TimeInterval = 0
+    public var effectType: AKEffectType = .glow
+    public init(minValue: Float, maxValue: Float, period: TimeInterval = 2, periodOffset: TimeInterval = 0) {
+        self.minValue = minValue
+        self.maxValue = maxValue
+        self.period = period
+        self.periodOffset = periodOffset
+    }
+}
+
+// MARK: - PulsingAlphaEffect
+
+public struct PulsingAlphaEffect: AKEffect, AKPulsingAnimatable {
+    public typealias Value = Any
+    public var minValue: Any
+    public var maxValue: Any
+    public var period: TimeInterval
+    public var periodOffset: TimeInterval = 0
+    public var effectType: AKEffectType = .alpha
+    public init(minValue: Float, maxValue: Float, period: TimeInterval = 2, periodOffset: TimeInterval = 0) {
+        self.minValue = minValue
+        self.maxValue = maxValue
+        self.period = period
+        self.periodOffset = periodOffset
+    }
+}

@@ -40,12 +40,13 @@ struct PathVertexIn {
 struct PathFragmentInOut {
     float4 position [[position]];
     float4 color;
+    ushort iid;
 };
 
 vertex PathFragmentInOut pathVertexShader(PathVertexIn in [[stage_in]],
                                           constant SharedUniforms &sharedUniforms [[ buffer(kBufferIndexSharedUniforms) ]],
                                           constant AnchorInstanceUniforms *anchorInstanceUniforms [[ buffer(kBufferIndexAnchorInstanceUniforms) ]],
-                                          constant AnchorEffectsUniforms &anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]],
+                                          constant AnchorEffectsUniforms *anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]],
                                           uint vid [[vertex_id]],
                                           ushort iid [[instance_id]]
                                           ){
@@ -59,7 +60,7 @@ vertex PathFragmentInOut pathVertexShader(PathVertexIn in [[stage_in]],
     float4x4 modelMatrix = anchorInstanceUniforms[iid].modelMatrix;
     
     // Apply effects that affect geometry
-    float4x4 scaleMatrix = float4x4(anchorEffectsUniforms.scale);
+    float4x4 scaleMatrix = float4x4(anchorEffectsUniforms[iid].scale);
     scaleMatrix[3][3] = 1;
     modelMatrix = modelMatrix * scaleMatrix;
     
@@ -68,6 +69,7 @@ vertex PathFragmentInOut pathVertexShader(PathVertexIn in [[stage_in]],
     
     // Calculate the position of our vertex in clip space and output for clipping and rasterization
     out.position = sharedUniforms.projectionMatrix * modelViewMatrix * position;
+    out.iid = iid;
     
     return out;
     
@@ -75,13 +77,14 @@ vertex PathFragmentInOut pathVertexShader(PathVertexIn in [[stage_in]],
 
 fragment float4 pathFragmentShader( PathFragmentInOut in [[stage_in]],
                                     constant MaterialUniforms &materialUniforms [[ buffer(kBufferIndexMaterialUniforms) ]],
-                                    constant AnchorEffectsUniforms &anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]]
+                                    constant AnchorEffectsUniforms *anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]]
                                    ){
     
+    ushort iid = in.iid;
     float4 intermediate_color = materialUniforms.baseColor;
     
     // Apply effects
-    float4 final_color = float4(intermediate_color.rgb * anchorEffectsUniforms.tint, intermediate_color.a * anchorEffectsUniforms.alpha);
+    float4 final_color = float4(intermediate_color.rgb * anchorEffectsUniforms[iid].tint, intermediate_color.a * anchorEffectsUniforms[iid].alpha);
     
     return final_color;
     

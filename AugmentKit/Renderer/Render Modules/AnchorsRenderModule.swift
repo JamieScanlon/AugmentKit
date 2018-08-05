@@ -348,7 +348,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                     }
                 }()
                 if let drawData = meshGPUDataForAnchorsByUUID[uuid]?.drawData.first {
-                    updatePuppetAnimation(from: drawData, frameNumber: cameraProperties.currentFrame)
+                    updatePuppetAnimation(from: drawData, frameNumber: cameraProperties.currentFrame, frameRate: cameraProperties.frameRate)
                 }
                 
                 //
@@ -411,25 +411,26 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                 var hasSetTint = false
                 var hasSetScale = false
                 if let effects = akAnchor.effects {
+                    let currentTime: TimeInterval = Double(cameraProperties.currentFrame) / cameraProperties.frameRate
                     for effect in effects {
                         switch effect.effectType {
                         case .alpha:
-                            if let value = effect.value(forTime: TimeInterval(cameraProperties.currentFrame)) as? Float {
+                            if let value = effect.value(forTime: currentTime) as? Float {
                                 effectsUniforms?.pointee.alpha = value
                                 hasSetAlpha = true
                             }
                         case .glow:
-                            if let value = effect.value(forTime: TimeInterval(cameraProperties.currentFrame)) as? Float {
+                            if let value = effect.value(forTime: currentTime) as? Float {
                                 effectsUniforms?.pointee.glow = value
                                 hasSetGlow = true
                             }
                         case .tint:
-                            if let value = effect.value(forTime: TimeInterval(cameraProperties.currentFrame)) as? float3 {
+                            if let value = effect.value(forTime: currentTime) as? float3 {
                                 effectsUniforms?.pointee.tint = value
                                 hasSetTint = true
                             }
                         case .scale:
-                            if let value = effect.value(forTime: TimeInterval(cameraProperties.currentFrame)) as? Float {
+                            if let value = effect.value(forTime: currentTime) as? Float {
                                 effectsUniforms?.pointee.scale = value
                                 hasSetScale = true
                             }
@@ -713,7 +714,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         
     }
     
-    private func updatePuppetAnimation(from drawData: DrawData, frameNumber: UInt) {
+    private func updatePuppetAnimation(from drawData: DrawData, frameNumber: UInt, frameRate: Double = 60) {
         
         let capacity = Constants.alignedPaletteSize * Constants.maxPaletteSize
         
@@ -725,7 +726,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         for skin in drawData.skins {
             if let animationIndex = skin.animationIndex {
                 let curAnimation = drawData.skeletonAnimations[animationIndex]
-                let worldPose = evaluateAnimation(curAnimation, at: (Double(frameNumber) * 1.0 / 60.0))
+                let worldPose = evaluateAnimation(curAnimation, at: (Double(frameNumber) * 1.0 / frameRate))
                 let matrixPalette = evaluateMatrixPalette(worldPose, skin)
                 
                 for k in 0..<matrixPalette.count {

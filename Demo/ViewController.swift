@@ -79,8 +79,11 @@ class ViewController: UIViewController {
             
             // Add a Gaze Target
             // Make it about 20cm square.
+            // Add an effect to make it fade in and out
             if let asset = MDLAssetTools.assetFromImage(inBundle: Bundle.main, withName: "Gaze_Target.png", extension: "", scale: 0.2) {
                 let gazeTarget = GazeTarget(withModelAsset: asset, withUserRelativeTransform: matrix_identity_float4x4)
+                let alphaEffect = PulsingAlphaEffect(minValue: 0.2, maxValue: 1)
+                gazeTarget.effects = [AnyEffect(alphaEffect)]
                 myWorld.add(gazeTarget: gazeTarget)
             }
             

@@ -181,7 +181,7 @@ class ModelIOTools {
     // MARK: Encoding Mesh Data
     
     // Encodes an MDLAsset from ModelID into a MeshGPUData object which is used internally to set up the render pipeline.
-    static func meshGPUData(from mdlAsset: MDLAsset, device: MTLDevice, textureBundle: Bundle, vertexDescriptor: MDLVertexDescriptor?) -> MeshGPUData {
+    static func meshGPUData(from mdlAsset: MDLAsset, device: MTLDevice, textureBundle: Bundle, vertexDescriptor: MDLVertexDescriptor?, frameRate: Double = 60) -> MeshGPUData {
         
         let textureLoader = MTKTextureLoader(device: device)
         
@@ -598,7 +598,7 @@ class ModelIOTools {
         // Animation frame times @ 60fps
         //
         
-        sampleTimes = sampleTimeInterval(start: mdlAsset.startTime, end: mdlAsset.endTime, frameInterval: 1.0 / 60.0)
+        sampleTimes = sampleTimeInterval(start: mdlAsset.startTime, end: mdlAsset.endTime, frameInterval: 1.0 / frameRate)
         
         //
         // Parse and store the mesh data

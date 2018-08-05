@@ -350,25 +350,26 @@ class PathsRenderModule: RenderModule {
                 var hasSetTint = false
                 var hasSetScale = false
                 if let effects = anchor.effects {
+                    let currentTime: TimeInterval = Double(cameraProperties.currentFrame) / cameraProperties.frameRate
                     for effect in effects {
                         switch effect.effectType {
                         case .alpha:
-                            if let value = effect.value(forTime: TimeInterval(cameraProperties.currentFrame)) as? Float {
+                            if let value = effect.value(forTime: currentTime) as? Float {
                                 effectsUniforms?.pointee.alpha = value
                                 hasSetAlpha = true
                             }
                         case .glow:
-                            if let value = effect.value(forTime: TimeInterval(cameraProperties.currentFrame)) as? Float {
+                            if let value = effect.value(forTime: currentTime) as? Float {
                                 effectsUniforms?.pointee.glow = value
                                 hasSetGlow = true
                             }
                         case .tint:
-                            if let value = effect.value(forTime: TimeInterval(cameraProperties.currentFrame)) as? float3 {
+                            if let value = effect.value(forTime: currentTime) as? float3 {
                                 effectsUniforms?.pointee.tint = value
                                 hasSetTint = true
                             }
                         case .scale:
-                            if let value = effect.value(forTime: TimeInterval(cameraProperties.currentFrame)) as? Float {
+                            if let value = effect.value(forTime: currentTime) as? Float {
                                 effectsUniforms?.pointee.scale = value
                                 hasSetScale = true
                             }

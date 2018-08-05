@@ -182,7 +182,7 @@ public struct AnimatedSkeleton: JointPathRemappable {
 
 // MARK: - Environment
 // MARK: EnvironmentData
-//  Stores any parameters rlated to the environment that may affect the rendered objects
+//  Stores any parameters related to the environment that may affect the rendered objects
 public struct EnvironmentData {
     var hasEnvironmentMap = false
     var environmentTexture: MTLTexture?

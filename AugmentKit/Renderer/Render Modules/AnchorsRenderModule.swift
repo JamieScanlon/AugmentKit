@@ -190,14 +190,9 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                 return
             }
             
-            if meshGPUData.drawData.count > 1 {
-                print("WARNING: More than one mesh was found. Currently only one mesh per anchor is supported.")
-                let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeModelNotSupported, userInfo: nil)
-                let newError = AKError.warning(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-                recordNewError(newError)
+            for (index, _) in meshGPUData.drawData.enumerated() {
+                createPipelineStates(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, meshIndex: index)
             }
-            
-            createPipelineStates(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination)
             
         }
         
@@ -301,7 +296,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             $0.key.uuidString < $1.key.uuidString
         }
         
-        var anchorIndex = 0
+        var anchorMeshIndex = 0
         
         for item in orderedArray {
             
@@ -314,13 +309,18 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                     continue
                 }
                 
-                // Flip Z axis to convert geometry from right handed to left handed
-                var coordinateSpaceTransform = matrix_identity_float4x4
-                coordinateSpaceTransform.columns.2.z = -1.0
+                // allDrawData contains the meshGPUData for all of the meshes associated with this anchor
+                guard let allDrawData = meshGPUDataForAnchorsByUUID[uuid]?.drawData else {
+                    continue
+                }
                 
-                // Apply the world transform (as defined in the imported model) if applicable
-                // We currenly only support a single mesh so we just use the first item
-                if let drawData = meshGPUDataForAnchorsByUUID[uuid]?.drawData.first {
+                for drawData in allDrawData {
+                
+                    // Flip Z axis to convert geometry from right handed to left handed
+                    var coordinateSpaceTransform = matrix_identity_float4x4
+                    coordinateSpaceTransform.columns.2.z = -1.0
+                    
+                    // Apply the world transform (as defined in the imported model) if applicable
                     let worldTransform: matrix_float4x4 = {
                         if drawData.worldTransformAnimations.count > 0 {
                             let index = Int(cameraProperties.currentFrame % UInt(drawData.worldTransformAnimations.count))
@@ -330,127 +330,126 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                         }
                     }()
                     coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
-                }
-                
-                let modelMatrix = arAnchor.transform * coordinateSpaceTransform
-                let anchorUniforms = anchorUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: anchorIndex)
-                anchorUniforms?.pointee.modelMatrix = modelMatrix
-                
-                //
-                // Update puppet animation
-                //
-                
-                let uuid: UUID = {
-                    if modelAssetsForAnchorsByUUID[uuid] != nil {
-                        return arAnchor.identifier
-                    } else {
-                        return generalUUID
-                    }
-                }()
-                if let drawData = meshGPUDataForAnchorsByUUID[uuid]?.drawData.first {
+                    
+                    let modelMatrix = arAnchor.transform * coordinateSpaceTransform
+                    let anchorUniforms = anchorUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: anchorMeshIndex)
+                    anchorUniforms?.pointee.modelMatrix = modelMatrix
+                    
+                    //
+                    // Update puppet animation
+                    //
+                    
+                    let uuid: UUID = {
+                        if modelAssetsForAnchorsByUUID[uuid] != nil {
+                            return arAnchor.identifier
+                        } else {
+                            return generalUUID
+                        }
+                    }()
                     updatePuppetAnimation(from: drawData, frameNumber: cameraProperties.currentFrame, frameRate: cameraProperties.frameRate)
-                }
-                
-                //
-                // Update Environment
-                //
-                
-                environmentData = {
-                    var myEnvironmentData = EnvironmentData()
-                    if let texture = environmentTextureByUUID[uuid] {
-                        myEnvironmentData.environmentTexture = texture
-                        myEnvironmentData.hasEnvironmentMap = true
+                    
+                    //
+                    // Update Environment
+                    //
+                    
+                    environmentData = {
+                        var myEnvironmentData = EnvironmentData()
+                        if let texture = environmentTextureByUUID[uuid] {
+                            myEnvironmentData.environmentTexture = texture
+                            myEnvironmentData.hasEnvironmentMap = true
+                            return myEnvironmentData
+                        } else {
+                            myEnvironmentData.hasEnvironmentMap = false
+                        }
                         return myEnvironmentData
+                    }()
+                    
+                    let environmentUniforms = environmentUniformBufferAddress?.assumingMemoryBound(to: EnvironmentUniforms.self).advanced(by: anchorMeshIndex)
+                    
+                    // Set up lighting for the scene using the ambient intensity if provided
+                    let ambientIntensity: Float = {
+                        if let lightEstimate = environmentProperties.lightEstimate {
+                            return Float(lightEstimate.ambientIntensity) / 1000.0
+                        } else {
+                            return 1
+                        }
+                    }()
+                    
+                    let ambientLightColor: vector_float3 = {
+                        if let lightEstimate = environmentProperties.lightEstimate {
+                            return getRGB(from: lightEstimate.ambientColorTemperature)
+                        } else {
+                            return vector3(0.5, 0.5, 0.5)
+                        }
+                    }()
+                    
+                    environmentUniforms?.pointee.ambientLightColor = ambientLightColor// * ambientIntensity
+                    
+                    var directionalLightDirection : vector_float3 = vector3(0.0, -1.0, 0.0)
+                    directionalLightDirection = simd_normalize(directionalLightDirection)
+                    environmentUniforms?.pointee.directionalLightDirection = directionalLightDirection
+                    
+                    let directionalLightColor: vector_float3 = vector3(0.6, 0.6, 0.6)
+                    environmentUniforms?.pointee.directionalLightColor = directionalLightColor * ambientIntensity
+                    
+                    if environmentData?.hasEnvironmentMap == true {
+                        environmentUniforms?.pointee.hasEnvironmentMap = 1
                     } else {
-                        myEnvironmentData.hasEnvironmentMap = false
+                        environmentUniforms?.pointee.hasEnvironmentMap = 0
                     }
-                    return myEnvironmentData
-                }()
-                
-                let environmentUniforms = environmentUniformBufferAddress?.assumingMemoryBound(to: EnvironmentUniforms.self).advanced(by: anchorIndex)
-                
-                // Set up lighting for the scene using the ambient intensity if provided
-                let ambientIntensity: Float = {
-                    if let lightEstimate = environmentProperties.lightEstimate {
-                        return Float(lightEstimate.ambientIntensity) / 1000.0
-                    } else {
-                        return 1
-                    }
-                }()
-                
-                let ambientLightColor: vector_float3 = {
-                    if let lightEstimate = environmentProperties.lightEstimate {
-                        return getRGB(from: lightEstimate.ambientColorTemperature)
-                    } else {
-                        return vector3(0.5, 0.5, 0.5)
-                    }
-                }()
-                
-                environmentUniforms?.pointee.ambientLightColor = ambientLightColor// * ambientIntensity
-                
-                var directionalLightDirection : vector_float3 = vector3(0.0, -1.0, 0.0)
-                directionalLightDirection = simd_normalize(directionalLightDirection)
-                environmentUniforms?.pointee.directionalLightDirection = directionalLightDirection
-                
-                let directionalLightColor: vector_float3 = vector3(0.6, 0.6, 0.6)
-                environmentUniforms?.pointee.directionalLightColor = directionalLightColor * ambientIntensity
-                
-                if environmentData?.hasEnvironmentMap == true {
-                    environmentUniforms?.pointee.hasEnvironmentMap = 1
-                } else {
-                    environmentUniforms?.pointee.hasEnvironmentMap = 0
-                }
-                
-                //
-                // Update Effects uniform
-                //
-                
-                let effectsUniforms = effectsUniformBufferAddress?.assumingMemoryBound(to: AnchorEffectsUniforms.self).advanced(by: anchorIndex)
-                var hasSetAlpha = false
-                var hasSetGlow = false
-                var hasSetTint = false
-                var hasSetScale = false
-                if let effects = akAnchor.effects {
-                    let currentTime: TimeInterval = Double(cameraProperties.currentFrame) / cameraProperties.frameRate
-                    for effect in effects {
-                        switch effect.effectType {
-                        case .alpha:
-                            if let value = effect.value(forTime: currentTime) as? Float {
-                                effectsUniforms?.pointee.alpha = value
-                                hasSetAlpha = true
-                            }
-                        case .glow:
-                            if let value = effect.value(forTime: currentTime) as? Float {
-                                effectsUniforms?.pointee.glow = value
-                                hasSetGlow = true
-                            }
-                        case .tint:
-                            if let value = effect.value(forTime: currentTime) as? float3 {
-                                effectsUniforms?.pointee.tint = value
-                                hasSetTint = true
-                            }
-                        case .scale:
-                            if let value = effect.value(forTime: currentTime) as? Float {
-                                effectsUniforms?.pointee.scale = value
-                                hasSetScale = true
+                    
+                    //
+                    // Update Effects uniform
+                    //
+                    
+                    let effectsUniforms = effectsUniformBufferAddress?.assumingMemoryBound(to: AnchorEffectsUniforms.self).advanced(by: anchorMeshIndex)
+                    var hasSetAlpha = false
+                    var hasSetGlow = false
+                    var hasSetTint = false
+                    var hasSetScale = false
+                    if let effects = akAnchor.effects {
+                        let currentTime: TimeInterval = Double(cameraProperties.currentFrame) / cameraProperties.frameRate
+                        for effect in effects {
+                            switch effect.effectType {
+                            case .alpha:
+                                if let value = effect.value(forTime: currentTime) as? Float {
+                                    effectsUniforms?.pointee.alpha = value
+                                    hasSetAlpha = true
+                                }
+                            case .glow:
+                                if let value = effect.value(forTime: currentTime) as? Float {
+                                    effectsUniforms?.pointee.glow = value
+                                    hasSetGlow = true
+                                }
+                            case .tint:
+                                if let value = effect.value(forTime: currentTime) as? float3 {
+                                    effectsUniforms?.pointee.tint = value
+                                    hasSetTint = true
+                                }
+                            case .scale:
+                                if let value = effect.value(forTime: currentTime) as? Float {
+                                    effectsUniforms?.pointee.scale = value
+                                    hasSetScale = true
+                                }
                             }
                         }
                     }
+                    if !hasSetAlpha {
+                        effectsUniforms?.pointee.alpha = 1
+                    }
+                    if !hasSetGlow {
+                        effectsUniforms?.pointee.glow = 0
+                    }
+                    if !hasSetTint {
+                        effectsUniforms?.pointee.tint = float3(1,1,1)
+                    }
+                    if !hasSetScale {
+                        effectsUniforms?.pointee.scale = 1
+                    }
+                    
+                    anchorMeshIndex += 1
+                    
                 }
-                if !hasSetAlpha {
-                    effectsUniforms?.pointee.alpha = 1
-                }
-                if !hasSetGlow {
-                    effectsUniforms?.pointee.glow = 0
-                }
-                if !hasSetTint {
-                    effectsUniforms?.pointee.tint = float3(1,1,1)
-                }
-                if !hasSetScale {
-                    effectsUniforms?.pointee.scale = 1
-                }
-                
-                anchorIndex += 1
                 
             }
             
@@ -537,10 +536,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             
             let anchorcount = (anchorsByUUID[uuid] ?? []).count
             
-            // While the Mesh GPU Data can techically contain multiple meshes each
-            // with their own pipline state, the current implementation of the
-            // renderer only supports one. So while we are saving all of the states
-            // in the myPipelineStates array, only the first will be used.
+            // Geomentry Draw Calls
             for (drawDataIdx, drawData) in meshGPUData.drawData.enumerated() {
                 
                 if drawDataIdx < myPipelineStates.count {
@@ -644,7 +640,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     private var anchorsByUUID = [UUID: [AKAugmentedAnchor]]()
     private var environmentTextureByUUID = [UUID: MTLTexture]()
     
-    private func createPipelineStates(forUUID uuid: UUID, withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider) {
+    private func createPipelineStates(forUUID uuid: UUID, withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, meshIndex: Int = 0) {
         
         guard let device = device else {
             print("Serious Error - device not found")
@@ -662,7 +658,13 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             return
         }
         
-        let myVertexDescriptor = meshGPUData.vertexDescriptors.first
+        let myVertexDescriptor: MTLVertexDescriptor? = {
+            if meshIndex < meshGPUData.vertexDescriptors.count {
+                return meshGPUData.vertexDescriptors[meshIndex]
+            } else {
+                return nil
+            }
+        }()
         
         guard let anchorVertexDescriptor = myVertexDescriptor else {
             print("Serious Error - Failed to create a MetalKit vertex descriptor from ModelIO.")
@@ -672,10 +674,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             return
         }
         
-        // While the Mesh GPU Data can techically contain multiple meshes each
-        // with their own pipline state, the current implementation of the
-        // renderer only supports one. So while we are saving all of the states
-        // in the myPipelineStates array, only the first will be used.
+        // Saving all of the states for each mesh in the myPipelineStates array.
         var myPipelineStates = [MTLRenderPipelineState]()
         for (_ , drawData) in meshGPUData.drawData.enumerated() {
             let anchorPipelineStateDescriptor = MTLRenderPipelineDescriptor()

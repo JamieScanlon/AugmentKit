@@ -334,6 +334,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                     let modelMatrix = arAnchor.transform * coordinateSpaceTransform
                     let anchorUniforms = anchorUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: anchorMeshIndex)
                     anchorUniforms?.pointee.modelMatrix = modelMatrix
+                    anchorUniforms?.pointee.normalMatrix = modelMatrix.normalMatrix
                     
                     //
                     // Update puppet animation
@@ -537,10 +538,10 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             let anchorcount = (anchorsByUUID[uuid] ?? []).count
             
             // Geomentry Draw Calls
-            for (drawDataIdx, drawData) in meshGPUData.drawData.enumerated() {
+            for (drawDataIndex, drawData) in meshGPUData.drawData.enumerated() {
                 
-                if drawDataIdx < myPipelineStates.count {
-                    renderEncoder.setRenderPipelineState(myPipelineStates[drawDataIdx])
+                if drawDataIndex < myPipelineStates.count {
+                    renderEncoder.setRenderPipelineState(myPipelineStates[drawDataIndex])
                     renderEncoder.setDepthStencilState(anchorDepthState)
                     
                     // Set any buffers fed into our render pipeline
@@ -548,7 +549,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                     renderEncoder.setVertexBuffer(paletteBuffer, offset: paletteBufferOffset, index: Int(kBufferIndexMeshPalettes.rawValue))
                     
                     var mutableDrawData = drawData
-                    mutableDrawData.instCount = anchorcount
+                    mutableDrawData.instanceCount = anchorcount
                     
                     // Set the mesh's vertex data buffers
                     encode(meshGPUData: meshGPUData, fromDrawData: mutableDrawData, with: renderEncoder, baseIndex: baseIndex)
@@ -658,13 +659,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             return
         }
         
-        let myVertexDescriptor: MTLVertexDescriptor? = {
-            if meshIndex < meshGPUData.vertexDescriptors.count {
-                return meshGPUData.vertexDescriptors[meshIndex]
-            } else {
-                return nil
-            }
-        }()
+        let myVertexDescriptor: MTLVertexDescriptor? = meshGPUData.vertexDescriptor
         
         guard let anchorVertexDescriptor = myVertexDescriptor else {
             print("Serious Error - Failed to create a MetalKit vertex descriptor from ModelIO.")

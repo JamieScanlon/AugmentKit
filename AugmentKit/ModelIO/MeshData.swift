@@ -43,9 +43,9 @@ import AugmentKitShader
 // MARK: DrawSubData
 //  Data for an individual submesh
 public struct DrawSubData {
-    var idxCount = 0
-    var idxType = MTLIndexType.uint16
-    
+    var indexCount = 0 // The number of indices in the submesh’s index buffer.
+    var indexType = MTLIndexType.uint16 // The data type for each element in the submesh’s index buffer.
+    var indexBuffer: MTLBuffer?
     var baseColorTexture: MTLTexture?
     var normalTexture: MTLTexture?
     var ambientOcclusionTexture: MTLTexture?
@@ -116,11 +116,8 @@ public struct DrawSubData {
 // MARK: DrawData
 //  Data for an individual mesh
 public struct DrawData {
-    var vbCount = 0
-    var vbStartIdx = 0
-    var ibStartIdx = 0
-    var instBufferStartIdx = 0
-    var instCount = 0
+    var vertexBuffers = [MTLBuffer]()
+    var instanceCount = 0 // Used in the render pipeline to store the number of instances of this type to render
     var paletteStartIndex: Int?
     var paletteSize = 0
     var subData = [DrawSubData]()
@@ -147,10 +144,8 @@ public struct DrawData {
 // MARK: DrawData
 //  Data for an object containing one or more meshes
 public struct MeshGPUData {
-    var vertexBuffers = [MTLBuffer]()
-    var vertexDescriptors = [MTLVertexDescriptor]()
-    var indexBuffers = [MTLBuffer]()
     var drawData = [DrawData]()
+    var vertexDescriptor: MTLVertexDescriptor?
 }
 
 // MARK: - Puppet Animation (Not currently supported by renderer)

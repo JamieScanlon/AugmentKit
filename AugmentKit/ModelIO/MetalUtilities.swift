@@ -91,8 +91,8 @@ class MetalUtilities {
         return constantValues
     }
     
-    static func convertToMTLIndexType(from mdlIdxBitDepth: MDLIndexBitDepth) -> MTLIndexType {
-        switch mdlIdxBitDepth {
+    static func convertToMTLIndexType(from mdlIndexBitDepth: MDLIndexBitDepth) -> MTLIndexType {
+        switch mdlIndexBitDepth {
         case .uInt16:
             return .uint16
         case .uInt32:
@@ -122,7 +122,7 @@ class MetalUtilities {
     //  Create a vertex descriptor for our Metal pipeline. Specifies the layout of vertices the
     //  pipeline should expect.
     
-    //  TODO: To maximize pipeline efficiency, The layout should keep attributes used to calculate
+    //  To maximize pipeline efficiency, The layout should keep attributes used to calculate
     //  vertex shader output position (world position, skinning, tweening weights) separate from other
     //  attributes (texture coordinates, normals).
     static func createStandardVertexDescriptor() -> MDLVertexDescriptor {
@@ -136,42 +136,47 @@ class MetalUtilities {
         // -------- Buffer 0 --------
         
         // Positions.
-        geometryVertexDescriptor.attributes[0].format = .float3 // 12 bytes
-        geometryVertexDescriptor.attributes[0].offset = 0
-        geometryVertexDescriptor.attributes[0].bufferIndex = Int(kBufferIndexMeshPositions.rawValue)
+        geometryVertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)].format = .float3 // 12 bytes
+        geometryVertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)].offset = 0
+        geometryVertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)].bufferIndex = Int(kBufferIndexMeshPositions.rawValue)
+        
+        // JointIndices (Puppet animations)
+        geometryVertexDescriptor.attributes[Int(kVertexAttributeJointIndices.rawValue)].format = .ushort4 // 8 bytes
+        geometryVertexDescriptor.attributes[Int(kVertexAttributeJointIndices.rawValue)].offset = 20
+        geometryVertexDescriptor.attributes[Int(kVertexAttributeJointIndices.rawValue)].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
+        
+        // JointWeights (Puppet animations)
+        geometryVertexDescriptor.attributes[Int(kVertexAttributeJointWeights.rawValue)].format = .float4 // 16 bytes
+        geometryVertexDescriptor.attributes[Int(kVertexAttributeJointWeights.rawValue)].offset = 28
+        geometryVertexDescriptor.attributes[Int(kVertexAttributeJointWeights.rawValue)].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
         
         // -------- Buffer 1 --------
         
         // Texture coordinates.
-        geometryVertexDescriptor.attributes[1].format = .float2 // 8 bytes
-        geometryVertexDescriptor.attributes[1].offset = 0
-        geometryVertexDescriptor.attributes[1].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
+        geometryVertexDescriptor.attributes[Int(kVertexAttributeTexcoord.rawValue)].format = .float2 // 8 bytes
+        geometryVertexDescriptor.attributes[Int(kVertexAttributeTexcoord.rawValue)].offset = 0
+        geometryVertexDescriptor.attributes[Int(kVertexAttributeTexcoord.rawValue)].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
         
         // Normals.
-        geometryVertexDescriptor.attributes[2].format = .float3 // 12 bytes
-        geometryVertexDescriptor.attributes[2].offset = 8
-        geometryVertexDescriptor.attributes[2].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
+        geometryVertexDescriptor.attributes[Int(kVertexAttributeNormal.rawValue)].format = .float3 // 12 bytes
+        geometryVertexDescriptor.attributes[Int(kVertexAttributeNormal.rawValue)].offset = 8
+        geometryVertexDescriptor.attributes[Int(kVertexAttributeNormal.rawValue)].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
         
-        // JointIndices (Puppet animations)
-        geometryVertexDescriptor.attributes[3].format = .ushort4 // 8 bytes
-        geometryVertexDescriptor.attributes[3].offset = 20
-        geometryVertexDescriptor.attributes[3].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
-        
-        // JointWeights (Puppet animations)
-        geometryVertexDescriptor.attributes[4].format = .float4 // 16 bytes
-        geometryVertexDescriptor.attributes[4].offset = 28
-        geometryVertexDescriptor.attributes[4].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
+        // Tangent
+        geometryVertexDescriptor.attributes[Int(kVertexAttributeTangent.rawValue)].format = .float3 // 12 bytes
+        geometryVertexDescriptor.attributes[Int(kVertexAttributeTangent.rawValue)].offset = 20
+        geometryVertexDescriptor.attributes[Int(kVertexAttributeTangent.rawValue)].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
         
         //
         // Layouts
         //
         
-        // Position Buffer Layout
-        geometryVertexDescriptor.layouts[0].stride = 12
+        // Vertex Position Buffer Layout
+        geometryVertexDescriptor.layouts[0].stride = 36
         geometryVertexDescriptor.layouts[0].stepRate = 1
         geometryVertexDescriptor.layouts[0].stepFunction = .perVertex
         
-        // Generic Attribute Buffer Layout
+        // Pixel Shader Buffer Layout
         geometryVertexDescriptor.layouts[1].stride = 44
         geometryVertexDescriptor.layouts[1].stepRate = 1
         geometryVertexDescriptor.layouts[1].stepFunction = .perVertex
@@ -187,6 +192,7 @@ class MetalUtilities {
         (vertexDescriptor.attributes[Int(kVertexAttributeNormal.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributeNormal
         (vertexDescriptor.attributes[Int(kVertexAttributeJointIndices.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributeJointIndices
         (vertexDescriptor.attributes[Int(kVertexAttributeJointWeights.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributeJointWeights
+        (vertexDescriptor.attributes[Int(kVertexAttributeTangent.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributeTangent
         
         return vertexDescriptor
         
@@ -260,6 +266,11 @@ public extension float4x4 {
             return false
         }
         return true
+    }
+    
+    public var normalMatrix: float3x3 {
+        let upperLeft = float3x3(self[0].xyz, self[1].xyz, self[2].xyz)
+        return upperLeft.transpose.inverse
     }
     
 }
@@ -356,7 +367,7 @@ extension MDLObject {
     }
     
     override open var debugDescription: String {
-        var myDescription = "<\(type(of: self)): \(Unmanaged.passUnretained(self).toOpaque())> Name: \(name), Path:\(path), Hidden: \(hidden), Components: \(components)"
+        var myDescription = "<\(type(of: self)): \(Unmanaged.passUnretained(self).toOpaque())> Name: \(name), Path:\(path), Hidden: \(hidden), Components: \(components), Transform: \(transform?.debugDescription ?? "none")"
         for childIndex in 0..<children.count {
             myDescription += "\n"
             myDescription += "    Child \(childIndex) - \(children[childIndex])"
@@ -409,7 +420,7 @@ extension MDLMesh {
     }
     
     override open var debugDescription: String {
-        var myDescription = "\(super.debugDescription), Submeshes: \(submeshes?.debugDescription ?? "none"), VertexCount: \(vertexCount), VertexDescriptor: \(vertexDescriptor)"
+        var myDescription = "\(super.debugDescription), Submeshes: \(submeshes?.debugDescription ?? "none"), VertexCount: \(vertexCount), VertexDescriptor: \(vertexDescriptor), Transform: \(transform?.debugDescription ?? "none")"
         for childIndex in 0..<children.count {
             myDescription += "\n"
             myDescription += "    Child \(childIndex) - \(children[childIndex])"

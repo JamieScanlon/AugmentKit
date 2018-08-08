@@ -97,14 +97,14 @@ class CameraPlaneRenderModule: RenderModule {
         let imagePlaneVertexDescriptor = MTLVertexDescriptor()
         
         // Positions.
-        imagePlaneVertexDescriptor.attributes[0].format = .float2
-        imagePlaneVertexDescriptor.attributes[0].offset = 0
-        imagePlaneVertexDescriptor.attributes[0].bufferIndex = Int(kBufferIndexMeshPositions.rawValue)
+        imagePlaneVertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)].format = .float2
+        imagePlaneVertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)].offset = 0
+        imagePlaneVertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)].bufferIndex = Int(kBufferIndexMeshPositions.rawValue)
         
         // Texture coordinates.
-        imagePlaneVertexDescriptor.attributes[1].format = .float2
-        imagePlaneVertexDescriptor.attributes[1].offset = 8
-        imagePlaneVertexDescriptor.attributes[1].bufferIndex = Int(kBufferIndexMeshPositions.rawValue)
+        imagePlaneVertexDescriptor.attributes[Int(kVertexAttributeTexcoord.rawValue)].format = .float2
+        imagePlaneVertexDescriptor.attributes[Int(kVertexAttributeTexcoord.rawValue)].offset = 8
+        imagePlaneVertexDescriptor.attributes[Int(kVertexAttributeTexcoord.rawValue)].bufferIndex = Int(kBufferIndexMeshPositions.rawValue)
         
         // Buffer Layout
         imagePlaneVertexDescriptor.layouts[0].stride = 16

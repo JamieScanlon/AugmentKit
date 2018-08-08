@@ -105,39 +105,40 @@ extension RenderModule {
     func encode(meshGPUData: MeshGPUData, fromDrawData drawData: DrawData, with renderEncoder: MTLRenderCommandEncoder, baseIndex: Int = 0, environmentData: EnvironmentData? = nil) {
         
         // Set mesh's vertex buffers
-        for vtxBufferIdx in 0..<drawData.vbCount {
-            renderEncoder.setVertexBuffer(meshGPUData.vertexBuffers[drawData.vbStartIdx + vtxBufferIdx], offset: 0, index: vtxBufferIdx)
+        for (index, vertexBuffer) in drawData.vertexBuffers.enumerated() {
+            renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: index)
         }
         
         // Draw each submesh of our mesh
-        for drawDataSubIndex in 0..<drawData.subData.count {
+        for submeshData in drawData.subData {
             
-            guard drawData.instCount > 0 else {
+            guard drawData.instanceCount > 0 else {
                 continue
             }
             
-            let submeshData = drawData.subData[drawDataSubIndex]
+            guard let indexBuffer = submeshData.indexBuffer else {
+                continue
+            }
             
             // Sets the weight of values sampled from a texture vs value from a material uniform
             // for a transition between quality levels
             //            submeshData.computeTextureWeights(for: currentQualityLevel, with: globalMapWeight)
             
-            let idxCount = Int(submeshData.idxCount)
-            let idxType = submeshData.idxType
-            let ibOffset = drawData.ibStartIdx
-            let indexBuffer = meshGPUData.indexBuffers[ibOffset + drawDataSubIndex]
+            let indexCount = Int(submeshData.indexCount)
+            let indexType = submeshData.indexType
+            
             var materialUniforms = submeshData.materialUniforms
             
             // Set textures based off material flags
             encodeTextures(for: renderEncoder, subData: submeshData, environmentData: environmentData)
             
             renderEncoder.setFragmentBytes(&materialUniforms, length: RenderModuleConstants.alignedMaterialSize, index: Int(kBufferIndexMaterialUniforms.rawValue))
-            renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: idxCount, indexType: idxType, indexBuffer: indexBuffer, indexBufferOffset: 0, instanceCount: drawData.instCount, baseVertex: 0, baseInstance: baseIndex)
+            renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: indexCount, indexType: indexType, indexBuffer: indexBuffer, indexBufferOffset: 0, instanceCount: drawData.instanceCount, baseVertex: 0, baseInstance: baseIndex)
         }
         
         // Set the palette offset into
-        if var paletteStartIdx = drawData.paletteStartIndex {
-            renderEncoder.setVertexBytes(&paletteStartIdx, length: 8, index: Int(kBufferIndexMeshPaletteIndex.rawValue))
+        if var paletteStartIndex = drawData.paletteStartIndex {
+            renderEncoder.setVertexBytes(&paletteStartIndex, length: 8, index: Int(kBufferIndexMeshPaletteIndex.rawValue))
             var paletteSize = drawData.paletteSize
             renderEncoder.setVertexBytes(&paletteSize, length: 8, index: Int(kBufferIndexMeshPaletteSize.rawValue))
         }
@@ -244,20 +245,6 @@ extension RenderModule {
         }
         
         return nil
-    }
-    
-    func createMetalVertexDescriptor(withFirstModelIOVertexDescriptorIn vertexDescriptors: [MDLVertexDescriptor]) -> MTLVertexDescriptor? {
-        guard let vertexDescriptor = vertexDescriptors.first else {
-            print("WARNING: No Vertex Descriptors found!")
-            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeMissingVertexDescriptors, userInfo: nil)
-            let newError = AKError.warning(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-            recordNewError(newError)
-            return nil
-        }
-        guard let mtlVertexDescriptor = MTKMetalVertexDescriptorFromModelIO(vertexDescriptor) else {
-            return nil
-        }
-        return mtlVertexDescriptor
     }
     
     // MARK: Render Distance

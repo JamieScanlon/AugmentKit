@@ -193,7 +193,7 @@ class UnanchoredRenderModule: RenderModule {
                 recordNewError(newError)
             }
             
-            let myTrackerVertexDescriptor = trackerMeshGPUData.vertexDescriptors.first
+            let myTrackerVertexDescriptor = trackerMeshGPUData.vertexDescriptor
             
             guard let trackerVertexDescriptor = myTrackerVertexDescriptor else {
                 print("Serious Error - Failed to create a MetalKit vertex descriptor from ModelIO.")
@@ -263,7 +263,7 @@ class UnanchoredRenderModule: RenderModule {
                 recordNewError(newError)
             }
             
-            let myTargetVertexDescriptor = targetMeshGPUData.vertexDescriptors.first
+            let myTargetVertexDescriptor = targetMeshGPUData.vertexDescriptor
             
             guard let targetVertexDescriptor = myTargetVertexDescriptor else {
                 print("Serious Error - Failed to create a MetalKit vertex descriptor from ModelIO.")
@@ -413,6 +413,7 @@ class UnanchoredRenderModule: RenderModule {
                 
                 let trackerUniforms = unanchoredUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: trackerIndex)
                 trackerUniforms?.pointee.modelMatrix = modelMatrix
+                trackerUniforms?.pointee.normalMatrix = modelMatrix.normalMatrix
             }
             
             //
@@ -554,6 +555,7 @@ class UnanchoredRenderModule: RenderModule {
                 
                 let targetUniforms = unanchoredUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: adjustedIndex)
                 targetUniforms?.pointee.modelMatrix = modelMatrix
+                targetUniforms?.pointee.normalMatrix = modelMatrix.normalMatrix
                 
                 //
                 // Update Environment
@@ -700,17 +702,17 @@ class UnanchoredRenderModule: RenderModule {
         
         if let trackerMeshGPUData = trackerMeshGPUData {
             
-            for (drawDataIdx, drawData) in trackerMeshGPUData.drawData.enumerated() {
+            for (drawDataIndex, drawData) in trackerMeshGPUData.drawData.enumerated() {
                 
-                if drawDataIdx < unanchoredPipelineStates.count {
-                    renderEncoder.setRenderPipelineState(unanchoredPipelineStates[drawDataIdx])
+                if drawDataIndex < unanchoredPipelineStates.count {
+                    renderEncoder.setRenderPipelineState(unanchoredPipelineStates[drawDataIndex])
                     renderEncoder.setDepthStencilState(unanchoredDepthState)
                     
                     // Set any buffers fed into our render pipeline
                     renderEncoder.setVertexBuffer(unanchoredUniformBuffer, offset: unanchoredUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
                     
                     var mutableDrawData = drawData
-                    mutableDrawData.instCount = trackerInstanceCount
+                    mutableDrawData.instanceCount = trackerInstanceCount
                     
                     // Set the mesh's vertex data buffers
                     encode(meshGPUData: trackerMeshGPUData, fromDrawData: mutableDrawData, with: renderEncoder)
@@ -722,17 +724,17 @@ class UnanchoredRenderModule: RenderModule {
         }
         
         if let targetMeshGPUData = targetMeshGPUData {
-            for (drawDataIdx, drawData) in targetMeshGPUData.drawData.enumerated() {
+            for (drawDataIndex, drawData) in targetMeshGPUData.drawData.enumerated() {
                 
-                if drawDataIdx < unanchoredPipelineStates.count {
-                    renderEncoder.setRenderPipelineState(unanchoredPipelineStates[drawDataIdx + targetMeshGPUData.drawData.count])
+                if drawDataIndex < unanchoredPipelineStates.count {
+                    renderEncoder.setRenderPipelineState(unanchoredPipelineStates[drawDataIndex + targetMeshGPUData.drawData.count])
                     renderEncoder.setDepthStencilState(unanchoredDepthState)
                     
                     // Set any buffers fed into our render pipeline
                     renderEncoder.setVertexBuffer(unanchoredUniformBuffer, offset: unanchoredUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
                     
                     var mutableDrawData = drawData
-                    mutableDrawData.instCount = targetInstanceCount
+                    mutableDrawData.instanceCount = targetInstanceCount
                     
                     // Set the mesh's vertex data buffers
                     encode(meshGPUData: targetMeshGPUData, fromDrawData: mutableDrawData, with: renderEncoder, baseIndex: trackerInstanceCount)

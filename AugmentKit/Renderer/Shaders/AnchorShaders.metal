@@ -83,8 +83,6 @@ constant bool has_clearcoat_map [[ function_constant(kFunctionConstantClearcoatM
 constant bool has_clearcoatGloss_map [[ function_constant(kFunctionConstantClearcoatGlossMapIndex) ]];
 constant bool has_any_map = has_base_color_map || has_normal_map || has_metallic_map || has_roughness_map || has_ambient_occlusion_map || has_emission_map || has_subsurface_map || has_specular_map || has_specularTint_map || has_anisotropic_map || has_sheen_map || has_sheenTint_map || has_clearcoat_map || has_clearcoatGloss_map;
 
-constant float PI = 3.1415926535897932384626433832795;
-
 // MARK: - Structs
 
 // MARK: Anchors Vertex In
@@ -95,8 +93,8 @@ struct Vertex {
     float3 normal        [[attribute(kVertexAttributeNormal)]];
     ushort4 jointIndices [[attribute(kVertexAttributeJointIndices)]];
     float4 jointWeights  [[attribute(kVertexAttributeJointWeights)]];
-//    float3 tangent;
-//    float3 bitangent;
+    float3 tangent       [[attribute(kVertexAttributeTangent)]];
+//    float3 bitangent
 //    float3 anisotropy,
 //    float3 binormal,
 //    float3 edgeCrease,
@@ -113,6 +111,8 @@ struct ColorInOut {
     float4 position [[position]];
     float3 eyePosition;
     float3 normal;
+    float3 bitangent;
+    float3 tangent;
     float2 texCoord [[ function_constant(has_any_map) ]];
     ushort iid;
 };
@@ -139,9 +139,9 @@ struct LightingParameters {
     float   nDotv;
     float   nDotl;
     float   lDoth;
-    float   fresnelL;
-    float   fresnelV;
-    float   fresnelH;
+    float   fresnelNoL;
+    float   fresnelNoV;
+    float   fresnelLoH;
     float   metalness;
     float   roughness;
     float   subsurface;
@@ -184,7 +184,7 @@ float4 linearToSrgba(float4 c);
 inline float Fresnel(float dotProduct);
 inline float sqr(float a);
 float smithG_GGX(float nDotv, float alphaG);
-float GTR1(float nDoth, float a);
+float TrowbridgeReitzNDF(float nDoth, float a);
 float GTR2_aniso(float nDoth, float HdotX, float HdotY, float ax, float ay);
 float3 computeNormalMap(ColorInOut in, texture2d<float> normalMapTexture);
 float3 computeDiffuse(LightingParameters parameters);
@@ -204,41 +204,47 @@ float4 linearToSrgba(float4 c) {
 }
 
 // Schlick Fresnel Approximation:
-// F0 + (1 - F0) * pow(1.0 - dotProduct, 5.0)
+// F0 + (F90 - F0) * pow(1.0 - dotProduct, 5.0)
+//
 // F0 is the Fresnel of the material at 0º (normal incidence)
-// is approximated by a constant 0.04 (water/glass)
-inline float Fresnel(float dotProduct) {
-    return 0.04 + (1.0 - 0.04) * pow(clamp(1.0 - dotProduct, 0.0, 1.0), 5.0);
+// F0 can be approximated by a constant 0.04 (water/glass)
+//
+// F90 is the Fresnel of the material at 90º
+// F90 can be approximated by 1.0 because Fresnel goes to 1 as the angle of incidence goes to 90º
+//
+inline float Fresnel(float F0, float F90, float dotProduct) {
+    return F0 + (F90 - F0) * pow(clamp(1.0 - dotProduct, 0.0, 1.0), 5.0);
 }
 
 inline float sqr(float a) {
     return a * a;
 }
 
-// dotProduct os either nDotl or nDotv
-// roughnessAlpha
-float smithG_GGX(float dotProduct, float roughnessAlpha) {
-    float a = roughnessAlpha * roughnessAlpha;
-    float b = dotProduct * dotProduct;
-    return 1.0 / (dotProduct + sqrt(a + b - a*b));
+// dotProduct is either nDotl or nDotv
+float smithG_GGX(float dotProduct, float roughness) {
+    float a² = sqr(roughness);
+    float b = sqr(dotProduct);
+    return 1.0 / (dotProduct + sqrt(a² + b - a² * b));
 }
 
 // Generalized Trowbridge-Reitz
-float GTR1(float nDoth, float a) {
-    if (a >= 1.0) return 1.0/PI;
-    float a2 = a*a;
-    float t = 1.0 + (a2-1.0) * nDoth * nDoth;
-    return (a2-1.0) / (PI*log(a2)*t);
+// DGGX(h) = α² / π((n⋅h)²(α²−1)+1)²
+float TrowbridgeReitzNDF(float nDoth, float roughness) {
+    if (roughness >= 1.0) return 1.0 / M_PI_F;
+    float a² = sqr(roughness);
+    float d = sqr(nDoth) * (a² - 1) + 1;
+    return a² / (M_PI_F * sqr(d));
 }
 
 // Generalized Trowbridge-Reitz, with GGX divided out
 float GTR2_aniso(float nDoth, float HdotX, float HdotY, float ax, float ay) {
-    return 1.0 / ( PI * ax*ay * sqr( sqr(HdotX/ax) + sqr(HdotY/ay) + nDoth * nDoth ));
+    return 1.0 / ( M_PI_F * ax*ay * sqr( sqr(HdotX/ax) + sqr(HdotY/ay) + nDoth * nDoth ));
 }
 
 float3 computeNormalMap(ColorInOut in, texture2d<float> normalMapTexture) {
     float4 normalMap = float4((float4(normalMapTexture.sample(nearestSampler, float2(in.texCoord)).rgb, 0.0)));
-    return float3(normalize(in.normal * normalMap.z));
+    float3x3 TBN(in.tangent, in.bitangent, in.normal);
+    return float3(normalize(TBN * normalMap.xyz));
 }
 
 float3 computeDiffuse(LightingParameters parameters) {
@@ -248,22 +254,30 @@ float3 computeDiffuse(LightingParameters parameters) {
         return float3(0);
     }
     
+    // Method: 1
+    
     // Diffuse fresnel - go from 1 at normal incidence to .5 at grazing
     // and mix in diffuse retro-reflection based on roughness
-    float Fd90 = 0.5 + 2.0 * sqr(parameters.lDoth) * parameters.roughness;
-    float Fd = mix(1.0, Fd90, parameters.fresnelL) + mix(1.0, Fd90, parameters.fresnelV);
-
-    // Based on Hanrahan-Krueger brdf approximation of isotropic bssrdf
-    // 1.25 scale is used to (roughly) preserve albedo
-    // Fss90 used to "flatten" retroreflection based on roughness
-    float Fss90 = sqr(parameters.lDoth) * parameters.roughness;
-    float Fss = mix(1.0, Fss90, parameters.fresnelL) * mix(1.0, Fss90, parameters.fresnelV);
-    // 1.25 scale is used to (roughly) preserve albedo
-    float ss = 1.25 * (Fss * (1.0 / (parameters.nDotl + parameters.nDotv) - 0.5) + 0.5);
-
-    float subsurface = 0.1; // TODO: parameters.subsurface
-    float3 diffuseOutput = ((1.0/PI) * mix(Fd, ss, subsurface) * parameters.baseColor.rgb) * (1.0 - parameters.metalness);
-    return parameters.directionalLightCol * diffuseOutput;
+//    float Fd90 = 0.5 + 2.0 * sqr(parameters.lDoth) * parameters.roughness;
+//    float Fd = mix(1.0, Fd90, parameters.fresnelNoL) + mix(1.0, Fd90, parameters.fresnelNoV);
+//
+//    // Based on Hanrahan-Krueger brdf approximation of isotropic bssrdf
+//    // 1.25 scale is used to (roughly) preserve albedo
+//    // Fss90 used to "flatten" retroreflection based on roughness
+//    float Fss90 = sqr(parameters.lDoth) * parameters.roughness;
+//    float Fss = mix(1.0, Fss90, parameters.fresnelNoL) * mix(1.0, Fss90, parameters.fresnelNoV);
+//    // 1.25 scale is used to (roughly) preserve albedo
+//    float ss = 1.25 * (Fss * (1.0 / (parameters.nDotl + parameters.nDotv) - 0.5) + 0.5);
+//
+//    float subsurface = 0.1; // TODO: parameters.subsurface
+//    float3 diffuseOutput = ((1.0/M_PI_F) * mix(Fd, ss, subsurface) * parameters.baseColor.rgb) * (1.0 - parameters.metalness);
+//    float3 light_color = float3(2.0 * M_PI_F * 0.3) * (parameters.nDotl + parameters.emissionColor - parameters.ambientOcclusion);
+//    return parameters.directionalLightCol * diffuseOutput; // * light_color;
+    
+    // Method: 2
+    float3 diffuseLightColor = float3(3) + parameters.ambientOcclusion;
+    float3 diffuseColor = (parameters.baseColor.rgb / M_PI_F) * (1.0 - parameters.metalness);
+    return diffuseColor * parameters.nDotl * diffuseLightColor;
     
 }
 
@@ -277,58 +291,75 @@ float3 computeSpecular(LightingParameters parameters) {
     // BDRF is a function of light direction and view (camera/eye) direction
     // See: https://www.youtube.com/watch?v=j-A0mwsJRmk
     
+    // Method 1
+
     //
     // Cook–Torrance formula
     // see: https://en.m.wikipedia.org/wiki/Specular_highlight#Cook–Torrance_model
     //
-    
+
     // Roughness alpha
-    
-    // Method 1
-    float specularRoughness = parameters.roughness;
-    specularRoughness = max(specularRoughness, 0.01f);
-    specularRoughness = pow(specularRoughness, 3.0f);
+//    float specularRoughness = parameters.roughness;
+//    specularRoughness = max(specularRoughness, 0.01f);
+//    specularRoughness = pow(specularRoughness, 3.0f);
+//
+//    float aspect = sqrt(1.0 - parameters.anisotropic * 0.9);
+//    float alphaAniso = sqr(specularRoughness);
+//
+//    float roughnessAlpha = sqr(specularRoughness * 0.5 + 0.5);
+//    float roughnessAlphaX = max(0.0001, alphaAniso / aspect);
+//    float roughnessAlphaY = max(0.0001, alphaAniso * aspect);
+//
+//    // Normal Distribution Function (NDF):
+//    // The NDF, also known as the specular distribution, describes the distribution of microfacets for the surface.
+//    // Determines the size and shape of the highlight.
+//    float3 shadingBasisX = float3(1,0,0);
+//    float3 shadingBasisY = float3(0,1,0);
+//    float Ds = GTR2_aniso(parameters.nDoth, dot(parameters.halfVector, shadingBasisX), dot(parameters.halfVector, shadingBasisY), roughnessAlphaX, roughnessAlphaY);
+//
+//    // Fresnel Reflectance:
+//    // The fraction of incoming light that is reflected as opposed to refracted from a flat surface at a given lighting angle.
+//    // Fresnel Reflectance goes to 1 as the angle of incidence goes to 90º. The value of Fresnel Reflectance at 0º
+//    // is the specular reflectance color.
+//    float3 Cspec0 = parameters.specular * mix(float3(1.0), parameters.baseColorHueSat, parameters.specularTint);
+//    float3 Fs = mix(Cspec0, float3(1), parameters.fresnelLoH);
+//
+//    // Geometric Shadowing:
+//    // The geometric shadowing term describes the shadowing from the microfacets.
+//    // This means ideally it should depend on roughness and the microfacet distribution.
+//    // The following geometric shadowing models use Smith's method for their respective NDF.
+//    // Smith breaks G into two components: light and view, and uses the same equation for both.
+//    float Gs = smithG_GGX(parameters.nDotl, roughnessAlpha) * smithG_GGX(parameters.nDotv, roughnessAlpha);
+//
+//    float3 specularBDRF = (Ds * Gs * Fs) / (4 * parameters.nDotl * parameters.nDotv);
+//    float3 specularOutput = specularBDRF * parameters.reflectedColor * parameters.directionalLightCol * mix(float3(1.0f), parameters.baseColor.rgb, parameters.metalness) * parameters.nDoth;
+//    return specularOutput;
     
     // Method 2
-//    float specularRoughness = parameters.roughness * 0.5 + 0.5;
     
-    float aspect = sqrt(1.0 - parameters.anisotropic * 0.9);
-    float alphaAniso = sqr(specularRoughness);
-    
-    float roughnessAlpha = sqr(specularRoughness * 0.5 + 0.5);
-    float roughnessAlphaX = max(0.0001, alphaAniso / aspect);
-    float roughnessAlphaY = max(0.0001, alphaAniso * aspect);
-    
+    float specularRoughness = parameters.roughness * (1.0 - parameters.metalness) + parameters.metalness;
+
     // Normal Distribution Function (NDF):
     // The NDF, also known as the specular distribution, describes the distribution of microfacets for the surface.
     // Determines the size and shape of the highlight.
-    float3 shadingBasisX = float3(1,0,0);
-    float3 shadingBasisY = float3(0,1,0);
-    float Ds = GTR2_aniso(parameters.nDoth, dot(parameters.halfVector, shadingBasisX), dot(parameters.halfVector, shadingBasisY), roughnessAlphaX, roughnessAlphaY);
-    
+    float Ds = TrowbridgeReitzNDF(parameters.nDoth, specularRoughness);
+
     // Fresnel Reflectance:
     // The fraction of incoming light that is reflected as opposed to refracted from a flat surface at a given lighting angle.
     // Fresnel Reflectance goes to 1 as the angle of incidence goes to 90º. The value of Fresnel Reflectance at 0º
     // is the specular reflectance color.
     float3 Cspec0 = parameters.specular * mix(float3(1.0), parameters.baseColorHueSat, parameters.specularTint);
-    float3 Fs = mix(Cspec0, float3(1), parameters.fresnelH);
+    float3 Fs = mix(Cspec0, float3(1), parameters.fresnelLoH);
     
     // Geometric Shadowing:
     // The geometric shadowing term describes the shadowing from the microfacets.
     // This means ideally it should depend on roughness and the microfacet distribution.
     // The following geometric shadowing models use Smith's method for their respective NDF.
     // Smith breaks G into two components: light and view, and uses the same equation for both.
+    float roughnessAlpha = sqr(specularRoughness * 0.5 + 0.5);
     float Gs = smithG_GGX(parameters.nDotl, roughnessAlpha) * smithG_GGX(parameters.nDotv, roughnessAlpha);
-    
-    
-    float3 specularBDRF = (Ds * Gs * Fs) / (4 * parameters.nDotl * parameters.nDotv);
-    
-    // Method 1
-    float3 specularOutput = specularBDRF * parameters.emissionColor * parameters.directionalLightCol * mix(float3(1.0f), parameters.baseColor.rgb, parameters.metalness) * parameters.nDoth;
-    
-    // Method 2
-//    float3 specularOutput = (Ds * Gs * Fs * parameters.emissionColor) * (1.0 + parameters.metalness * parameters.baseColor.rgb) + parameters.metalness * parameters.emissionColor * parameters.baseColor.rgb;
-    
+
+    float3 specularOutput = (Ds * Gs * Fs * parameters.reflectedColor) * (1.0 + parameters.metalness * parameters.baseColor.rgb) + parameters.reflectedColor * parameters.metalness * parameters.baseColor.rgb;
     return specularOutput;
     
 }
@@ -337,8 +368,8 @@ float3 computeClearcoat(LightingParameters parameters) {
     
     // For Dielectics (non-metals) the Fresnel for 0º typically ranges from 0.02 (water) to 0.1 (diamond) but for
     // the sake of simplicity, it is common to set this value as a constant of 0.04 (plastic/glass) for all materials.
-    float Fr = mix(0.1, 0.04, parameters.fresnelH);
-    float Dr = GTR1(parameters.nDoth, mix(.6, 0.001, parameters.clearcoatGloss));
+    float Fr = mix(0.1, 0.04, parameters.fresnelLoH);
+    float Dr = TrowbridgeReitzNDF(parameters.nDoth, mix(.6, 0.001, parameters.clearcoatGloss));
     float clearcoatRoughness = sqr(parameters.roughness * 0.5 + 0.5);
     float Gr = smithG_GGX(parameters.nDotl, clearcoatRoughness) * smithG_GGX(parameters.nDotv, clearcoatRoughness);
     
@@ -349,11 +380,10 @@ float3 computeClearcoat(LightingParameters parameters) {
 float3 computeSheen(LightingParameters parameters) {
     
     float3 Csheen = mix(float3(1.0), parameters.baseColorHueSat, parameters.sheenTint);
-    float3 Fsheen = Csheen * parameters.fresnelV * parameters.sheen;
+    float3 Fsheen = Csheen * parameters.fresnelNoV * parameters.sheen;
     
-    //float3 light_color = float3(6.0) * parameters.nDotl + (float3(3.0) * parameters.emissionColor * (1.0 - parameters.nDotl));
-    //float3 sheenOutput = Fsheen * (1.0 - parameters.metalness);
-    float3 sheenOutput = Fsheen;
+//    float3 light_color = float3(2.0 * M_PI_F * 0.3) * (parameters.nDotl + parameters.emissionColor - parameters.ambientOcclusion);
+    float3 sheenOutput = Fsheen; // * light_color;
     return sheenOutput;
     
 }
@@ -362,28 +392,26 @@ float3 computeSheen(LightingParameters parameters) {
 float4 illuminate(LightingParameters parameters) {
     
     // DIFFUSE
-    // 2pi to integrate the entire dome, 0.5 as intensity
-    //float3 light_color = float3(2.0 * PI * 0.3) * (parameters.nDotl + (parameters.emissionColor - (parameters.emissionColor * parameters.nDotl)) * parameters.ambientOcclusion);
-    float3 light_color = float3(2.0 * PI * 0.3) * (parameters.nDotl + parameters.emissionColor - parameters.ambientOcclusion);
-    float3 diffuseOut = computeDiffuse(parameters) * light_color;
+    float3 diffuseOut = computeDiffuse(parameters);
     
     // AMBIENCE
-    const float environmentContribution = 1;
-    float3 ambienceOutput = parameters.ambientLightCol * environmentContribution * parameters.ambientOcclusion;
+//    const float environmentContribution = 1;
+//    float3 ambienceOutput = parameters.ambientLightCol * environmentContribution * parameters.ambientOcclusion;
     
     // CLEARCOAT
-    float3 clearcoatOut = computeClearcoat(parameters);
+//    float3 clearcoatOut = computeClearcoat(parameters);
     
     // SPECULAR
     float3 specularOut = computeSpecular(parameters);
     
     // SHEEN
-    float3 sheenOut = computeSheen(parameters) * light_color;
+//    float3 sheenOut = computeSheen(parameters);
     
     // REFLECTED ENVIRONMENT
-    float3 reflectedEnvironment = parameters.reflectedColor * parameters.metalness;
+//    float3 reflectedEnvironment = parameters.reflectedColor * parameters.metalness;
     
-    return float4(diffuseOut + ambienceOutput + clearcoatOut + specularOut + sheenOut + reflectedEnvironment, 1);
+//    return float4(diffuseOut + ambienceOutput + clearcoatOut + specularOut + sheenOut + reflectedEnvironment, 1);
+    return float4(diffuseOut + specularOut + parameters.emissionColor, 1);
 }
 
 LightingParameters calculateParameters(ColorInOut in,
@@ -454,7 +482,7 @@ LightingParameters calculateParameters(ColorInOut in,
     // This is the dot product of the light direction vector and vertex normal.
     // The smaller the angle between those two vectors, the higher this value,
     // and the stronger the diffuse lighting effect should be.
-    parameters.nDotl = max(0.001f, saturate(dot(parameters.normal, parameters.lightDirection)));
+    parameters.nDotl = max(0.001f,saturate(dot(parameters.normal, parameters.lightDirection)));
     
     // Calculate the halfway vector between the light direction and the direction they eye is looking
     parameters.halfVector = normalize(parameters.lightDirection + parameters.viewDir);
@@ -463,9 +491,9 @@ LightingParameters calculateParameters(ColorInOut in,
     parameters.nDotv = max(0.001f,saturate(dot(parameters.normal, parameters.viewDir)));
     parameters.lDoth = max(0.001f,saturate(dot(parameters.lightDirection, parameters.halfVector)));
     
-    parameters.fresnelL = Fresnel(parameters.nDotl);
-    parameters.fresnelV = Fresnel(parameters.nDotv);
-    parameters.fresnelH = Fresnel(parameters.lDoth);
+    parameters.fresnelNoL = Fresnel(0.04, 1.0, parameters.nDotl);
+    parameters.fresnelNoV = Fresnel(0.04, 1.0, parameters.nDotv);
+    parameters.fresnelLoH = Fresnel(0.04, 1.0, parameters.lDoth);
     
     return parameters;
     
@@ -487,6 +515,7 @@ vertex ColorInOut anchorGeometryVertexTransform(Vertex in [[stage_in]],
     
     // Get the anchor model's orientation in world space
     float4x4 modelMatrix = anchorInstanceUniforms[iid].modelMatrix;
+    float3x3 normalMatrix = anchorInstanceUniforms[iid].normalMatrix;
     
     // Apply effects that affect geometry
     float4x4 scaleMatrix = float4x4(anchorEffectsUniforms[iid].scale);
@@ -503,8 +532,9 @@ vertex ColorInOut anchorGeometryVertexTransform(Vertex in [[stage_in]],
     out.eyePosition = float3((modelViewMatrix * position).xyz);
     
     // Rotate our normals to world coordinates
-    float4 normal = modelMatrix * float4(in.normal.x, in.normal.y, in.normal.z, 0.0f);
-    out.normal = normalize(float3(normal.xyz));
+    out.normal = normalMatrix * in.normal;
+    out.tangent = normalMatrix * in.tangent;
+    out.bitangent = normalMatrix * cross(in.normal, in.tangent);
     
     // Pass along the texture coordinate of our vertex such which we'll use to sample from texture's
     //   in our fragment function, if we need it
@@ -535,6 +565,7 @@ vertex ColorInOut anchorGeometryVertexTransformSkinned(Vertex in [[stage_in]],
     
     // Get the anchor model's orientation in world space
     float4x4 modelMatrix = anchorInstanceUniforms[iid].modelMatrix;
+    float3x3 normalMatrix = anchorInstanceUniforms[iid].normalMatrix;
     
     // Apply effects that affect geometry
     float4x4 scaleMatrix = float4x4(anchorEffectsUniforms[iid].scale);
@@ -558,6 +589,12 @@ vertex ColorInOut anchorGeometryVertexTransformSkinned(Vertex in [[stage_in]],
         weights[2] * (palette[jointIndex[2]] * modelNormal) +
         weights[3] * (palette[jointIndex[3]] * modelNormal);
     
+    float4 modelTangent = float4(in.tangent, 0.0f);
+    float4 skinnedTangent = weights[0] * (palette[jointIndex[0]] * modelTangent) +
+        weights[1] * (palette[jointIndex[1]] * modelTangent) +
+        weights[2] * (palette[jointIndex[2]] * modelTangent) +
+        weights[3] * (palette[jointIndex[3]] * modelTangent);
+    
     // Calculate the position of our vertex in clip space and output for clipping and rasterization
     out.position = sharedUniforms.projectionMatrix * modelViewMatrix * skinnedPosition;
     
@@ -565,8 +602,9 @@ vertex ColorInOut anchorGeometryVertexTransformSkinned(Vertex in [[stage_in]],
     out.eyePosition = float3((modelViewMatrix * skinnedPosition).xyz);
     
     // Rotate our normals to world coordinates
-    float4 normal = modelMatrix * skinnedNormal;
-    out.normal = normalize(float3(normal.xyz));
+    out.normal = normalMatrix * skinnedNormal.xyz;
+    out.tangent = normalMatrix * skinnedTangent.xyz;
+    out.bitangent = normalMatrix * cross(skinnedNormal.xyz, skinnedTangent.xyz);
     
     // Pass along the texture coordinate of our vertex such which we'll use to sample from texture's
     //   in our fragment function, if we need it

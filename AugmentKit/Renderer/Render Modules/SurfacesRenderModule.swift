@@ -155,7 +155,7 @@ class SurfacesRenderModule: RenderModule {
             recordNewError(newError)
         }
         
-        let myVertexDescriptor = surfaceMeshGPUData.vertexDescriptors.first
+        let myVertexDescriptor = surfaceMeshGPUData.vertexDescriptor
         
         guard let surfaceVertexDescriptor = myVertexDescriptor else {
             print("Serious Error - Failed to create a MetalKit vertex descriptor from ModelIO.")
@@ -294,6 +294,7 @@ class SurfacesRenderModule: RenderModule {
             // Surfaces use the same uniform struct as anchors
             let surfaceUniforms = surfaceUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: surfaceIndex)
             surfaceUniforms?.pointee.modelMatrix = modelMatrix
+            surfaceUniforms?.pointee.normalMatrix = modelMatrix.normalMatrix
             
             //
             // Update Environment
@@ -465,17 +466,17 @@ class SurfacesRenderModule: RenderModule {
             
         }
         
-        for (drawDataIdx, drawData) in meshGPUData.drawData.enumerated() {
+        for (drawDataIndex, drawData) in meshGPUData.drawData.enumerated() {
             
-            if drawDataIdx < surfacePipelineStates.count {
-                renderEncoder.setRenderPipelineState(surfacePipelineStates[drawDataIdx])
+            if drawDataIndex < surfacePipelineStates.count {
+                renderEncoder.setRenderPipelineState(surfacePipelineStates[drawDataIndex])
                 renderEncoder.setDepthStencilState(surfaceDepthState)
                 
                 // Set any buffers fed into our render pipeline
                 renderEncoder.setVertexBuffer(surfaceUniformBuffer, offset: surfaceUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
                 
                 var mutableDrawData = drawData
-                mutableDrawData.instCount = surfaceInstanceCount
+                mutableDrawData.instanceCount = surfaceInstanceCount
                 
                 // Set the mesh's vertex data buffers
                 encode(meshGPUData: meshGPUData, fromDrawData: mutableDrawData, with: renderEncoder)

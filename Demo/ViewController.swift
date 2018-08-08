@@ -214,8 +214,8 @@ class ViewController: UIViewController {
         
         let anchorLocation = GroundFixedWorldLocation(worldLocation: location, world: world)
         let newObject = AugmentedAnchor(withModelAsset: anchorModel, at: anchorLocation)
-//        let scaleEffect = ConstantScaleEffect(scaleValue: 0.01)
-//        newObject.effects = [AnyEffect(scaleEffect)]
+        let scaleEffect = ConstantScaleEffect(scaleValue: 0.01)
+        newObject.effects = [AnyEffect(scaleEffect)]
         world.add(anchor: newObject)
         
     }
@@ -287,15 +287,15 @@ class ViewController: UIViewController {
             return
         }
         
-        guard let aPinAsset = AKSceneKitUtils.mdlAssetFromScene(named: "Pin.scn", world: world) else {
-            print("ERROR: Could not load the SceneKit model")
-            return
-        }
-        
-//        guard let aPinAsset = MDLAssetTools.asset(named: "retrotv.usdz", inBundle: Bundle.main) else {
-//            print("ERROR: Could not load the USDZ model")
+//        guard let aPinAsset = AKSceneKitUtils.mdlAssetFromScene(named: "Pin.scn", world: world) else {
+//            print("ERROR: Could not load the SceneKit model")
 //            return
 //        }
+        
+        guard let aPinAsset = MDLAssetTools.asset(named: "retrotv.usdz", inBundle: Bundle.main) else {
+            print("ERROR: Could not load the USDZ model")
+            return
+        }
         
         guard let aShipAsset = AKSceneKitUtils.mdlAssetFromScene(named: "ship.scn", world: world) else {
             print("ERROR: Could not load the SceneKit model")

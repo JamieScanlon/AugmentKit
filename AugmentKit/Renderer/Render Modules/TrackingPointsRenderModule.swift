@@ -106,14 +106,14 @@ class TrackingPointsRenderModule: RenderModule {
         let trackingPointVertexDescriptor = MTLVertexDescriptor()
         
         // Positions
-        trackingPointVertexDescriptor.attributes[0].format = .float4
-        trackingPointVertexDescriptor.attributes[0].offset = 0
-        trackingPointVertexDescriptor.attributes[0].bufferIndex = Int(kBufferIndexTrackingPointData.rawValue)
+        trackingPointVertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)].format = .float4
+        trackingPointVertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)].offset = 0
+        trackingPointVertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)].bufferIndex = Int(kBufferIndexTrackingPointData.rawValue)
         
         // Color
-        trackingPointVertexDescriptor.attributes[5].format = .float4
-        trackingPointVertexDescriptor.attributes[5].offset = 16
-        trackingPointVertexDescriptor.attributes[5].bufferIndex = Int(kBufferIndexTrackingPointData.rawValue)
+        trackingPointVertexDescriptor.attributes[Int(kVertexAttributeColor.rawValue)].format = .float4
+        trackingPointVertexDescriptor.attributes[Int(kVertexAttributeColor.rawValue)].offset = 16
+        trackingPointVertexDescriptor.attributes[Int(kVertexAttributeColor.rawValue)].bufferIndex = Int(kBufferIndexTrackingPointData.rawValue)
         
         // Buffer Layout
         trackingPointVertexDescriptor.layouts[Int(kBufferIndexTrackingPointData.rawValue)].stride = 32

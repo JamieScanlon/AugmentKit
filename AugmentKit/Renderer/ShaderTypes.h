@@ -60,18 +60,17 @@ enum VertexAttributes {
     kVertexAttributePosition  = 0,  // Used by all shaders
     kVertexAttributeTexcoord,       // Used by the Image Capture, Anchor, and Path shaders
     kVertexAttributeNormal,         // Used by the Anchor and Path shaders
+    kVertexAttributeTangent,
     kVertexAttributeJointIndices,   // Used by the Anchor shaders only
     kVertexAttributeJointWeights,   // Used by the Anchor shaders only
     kVertexAttributeColor,          // User by the Point and Path shaders
     //kVertexAttributeAnisotropy,
     //kVertexAttributeBinormal,
-    //kVertexAttributeBitangent,
     //kVertexAttributeEdgeCrease,
     //kVertexAttributeOcclusionValue,
     //kVertexAttributeShadingBasisU,
     //kVertexAttributeShadingBasisV,
     //kVertexAttributeSubdivisionStencil,
-    //kVertexAttributeTangent,
 };
 
 // Texture index values shared between shader and C code to ensure Metal shader texture indices
@@ -160,6 +159,7 @@ struct EnvironmentUniforms {
 //   the model matrix transform
 struct AnchorInstanceUniforms {
     matrix_float4x4 modelMatrix; // A transform matrix for the anchor model in world space.
+    matrix_float3x3 normalMatrix;
 };
 
 // Structure shared between shader and C code that contains information about effects that should be

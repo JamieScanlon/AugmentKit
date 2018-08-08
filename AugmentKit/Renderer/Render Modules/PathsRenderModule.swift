@@ -175,7 +175,7 @@ class PathsRenderModule: RenderModule {
             recordNewError(newError)
         }
         
-        let myVertexDescriptor = pathMeshGPUData.vertexDescriptors.first
+        let myVertexDescriptor = pathMeshGPUData.vertexDescriptor
         
         guard let pathVertexDescriptor = myVertexDescriptor else {
             print("Serious Error - Failed to create a MetalKit vertex descriptor from ModelIO.")
@@ -339,6 +339,7 @@ class PathsRenderModule: RenderModule {
                 let pathSegmentIndex = pathSegmentInstanceCount - 1
                 let pathUniforms = pathUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: pathSegmentIndex)
                 pathUniforms?.pointee.modelMatrix = modelMatrix
+                pathUniforms?.pointee.normalMatrix = modelMatrix.normalMatrix
                 
                 //
                 // Update Effects uniform
@@ -439,17 +440,17 @@ class PathsRenderModule: RenderModule {
             
         }
         
-        for (drawDataIdx, drawData) in meshGPUData.drawData.enumerated() {
+        for (drawDataIndex, drawData) in meshGPUData.drawData.enumerated() {
             
-            if drawDataIdx < pathPipelineStates.count {
-                renderEncoder.setRenderPipelineState(pathPipelineStates[drawDataIdx])
+            if drawDataIndex < pathPipelineStates.count {
+                renderEncoder.setRenderPipelineState(pathPipelineStates[drawDataIndex])
                 renderEncoder.setDepthStencilState(pathDepthState)
                 
                 // Set any buffers fed into our render pipeline
                 renderEncoder.setVertexBuffer(pathUniformBuffer, offset: pathUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
                 
                 var mutableDrawData = drawData
-                mutableDrawData.instCount = pathSegmentInstanceCount
+                mutableDrawData.instanceCount = pathSegmentInstanceCount
                 
                 // Set the mesh's vertex data buffers
                 encode(meshGPUData: meshGPUData, fromDrawData: mutableDrawData, with: renderEncoder)
@@ -528,26 +529,26 @@ class PathsRenderModule: RenderModule {
         // -------- Buffer 0 --------
         
         // Positions
-        pathsVertexDescriptor.attributes[0].format = .float3 // 12 bytes
-        pathsVertexDescriptor.attributes[0].offset = 0
-        pathsVertexDescriptor.attributes[0].bufferIndex = Int(kBufferIndexMeshPositions.rawValue)
+        pathsVertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)].format = .float3 // 12 bytes
+        pathsVertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)].offset = 0
+        pathsVertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)].bufferIndex = Int(kBufferIndexMeshPositions.rawValue)
         
         // -------- Buffer 1 --------
         
         // Texture coordinates
-        pathsVertexDescriptor.attributes[1].format = .float2 // 8 bytes
-        pathsVertexDescriptor.attributes[1].offset = 0
-        pathsVertexDescriptor.attributes[1].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
+        pathsVertexDescriptor.attributes[Int(kVertexAttributeTexcoord.rawValue)].format = .float2 // 8 bytes
+        pathsVertexDescriptor.attributes[Int(kVertexAttributeTexcoord.rawValue)].offset = 0
+        pathsVertexDescriptor.attributes[Int(kVertexAttributeTexcoord.rawValue)].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
         
         // Normals
-        pathsVertexDescriptor.attributes[2].format = .float3 // 12 bytes
-        pathsVertexDescriptor.attributes[2].offset = 8
-        pathsVertexDescriptor.attributes[2].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
+        pathsVertexDescriptor.attributes[Int(kVertexAttributeNormal.rawValue)].format = .float3 // 12 bytes
+        pathsVertexDescriptor.attributes[Int(kVertexAttributeNormal.rawValue)].offset = 8
+        pathsVertexDescriptor.attributes[Int(kVertexAttributeNormal.rawValue)].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
         
         // Color
-        pathsVertexDescriptor.attributes[5].format = .float3 // 12 bytes
-        pathsVertexDescriptor.attributes[5].offset = 20
-        pathsVertexDescriptor.attributes[5].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
+        pathsVertexDescriptor.attributes[Int(kVertexAttributeColor.rawValue)].format = .float3 // 12 bytes
+        pathsVertexDescriptor.attributes[Int(kVertexAttributeColor.rawValue)].offset = 20
+        pathsVertexDescriptor.attributes[Int(kVertexAttributeColor.rawValue)].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
         
         //
         // Layouts

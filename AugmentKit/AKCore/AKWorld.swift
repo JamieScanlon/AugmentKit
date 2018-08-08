@@ -406,7 +406,7 @@ public class AKWorld: NSObject {
             reliableWorldLocations = Array(reliableWorldLocations.dropLast(reliableWorldLocations.count - 100))
         }
         reliableWorldLocations.insert(newReliableWorldLocation, at: 0)
-        print("New reliable location found: \(newReliableWorldLocation.latitude)lat, \(newReliableWorldLocation.longitude)lng = \(newReliableWorldLocation.transform)")
+//        print("New reliable location found: \(newReliableWorldLocation.latitude)lat, \(newReliableWorldLocation.longitude)lng = \(newReliableWorldLocation.transform)")
         
         if !didRecieveFirstLocation {
             didRecieveFirstLocation = true

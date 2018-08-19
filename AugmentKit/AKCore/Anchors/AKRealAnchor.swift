@@ -1,5 +1,5 @@
 //
-//  AKPath.swift
+//  AKRealAnchor.swift
 //  AugmentKit
 //
 //  MIT License
@@ -24,11 +24,16 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 //
+//  Represents an anchor in the AR world that is tied to an object in the real world
+//  for example a detected horizontal / vertical plane wich represents a table or wall
+//
 
+import ARKit
 import Foundation
 
-public protocol AKPath: AKAugmentedAnchor {
-    // Thickness measured in meters
-    var lineThickness: Double { get }
-    var segmentPoints: [AKPathSegmentAnchor] { get }
+// MARK: - AKRealAnchor
+
+public protocol AKRealAnchor: AKAnchor {
+    var arAnchor: ARAnchor? { get }
+    func setARAnchor(_ arachor: ARAnchor)
 }

@@ -1,5 +1,5 @@
 //
-//  AugmentedAnchor.swift
+//  RealSurfaceAnchor.swift
 //  AugmentKit
 //
 //  MIT License
@@ -24,29 +24,35 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 //
-//
-//  A generic AR object that can be placed in the AR world. These can be created
-//  and given to the AR engine to render in the AR world.
+//  A generic implementation of AKRealSurfaceAnchor. Renders a featureless plane
+//  geometry.
 //
 
 import ARKit
 import Foundation
-import ModelIO
+import MetalKit
 
-public class AugmentedAnchor: AKAugmentedAnchor {
+public class RealSurfaceAnchor: AKRealSurfaceAnchor {
     
     public static var type: String {
-        return "AugmentedAnchor"
+        return "RealSurface"
     }
+    public var orientation: ARPlaneAnchor.Alignment = .horizontal
     public var worldLocation: AKWorldLocation
     public var asset: MDLAsset
     public var identifier: UUID?
     public var effects: [AnyEffect<Any>]?
     public var arAnchor: ARAnchor?
     
-    public init(withModelAsset asset: MDLAsset, at location: AKWorldLocation) {
+    public init(at location: AKWorldLocation, withAllocator metalAllocator: MTKMeshBufferAllocator? = nil) {
+        
+        let mesh = MDLMesh(planeWithExtent: vector3(1, 0, 1), segments: vector2(1, 1), geometryType: .triangles, allocator: metalAllocator)
+        let asset = MDLAsset(bufferAllocator: metalAllocator)
+        asset.add(mesh)
+        
         self.asset = asset
         self.worldLocation = location
+        
     }
     
     public func setIdentifier(_ identifier: UUID) {
@@ -59,19 +65,6 @@ public class AugmentedAnchor: AKAugmentedAnchor {
             identifier = arAnchor.identifier
         }
         worldLocation.transform = arAnchor.transform
-    }
-    
-}
-
-extension AugmentedAnchor: CustomDebugStringConvertible, CustomStringConvertible {
-    
-    public var description: String {
-        return debugDescription
-    }
-    
-    public var debugDescription: String {
-        let myDescription = "<AugmentedAnchor: \(Unmanaged.passUnretained(self).toOpaque())> worldLocation: \(worldLocation), identifier:\(identifier?.debugDescription ?? "None"), effects: \(effects?.debugDescription ?? "None"), arAnchor: \(arAnchor?.debugDescription ?? "None"), asset: \(asset)"
-        return myDescription
     }
     
 }

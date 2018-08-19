@@ -43,6 +43,8 @@
 
 // Include header shared between this Metal shader code and C code executing Metal API commands
 #import "../ShaderTypes.h"
+#import "../BRDFFunctions.h"
+#import "../Common.h"
 
 using namespace metal;
 
@@ -119,127 +121,10 @@ struct ColorInOut {
 
 // MARK: - Pipeline Functions
 
-// MARK: Lighting Parameters
-
-struct LightingParameters {
-    float3  lightDirection;
-    float3  directionalLightCol;
-    float3  ambientLightCol;
-    float3  viewDir;
-    float3  halfVector;
-    float3  reflectedVector;
-    float3  normal;
-    float3  reflectedColor;
-    float3  emissionColor;
-    float3  ambientOcclusion;
-    float4  baseColor;
-    float   baseColorLuminance;
-    float3  baseColorHueSat;
-    float   nDoth;
-    float   nDotv;
-    float   nDotl;
-    float   lDoth;
-    float   fresnelNoL;
-    float   fresnelNoV;
-    float   fresnelLoH;
-    float   metalness;
-    float   roughness;
-    float   subsurface;
-    float   specular;
-    float   specularTint;
-    float   anisotropic;
-    float   sheen;
-    float   sheenTint;
-    float   clearcoat;
-    float   clearcoatGloss;
-};
-
 constexpr sampler linearSampler (address::repeat, min_filter::linear, mag_filter::linear, mip_filter::linear);
 constexpr sampler nearestSampler(address::repeat, min_filter::linear, mag_filter::linear, mip_filter::none);
 //constexpr sampler mipSampler(address::clamp_to_edge, min_filter::linear, mag_filter::linear, mip_filter::linear);
 constexpr sampler reflectiveEnvironmentSampler(address::clamp_to_edge, min_filter::nearest, mag_filter::linear, mip_filter::none);
-
-LightingParameters calculateParameters(ColorInOut in,
-                                       constant SharedUniforms & uniforms,
-                                       constant MaterialUniforms & materialUniforms,
-                                       constant EnvironmentUniforms *environmentUniforms,
-                                       texture2d<float> baseColorMap [[ function_constant(has_base_color_map) ]],
-                                       texture2d<float> normalMap [[ function_constant(has_normal_map) ]],
-                                       texture2d<float> metallicMap [[ function_constant(has_metallic_map) ]],
-                                       texture2d<float> roughnessMap [[ function_constant(has_roughness_map) ]],
-                                       texture2d<float> ambientOcclusionMap [[ function_constant(has_ambient_occlusion_map) ]],
-                                       texture2d<float> emissionMap [[ function_constant(has_emission_map) ]],
-                                       texture2d<float> subsurfaceMap [[ function_constant(has_subsurface_map) ]],
-                                       texture2d<float> specularMap [[ function_constant(has_specular_map) ]],
-                                       texture2d<float> specularTintMap [[ function_constant(has_specularTint_map) ]],
-                                       texture2d<float> anisotropicMap [[ function_constant(has_anisotropic_map) ]],
-                                       texture2d<float> sheenMap [[ function_constant(has_sheen_map) ]],
-                                       texture2d<float> sheenTintMap [[ function_constant(has_sheenTint_map) ]],
-                                       texture2d<float> clearcoatMap [[ function_constant(has_clearcoat_map) ]],
-                                       texture2d<float> clearcoatGlossMap [[ function_constant(has_clearcoatGloss_map) ]],
-                                       texturecube<float> environmentCubemap [[ texture(kTextureIndexEnvironmentMap) ]]);
-
-float4 srgbToLinear(float4 c);
-float4 linearToSrgba(float4 c);
-inline float Fresnel(float dotProduct);
-inline float sqr(float a);
-float smithG_GGX(float nDotv, float alphaG);
-float TrowbridgeReitzNDF(float nDoth, float a);
-float GTR2_aniso(float nDoth, float HdotX, float HdotY, float ax, float ay);
-float3 computeNormalMap(ColorInOut in, texture2d<float> normalMapTexture);
-float3 computeDiffuse(LightingParameters parameters);
-float3 computeSpecular(LightingParameters parameters);
-float3 computeClearcoat(LightingParameters parameters);
-float3 computeSheen(LightingParameters parameters);
-float4 illuminate(LightingParameters parameters);
-
-float4 srgbToLinear(float4 c) {
-    float4 gamma = float4(1.0/2.2);
-    return pow(c, gamma);
-}
-
-float4 linearToSrgba(float4 c) {
-    float4 gamma = float4(2.2);
-    return pow(c, gamma);
-}
-
-// Schlick Fresnel Approximation:
-// F0 + (F90 - F0) * pow(1.0 - dotProduct, 5.0)
-//
-// F0 is the Fresnel of the material at 0º (normal incidence)
-// F0 can be approximated by a constant 0.04 (water/glass)
-//
-// F90 is the Fresnel of the material at 90º
-// F90 can be approximated by 1.0 because Fresnel goes to 1 as the angle of incidence goes to 90º
-//
-inline float Fresnel(float F0, float F90, float dotProduct) {
-    return F0 + (F90 - F0) * pow(clamp(1.0 - dotProduct, 0.0, 1.0), 5.0);
-}
-
-inline float sqr(float a) {
-    return a * a;
-}
-
-// dotProduct is either nDotl or nDotv
-float smithG_GGX(float dotProduct, float roughness) {
-    float a² = sqr(roughness);
-    float b = sqr(dotProduct);
-    return 1.0 / (dotProduct + sqrt(a² + b - a² * b));
-}
-
-// Generalized Trowbridge-Reitz
-// DGGX(h) = α² / π((n⋅h)²(α²−1)+1)²
-float TrowbridgeReitzNDF(float nDoth, float roughness) {
-    if (roughness >= 1.0) return 1.0 / M_PI_F;
-    float a² = sqr(roughness);
-    float d = sqr(nDoth) * (a² - 1) + 1;
-    return a² / (M_PI_F * sqr(d));
-}
-
-// Generalized Trowbridge-Reitz, with GGX divided out
-float GTR2_aniso(float nDoth, float HdotX, float HdotY, float ax, float ay) {
-    return 1.0 / ( M_PI_F * ax*ay * sqr( sqr(HdotX/ax) + sqr(HdotY/ay) + nDoth * nDoth ));
-}
 
 float3 computeNormalMap(ColorInOut in, texture2d<float> normalMapTexture) {
     float4 normalMap = float4((float4(normalMapTexture.sample(nearestSampler, float2(in.texCoord)).rgb, 0.0)));
@@ -258,13 +143,13 @@ float3 computeDiffuse(LightingParameters parameters) {
     
     // Diffuse fresnel - go from 1 at normal incidence to .5 at grazing
     // and mix in diffuse retro-reflection based on roughness
-//    float Fd90 = 0.5 + 2.0 * sqr(parameters.lDoth) * parameters.roughness;
+//    float Fd90 = 0.5 + 2.0 * sqr(parameters.lDoth) * sqr(parameters.roughness);
 //    float Fd = mix(1.0, Fd90, parameters.fresnelNoL) + mix(1.0, Fd90, parameters.fresnelNoV);
 //
 //    // Based on Hanrahan-Krueger brdf approximation of isotropic bssrdf
 //    // 1.25 scale is used to (roughly) preserve albedo
 //    // Fss90 used to "flatten" retroreflection based on roughness
-//    float Fss90 = sqr(parameters.lDoth) * parameters.roughness;
+//    float Fss90 = sqr(parameters.lDoth) * sqr(parameters.roughness);
 //    float Fss = mix(1.0, Fss90, parameters.fresnelNoL) * mix(1.0, Fss90, parameters.fresnelNoV);
 //    // 1.25 scale is used to (roughly) preserve albedo
 //    float ss = 1.25 * (Fss * (1.0 / (parameters.nDotl + parameters.nDotv) - 0.5) + 0.5);
@@ -273,7 +158,7 @@ float3 computeDiffuse(LightingParameters parameters) {
 //    float3 diffuseOutput = ((1.0/M_PI_F) * mix(Fd, ss, subsurface) * parameters.baseColor.rgb) * (1.0 - parameters.metalness);
 //    float3 light_color = float3(2.0 * M_PI_F * 0.3) * (parameters.nDotl + parameters.emissionColor - parameters.ambientOcclusion);
 //    return parameters.directionalLightCol * diffuseOutput; // * light_color;
-    
+//
     // Method: 2
     float3 diffuseLightColor = float3(3) + parameters.ambientOcclusion;
     float3 diffuseColor = (parameters.baseColor.rgb / M_PI_F) * (1.0 - parameters.metalness);
@@ -362,9 +247,24 @@ float3 computeSpecular(LightingParameters parameters) {
     float3 specularOutput = (Ds * Gs * Fs * parameters.reflectedColor) * (1.0 + parameters.metalness * parameters.baseColor.rgb) + parameters.reflectedColor * parameters.metalness * parameters.baseColor.rgb;
     return specularOutput;
     
+    // Method 3
+    
+//    float a = parameters.roughness * parameters.roughness;
+//    float3 f0 = 0.16 * sqr(parameters.specular) * (1.0 - parameters.metalness) + parameters.baseColor.rgb * parameters.metalness;
+//
+//    float D = specularD(parameters.nDoth, a);
+//    float3 F = specularF(parameters.lDoth, f0);
+//    float V = specularG(parameters.nDotv, parameters.nDotl, a);
+//
+//    // specular BRDF
+//    float3 Fr = (D * V) * F;
+//    return Fr;
+    
 }
 
 float3 computeClearcoat(LightingParameters parameters) {
+    
+    // Method 1
     
     // For Dielectics (non-metals) the Fresnel for 0º typically ranges from 0.02 (water) to 0.1 (diamond) but for
     // the sake of simplicity, it is common to set this value as a constant of 0.04 (plastic/glass) for all materials.
@@ -375,6 +275,23 @@ float3 computeClearcoat(LightingParameters parameters) {
     
     float3 clearcoatOutput = parameters.clearcoat * Gr * Fr * Dr * parameters.directionalLightCol;
     return clearcoatOutput;
+    
+    // Method 2
+    
+//    // remapping and linearization of clear coat roughness
+//    float clearCoatRoughness = mix(0.089, 0.6, parameters.clearcoatGloss);
+//    float clearCoatLinearRoughness = sqr(clearCoatRoughness);
+//
+//    // clear coat BRDF
+//    float  Dc = specularD(clearCoatLinearRoughness, parameters.nDoth);
+//    float  Vc = V_Kelemen(parameters.lDoth);
+//    float  Fc = specularF(0.04, parameters.lDoth) * parameters.clearcoat; // clear coat strength
+//    float Frc = (Dc * Vc) * Fc;
+//
+//    // account for energy loss in the base layer
+//    return parameters.directionalLightCol * ((Fd + Fr * (1.0 - Fc)) * (1.0 - Fc) + Frc);
+    
+    
 }
 
 float3 computeSheen(LightingParameters parameters) {
@@ -468,6 +385,8 @@ LightingParameters calculateParameters(ColorInOut in,
     
     parameters.roughness = has_roughness_map ? max(roughnessMap.sample(linearSampler, in.texCoord.xy).x, 0.001f) : materialUniforms.roughness;
     parameters.metalness = has_metallic_map ? metallicMap.sample(linearSampler, in.texCoord.xy).x : materialUniforms.metalness;
+    
+    parameters.diffuseColor = (1.0 - parameters.metalness) * baseColor.rgb;
     
 //    uint8_t mipLevel = parameters.roughness * emissionMap.get_num_mip_levels();
 //    parameters.emissionColor = has_emission_map ? emissionMap.sample(mipSampler, parameters.reflectedVector, level(mipLevel)).xyz : materialUniforms.emissionColor.xyz;
@@ -671,7 +590,8 @@ fragment float4 anchorGeometryFragmentLighting(ColorInOut in [[stage_in]],
     if ( parameters.baseColor.w <= 0.01f ) {
         discard_fragment();
     }
-    
+
+//    float4 intermediate_color =  illuminate(parameters);
     float4 intermediate_color =  float4(parameters.baseColor * illuminate(parameters));
     
     // Apply effects

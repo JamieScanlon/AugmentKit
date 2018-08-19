@@ -193,6 +193,11 @@ class ViewController: UIViewController {
 //
 //        let path = PathAnchor(withWorldLocaitons: [location1, location2, location3, location4, location5, location6, location7, location8, location9, location1])
 //        world.add(akPath: path)
+        
+        // Example:
+        // Render a UIView as a surface in the AR World at the current location
+//        let viewSurface = AugmentedUIViewSurface(withView: view, at: currentWorldLocation)
+//        world.add(anchor: viewSurface)
 
     }
     

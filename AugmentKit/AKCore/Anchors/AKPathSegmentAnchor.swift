@@ -25,48 +25,14 @@
 //  SOFTWARE.
 //
 //
-//  An AR anchor that represents a beginning or end of a path segment. Tow or more of
+//  An AR anchor that represents a beginning or end of a path segment. Two or more of
 //  these can be used to create a path in the AR world. These anchors have an empty
-//  model so they cannot be rendered by themselves.
+//  model so they cannot be rendered by themselves, They must be used on conjunction
+//  with an AKPath object.
 //
 
-import ARKit
 import Foundation
-import ModelIO
 
 public protocol AKPathSegmentAnchor: AKAugmentedAnchor {
     
 }
-
-public class PathSegmentAnchor: AKPathSegmentAnchor {
-    
-    public static var type: String {
-        return "PathSegmentAnchor"
-    }
-    public var worldLocation: AKWorldLocation
-    public var asset: MDLAsset
-    public var identifier: UUID?
-    public var effects: [AnyEffect<Any>]?
-    public var arAnchor: ARAnchor?
-    
-    public init(at location: AKWorldLocation, identifier: UUID? = nil, effects: [AnyEffect<Any>]? = nil) {
-        self.asset = MDLAsset()
-        self.worldLocation = location
-        self.identifier = identifier
-        self.effects = effects
-    }
-    
-    public func setIdentifier(_ identifier: UUID) {
-        self.identifier = identifier
-    }
-    
-    public func setARAnchor(_ arAnchor: ARAnchor) {
-        self.arAnchor = arAnchor
-        if identifier == nil {
-            identifier = arAnchor.identifier
-        }
-        worldLocation.transform = arAnchor.transform
-    }
-    
-}
-

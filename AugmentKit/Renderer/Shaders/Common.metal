@@ -1,8 +1,8 @@
 //
-//  AKPath.swift
+//  Common.metal
 //  AugmentKit
 //
-//  MIT License
+///  MIT License
 //
 //  Copyright (c) 2018 JamieScanlon
 //
@@ -25,10 +25,24 @@
 //  SOFTWARE.
 //
 
-import Foundation
+#include <metal_stdlib>
+using namespace metal;
 
-public protocol AKPath: AKAugmentedAnchor {
-    // Thickness measured in meters
-    var lineThickness: Double { get }
-    var segmentPoints: [AKPathSegmentAnchor] { get }
+#ifndef AK_SHADERS_COMMON
+#define AK_SHADERS_COMMON
+
+float sqr(float a) {
+    return a * a;
 }
+
+float4 srgbToLinear(float4 c) {
+    float4 gamma = float4(1.0/2.2);
+    return pow(c, gamma);
+}
+
+float4 linearToSrgba(float4 c) {
+    float4 gamma = float4(2.2);
+    return pow(c, gamma);
+}
+
+#endif

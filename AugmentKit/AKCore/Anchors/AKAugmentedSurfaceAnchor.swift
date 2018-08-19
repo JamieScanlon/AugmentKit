@@ -1,5 +1,5 @@
 //
-//  AKPath.swift
+//  AKAugmentedSurfaceAnchor.swift
 //  AugmentKit
 //
 //  MIT License
@@ -24,11 +24,13 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 //
+//
+//  And anchor representing an augmented surface plane (one that does not exist in
+//  the real world).
+//
 
 import Foundation
 
-public protocol AKPath: AKAugmentedAnchor {
-    // Thickness measured in meters
-    var lineThickness: Double { get }
-    var segmentPoints: [AKPathSegmentAnchor] { get }
+protocol AKAugmentedSurfaceAnchor: AKAugmentedAnchor {
+    
 }

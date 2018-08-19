@@ -190,4 +190,40 @@ struct MaterialUniforms {
     float clearcoatGloss;
 };
 
+// MARK: Lighting Parameters
+
+struct LightingParameters {
+    vector_float3  lightDirection;
+    vector_float3  directionalLightCol;
+    vector_float3  ambientLightCol;
+    vector_float3  viewDir;
+    vector_float3  halfVector;
+    vector_float3  reflectedVector;
+    vector_float3  normal;
+    vector_float3  reflectedColor;
+    vector_float3  emissionColor;
+    vector_float3  ambientOcclusion;
+    vector_float4  baseColor;
+    float   baseColorLuminance;
+    vector_float3  baseColorHueSat;
+    vector_float3  diffuseColor;
+    float   nDoth;
+    float   nDotv;
+    float   nDotl;
+    float   lDoth;
+    float   fresnelNoL;
+    float   fresnelNoV;
+    float   fresnelLoH;
+    float   metalness;
+    float   roughness;
+    float   subsurface;
+    float   specular;
+    float   specularTint;
+    float   anisotropic;
+    float   sheen;
+    float   sheenTint;
+    float   clearcoat;
+    float   clearcoatGloss;
+};
+
 #endif /* ShaderTypes_h */

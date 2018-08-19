@@ -1,5 +1,5 @@
 //
-//  AKPath.swift
+//  Common.h
 //  AugmentKit
 //
 //  MIT License
@@ -25,10 +25,20 @@
 //  SOFTWARE.
 //
 
-import Foundation
+#ifndef Common_h
+#define Common_h
 
-public protocol AKPath: AKAugmentedAnchor {
-    // Thickness measured in meters
-    var lineThickness: Double { get }
-    var segmentPoints: [AKPathSegmentAnchor] { get }
-}
+#ifdef __METAL_VERSION__
+#define NS_ENUM(_type, _name) enum _name : _type _name; enum _name : _type
+#define NSInteger metal::int32_t
+#else
+#import <Foundation/Foundation.h>
+#endif
+
+#include <simd/simd.h>
+
+float sqr(float a);
+vector_float4 srgbToLinear(vector_float4 c);
+vector_float4 linearToSrgba(vector_float4 c);
+
+#endif /* Common_h */

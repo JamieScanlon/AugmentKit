@@ -187,20 +187,21 @@ public class Renderer: NSObject {
         }
     }
     
-    // A transform matrix that represents the position of the camera in world space.
-    // There is no rotation component.
+    //  A transform matrix that represents the position of the camera in world space.
+    //  There is no rotation component.
     public fileprivate(set) var currentCameraPositionTransform: matrix_float4x4?
-    // A transform matrix that represents the rotation of the camera relative to world space.
-    // There is no postion component.
+    //  A transform matrix that represents the rotation of the camera relative to world space.
+    //  There is no postion component.
     public var currentCameraRotation: matrix_float4x4? {
         guard let currentCameraQuaternionRotation = currentCameraQuaternionRotation else {
             return nil
         }
         return unsafeBitCast(GLKMatrix4MakeWithQuaternion(currentCameraQuaternionRotation), to: simd_float4x4.self)
     }
-    // A Quaternion that represents the rotation of the camera relative to world space.
-    // There is no postion component.
+    //  A Quaternion that represents the rotation of the camera relative to world space.
+    //  There is no postion component.
     public fileprivate(set) var currentCameraQuaternionRotation: GLKQuaternion?
+    //  A heading is the degrees, in radians arounf the Y axis.
     public fileprivate(set) var currentCameraHeading: Double?
     public fileprivate(set) var lowestHorizPlaneAnchor: ARPlaneAnchor?
     public var currentFrameNumber: UInt {

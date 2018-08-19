@@ -138,7 +138,8 @@ public class AKWorld: NSObject {
     
     //  Returns the current AKWorldLocation of the user (technically the user's device).
     //  The transform is relative to the ARKit origin which was the position of the camera
-    //  when the AR session starts.
+    //  when the AR session starts. This world location contains no rotation information,
+    //  the heading is always aligned to the referenceWorldLocation.
     //  When usesLocation = true, the axis are rotated such that z points due south.
     public var currentWorldLocation: AKWorldLocation? {
         
@@ -158,6 +159,19 @@ public class AKWorld: NSObject {
             
         }
         
+    }
+    
+    //  Same as currentWorldLocation with the rotation component of the device multiplied in
+    public var currentWorldLocationWithRotation: AKWorldLocation? {
+        guard let translationWorldLocation = currentWorldLocation else {
+            return nil
+        }
+        let translationMatrix = translationWorldLocation.transform
+        guard let rotationTransform = renderer.currentCameraRotation else {
+            return WorldLocation(transform: translationMatrix, latitude: translationWorldLocation.latitude, longitude: translationWorldLocation.longitude, elevation: translationWorldLocation.elevation)
+        }
+        let newTransform = translationMatrix * rotationTransform
+        return WorldLocation(transform: newTransform, latitude: translationWorldLocation.latitude, longitude: translationWorldLocation.longitude, elevation: translationWorldLocation.elevation)
     }
     
     //  A location that represents a reliable AKWorldLocation object tying together a

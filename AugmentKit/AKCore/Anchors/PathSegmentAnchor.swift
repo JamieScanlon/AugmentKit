@@ -1,5 +1,5 @@
 //
-//  AKPath.swift
+//  PathSegmentAnchor.swift
 //  AugmentKit
 //
 //  MIT License
@@ -24,11 +24,41 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 //
+//  A generic implementation of a AKPathSegmentAnchor
+//
 
+import ARKit
 import Foundation
+import ModelIO
 
-public protocol AKPath: AKAugmentedAnchor {
-    // Thickness measured in meters
-    var lineThickness: Double { get }
-    var segmentPoints: [AKPathSegmentAnchor] { get }
+public class PathSegmentAnchor: AKPathSegmentAnchor {
+    
+    public static var type: String {
+        return "PathSegmentAnchor"
+    }
+    public var worldLocation: AKWorldLocation
+    public var asset: MDLAsset
+    public var identifier: UUID?
+    public var effects: [AnyEffect<Any>]?
+    public var arAnchor: ARAnchor?
+    
+    public init(at location: AKWorldLocation, identifier: UUID? = nil, effects: [AnyEffect<Any>]? = nil) {
+        self.asset = MDLAsset()
+        self.worldLocation = location
+        self.identifier = identifier
+        self.effects = effects
+    }
+    
+    public func setIdentifier(_ identifier: UUID) {
+        self.identifier = identifier
+    }
+    
+    public func setARAnchor(_ arAnchor: ARAnchor) {
+        self.arAnchor = arAnchor
+        if identifier == nil {
+            identifier = arAnchor.identifier
+        }
+        worldLocation.transform = arAnchor.transform
+    }
+    
 }

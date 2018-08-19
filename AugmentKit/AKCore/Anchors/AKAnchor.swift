@@ -24,40 +24,21 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 //
-
-import ARKit
-import Foundation
-import ModelIO
-
-// MARK: - AKAnchor
-
 //  An AKAnchor is a geometrical object 'anchored' to a location. The object itself may
 //  have animation but its position is essentially fixed in space.
 //  The object's geometry is defiened by the `model` property.
 //  The objects position in the world is defined by the worldLocation property.
 //  The conforming object must be a class, i.e. must have reference symantics.
+//
+
+import ARKit
+import Foundation
+
+// MARK: - AKAnchor
+
 public protocol AKAnchor: class, AKGeometricEntity {
     
     var worldLocation: AKWorldLocation { get set }
     func setIdentifier(_ identifier: UUID)
     
-}
-
-// MARK: - AKAugmentedAnchor
-
-//  Represents an anchor placed in the AR world. This anchor only exists in the AR world
-//  as opposed to a real anchor like a detected horizontal / vertical plane which exists
-//  in the physical world.
-public protocol AKAugmentedAnchor: AKAnchor {
-    var arAnchor: ARAnchor? { get }
-    func setARAnchor(_ arachor: ARAnchor)
-}
-
-// MARK: - AKRealAnchor
-
-//  Represents an anchor in the AR world that is tied to an object in the real world
-//  for example a detected horizontal / vertical plane wich represents a table or wall
-public protocol AKRealAnchor: AKAnchor {
-    var arAnchor: ARAnchor? { get }
-    func setARAnchor(_ arachor: ARAnchor)
 }

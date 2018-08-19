@@ -1,4 +1,6 @@
 module AugmentKitShader [system][extern_c] {
     header "ShaderTypes.h"
+    header "BRDFFunctions.h"
+    header "Common.h"
     export *
 }

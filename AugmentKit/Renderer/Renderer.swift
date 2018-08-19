@@ -1223,6 +1223,7 @@ fileprivate class InterpolatingAugmentedAnchor: AKAugmentedAnchor {
     var asset: MDLAsset
     var identifier: UUID?
     var effects: [AnyEffect<Any>]?
+    public var shaderPreference: ShaderPreference = .pbr
     var arAnchor: ARAnchor?
 
     init(withAKAugmentedAnchor akAugmentedAnchor: AKAugmentedAnchor) {

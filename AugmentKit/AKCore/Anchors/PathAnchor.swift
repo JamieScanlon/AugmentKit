@@ -41,6 +41,7 @@ public class PathAnchor: AKPath {
     public var asset: MDLAsset
     public var identifier: UUID?
     public var effects: [AnyEffect<Any>]?
+    public var shaderPreference: ShaderPreference = .simple
     public var lineThickness: Double = 0.1 // Default to 10cm line thickness
     public var segmentPoints: [AKPathSegmentAnchor]
     public var arAnchor: ARAnchor?

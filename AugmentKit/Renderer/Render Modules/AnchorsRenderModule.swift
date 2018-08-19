@@ -144,6 +144,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                     }
                     
                     self?.modelAssetsForAnchorsByUUID[identifier] = asset
+                    self?.shaderPreferenceForAnchorsByUUID[identifier] = geometricEntity.shaderPreference
                 }
             }
             
@@ -179,8 +180,15 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             
             let uuid = item.key
             let mdlAsset = item.value
+            let shaderPreference: ShaderPreference = {
+                if let prefernece = shaderPreferenceForAnchorsByUUID[uuid] {
+                    return prefernece
+                } else {
+                    return .pbr
+                }
+            }()
             
-            meshGPUDataForAnchorsByUUID[uuid] = ModelIOTools.meshGPUData(from: mdlAsset, device: device, textureBundle: textureBundle, vertexDescriptor: MetalUtilities.createStandardVertexDescriptor())
+            meshGPUDataForAnchorsByUUID[uuid] = ModelIOTools.meshGPUData(from: mdlAsset, device: device, textureBundle: textureBundle, vertexDescriptor: MetalUtilities.createStandardVertexDescriptor(), frameRate: 60, shaderPreference: shaderPreference)
             
             guard let meshGPUData = meshGPUDataForAnchorsByUUID[uuid] else {
                 print("Serious Error - ERROR: No meshGPUData found for anchor when trying to load the pipeline.")
@@ -593,6 +601,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     private var textureLoader: MTKTextureLoader?
     private var generalUUID = UUID()
     private var modelAssetsForAnchorsByUUID = [UUID: MDLAsset]()
+    private var shaderPreferenceForAnchorsByUUID = [UUID: ShaderPreference]()
     private var anchorUniformBuffer: MTLBuffer?
     private var materialUniformBuffer: MTLBuffer?
     private var paletteBuffer: MTLBuffer?
@@ -669,6 +678,8 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             return
         }
         
+        let shaderPreference = meshGPUData.shaderPreference
+        
         // Saving all of the states for each mesh in the myPipelineStates array.
         var myPipelineStates = [MTLRenderPipelineState]()
         for (_ , drawData) in meshGPUData.drawData.enumerated() {
@@ -677,7 +688,14 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                 let funcConstants = MetalUtilities.getFuncConstants(forDrawData: drawData)
                 // Specify which shader to use based on if the model has skinned puppet suppot
                 let vertexName = (drawData.paletteStartIndex != nil) ? "anchorGeometryVertexTransformSkinned" : "anchorGeometryVertexTransform"
-                let fragFunc = try metalLibrary.makeFunction(name: "anchorGeometryFragmentLighting", constantValues: funcConstants)
+                let fragmentShaderName: String = {
+                    if shaderPreference == .simple {
+                        return "anchorGeometryFragmentLightingSimple"
+                    } else {
+                        return "anchorGeometryFragmentLighting"
+                    }
+                }()
+                let fragFunc = try metalLibrary.makeFunction(name: fragmentShaderName, constantValues: funcConstants)
                 let vertFunc = try metalLibrary.makeFunction(name: vertexName, constantValues: funcConstants)
                 anchorPipelineStateDescriptor.vertexDescriptor = anchorVertexDescriptor
                 anchorPipelineStateDescriptor.vertexFunction = vertFunc

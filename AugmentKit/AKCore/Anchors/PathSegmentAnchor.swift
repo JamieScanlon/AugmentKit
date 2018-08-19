@@ -40,6 +40,7 @@ public class PathSegmentAnchor: AKPathSegmentAnchor {
     public var asset: MDLAsset
     public var identifier: UUID?
     public var effects: [AnyEffect<Any>]?
+    public var shaderPreference: ShaderPreference = .simple
     public var arAnchor: ARAnchor?
     
     public init(at location: AKWorldLocation, identifier: UUID? = nil, effects: [AnyEffect<Any>]? = nil) {

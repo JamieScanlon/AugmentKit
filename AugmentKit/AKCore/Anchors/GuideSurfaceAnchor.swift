@@ -43,6 +43,7 @@ public class GuideSurfaceAnchor: AKRealSurfaceAnchor {
     public var asset: MDLAsset
     public var identifier: UUID?
     public var effects: [AnyEffect<Any>]?
+    public var shaderPreference: ShaderPreference = .simple
     public var arAnchor: ARAnchor?
     
     public static func createModelAsset(inBundle bundle: Bundle, withAllocator metalAllocator: MTKMeshBufferAllocator?) -> MDLAsset? {

@@ -39,7 +39,7 @@ public class AugmentedUIViewSurface: AugmentedSurfaceAnchor {
         let maxDimension = max(width, height)
         let normalizedWidth = width / maxDimension
         let normalizedHeight = height / maxDimension
-        let extent = vector_float3(Float(normalizedWidth), 0, Float(normalizedHeight))
+        let extent = vector_float3(Float(normalizedWidth), Float(normalizedHeight), 0)
         
         var buffer: Data
         let colorSpace = CGColorSpaceCreateDeviceRGB()
@@ -60,6 +60,8 @@ public class AugmentedUIViewSurface: AugmentedSurfaceAnchor {
         let texture = MDLTexture(data: buffer, topLeftOrigin: false, name: "UIView texture", dimensions: vector2(Int32(width), Int32(height)), rowStride: bytesPerRow, channelCount: numChannels, channelEncoding: .uInt8, isCube: false)
         
         super.init(withTexture: texture, extent: extent, at: location, withAllocator: nil)
+        
+        self.shaderPreference = .simple
         
     }
     

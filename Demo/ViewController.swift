@@ -127,13 +127,17 @@ class ViewController: UIViewController {
     @objc
     fileprivate func handleTap(gestureRecognize: UITapGestureRecognizer) {
         
-//        guard let world = world else {
-//            return
-//        }
-//
-//        guard let currentWorldLocation = world.currentWorldLocation else {
-//            return
-//        }
+        guard let world = world else {
+            return
+        }
+
+        guard let currentWorldLocation = world.currentWorldLocation else {
+            return
+        }
+        
+        guard let gazeLocation = world.currentGazeLocation else {
+            return
+        }
         
         // Example:
         // Create a square path
@@ -195,8 +199,30 @@ class ViewController: UIViewController {
 //        world.add(akPath: path)
         
         // Example:
-        // Render a UIView as a surface in the AR World at the current location
-//        let viewSurface = AugmentedUIViewSurface(withView: view, at: currentWorldLocation)
+        // Render a UIView as a surface in the AR World 2 meters in from of the current location
+//        let textView = UITextView(frame: CGRect(x: 0, y: 0, width: 300, height: 500))
+//        textView.font = UIFont(descriptor: .preferredFontDescriptor(withTextStyle: .body), size: 14)
+//        textView.textColor = UIColor(red: 200/255, green: 109/255, blue: 215/255, alpha: 1)
+//        textView.text = """
+//A way out west there was a fella,
+//fella I want to tell you about, fella
+//by the name of Jeff Lebowski. At
+//least, that was the handle his lovin'
+//parents gave him, but he never had
+//much use for it himself. This
+//Lebowski, he called himself the Dude.
+//Now, Dude, that's a name no one would
+//self-apply where I come from. But
+//then, there was a lot about the Dude
+//that didn't make a whole lot of sense
+//to me. And a lot about where he
+//lived, like- wise. But then again,
+//maybe that's why I found the place
+//s'durned innarestin'...
+//"""
+//        textView.backgroundColor = .clear
+//        let location = world.worldLocationWithDistanceFromMe(metersInFront: 2)!
+//        let viewSurface = AugmentedUIViewSurface(withView: textView, at: location)
 //        world.add(anchor: viewSurface)
 
     }

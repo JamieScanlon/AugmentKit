@@ -43,6 +43,7 @@ public class AugmentedSurfaceAnchor: AKAugmentedSurfaceAnchor {
     public var asset: MDLAsset
     public var identifier: UUID?
     public var effects: [AnyEffect<Any>]?
+    public var shaderPreference: ShaderPreference = .pbr
     public var arAnchor: ARAnchor?
     
     public init(withTexture texture: MDLTexture, extent: vector_float3, at location: AKWorldLocation, withAllocator metalAllocator: MTKMeshBufferAllocator? = nil) {

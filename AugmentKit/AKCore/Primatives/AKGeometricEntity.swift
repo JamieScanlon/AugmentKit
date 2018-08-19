@@ -44,4 +44,5 @@ public protocol AKGeometricEntity {
     var asset: MDLAsset { get }
     var identifier: UUID? { get }
     var effects: [AnyEffect<Any>]? { get }
+    var shaderPreference: ShaderPreference { get }
 }

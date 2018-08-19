@@ -42,6 +42,7 @@ public class AugmentedAnchor: AKAugmentedAnchor {
     public var asset: MDLAsset
     public var identifier: UUID?
     public var effects: [AnyEffect<Any>]?
+    public var shaderPreference: ShaderPreference = .pbr
     public var arAnchor: ARAnchor?
     
     public init(withModelAsset asset: MDLAsset, at location: AKWorldLocation) {

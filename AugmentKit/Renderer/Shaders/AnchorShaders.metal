@@ -601,3 +601,45 @@ fragment float4 anchorGeometryFragmentLighting(ColorInOut in [[stage_in]],
     
 }
 
+// MARK: Anchor fragment shader that uses the base color only
+
+fragment float4 anchorGeometryFragmentLightingSimple(ColorInOut in [[stage_in]],
+                                               constant SharedUniforms &sharedUniforms [[ buffer(kBufferIndexSharedUniforms) ]],
+                                               constant MaterialUniforms &materialUniforms [[ buffer(kBufferIndexMaterialUniforms) ]],
+                                               constant EnvironmentUniforms *environmentUniforms [[ buffer(kBufferIndexEnvironmentUniforms) ]],
+                                               constant AnchorEffectsUniforms *anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]],
+                                               texture2d<float> baseColorMap [[ texture(kTextureIndexColor), function_constant(has_base_color_map) ]],
+                                               texture2d<float> normalMap    [[ texture(kTextureIndexNormal), function_constant(has_normal_map) ]],
+                                               texture2d<float> metallicMap  [[ texture(kTextureIndexMetallic), function_constant(has_metallic_map) ]],
+                                               texture2d<float> roughnessMap  [[ texture(kTextureIndexRoughness), function_constant(has_roughness_map) ]],
+                                               texture2d<float> ambientOcclusionMap  [[ texture(kTextureIndexAmbientOcclusion), function_constant(has_ambient_occlusion_map) ]],
+                                               texture2d<float> emissionMap [[texture(kTextureIndexEmissionMap), function_constant(has_emission_map)]],
+                                               texture2d<float> subsurfaceMap [[texture(kTextureIndexSubsurfaceMap), function_constant(has_subsurface_map)]],
+                                               texture2d<float> specularMap [[  texture(kTextureIndexSpecularMap), function_constant(has_specular_map) ]],
+                                               texture2d<float> specularTintMap [[  texture(kTextureIndexSpecularTintMap), function_constant(has_specularTint_map) ]],
+                                               texture2d<float> anisotropicMap [[  texture(kTextureIndexAnisotropicMap), function_constant(has_anisotropic_map) ]],
+                                               texture2d<float> sheenMap [[  texture(kTextureIndexSheenMap), function_constant(has_sheen_map) ]],
+                                               texture2d<float> sheenTintMap [[  texture(kTextureIndexSheenTintMap), function_constant(has_sheenTint_map) ]],
+                                               texture2d<float> clearcoatMap [[  texture(kTextureIndexClearcoatMap), function_constant(has_clearcoat_map) ]],
+                                               texture2d<float> clearcoatGlossMap [[  texture(kTextureIndexClearcoatGlossMap), function_constant(has_clearcoatGloss_map) ]],
+                                               texturecube<float> environmentCubemap [[  texture(kTextureIndexEnvironmentMap) ]]
+                                               ) {
+    
+    float4 final_color = float4(0);
+    ushort iid = in.iid;
+    
+    float4 baseColor = has_base_color_map ? srgbToLinear(baseColorMap.sample(linearSampler, in.texCoord.xy)) : materialUniforms.baseColor;
+    
+    // FIXME: discard_fragment may have performance implications.
+    // see: http://metalbyexample.com/translucency-and-transparency/
+    if ( baseColor.w <= 0.01f ) {
+        discard_fragment();
+    }
+    
+    // Apply effects
+    final_color = float4(baseColor.rgb * anchorEffectsUniforms[iid].tint, baseColor.a * anchorEffectsUniforms[iid].alpha);
+    
+    return final_color;
+    
+}
+

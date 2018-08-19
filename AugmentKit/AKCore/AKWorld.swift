@@ -329,54 +329,6 @@ public class AKWorld: NSObject {
         renderer.add(akPath: akPath)
     }
     
-    public func worldLocation(withLatitude latitude: Double, longitude: Double, elevation: Double?) -> AKWorldLocation? {
-        
-        guard let configuration = configuration else {
-            return nil
-        }
-        
-        guard configuration.usesLocation else {
-            return nil
-        }
-        
-        guard let referenceLocation = referenceWorldLocation else {
-            return nil
-        }
-        
-        let myElevation: Double = {
-            if let elevation = elevation {
-                return elevation
-            } else {
-                return referenceLocation.elevation
-            }
-        }()
-        
-        return WorldLocation(latitude: latitude, longitude: longitude, elevation: myElevation, referenceLocation: referenceLocation)
-        
-    }
-    
-    //  Creates a new world location at a given x, y, z offset from the current users (devices) position.
-    public func worldLocationFromCurrentLocation(withMetersEast offsetX: Double, metersUp offsetY: Double, metersSouth offsetZ: Double) -> AKWorldLocation? {
-        
-        guard let currentWorldLocation = currentWorldLocation else {
-            return nil
-        }
-        
-        let translation = float4( currentWorldLocation.transform.columns.3.x + Float(offsetX),
-                                  currentWorldLocation.transform.columns.3.y + Float(offsetY),
-                                  currentWorldLocation.transform.columns.3.z + Float(offsetZ),
-                                  1
-        )
-        let endTransform = float4x4( currentWorldLocation.transform.columns.0,
-                                     currentWorldLocation.transform.columns.1,
-                                     currentWorldLocation.transform.columns.2,
-                                     translation
-        )
-        
-        return WorldLocation(transform: endTransform, referenceLocation: currentWorldLocation)
-        
-    }
-    
     deinit {
         NotificationCenter.default.removeObserver(self)
     }
@@ -541,6 +493,87 @@ public class AKWorld: NSObject {
         newStatus.errors.append(contentsOf: errors)
         newStatus.status = .error
         worldStatus = newStatus
+        
+    }
+    
+}
+
+// MARK: - World Location utility methods
+
+extension AKWorld {
+    
+    public func worldLocation(withLatitude latitude: Double, longitude: Double, elevation: Double?) -> AKWorldLocation? {
+        
+        guard let configuration = configuration else {
+            return nil
+        }
+        
+        guard configuration.usesLocation else {
+            return nil
+        }
+        
+        guard let referenceLocation = referenceWorldLocation else {
+            return nil
+        }
+        
+        let myElevation: Double = {
+            if let elevation = elevation {
+                return elevation
+            } else {
+                return referenceLocation.elevation
+            }
+        }()
+        
+        return WorldLocation(latitude: latitude, longitude: longitude, elevation: myElevation, referenceLocation: referenceLocation)
+        
+    }
+    
+    //  Creates a new world location at a given x, y, z offset from the current users (devices) position.
+    public func worldLocationFromCurrentLocation(withMetersEast offsetX: Double, metersUp offsetY: Double, metersSouth offsetZ: Double) -> AKWorldLocation? {
+        
+        guard let currentWorldLocation = currentWorldLocation else {
+            return nil
+        }
+        
+        let translation = float4( currentWorldLocation.transform.columns.3.x + Float(offsetX),
+                                  currentWorldLocation.transform.columns.3.y + Float(offsetY),
+                                  currentWorldLocation.transform.columns.3.z + Float(offsetZ),
+                                  1
+        )
+        let endTransform = float4x4( currentWorldLocation.transform.columns.0,
+                                     currentWorldLocation.transform.columns.1,
+                                     currentWorldLocation.transform.columns.2,
+                                     translation
+        )
+        
+        return WorldLocation(transform: endTransform, referenceLocation: currentWorldLocation)
+        
+    }
+    
+    //
+    public func worldLocationWithDistanceFromMe(metersToTheRight metersRelX: Double = 0, metersAbove metersRelY: Double = 0, metersInFront metersRelMinusZ: Double = 0) -> AKWorldLocation? {
+        
+        guard let currentWorldLocation = currentWorldLocation else {
+            return nil
+        }
+        let translationMatrix = currentWorldLocation.transform
+        guard let rotation = renderer.currentCameraHeading else {
+            return WorldLocation(transform: translationMatrix, latitude: currentWorldLocation.latitude, longitude: currentWorldLocation.longitude, elevation: currentWorldLocation.elevation)
+        }
+        let offsetX = -1 * metersRelMinusZ * sin(rotation) + metersRelX * cos(rotation)
+        let offsetZ = -1 * metersRelMinusZ * cos(rotation) - metersRelX * sin(rotation)
+        let translation = float4( currentWorldLocation.transform.columns.3.x + Float(offsetX),
+                                  currentWorldLocation.transform.columns.3.y + Float(metersRelY),
+                                  currentWorldLocation.transform.columns.3.z + Float(offsetZ),
+                                  1
+        )
+        var transform = float4x4( currentWorldLocation.transform.columns.0,
+                                  currentWorldLocation.transform.columns.1,
+                                  currentWorldLocation.transform.columns.2,
+                                  translation)
+        // Rotate to face towards the user
+        transform = transform.rotate(radians: Float(rotation) , x: 0, y: 1, z: 0)
+        return WorldLocation(transform: transform, referenceLocation: currentWorldLocation)
         
     }
     

@@ -49,6 +49,7 @@ public class UserTracker: AKAugmentedUserTracker {
     public var asset: MDLAsset
     public var identifier: UUID?
     public var effects: [AnyEffect<Any>]?
+    public var shaderPreference: ShaderPreference = .pbr
     public var position: AKRelativePosition
     
     public init(withModelAsset asset: MDLAsset, withUserRelativeTransform relativeTransform: matrix_float4x4) {

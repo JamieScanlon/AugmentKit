@@ -181,7 +181,7 @@ class ModelIOTools {
     // MARK: Encoding Mesh Data
     
     // Encodes an MDLAsset from ModelIO into a MeshGPUData object which is used internally to set up the render pipeline.
-    static func meshGPUData(from asset: MDLAsset, device: MTLDevice, textureBundle: Bundle, vertexDescriptor: MDLVertexDescriptor?, frameRate: Double = 60) -> MeshGPUData {
+    static func meshGPUData(from asset: MDLAsset, device: MTLDevice, textureBundle: Bundle, vertexDescriptor: MDLVertexDescriptor?, frameRate: Double = 60, shaderPreference: ShaderPreference = .pbr) -> MeshGPUData {
         
         // see: https://github.com/metal-by-example/modelio-materials
         
@@ -402,6 +402,9 @@ class ModelIOTools {
         if let vertexDescriptor = vertexDescriptor, let mtlVertexDescriptor = MTKMetalVertexDescriptorFromModelIO(vertexDescriptor) {
             meshGPUData.vertexDescriptor = mtlVertexDescriptor
         }
+        
+        // Shader preference
+        meshGPUData.shaderPreference = shaderPreference
         
         return meshGPUData
         

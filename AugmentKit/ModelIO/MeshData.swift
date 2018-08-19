@@ -141,11 +141,18 @@ public struct DrawData {
     var hasClearcoatGlossMap = false
 }
 
-// MARK: DrawData
+// MARK: MeshGPUData
 //  Data for an object containing one or more meshes
 public struct MeshGPUData {
     var drawData = [DrawData]()
     var vertexDescriptor: MTLVertexDescriptor?
+    var shaderPreference: ShaderPreference = .pbr
+}
+
+// MARK: MeshGPUData
+public enum ShaderPreference {
+    case simple
+    case pbr
 }
 
 // MARK: - Puppet Animation (Not currently supported by renderer)

@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		7D02B24420CB98B70055BB57 /* retrotv.usdz in Resources */ = {isa = PBXBuildFile; fileRef = 7D02B24320CB98B70055BB57 /* retrotv.usdz */; };
 		7D1B6F0D1F29851E00AB035D /* Pin.scn in Resources */ = {isa = PBXBuildFile; fileRef = 7D1B6F0C1F2983DA00AB035D /* Pin.scn */; };
+		7D1FC692213C5EA7006CB649 /* AKWorldMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D1FC691213C5EA6006CB649 /* AKWorldMap.swift */; };
 		7D345B07208B83CA00C2D5D0 /* AKWorldLocation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D345B06208B83CA00C2D5D0 /* AKWorldLocation.swift */; };
 		7D345B09208B844600C2D5D0 /* AKWorldDistance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D345B08208B844600C2D5D0 /* AKWorldDistance.swift */; };
 		7D345B0B208B892200C2D5D0 /* AKError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D345B0A208B892200C2D5D0 /* AKError.swift */; };
@@ -125,6 +126,7 @@
 /* Begin PBXFileReference section */
 		7D02B24320CB98B70055BB57 /* retrotv.usdz */ = {isa = PBXFileReference; lastKnownFileType = file; path = retrotv.usdz; sourceTree = "<group>"; };
 		7D1B6F0C1F2983DA00AB035D /* Pin.scn */ = {isa = PBXFileReference; lastKnownFileType = file.bplist; path = Pin.scn; sourceTree = "<group>"; };
+		7D1FC691213C5EA6006CB649 /* AKWorldMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKWorldMap.swift; sourceTree = "<group>"; };
 		7D345B06208B83CA00C2D5D0 /* AKWorldLocation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKWorldLocation.swift; sourceTree = "<group>"; };
 		7D345B08208B844600C2D5D0 /* AKWorldDistance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKWorldDistance.swift; sourceTree = "<group>"; };
 		7D345B0A208B892200C2D5D0 /* AKError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKError.swift; sourceTree = "<group>"; };
@@ -457,6 +459,7 @@
 				7D345B0A208B892200C2D5D0 /* AKError.swift */,
 				7D8D4DE4209E8E6900F98072 /* AKAnimatable.swift */,
 				7D8D4DE6209E907E00F98072 /* AKEffect.swift */,
+				7D1FC691213C5EA6006CB649 /* AKWorldMap.swift */,
 			);
 			path = Primatives;
 			sourceTree = "<group>";
@@ -654,6 +657,7 @@
 				7D48011E20FDA7C000E4B082 /* FileManager+ZIP.swift in Sources */,
 				7D5B25A72069626900EFA3C6 /* AKRealSurfaceAnchor.swift in Sources */,
 				7D8A0A822013D143006CAAAD /* AKHeading.swift in Sources */,
+				7D1FC692213C5EA7006CB649 /* AKWorldMap.swift in Sources */,
 				7D6E6B6E1F8F1CDB00EFC667 /* LocalStoreManager.swift in Sources */,
 				7D8A0A802013D058006CAAAD /* AKRelativePosiiton.swift in Sources */,
 				7D6E6B6D1F8F1CDB00EFC667 /* MotionManager.swift in Sources */,

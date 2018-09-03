@@ -264,6 +264,8 @@ public class AKWorld: NSObject {
     }
     public var monitor: AKWorldMonitor?
     
+    // MARK: Lifecycle
+    
     public init(renderDestination: MTKView, configuration: AKWorldConfiguration = AKWorldConfiguration(), textureBundle: Bundle? = nil) {
         
         let bundle: Bundle = {
@@ -313,24 +315,99 @@ public class AKWorld: NSObject {
         renderer.initialize()
     }
     
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+    
+    // MARK: Adding and removing anchors
+    
     public func add(anchor: AKAugmentedAnchor) {
         renderer.add(akAnchor: anchor)
+    }
+    
+    public func remove(anchor: AKAugmentedAnchor) {
+        renderer.remove(akAnchor: anchor)
     }
     
     public func add(tracker: AKAugmentedTracker) {
         renderer.add(akTracker: tracker)
     }
     
+    public func remove(tracker: AKAugmentedTracker) {
+        renderer.remove(akTracker: tracker)
+    }
+    
     public func add(gazeTarget: GazeTarget) {
         renderer.add(gazeTarget: gazeTarget)
+    }
+    
+    public func remove(gazeTarget: GazeTarget) {
+        renderer.remove(gazeTarget: gazeTarget)
     }
     
     public func add(akPath: AKPath) {
         renderer.add(akPath: akPath)
     }
     
-    deinit {
-        NotificationCenter.default.removeObserver(self)
+    public func remove(akPath: AKPath) {
+        renderer.remove(akPath: akPath)
+    }
+    
+    // MARK: World Map
+    
+    //  Gets the AKWorldMap from the AR Session
+    public func getWorldMap(completion: @escaping (AKWorldMap?, Error?) -> Void) {
+        
+        let session = renderer.session
+        session.getCurrentWorldMap() { [unowned self] (worldMap, error) in
+            if let arWorldMap = worldMap {
+                let akWorldMap = AKWorldMap(withARWorldMap: arWorldMap, worldLocation: self.currentWorldLocation)
+                completion(akWorldMap, error)
+            } else {
+                completion(nil, error)
+            }
+        }
+        
+    }
+    
+    //  Gets the ARWorldMap and saves it to the temporary directory, returning the URL.
+    public func getArchivedWorldMap(completion: @escaping (URL?, Error?) -> Void) {
+        
+        let session = renderer.session
+        session.getCurrentWorldMap() { [unowned self] (worldMap, error) in
+            
+            if let arWorldMap = worldMap {
+                let akWorldMap = AKWorldMap(withARWorldMap: arWorldMap, worldLocation: self.currentWorldLocation)
+                let url = try? self.writeWorldMapToTempDir(akWorldMap)
+                completion(url, error)
+            } else {
+                completion(nil, error)
+            }
+            
+        }
+        
+    }
+    
+    //  Resets the AR Session with the given inital world map
+    public func setWorldMap(worldMap: AKWorldMap) {
+        renderer.worldMap = worldMap.arWorldMap
+        renderer.reset(options: [])
+        if let latitude = worldMap.latitude, let longitude = worldMap.longitude, let elevation = worldMap.elevation, let transform = worldMap.transform {
+            let newWorldLocation = WorldLocation(transform: transform, latitude: latitude, longitude: longitude, elevation: elevation)
+            reliableWorldLocations = [newWorldLocation]
+        } else {
+            reliableWorldLocations = []
+        }
+    }
+    
+    //  Load an ARKWorldMap from a file URL
+    public func loadWorldMap(from url: URL) throws {
+        let mapData = try Data(contentsOf: url)
+        guard let worldMap = try NSKeyedUnarchiver.unarchivedObject(ofClass: AKWorldMap.self, from: mapData)
+            else {
+                throw ARError(.invalidWorldMap)
+        }
+        setWorldMap(worldMap: worldMap)
     }
     
     // MARK: - Private
@@ -494,6 +571,15 @@ public class AKWorld: NSObject {
         newStatus.status = .error
         worldStatus = newStatus
         
+    }
+    
+    //  Save an AKWorldMap to the temp directory
+    func writeWorldMapToTempDir(_ worldMap: AKWorldMap) throws -> URL {
+        let fileName = "worldMap"
+        let fileURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(fileName)
+        let data = try NSKeyedArchiver.archivedData(withRootObject: worldMap, requiringSecureCoding: true)
+        try data.write(to: fileURL)
+        return fileURL
     }
     
 }

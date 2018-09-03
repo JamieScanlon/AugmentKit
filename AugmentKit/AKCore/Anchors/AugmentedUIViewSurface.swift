@@ -32,7 +32,13 @@ import ModelIO
 
 public class AugmentedUIViewSurface: AugmentedSurfaceAnchor {
     
+    public var view: UIView
+    public fileprivate(set) var bytesPerRow: Int
+    public fileprivate(set) var totalBytes: Int
+    
     public init(withView view: UIView, at location: AKWorldLocation) {
+        
+        self.view = view
         
         let width = view.bounds.width
         let height = view.bounds.height
@@ -44,9 +50,41 @@ public class AugmentedUIViewSurface: AugmentedSurfaceAnchor {
         var buffer: Data
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         let numChannels = 4
+        self.bytesPerRow = numChannels * Int(width)
+        self.totalBytes = self.bytesPerRow * Int(height)
+        if let context = CGContext(data: nil, width: Int(width), height: Int(height), bitsPerComponent: 8, bytesPerRow: self.bytesPerRow, space: colorSpace, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue) {
+        
+            // draw the view to the buffer
+            view.layer.render(in: context)
+            
+            // get pixel data
+            buffer = Data(bytes: context.data!, count: self.totalBytes)
+            
+        } else {
+            buffer = Data()
+        }
+        
+        let texture = MDLTexture(data: buffer, topLeftOrigin: false, name: "UIView texture", dimensions: vector2(Int32(width), Int32(height)), rowStride: self.bytesPerRow, channelCount: numChannels, channelEncoding: .uInt8, isCube: false)
+        
+        super.init(withTexture: texture, extent: extent, at: location, withAllocator: nil)
+        
+        self.shaderPreference = .simple
+        
+    }
+    
+    private func updatedViewTextureData() -> Data {
+        
+        // Generate a new texture
+        
+        let width = view.bounds.width
+        let height = view.bounds.height
+        
+        var buffer: Data
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        let numChannels = 4
         let bytesPerRow = numChannels * Int(width)
         if let context = CGContext(data: nil, width: Int(width), height: Int(height), bitsPerComponent: 8, bytesPerRow: bytesPerRow, space: colorSpace, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue) {
-        
+            
             // draw the view to the buffer
             view.layer.render(in: context)
             
@@ -57,11 +95,7 @@ public class AugmentedUIViewSurface: AugmentedSurfaceAnchor {
             buffer = Data()
         }
         
-        let texture = MDLTexture(data: buffer, topLeftOrigin: false, name: "UIView texture", dimensions: vector2(Int32(width), Int32(height)), rowStride: bytesPerRow, channelCount: numChannels, channelEncoding: .uInt8, isCube: false)
-        
-        super.init(withTexture: texture, extent: extent, at: location, withAllocator: nil)
-        
-        self.shaderPreference = .simple
+        return buffer
         
     }
     

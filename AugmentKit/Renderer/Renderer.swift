@@ -86,6 +86,7 @@ public struct CameraProperties {
     var viewportSize: CGSize
     var viewportSizeDidChange: Bool
     var position: float3
+    var heading: Double
     var currentFrame: UInt
     var frameRate: Double = 60
     var arCamera: ARCamera
@@ -93,11 +94,12 @@ public struct CameraProperties {
     var displayTransform: CGAffineTransform
     var rawFeaturePoints: ARPointCloud?
     
-    init(orientation: UIInterfaceOrientation, viewportSize: CGSize, viewportSizeDidChange: Bool, position: float3, currentFrame: UInt, frame: ARFrame, frameRate: Double = 60) {
+    init(orientation: UIInterfaceOrientation, viewportSize: CGSize, viewportSizeDidChange: Bool, position: float3, heading: Double, currentFrame: UInt, frame: ARFrame, frameRate: Double = 60) {
         self.orientation = orientation
         self.viewportSize = viewportSize
         self.viewportSizeDidChange = viewportSizeDidChange
         self.position = position
+        self.heading = heading
         self.currentFrame = currentFrame
         self.frameRate = frameRate
         self.arCamera = frame.camera
@@ -186,6 +188,8 @@ public class Renderer: NSObject {
             reset()
         }
     }
+    
+    public var worldMap: ARWorldMap?
     
     //  A transform matrix that represents the position of the camera in world space.
     //  There is no rotation component.
@@ -325,12 +329,12 @@ public class Renderer: NSObject {
         state = .paused
     }
     
-    public func reset() {
+    public func reset(options: ARSession.RunOptions = [.removeExistingAnchors, .resetTracking]) {
         guard state != .uninitialized else {
             return
         }
         hasDetectedSurfaces = false
-        session.run(createNewConfiguration(), options: [.removeExistingAnchors, .resetTracking])
+        session.run(createNewConfiguration(), options: options)
         state = .running
     }
     
@@ -472,7 +476,7 @@ public class Renderer: NSObject {
             }
         }()
         
-        let cameraProperties = CameraProperties(orientation: orientation, viewportSize: viewportSize, viewportSizeDidChange: viewportSizeDidChange, position: cameraPosition, currentFrame: currentFrameNumber, frame: currentFrame, frameRate: frameRate)
+        let cameraProperties = CameraProperties(orientation: orientation, viewportSize: viewportSize, viewportSizeDidChange: viewportSizeDidChange, position: cameraPosition, heading: currentCameraHeading ?? 0, currentFrame: currentFrameNumber, frame: currentFrame, frameRate: frameRate)
         
         //
         // Encode Cammand Buffer
@@ -810,6 +814,10 @@ public class Renderer: NSObject {
         
         // Enable environment texturing
         configuration.environmentTexturing = .automatic
+        
+        if let worldMap = worldMap {
+            configuration.initialWorldMap = worldMap
+        }
         
         return configuration
     }

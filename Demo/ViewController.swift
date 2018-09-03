@@ -227,6 +227,21 @@ class ViewController: UIViewController {
 
     }
     
+    @IBAction func exportButtonClicked(_ sender: UIButton) {
+        guard let world = world else {
+            return
+        }
+        world.getArchivedWorldMap() { (fileURL, error) in
+            if let fileURL = fileURL {
+                let activityItems = [fileURL]
+                let activityViewController = UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+                DispatchQueue.main.async { [weak self] in
+                    self?.present(activityViewController, animated: true, completion: nil)
+                }
+            }
+        }
+    }
+    
     @IBAction fileprivate func markerTapped(_ sender: UIButton) {
         
         // Create a new anchor at the current locaiton

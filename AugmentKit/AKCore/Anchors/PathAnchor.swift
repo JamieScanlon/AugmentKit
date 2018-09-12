@@ -38,6 +38,7 @@ public class PathAnchor: AKPath {
         return "PathAnchor"
     }
     public var worldLocation: AKWorldLocation
+    public var heading: AKHeading = SameHeading()
     public var asset: MDLAsset
     public var identifier: UUID?
     public var effects: [AnyEffect<Any>]?

@@ -36,7 +36,7 @@ public class AugmentedUIViewSurface: AugmentedSurfaceAnchor {
     public fileprivate(set) var bytesPerRow: Int
     public fileprivate(set) var totalBytes: Int
     
-    public init(withView view: UIView, at location: AKWorldLocation) {
+    public init(withView view: UIView, at location: AKWorldLocation, heading: AKHeading? = nil) {
         
         self.view = view
         
@@ -66,7 +66,7 @@ public class AugmentedUIViewSurface: AugmentedSurfaceAnchor {
         
         let texture = MDLTexture(data: buffer, topLeftOrigin: false, name: "UIView texture", dimensions: vector2(Int32(width), Int32(height)), rowStride: self.bytesPerRow, channelCount: numChannels, channelEncoding: .uInt8, isCube: false)
         
-        super.init(withTexture: texture, extent: extent, at: location, withAllocator: nil)
+        super.init(withTexture: texture, extent: extent, at: location, heading: heading, withAllocator: nil)
         
         self.shaderPreference = .simple
         

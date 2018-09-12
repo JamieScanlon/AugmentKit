@@ -252,6 +252,7 @@
 				7D808FAC209FD0620077FA19 /* Targets */,
 				7D3EAC0E1F7EA8440076635C /* AKWorld.swift */,
 				7D3E48891F88C1C800814875 /* AKUtility.swift */,
+				7DB396AB1F1AFBFB0003019B /* MetalUtilities.swift */,
 				7DF697EA1FCD26F500292F66 /* AKModelProvider.swift */,
 			);
 			path = AKCore;
@@ -469,7 +470,6 @@
 			children = (
 				7DB396AF1F1AFDD30003019B /* MeshTools.swift */,
 				7DB396AD1F1AFD860003019B /* MeshData.swift */,
-				7DB396AB1F1AFBFB0003019B /* MetalUtilities.swift */,
 			);
 			path = ModelIO;
 			sourceTree = "<group>";

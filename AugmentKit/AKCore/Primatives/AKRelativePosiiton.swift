@@ -65,19 +65,18 @@ public class AKRelativePosition {
         if let heading = heading {
             
             var mutableHeading = heading
-            let oldHeading = mutableHeading.offsetRoation
+            let oldHeading = mutableHeading.offsetRotation
             mutableHeading.updateHeading(withPosition: self)
-            if oldHeading != mutableHeading.offsetRoation {
+            if oldHeading != mutableHeading.offsetRotation {
                 self.heading = mutableHeading
             }
             
             if (_transformHasChanged || _headingHasChanged) {
             
-                var newTransform = matrix_identity_float4x4.rotate(radians: Float(mutableHeading.offsetRoation.radiansX), x: 1, y: 0, z: 0)
-                newTransform = newTransform.rotate(radians: Float(mutableHeading.offsetRoation.radiansY), x: 0, y: 1, z: 0)
-                newTransform = newTransform.rotate(radians: Float(mutableHeading.offsetRoation.radiansZ), x: 0, y: 0, z: 1)
+                // Heading
+                var newTransform = mutableHeading.offsetRotation.quaternion.toMatrix4()
                 
-                if mutableHeading.type == .fixed {
+                if mutableHeading.type == .absolute {
                     newTransform = newTransform * float4x4(
                         float4(transform.columns.0.x, 0, 0, 0),
                         float4(0, transform.columns.1.y, 0, 0),

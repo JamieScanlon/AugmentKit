@@ -40,13 +40,14 @@ public class AugmentedSurfaceAnchor: AKAugmentedSurfaceAnchor {
         return "AugmentedSurface"
     }
     public var worldLocation: AKWorldLocation
+    public var heading: AKHeading = NorthHeading()
     public var asset: MDLAsset
     public var identifier: UUID?
     public var effects: [AnyEffect<Any>]?
     public var shaderPreference: ShaderPreference = .pbr
     public var arAnchor: ARAnchor?
     
-    public init(withTexture texture: MDLTexture, extent: vector_float3, at location: AKWorldLocation, withAllocator metalAllocator: MTKMeshBufferAllocator? = nil) {
+    public init(withTexture texture: MDLTexture, extent: vector_float3, at location: AKWorldLocation, heading: AKHeading? = nil, withAllocator metalAllocator: MTKMeshBufferAllocator? = nil) {
         
         let mesh = MDLMesh(planeWithExtent: extent, segments: vector2(1, 1), geometryType: .triangles, allocator: metalAllocator)
         let scatteringFunction = MDLScatteringFunction()
@@ -66,6 +67,9 @@ public class AugmentedSurfaceAnchor: AKAugmentedSurfaceAnchor {
         
         self.asset = asset
         self.worldLocation = location
+        if let heading = heading {
+            self.heading = heading
+        }
         
     }
     

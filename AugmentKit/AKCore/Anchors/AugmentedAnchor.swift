@@ -39,6 +39,7 @@ public class AugmentedAnchor: AKAugmentedAnchor {
         return "AugmentedAnchor"
     }
     public var worldLocation: AKWorldLocation
+    public var heading: AKHeading = NorthHeading()
     public var asset: MDLAsset
     public var identifier: UUID?
     public var effects: [AnyEffect<Any>]?

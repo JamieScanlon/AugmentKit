@@ -215,7 +215,8 @@ public class AKWorld: NSObject {
             if let originLocation = referenceWorldLocation {
                 let currentGazePosition = renderer.currentGazeTransform
                 let worldDistance = AKWorldDistance(metersX: Double(currentGazePosition.columns.3.x), metersY: Double(currentGazePosition.columns.3.y), metersZ: Double(currentGazePosition.columns.3.z))
-                return AKLocationUtility.worldLocation(from: originLocation, translatedBy: worldDistance)
+                let worldLocation = AKLocationUtility.worldLocation(from: originLocation, translatedBy: worldDistance)
+                return worldLocation
             } else {
                 return nil
             }
@@ -653,14 +654,19 @@ extension AKWorld {
                                   currentWorldLocation.transform.columns.3.z + Float(offsetZ),
                                   1
         )
-        var transform = float4x4( currentWorldLocation.transform.columns.0,
+        let transform = float4x4( currentWorldLocation.transform.columns.0,
                                   currentWorldLocation.transform.columns.1,
                                   currentWorldLocation.transform.columns.2,
                                   translation)
-        // Rotate to face towards the user
-        transform = transform.rotate(radians: Float(rotation) , x: 0, y: 1, z: 0)
         return WorldLocation(transform: transform, referenceLocation: currentWorldLocation)
         
+    }
+    
+    public func headingLookingAtMe(from worldLocation: AKWorldLocation) -> AKHeading? {
+        guard let currentWorldLocation = currentWorldLocation else {
+            return nil
+        }
+        return WorldHeading(withWorld: self, worldHeadingType: .lookAt(worldLocation, currentWorldLocation))
     }
     
 }

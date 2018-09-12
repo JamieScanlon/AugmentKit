@@ -339,6 +339,21 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                     }()
                     coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
                     
+                    // Update Heading
+                    var newTransform = akAnchor.heading.offsetRotation.quaternion.toMatrix4()
+                    
+                    if akAnchor.heading.type == .absolute {
+                        newTransform = newTransform * float4x4(
+                            float4(coordinateSpaceTransform.columns.0.x, 0, 0, 0),
+                            float4(0, coordinateSpaceTransform.columns.1.y, 0, 0),
+                            float4(0, 0, coordinateSpaceTransform.columns.2.z, 0),
+                            float4(coordinateSpaceTransform.columns.3.x, coordinateSpaceTransform.columns.3.y, coordinateSpaceTransform.columns.3.z, 1)
+                        )
+                        coordinateSpaceTransform = newTransform
+                    } else if akAnchor.heading.type == .relative {
+                        coordinateSpaceTransform = coordinateSpaceTransform * newTransform
+                    }
+                    
                     let modelMatrix = arAnchor.transform * coordinateSpaceTransform
                     let anchorUniforms = anchorUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: anchorMeshIndex)
                     anchorUniforms?.pointee.modelMatrix = modelMatrix

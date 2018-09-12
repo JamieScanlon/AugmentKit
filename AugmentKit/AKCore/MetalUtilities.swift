@@ -232,8 +232,12 @@ public extension float4x4 {
         return unsafeBitCast(GLKMatrix4MakeLookAt(eyeX, eyeY, eyeZ, centerX, centerY, centerZ, upX, upY, upZ), to: float4x4.self)
     }
     
-    public static func makeQuaternion(from: float4x4) -> GLKQuaternion {
-        return GLKQuaternionMakeWithMatrix4(unsafeBitCast(from, to: GLKMatrix4.self))
+//    public static func makeQuaternion(from: float4x4) -> GLKQuaternion {
+//        return GLKQuaternionMakeWithMatrix4(unsafeBitCast(from, to: GLKMatrix4.self))
+//    }
+
+    public static func makeQuaternion(from: float4x4) -> simd_quatf {
+        return simd_quatf(from)
     }
     
     public func scale(x: Float, y: Float, z: Float) -> float4x4 {
@@ -248,7 +252,11 @@ public extension float4x4 {
         return self * float4x4.makeTranslation(x: x, y: y, z: z)
     }
     
-    public func quaternion() -> GLKQuaternion {
+//    public func quaternion() -> GLKQuaternion {
+//        return float4x4.makeQuaternion(from: self)
+//    }
+
+    public func quaternion() -> simd_quatf {
         return float4x4.makeQuaternion(from: self)
     }
     
@@ -266,6 +274,11 @@ public extension float4x4 {
             return false
         }
         return true
+    }
+    
+    public func lookAt(position: float4) -> simd_quatf {
+        let quaternion = float4x4.makeLookAt(eyeX: columns.3.x, eyeY: columns.3.y, eyeZ: -columns.3.z, centerX: position.x, centerY: position.y, centerZ: position.z, upX: 0, upY: 1, upZ: 0).quaternion()
+        return quaternion
     }
     
     public var normalMatrix: float3x3 {
@@ -295,13 +308,99 @@ public extension simd_float4 {
     }
 }
 
+// MARK: - simd_float3
+
+public extension simd_float3 {
+    func inverse() -> simd_float3 {
+        return simd_float3(x: fabsf(self.x)>0 ? 1/self.x : 0, y: fabsf(self.y)>0 ? 1/self.y : 0, z: fabsf(self.z)>0 ? 1/self.z : 0)
+    }
+    /// similar vectors
+    func isClose(_ v: simd_float3, epsilon: Float = 0.0001) -> Bool {
+        let diff = self - v
+        return Float.isClose(length_squared(diff), 0)
+    }
+}
+
+// MARK: - Float
+
+public extension FloatingPoint {
+    static func isClose(_ a: Float, _ b: Float, epsilon: Float = 0.0001) -> Bool {
+        return ( fabsf( a - b ) < epsilon )
+    }
+}
+
 // MARK: - EulerAngles
 
-struct EulerAngles {
+// Parameters are ordered in the ARKit rotation order, ZYX:
+// first roll (about Z axis), then yaw (about Y axis), then pitch (about X axis)
+public struct EulerAngles {
     var roll: Float
-    var pitch: Float
     var yaw: Float
+    var pitch: Float
 }
+
+// MARK: - simd_quatd
+
+extension simd_quatf {
+    
+    //  Returns a rotation matrix (column major, p' = M * p)
+    func toMatrix4() -> matrix_float4x4 {
+        let w = real
+        let v = imag
+        let w2 = w * w
+        let x2 = v.x * v.x
+        let y2 = v.y * v.y
+        let z2 = v.z * v.z
+        var m = matrix_identity_float4x4
+        m.columns.0.x = w2 + x2 - y2 - z2
+        m.columns.0.y = 2 * v.x * v.y - 2 * w * v.z
+        m.columns.0.z = 2 * v.x * v.z + 2 * w * v.y
+        m.columns.1.x = 2 * v.x * v.y + 2 * w * v.z
+        m.columns.1.y = w2 - x2 + y2 - z2
+        m.columns.1.z = 2 * v.y * v.z - 2 * w * v.x
+        m.columns.2.x = 2 * v.x * v.z - 2 * w * v.y
+        m.columns.2.y = 2 * v.y * v.z + 2 * w * v.x
+        m.columns.2.z = w2 - x2 - y2 + z2
+        m.columns.3.w = w2 + x2 + y2 + z2 // = 1 if unit quaternion
+        return m
+    }
+    
+    func lookAt(eye: simd_float3, center: simd_float3, up: simd_float3) -> simd_quatf {
+        let E = -eye
+        let N = simd_normalize(eye - center)
+        let U = simd_normalize(cross(up, N))
+        let V = cross(N, U)
+        var P = simd_float4(0)
+        var Q = simd_float4(0)
+        var R = simd_float4(0)
+        var S = simd_float4(0)
+        P.x = U.x
+        P.y = U.y
+        P.z = U.z
+        P.w = dot(U, E)
+        Q.x = V.x
+        Q.y = V.y
+        Q.z = V.z
+        Q.w = dot(V, E)
+        R.x = N.x
+        R.y = N.y
+        R.z = N.z
+        R.w = dot(N, E)
+        S.w = 1
+        let matrix = simd_float4x4(P, Q, R, S)
+        return simd_quatf(matrix)
+    }
+    
+}
+
+// MARK: Debugging
+
+extension simd_quatf: CustomStringConvertible {
+    public var description: String {
+        return debugDescription
+    }
+}
+
 
 // MARK: - QuaternionUtilities
 
@@ -352,7 +451,7 @@ class QuaternionUtilities {
         let cosr = 1 - 2 * (quaternion.y * quaternion.y + quaternion.z * quaternion.z)
         let pitch = atan2(sinr, cosr)
         
-        return EulerAngles(roll: roll, pitch: pitch, yaw: yaw)
+        return EulerAngles(roll: roll, yaw: yaw, pitch: pitch)
         
     }
     

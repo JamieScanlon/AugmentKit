@@ -205,7 +205,9 @@ public class Renderer: NSObject {
     //  A Quaternion that represents the rotation of the camera relative to world space.
     //  There is no postion component.
     public fileprivate(set) var currentCameraQuaternionRotation: GLKQuaternion?
-    //  A heading is the degrees, in radians arounf the Y axis.
+    //  A heading is the degrees, in radians around the Y axis. 0° is due north
+    // and the units go from 0 to π in the counter-clockwise direction and
+    // 0 to -π in the clockwise direction.
     public fileprivate(set) var currentCameraHeading: Double?
     public fileprivate(set) var lowestHorizPlaneAnchor: ARPlaneAnchor?
     public var currentFrameNumber: UInt {
@@ -372,7 +374,7 @@ public class Renderer: NSObject {
         // and the cameras current rotation (given by the eulerAngles) and rotate the transform
         // in the opposite direction. The result is a transform at the position of the camera
         // but oriented along the same axes as world space.
-        let eulerAngles = EulerAngles(roll: currentFrame.camera.eulerAngles.z, pitch: currentFrame.camera.eulerAngles.x, yaw: currentFrame.camera.eulerAngles.y)
+        let eulerAngles = EulerAngles(roll: currentFrame.camera.eulerAngles.z, yaw: currentFrame.camera.eulerAngles.y, pitch: currentFrame.camera.eulerAngles.x)
         let cameraQuaternion = QuaternionUtilities.quaternionFromEulerAngles(eulerAngles: eulerAngles)
         var positionOnlyTransform = matrix_identity_float4x4
         positionOnlyTransform = positionOnlyTransform.translate(x: currentFrame.camera.transform.columns.3.x, y: currentFrame.camera.transform.columns.3.y, z: currentFrame.camera.transform.columns.3.z)
@@ -421,6 +423,7 @@ public class Renderer: NSObject {
         
         // Calculate updates to trackers relative position
         let cameraPositionTransform = currentCameraPositionTransform ?? matrix_identity_float4x4
+        let cameraRelativePosition = AKRelativePosition(withTransform: cameraPositionTransform)
         
         //
         // Update Trackers
@@ -454,6 +457,20 @@ public class Renderer: NSObject {
                 gazeTargets = updatedGazeTargets
             }
             
+        }
+        
+        //
+        // Update Headings
+        //
+        
+        augmentedAnchors.forEach {
+            $0.heading.updateHeading(withPosition: cameraRelativePosition)
+        }
+        realAnchors.forEach {
+            $0.heading.updateHeading(withPosition: cameraRelativePosition)
+        }
+        paths.forEach {
+            $0.heading.updateHeading(withPosition: cameraRelativePosition)
         }
         
         //
@@ -1228,6 +1245,7 @@ fileprivate class InterpolatingAugmentedAnchor: AKAugmentedAnchor {
     }
 
     var worldLocation: AKWorldLocation
+    var heading: AKHeading = SameHeading()
     var asset: MDLAsset
     var identifier: UUID?
     var effects: [AnyEffect<Any>]?

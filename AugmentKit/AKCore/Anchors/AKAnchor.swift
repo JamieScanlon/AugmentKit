@@ -39,6 +39,7 @@ import Foundation
 public protocol AKAnchor: class, AKGeometricEntity {
     
     var worldLocation: AKWorldLocation { get set }
+    var heading: AKHeading { get set }
     func setIdentifier(_ identifier: UUID)
     
 }

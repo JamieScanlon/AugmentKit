@@ -1,5 +1,5 @@
 //
-//  AKAugmentedUserTracker.swift
+//  RealSurfaceAnchor.swift
 //  AugmentKit
 //
 //  MIT License
@@ -24,46 +24,49 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 //
+//  A generic implementation of AKRealSurfaceAnchor. Renders a featureless plane
+//  geometry.
+//
 
+import ARKit
 import Foundation
-import simd
-import ModelIO
+import MetalKit
 
-class UserPosition: AKRelativePosition {
-    public init() {
-        super.init(withTransform: matrix_identity_float4x4)
-    }
-}
-
-//  An AR tracking object that follows the users position.
-protocol AKAugmentedUserTracker: AKAugmentedTracker {
-    var position: AKRelativePosition { get }
-    func userPosition() -> AKRelativePosition?
-}
-
-public class UserTracker: AKAugmentedUserTracker {
+public class RealSurfaceAnchor: AKRealSurfaceAnchor {
     
     public static var type: String {
-        return "UserTracker"
+        return "RealSurface"
     }
+    public var orientation: ARPlaneAnchor.Alignment = .horizontal
+    public var worldLocation: AKWorldLocation
+    public var heading: AKHeading = SameHeading()
     public var asset: MDLAsset
     public var identifier: UUID?
     public var effects: [AnyEffect<Any>]?
     public var shaderPreference: ShaderPreference = .pbr
-    public var position: AKRelativePosition
+    public var arAnchor: ARAnchor?
     
-    public init(withModelAsset asset: MDLAsset, withUserRelativeTransform relativeTransform: matrix_float4x4) {
+    public init(at location: AKWorldLocation, withAllocator metalAllocator: MTKMeshBufferAllocator? = nil) {
+        
+        let mesh = MDLMesh(planeWithExtent: vector3(1, 0, 1), segments: vector2(1, 1), geometryType: .triangles, allocator: metalAllocator)
+        let asset = MDLAsset(bufferAllocator: metalAllocator)
+        asset.add(mesh)
+        
         self.asset = asset
-        let myPosition = AKRelativePosition(withTransform: relativeTransform, relativeTo: UserPosition())
-        self.position = myPosition
-    }
-    
-    public func userPosition() -> AKRelativePosition? {
-        return position.parentPosition
+        self.worldLocation = location
+        
     }
     
     public func setIdentifier(_ identifier: UUID) {
         self.identifier = identifier
+    }
+    
+    public func setARAnchor(_ arAnchor: ARAnchor) {
+        self.arAnchor = arAnchor
+        if identifier == nil {
+            identifier = arAnchor.identifier
+        }
+        worldLocation.transform = arAnchor.transform
     }
     
 }

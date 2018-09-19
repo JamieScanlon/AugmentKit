@@ -69,14 +69,17 @@ protocol RenderModule {
     // The buffer index is the index into the ring on in flight buffers
     func updateBufferState(withBufferIndex: Int)
     
-    // Update the buffer data for anchors
-    func updateBuffers(withARFrame: ARFrame, cameraProperties: CameraProperties)
+    // Update the buffer data for augmented anchors
+    func updateBuffers(withAugmentedAnchors: [AKAugmentedAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties)
+    
+    // Update the buffer data for real anchors
+    func updateBuffers(withRealAnchors: [AKRealAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties)
     
     // Update the buffer data for trackers
-    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties)
+    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties)
     
     // Update the buffer data for trackers
-    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties)
+    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties)
     
     // Update the render encoder for the draw call. At the end of this method it is expected that
     // drawPrimatives or drawIndexedPrimatives is called.
@@ -99,42 +102,43 @@ protocol RenderModule {
 
 extension RenderModule {
     
-    func encode(meshGPUData: MeshGPUData, fromDrawData drawData: DrawData, with renderEncoder: MTLRenderCommandEncoder, baseIndex: Int = 0) {
+    func encode(meshGPUData: MeshGPUData, fromDrawData drawData: DrawData, with renderEncoder: MTLRenderCommandEncoder, baseIndex: Int = 0, environmentData: EnvironmentData? = nil) {
         
         // Set mesh's vertex buffers
-        for vtxBufferIdx in 0..<drawData.vbCount {
-            renderEncoder.setVertexBuffer(meshGPUData.vtxBuffers[drawData.vbStartIdx + vtxBufferIdx], offset: 0, index: vtxBufferIdx)
+        for (index, vertexBuffer) in drawData.vertexBuffers.enumerated() {
+            renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: index)
         }
         
         // Draw each submesh of our mesh
-        for drawDataSubIndex in 0..<drawData.subData.count {
+        for submeshData in drawData.subData {
             
-            guard drawData.instCount > 0 else {
+            guard drawData.instanceCount > 0 else {
                 continue
             }
             
-            let submeshData = drawData.subData[drawDataSubIndex]
+            guard let indexBuffer = submeshData.indexBuffer else {
+                continue
+            }
             
             // Sets the weight of values sampled from a texture vs value from a material uniform
             // for a transition between quality levels
             //            submeshData.computeTextureWeights(for: currentQualityLevel, with: globalMapWeight)
             
-            let idxCount = Int(submeshData.idxCount)
-            let idxType = submeshData.idxType
-            let ibOffset = drawData.ibStartIdx
-            let indexBuffer = meshGPUData.indexBuffers[ibOffset + drawDataSubIndex]
+            let indexCount = Int(submeshData.indexCount)
+            let indexType = submeshData.indexType
+            
             var materialUniforms = submeshData.materialUniforms
             
             // Set textures based off material flags
-            encodeTextures(with: meshGPUData, renderEncoder: renderEncoder, subData: submeshData)
+            encodeTextures(for: renderEncoder, subData: submeshData, environmentData: environmentData)
             
             renderEncoder.setFragmentBytes(&materialUniforms, length: RenderModuleConstants.alignedMaterialSize, index: Int(kBufferIndexMaterialUniforms.rawValue))
-            renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: idxCount, indexType: idxType, indexBuffer: indexBuffer, indexBufferOffset: 0, instanceCount: drawData.instCount, baseVertex: 0, baseInstance: baseIndex)
+            renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: indexCount, indexType: indexType, indexBuffer: indexBuffer, indexBufferOffset: 0, instanceCount: drawData.instanceCount, baseVertex: 0, baseInstance: baseIndex)
         }
         
         // Set the palette offset into
-        if var paletteStartIdx = drawData.paletteStartIndex {
-            renderEncoder.setVertexBytes(&paletteStartIdx, length: 8, index: Int(kBufferIndexMeshPaletteIndex.rawValue))
+        if var paletteStartIndex = drawData.paletteStartIndex {
+            renderEncoder.setVertexBytes(&paletteStartIndex, length: 8, index: Int(kBufferIndexMeshPaletteIndex.rawValue))
             var paletteSize = drawData.paletteSize
             renderEncoder.setVertexBytes(&paletteSize, length: 8, index: Int(kBufferIndexMeshPaletteSize.rawValue))
         }
@@ -143,61 +147,65 @@ extension RenderModule {
     
     // MARK: Encoding Textures
     
-    func encodeTextures(with meshData: MeshGPUData, renderEncoder: MTLRenderCommandEncoder, subData drawSubData: DrawSubData) {
-        if let baseColorTextureIndex = drawSubData.baseColorTextureIndex {
-            renderEncoder.setFragmentTexture(meshData.textures[baseColorTextureIndex], index: Int(kTextureIndexColor.rawValue))
+    func encodeTextures(for renderEncoder: MTLRenderCommandEncoder, subData drawSubData: DrawSubData, environmentData: EnvironmentData? = nil) {
+        if let baseColorTexture = drawSubData.baseColorTexture {
+            renderEncoder.setFragmentTexture(baseColorTexture, index: Int(kTextureIndexColor.rawValue))
         }
         
-        if let ambientOcclusionTextureIndex = drawSubData.ambientOcclusionTextureIndex {
-            renderEncoder.setFragmentTexture(meshData.textures[ambientOcclusionTextureIndex], index: Int(kTextureIndexAmbientOcclusion.rawValue))
+        if let ambientOcclusionTexture = drawSubData.ambientOcclusionTexture {
+            renderEncoder.setFragmentTexture(ambientOcclusionTexture, index: Int(kTextureIndexAmbientOcclusion.rawValue))
         }
         
-        if let irradianceTextureIndex = drawSubData.irradianceTextureIndex {
-            renderEncoder.setFragmentTexture(meshData.textures[irradianceTextureIndex], index: Int(kTextureIndexIrradianceMap.rawValue))
+        if let emissionTexture = drawSubData.emissionTexture {
+            renderEncoder.setFragmentTexture(emissionTexture, index: Int(kTextureIndexEmissionMap.rawValue))
         }
         
-        if let normalTextureIndex = drawSubData.normalTextureIndex {
-            renderEncoder.setFragmentTexture(meshData.textures[normalTextureIndex], index: Int(kTextureIndexNormal.rawValue))
+        if let normalTexture = drawSubData.normalTexture {
+            renderEncoder.setFragmentTexture(normalTexture, index: Int(kTextureIndexNormal.rawValue))
         }
         
-        if let roughnessTextureIndex = drawSubData.roughnessTextureIndex {
-            renderEncoder.setFragmentTexture(meshData.textures[roughnessTextureIndex], index: Int(kTextureIndexRoughness.rawValue))
+        if let roughnessTexture = drawSubData.roughnessTexture {
+            renderEncoder.setFragmentTexture(roughnessTexture, index: Int(kTextureIndexRoughness.rawValue))
         }
         
-        if let metallicTextureIndex = drawSubData.metallicTextureIndex {
-            renderEncoder.setFragmentTexture(meshData.textures[metallicTextureIndex], index: Int(kTextureIndexMetallic.rawValue))
+        if let metallicTexture = drawSubData.metallicTexture {
+            renderEncoder.setFragmentTexture(metallicTexture, index: Int(kTextureIndexMetallic.rawValue))
         }
         
-        if let subsurfaceTextureIndex = drawSubData.subsurfaceTextureIndex {
-            renderEncoder.setFragmentTexture(meshData.textures[subsurfaceTextureIndex], index: Int(kTextureIndexSubsurfaceMap.rawValue))
+        if let subsurfaceTexture = drawSubData.subsurfaceTexture {
+            renderEncoder.setFragmentTexture(subsurfaceTexture, index: Int(kTextureIndexSubsurfaceMap.rawValue))
         }
         
-        if let specularTextureIndex = drawSubData.specularTextureIndex {
-            renderEncoder.setFragmentTexture(meshData.textures[specularTextureIndex], index: Int(kTextureIndexSpecularMap.rawValue))
+        if let specularTexture = drawSubData.specularTexture {
+            renderEncoder.setFragmentTexture(specularTexture, index: Int(kTextureIndexSpecularMap.rawValue))
         }
         
-        if let specularTintTextureIndex = drawSubData.specularTintTextureIndex {
-            renderEncoder.setFragmentTexture(meshData.textures[specularTintTextureIndex], index: Int(kTextureIndexSpecularTintMap.rawValue))
+        if let specularTintTexture = drawSubData.specularTintTexture {
+            renderEncoder.setFragmentTexture(specularTintTexture, index: Int(kTextureIndexSpecularTintMap.rawValue))
         }
         
-        if let anisotropicTextureIndex = drawSubData.anisotropicTextureIndex {
-            renderEncoder.setFragmentTexture(meshData.textures[anisotropicTextureIndex], index: Int(kTextureIndexAnisotropicMap.rawValue))
+        if let anisotropicTexture = drawSubData.anisotropicTexture {
+            renderEncoder.setFragmentTexture(anisotropicTexture, index: Int(kTextureIndexAnisotropicMap.rawValue))
         }
         
-        if let sheenTextureIndex = drawSubData.sheenTextureIndex {
-            renderEncoder.setFragmentTexture(meshData.textures[sheenTextureIndex], index: Int(kTextureIndexSheenMap.rawValue))
+        if let sheenTexture = drawSubData.sheenTexture {
+            renderEncoder.setFragmentTexture(sheenTexture, index: Int(kTextureIndexSheenMap.rawValue))
         }
         
-        if let sheenTintTextureIndex = drawSubData.sheenTintTextureIndex {
-            renderEncoder.setFragmentTexture(meshData.textures[sheenTintTextureIndex], index: Int(kTextureIndexSheenTintMap.rawValue))
+        if let sheenTintTexture = drawSubData.sheenTintTexture {
+            renderEncoder.setFragmentTexture(sheenTintTexture, index: Int(kTextureIndexSheenTintMap.rawValue))
         }
         
-        if let clearcoatTextureIndex = drawSubData.clearcoatTextureIndex {
-            renderEncoder.setFragmentTexture(meshData.textures[clearcoatTextureIndex], index: Int(kTextureIndexClearcoatMap.rawValue))
+        if let clearcoatTexture = drawSubData.clearcoatTexture {
+            renderEncoder.setFragmentTexture(clearcoatTexture, index: Int(kTextureIndexClearcoatMap.rawValue))
         }
         
-        if let clearcoatGlossTextureIndex = drawSubData.clearcoatGlossTextureIndex {
-            renderEncoder.setFragmentTexture(meshData.textures[clearcoatGlossTextureIndex], index: Int(kTextureIndexClearcoatGlossMap.rawValue))
+        if let clearcoatGlossTexture = drawSubData.clearcoatGlossTexture {
+            renderEncoder.setFragmentTexture(clearcoatGlossTexture, index: Int(kTextureIndexClearcoatGlossMap.rawValue))
+        }
+        
+        if let environmentTexture = environmentData?.environmentTexture {
+            renderEncoder.setFragmentTexture(environmentTexture, index: Int(kTextureIndexEnvironmentMap.rawValue))
         }
         
     }
@@ -237,20 +245,6 @@ extension RenderModule {
         }
         
         return nil
-    }
-    
-    func createMetalVertexDescriptor(withFirstModelIOVertexDescriptorIn vertexDescriptors: [MDLVertexDescriptor]) -> MTLVertexDescriptor? {
-        guard let vertexDescriptor = vertexDescriptors.first else {
-            print("WARNING: No Vertex Descriptors found!")
-            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeMissingVertexDescriptors, userInfo: nil)
-            let newError = AKError.warning(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-            recordNewError(newError)
-            return nil
-        }
-        guard let mtlVertexDescriptor = MTKMetalVertexDescriptorFromModelIO(vertexDescriptor) else {
-            return nil
-        }
-        return mtlVertexDescriptor
     }
     
     // MARK: Render Distance
@@ -302,6 +296,39 @@ extension RenderModule {
             // There are no intersections
             return SphereLineIntersection(isInside: false, point0: point0, point1: point1)
         }
+    }
+    
+    // MARK: Util
+    
+    func getRGB(from colorTemperature: CGFloat) -> vector_float3 {
+        
+        let temp = Float(colorTemperature) / 100
+        
+        var red: Float = 127
+        var green: Float = 127
+        var blue: Float = 127
+        
+        if temp <= 66 {
+            red = 255
+            green = temp
+            green = 99.4708025861 * log(green) - 161.1195681661
+            if temp <= 19 {
+                blue = 0
+            } else {
+                blue = temp - 10
+                blue = 138.5177312231 * log(blue) - 305.0447927307
+            }
+        } else {
+            red = temp - 60
+            red = 329.698727446 * pow(red, -0.1332047592)
+            green = temp - 60
+            green = 288.1221695283 * pow(green, -0.0755148492 )
+            blue = 255
+        }
+        
+        let clamped = clamp(float3(red, green, blue), min: 0, max: 255)
+        return vector3(clamped.x, clamped.y, clamped.z)
+        
     }
     
 }

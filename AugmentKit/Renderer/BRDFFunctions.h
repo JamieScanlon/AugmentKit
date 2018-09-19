@@ -1,5 +1,5 @@
 //
-//  AKPath.swift
+//  BRDFFunctions.h
 //  AugmentKit
 //
 //  MIT License
@@ -25,10 +25,15 @@
 //  SOFTWARE.
 //
 
-import Foundation
 
-public protocol AKPath: AKAugmentedAnchor {
-    // Thickness measured in meters
-    var lineThickness: Double { get }
-    var segmentPoints: [AKPathSegmentAnchor] { get }
-}
+#ifndef BRDFFunctions_h
+#define BRDFFunctions_h
+
+#include <simd/simd.h>
+
+float Fresnel(float F0, float F90, float dotProduct);
+float smithG_GGX(float dotProduct, float roughness);
+float TrowbridgeReitzNDF(float nDoth, float roughness);
+float GTR2_aniso(float nDoth, float HdotX, float HdotY, float ax, float ay);
+
+#endif /* BRDFFunctions_h */

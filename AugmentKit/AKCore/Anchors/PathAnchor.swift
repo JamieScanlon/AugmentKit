@@ -1,5 +1,5 @@
 //
-//  AKAugmentedUserTracker.swift
+//  PathAnchor.swift
 //  AugmentKit
 //
 //  MIT License
@@ -24,46 +24,48 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 //
+//
+//  A generic implementation of AKPath that renders a path using the world locations
+//  as endpoints for the path segments.
+//
 
+import ARKit
 import Foundation
-import simd
-import ModelIO
 
-class UserPosition: AKRelativePosition {
-    public init() {
-        super.init(withTransform: matrix_identity_float4x4)
-    }
-}
-
-//  An AR tracking object that follows the users position.
-protocol AKAugmentedUserTracker: AKAugmentedTracker {
-    var position: AKRelativePosition { get }
-    func userPosition() -> AKRelativePosition?
-}
-
-public class UserTracker: AKAugmentedUserTracker {
+public class PathAnchor: AKPath {
     
     public static var type: String {
-        return "UserTracker"
+        return "PathAnchor"
     }
+    public var worldLocation: AKWorldLocation
+    public var heading: AKHeading = SameHeading()
     public var asset: MDLAsset
     public var identifier: UUID?
     public var effects: [AnyEffect<Any>]?
-    public var shaderPreference: ShaderPreference = .pbr
-    public var position: AKRelativePosition
+    public var shaderPreference: ShaderPreference = .simple
+    public var lineThickness: Double = 0.1 // Default to 10cm line thickness
+    public var segmentPoints: [AKPathSegmentAnchor]
+    public var arAnchor: ARAnchor?
     
-    public init(withModelAsset asset: MDLAsset, withUserRelativeTransform relativeTransform: matrix_float4x4) {
-        self.asset = asset
-        let myPosition = AKRelativePosition(withTransform: relativeTransform, relativeTo: UserPosition())
-        self.position = myPosition
-    }
-    
-    public func userPosition() -> AKRelativePosition? {
-        return position.parentPosition
+    public init(withWorldLocaitons locations: [AKWorldLocation]) {
+        self.asset = MDLAsset()
+        self.worldLocation = locations[0]
+        self.segmentPoints = locations.map {
+            return PathSegmentAnchor(at: $0)
+        }
     }
     
     public func setIdentifier(_ identifier: UUID) {
         self.identifier = identifier
     }
     
+    public func setARAnchor(_ arAnchor: ARAnchor) {
+        self.arAnchor = arAnchor
+        if identifier == nil {
+            identifier = arAnchor.identifier
+        }
+        worldLocation.transform = arAnchor.transform
+    }
+    
 }
+

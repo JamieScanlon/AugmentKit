@@ -29,46 +29,50 @@ import Foundation
 import ModelIO
 
 public protocol ModelProvider {
-    func registerModel(_ model: AKModel, forObjectType type: String, identifier: UUID?)
-    func unregisterModel(forObjectType type: String, identifier: UUID?)
-    func loadModel(forObjectType type: String, identifier: UUID?, completion: (AKModel?) -> Void)
+    func registerAsset(_ asset: MDLAsset, forObjectType type: String, identifier: UUID?)
+    func unregisterAsset(forObjectType type: String, identifier: UUID?)
+    func loadAsset(forObjectType type: String, identifier: UUID?, completion: (MDLAsset?) -> Void)
 }
 
 public class AKModelProvider: ModelProvider {
     
     static let sharedInstance = AKModelProvider()
     
-    public func registerModel(_ model: AKModel, forObjectType type: String, identifier: UUID? = nil) {
-        if modelsByType[type] == nil || identifier == nil {
-            modelsByType[type] = model
+    public func registerAsset(_ asset: MDLAsset, forObjectType type: String, identifier: UUID?) {
+        // The first model registered will also be used as the default model
+        if assetsByType.isEmpty {
+            assetsByType["AnyAnchor"] = asset
+        }
+        if assetsByType[type] == nil || identifier == nil {
+            assetsByType[type] = asset
         }
         if let identifier = identifier {
-            modelsByIdentifier[identifier] = model
+            assetsByIdentifier[identifier] = asset
         }
     }
     
-    public func unregisterModel(forObjectType type: String, identifier: UUID?) {
+    public func unregisterAsset(forObjectType type: String, identifier: UUID?) {
         if let identifier = identifier {
-            modelsByIdentifier[identifier] = nil
+            assetsByIdentifier[identifier] = nil
         } else {
-            modelsByType[type] = nil
+            assetsByType[type] = nil
         }
     }
     
-    public func loadModel(forObjectType type: String, identifier: UUID?, completion: (AKModel?) -> Void) {
-        if let identifier = identifier, let anchorAsset = modelsByIdentifier[identifier] {
+    public func loadAsset(forObjectType type: String, identifier: UUID?, completion: (MDLAsset?) -> Void) {
+        if let identifier = identifier, let anchorAsset = assetsByIdentifier[identifier] {
             completion(anchorAsset)
-        } else if let anchorAsset = modelsByType[type] {
+        } else if let anchorAsset = assetsByType[type] {
             completion(anchorAsset)
         } else {
-            print("Warning - Failed to find an AKModel for type: \(type).")
+            print("Warning - Failed to find an MDLAsset for type: \(type).")
             completion(nil)
         }
     }
     
     // MARK: - Private
     
-    private var modelsByType = [String: AKModel]()
-    private var modelsByIdentifier = [UUID: AKModel]()
+    private var assetsByType = [String: MDLAsset]()
+    private var assetsByIdentifier = [UUID: MDLAsset]()
     
 }

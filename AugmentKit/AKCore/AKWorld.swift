@@ -138,7 +138,8 @@ public class AKWorld: NSObject {
     
     //  Returns the current AKWorldLocation of the user (technically the user's device).
     //  The transform is relative to the ARKit origin which was the position of the camera
-    //  when the AR session starts.
+    //  when the AR session starts. This world location contains no rotation information,
+    //  the heading is always aligned to the referenceWorldLocation.
     //  When usesLocation = true, the axis are rotated such that z points due south.
     public var currentWorldLocation: AKWorldLocation? {
         
@@ -158,6 +159,19 @@ public class AKWorld: NSObject {
             
         }
         
+    }
+    
+    //  Same as currentWorldLocation with the rotation component of the device multiplied in
+    public var currentWorldLocationWithRotation: AKWorldLocation? {
+        guard let translationWorldLocation = currentWorldLocation else {
+            return nil
+        }
+        let translationMatrix = translationWorldLocation.transform
+        guard let rotationTransform = renderer.currentCameraRotation else {
+            return WorldLocation(transform: translationMatrix, latitude: translationWorldLocation.latitude, longitude: translationWorldLocation.longitude, elevation: translationWorldLocation.elevation)
+        }
+        let newTransform = translationMatrix * rotationTransform
+        return WorldLocation(transform: newTransform, latitude: translationWorldLocation.latitude, longitude: translationWorldLocation.longitude, elevation: translationWorldLocation.elevation)
     }
     
     //  A location that represents a reliable AKWorldLocation object tying together a
@@ -187,6 +201,27 @@ public class AKWorld: NSObject {
             // it may need to be rotated to face due north
             let referenceWorldTransform = matrix_identity_float4x4
             return WorldLocation(transform: referenceWorldTransform)
+        }
+        
+    }
+    
+    //  Returns the current AKWorldLocation of the user's gaze, the point where a vector from
+    //  the center of the device intersects the closes detected surface. The transform is relative
+    //  to the ARKit origin which was the position of the camera when the AR session starts.
+    //  When usesLocation = true, the axis are rotated such that z points due south.
+    public var currentGazeLocation: AKWorldLocation? {
+        
+        if configuration?.usesLocation == true {
+            if let originLocation = referenceWorldLocation {
+                let currentGazePosition = renderer.currentGazeTransform
+                let worldDistance = AKWorldDistance(metersX: Double(currentGazePosition.columns.3.x), metersY: Double(currentGazePosition.columns.3.y), metersZ: Double(currentGazePosition.columns.3.z))
+                let worldLocation = AKLocationUtility.worldLocation(from: originLocation, translatedBy: worldDistance)
+                return worldLocation
+            } else {
+                return nil
+            }
+        } else {
+            return WorldLocation(transform: renderer.currentGazeTransform)
         }
         
     }
@@ -230,6 +265,8 @@ public class AKWorld: NSObject {
     }
     public var monitor: AKWorldMonitor?
     
+    // MARK: Lifecycle
+    
     public init(renderDestination: MTKView, configuration: AKWorldConfiguration = AKWorldConfiguration(), textureBundle: Bundle? = nil) {
         
         let bundle: Bundle = {
@@ -258,7 +295,7 @@ public class AKWorld: NSObject {
         self.renderDestination.device = self.device
         self.renderer.monitor = self
         self.renderer.drawRectResized(size: renderDestination.bounds.size)
-        self.session.delegate = self
+        self.renderer.delegate = self
         self.renderDestination.delegate = self
         
         if configuration.usesLocation == true {
@@ -279,76 +316,99 @@ public class AKWorld: NSObject {
         renderer.initialize()
     }
     
-    @discardableResult
-    public func add(anchor: AKAugmentedAnchor) -> UUID {
-        return renderer.add(akAnchor: anchor)
-    }
-    
-    @discardableResult
-    public func add(tracker: AKAugmentedTracker) -> UUID {
-        return renderer.add(akTracker: tracker)
-    }
-    
-    @discardableResult
-    public func add(gazeTarget: GazeTarget) -> UUID {
-        return renderer.add(gazeTarget: gazeTarget)
-    }
-    
-    @discardableResult
-    public func add(akPath: AKPath) -> UUID {
-        return renderer.add(akPath: akPath)
-    }
-    
-    public func worldLocation(withLatitude latitude: Double, longitude: Double, elevation: Double?) -> AKWorldLocation? {
-        
-        guard let configuration = configuration else {
-            return nil
-        }
-        
-        guard configuration.usesLocation else {
-            return nil
-        }
-        
-        guard let referenceLocation = referenceWorldLocation else {
-            return nil
-        }
-        
-        let myElevation: Double = {
-            if let elevation = elevation {
-                return elevation
-            } else {
-                return referenceLocation.elevation
-            }
-        }()
-        
-        return WorldLocation(latitude: latitude, longitude: longitude, elevation: myElevation, referenceLocation: referenceLocation)
-        
-    }
-    
-    //  Creates a new world location at a given x, y, z offset from the current users (devices) position.
-    public func worldLocationFromCurrentLocation(withMetersEast offsetX: Double, metersUp offsetY: Double, metersSouth offsetZ: Double) -> AKWorldLocation? {
-        
-        guard let currentWorldLocation = currentWorldLocation else {
-            return nil
-        }
-        
-        let translation = float4( currentWorldLocation.transform.columns.3.x + Float(offsetX),
-                                  currentWorldLocation.transform.columns.3.y + Float(offsetY),
-                                  currentWorldLocation.transform.columns.3.z + Float(offsetZ),
-                                  1
-        )
-        let endTransform = float4x4( currentWorldLocation.transform.columns.0,
-                                     currentWorldLocation.transform.columns.1,
-                                     currentWorldLocation.transform.columns.2,
-                                     translation
-        )
-        
-        return WorldLocation(transform: endTransform, referenceLocation: currentWorldLocation)
-        
-    }
-    
     deinit {
         NotificationCenter.default.removeObserver(self)
+    }
+    
+    // MARK: Adding and removing anchors
+    
+    public func add(anchor: AKAugmentedAnchor) {
+        renderer.add(akAnchor: anchor)
+    }
+    
+    public func remove(anchor: AKAugmentedAnchor) {
+        renderer.remove(akAnchor: anchor)
+    }
+    
+    public func add(tracker: AKAugmentedTracker) {
+        renderer.add(akTracker: tracker)
+    }
+    
+    public func remove(tracker: AKAugmentedTracker) {
+        renderer.remove(akTracker: tracker)
+    }
+    
+    public func add(gazeTarget: GazeTarget) {
+        renderer.add(gazeTarget: gazeTarget)
+    }
+    
+    public func remove(gazeTarget: GazeTarget) {
+        renderer.remove(gazeTarget: gazeTarget)
+    }
+    
+    public func add(akPath: AKPath) {
+        renderer.add(akPath: akPath)
+    }
+    
+    public func remove(akPath: AKPath) {
+        renderer.remove(akPath: akPath)
+    }
+    
+    // MARK: World Map
+    
+    //  Gets the AKWorldMap from the AR Session
+    public func getWorldMap(completion: @escaping (AKWorldMap?, Error?) -> Void) {
+        
+        let session = renderer.session
+        session.getCurrentWorldMap() { [unowned self] (worldMap, error) in
+            if let arWorldMap = worldMap {
+                let akWorldMap = AKWorldMap(withARWorldMap: arWorldMap, worldLocation: self.currentWorldLocation)
+                completion(akWorldMap, error)
+            } else {
+                completion(nil, error)
+            }
+        }
+        
+    }
+    
+    //  Gets the ARWorldMap and saves it to the temporary directory, returning the URL.
+    public func getArchivedWorldMap(completion: @escaping (URL?, Error?) -> Void) {
+        
+        let session = renderer.session
+        session.getCurrentWorldMap() { [unowned self] (worldMap, error) in
+            
+            if let arWorldMap = worldMap {
+                let akWorldMap = AKWorldMap(withARWorldMap: arWorldMap, worldLocation: self.currentWorldLocation)
+                let url = try? self.writeWorldMapToTempDir(akWorldMap)
+                completion(url, error)
+            } else {
+                completion(nil, error)
+            }
+            
+        }
+        
+    }
+    
+    //  Resets the AR Session with the given inital world map
+    public func setWorldMap(worldMap: AKWorldMap) {
+        renderer.worldMap = worldMap.arWorldMap
+        renderer.reset(options: [])
+        if let latitude = worldMap.latitude, let longitude = worldMap.longitude, let elevation = worldMap.elevation, let transform = worldMap.transform {
+            let newWorldLocation = WorldLocation(transform: transform, latitude: latitude, longitude: longitude, elevation: elevation)
+            reliableWorldLocations = [newWorldLocation]
+        } else {
+            reliableWorldLocations = []
+        }
+    }
+    
+    //  Load an ARKWorldMap from a file URL
+    public func loadWorldMap(from url: URL) throws {
+        let mapData = try Data(contentsOf: url)
+        guard let worldMap = try NSKeyedUnarchiver.unarchivedObject(ofClass: AKWorldMap.self, from: mapData)
+            else {
+                throw ARError(.invalidWorldMap)
+        }
+        setWorldMap(worldMap: worldMap)
     }
     
     // MARK: - Private
@@ -390,7 +450,7 @@ public class AKWorld: NSObject {
             reliableWorldLocations = Array(reliableWorldLocations.dropLast(reliableWorldLocations.count - 100))
         }
         reliableWorldLocations.insert(newReliableWorldLocation, at: 0)
-        print("New reliable location found: \(newReliableWorldLocation.latitude)lat, \(newReliableWorldLocation.longitude)lng = \(newReliableWorldLocation.transform)")
+//        print("New reliable location found: \(newReliableWorldLocation.latitude)lat, \(newReliableWorldLocation.longitude)lng = \(newReliableWorldLocation.transform)")
         
         if !didRecieveFirstLocation {
             didRecieveFirstLocation = true
@@ -514,6 +574,101 @@ public class AKWorld: NSObject {
         
     }
     
+    //  Save an AKWorldMap to the temp directory
+    func writeWorldMapToTempDir(_ worldMap: AKWorldMap) throws -> URL {
+        let fileName = "worldMap"
+        let fileURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(fileName)
+        let data = try NSKeyedArchiver.archivedData(withRootObject: worldMap, requiringSecureCoding: true)
+        try data.write(to: fileURL)
+        return fileURL
+    }
+    
+}
+
+// MARK: - World Location utility methods
+
+extension AKWorld {
+    
+    public func worldLocation(withLatitude latitude: Double, longitude: Double, elevation: Double?) -> AKWorldLocation? {
+        
+        guard let configuration = configuration else {
+            return nil
+        }
+        
+        guard configuration.usesLocation else {
+            return nil
+        }
+        
+        guard let referenceLocation = referenceWorldLocation else {
+            return nil
+        }
+        
+        let myElevation: Double = {
+            if let elevation = elevation {
+                return elevation
+            } else {
+                return referenceLocation.elevation
+            }
+        }()
+        
+        return WorldLocation(latitude: latitude, longitude: longitude, elevation: myElevation, referenceLocation: referenceLocation)
+        
+    }
+    
+    //  Creates a new world location at a given x, y, z offset from the current users (devices) position.
+    public func worldLocationFromCurrentLocation(withMetersEast offsetX: Double, metersUp offsetY: Double, metersSouth offsetZ: Double) -> AKWorldLocation? {
+        
+        guard let currentWorldLocation = currentWorldLocation else {
+            return nil
+        }
+        
+        let translation = float4( currentWorldLocation.transform.columns.3.x + Float(offsetX),
+                                  currentWorldLocation.transform.columns.3.y + Float(offsetY),
+                                  currentWorldLocation.transform.columns.3.z + Float(offsetZ),
+                                  1
+        )
+        let endTransform = float4x4( currentWorldLocation.transform.columns.0,
+                                     currentWorldLocation.transform.columns.1,
+                                     currentWorldLocation.transform.columns.2,
+                                     translation
+        )
+        
+        return WorldLocation(transform: endTransform, referenceLocation: currentWorldLocation)
+        
+    }
+    
+    //
+    public func worldLocationWithDistanceFromMe(metersToTheRight metersRelX: Double = 0, metersAbove metersRelY: Double = 0, metersInFront metersRelMinusZ: Double = 0) -> AKWorldLocation? {
+        
+        guard let currentWorldLocation = currentWorldLocation else {
+            return nil
+        }
+        let translationMatrix = currentWorldLocation.transform
+        guard let rotation = renderer.currentCameraHeading else {
+            return WorldLocation(transform: translationMatrix, latitude: currentWorldLocation.latitude, longitude: currentWorldLocation.longitude, elevation: currentWorldLocation.elevation)
+        }
+        let offsetX = -1 * metersRelMinusZ * sin(rotation) + metersRelX * cos(rotation)
+        let offsetZ = -1 * metersRelMinusZ * cos(rotation) - metersRelX * sin(rotation)
+        let translation = float4( currentWorldLocation.transform.columns.3.x + Float(offsetX),
+                                  currentWorldLocation.transform.columns.3.y + Float(metersRelY),
+                                  currentWorldLocation.transform.columns.3.z + Float(offsetZ),
+                                  1
+        )
+        let transform = float4x4( currentWorldLocation.transform.columns.0,
+                                  currentWorldLocation.transform.columns.1,
+                                  currentWorldLocation.transform.columns.2,
+                                  translation)
+        return WorldLocation(transform: transform, referenceLocation: currentWorldLocation)
+        
+    }
+    
+    public func headingFacingAtMe(from worldLocation: AKWorldLocation) -> AKHeading? {
+        guard let currentWorldLocation = currentWorldLocation else {
+            return nil
+        }
+        return WorldHeading(withWorld: self, worldHeadingType: .lookAt(worldLocation, currentWorldLocation))
+    }
+    
 }
 
 // MARK: - MTKViewDelegate
@@ -534,13 +689,12 @@ extension AKWorld: MTKViewDelegate {
 
 // MARK: - ARSessionDelegate
 
-extension AKWorld: ARSessionDelegate {
+extension AKWorld: RenderDelegate {
     
-    public func session(_ session: ARSession, didFailWithError error: Error) {
+    public func renderer(_ renderer: Renderer, didFailWithError error: AKError) {
         var newStatus = AKWorldStatus(timestamp: Date())
         var errors = worldStatus.errors
-        let newError = AKError.recoverableError(.arkitError(UnderlyingErrorInfo(underlyingError: error)))
-        errors.append(newError)
+        errors.append(error)
         newStatus.errors = errors
         if newStatus.getSeriousErrors().count > 0 {
             newStatus.status = .error
@@ -550,14 +704,14 @@ extension AKWorld: ARSessionDelegate {
         worldStatus = newStatus
     }
     
-    public func sessionWasInterrupted(_ session: ARSession) {
+    public func rendererWasInterrupted(_ renderer: Renderer) {
         var newStatus = AKWorldStatus(timestamp: Date())
         newStatus.status = .interupted
         newStatus.errors = worldStatus.errors
         worldStatus = newStatus
     }
     
-    public func sessionInterruptionEnded(_ session: ARSession) {
+    public func rendererInterruptionEnded(_ renderer: Renderer) {
         // Reset tracking and/or remove existing anchors if consistent tracking is required
         var newStatus = AKWorldStatus(timestamp: Date())
         newStatus.status = .interupted

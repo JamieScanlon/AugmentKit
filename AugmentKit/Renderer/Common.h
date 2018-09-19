@@ -1,6 +1,6 @@
 //
-//  ConsoleIO.swift
-//  AugmentKitCLTools
+//  Common.h
+//  AugmentKit
 //
 //  MIT License
 //
@@ -25,32 +25,20 @@
 //  SOFTWARE.
 //
 
-import Foundation
+#ifndef Common_h
+#define Common_h
 
-enum ConsoleOutputType {
-    case error
-    case standard
-}
+#ifdef __METAL_VERSION__
+#define NS_ENUM(_type, _name) enum _name : _type _name; enum _name : _type
+#define NSInteger metal::int32_t
+#else
+#import <Foundation/Foundation.h>
+#endif
 
-class ConsoleIO {
-    
-    static func writeMessage(_ message: String, to: ConsoleOutputType = .standard) {
-        switch to {
-        case .standard:
-            print("\u{001B}[;m\(message)")
-        case .error:
-            fputs("\u{001B}[0;31m\(message)\n", stderr)
-        }
-    }
-    
-    static func printUsage() {
-        
-        let executableName = (CommandLine.arguments[0] as NSString).lastPathComponent
-        
-        writeMessage("usage:")
-        writeMessage("\(executableName) -s [path] : Serialize a model file at a given path and save the serialized file to the same directory")
-        writeMessage("or")
-        writeMessage("\(executableName) -h to show usage information")
-    }
-    
-}
+#include <simd/simd.h>
+
+float sqr(float a);
+vector_float4 srgbToLinear(vector_float4 c);
+vector_float4 linearToSrgba(vector_float4 c);
+
+#endif /* Common_h */

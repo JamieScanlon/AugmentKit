@@ -26,6 +26,7 @@
 //
 
 import Foundation
+import ModelIO
 
 // MARK: - AKGeometricEntity
 
@@ -40,7 +41,8 @@ import Foundation
 //  for more meaningful Types like AKAnchor and AKTracker.
 public protocol AKGeometricEntity {
     static var type: String { get }
-    var model: AKModel { get }
+    var asset: MDLAsset { get }
     var identifier: UUID? { get }
     var effects: [AnyEffect<Any>]? { get }
+    var shaderPreference: ShaderPreference { get }
 }

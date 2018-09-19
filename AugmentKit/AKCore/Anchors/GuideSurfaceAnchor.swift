@@ -1,5 +1,5 @@
 //
-//  AugmentedAnchor.swift
+//  GuideSurfaceAnchor.swift
 //  AugmentKit
 //
 //  MIT License
@@ -24,31 +24,46 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 //
-//
-//  A generic AR object that can be placed in the AR world. These can be created
-//  and given to the AR engine to render in the AR world.
+//  An implementation of AKRealSurfaceAnchor which renders an image named plane_grig.png
+//  as the texture for a simple plane geometry. This type of anchor is mostly used for
+//  visualizing the planes that ARKit detects
 //
 
 import ARKit
 import Foundation
-import ModelIO
+import MetalKit
 
-public class AugmentedAnchor: AKAugmentedAnchor {
+public class GuideSurfaceAnchor: AKRealSurfaceAnchor {
     
     public static var type: String {
-        return "AugmentedAnchor"
+        return "GuideSurface"
     }
+    public var orientation: ARPlaneAnchor.Alignment = .horizontal
     public var worldLocation: AKWorldLocation
-    public var heading: AKHeading = NorthHeading()
+    public var heading: AKHeading = SameHeading()
     public var asset: MDLAsset
     public var identifier: UUID?
     public var effects: [AnyEffect<Any>]?
-    public var shaderPreference: ShaderPreference = .pbr
+    public var shaderPreference: ShaderPreference = .simple
     public var arAnchor: ARAnchor?
     
-    public init(withModelAsset asset: MDLAsset, at location: AKWorldLocation) {
-        self.asset = asset
+    public static func createModelAsset(inBundle bundle: Bundle, withAllocator metalAllocator: MTKMeshBufferAllocator?) -> MDLAsset? {
+        
+        if let asset = MDLAssetTools.assetFromImage(inBundle: bundle, withName: "plane_grid", extension: "png", allocator: metalAllocator) {
+            return asset
+        }
+        
+        return nil
+        
+    }
+    
+    public init(inBundle bundle: Bundle, at location: AKWorldLocation, withAllocator metalAllocator: MTKMeshBufferAllocator? = nil) {
+        
+        let mySurfaceModelAsset = GuideSurfaceAnchor.createModelAsset(inBundle: bundle, withAllocator: metalAllocator)!
+        
+        self.asset = mySurfaceModelAsset
         self.worldLocation = location
+        
     }
     
     public func setIdentifier(_ identifier: UUID) {
@@ -61,19 +76,6 @@ public class AugmentedAnchor: AKAugmentedAnchor {
             identifier = arAnchor.identifier
         }
         worldLocation.transform = arAnchor.transform
-    }
-    
-}
-
-extension AugmentedAnchor: CustomDebugStringConvertible, CustomStringConvertible {
-    
-    public var description: String {
-        return debugDescription
-    }
-    
-    public var debugDescription: String {
-        let myDescription = "<AugmentedAnchor: \(Unmanaged.passUnretained(self).toOpaque())> worldLocation: \(worldLocation), identifier:\(identifier?.debugDescription ?? "None"), effects: \(effects?.debugDescription ?? "None"), arAnchor: \(arAnchor?.debugDescription ?? "None"), asset: \(asset)"
-        return myDescription
     }
     
 }

@@ -1,5 +1,5 @@
 //
-//  AKAnchorAssetModel.swift
+//  PathSegmentAnchor.swift
 //  AugmentKit
 //
 //  MIT License
@@ -24,24 +24,43 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 //
+//  A generic implementation of a AKPathSegmentAnchor
 //
-//  This class that impements AKModel and subclasses AKMDLAssetModel. It adds
-//  convienience methods for working with AKModels that are to be rendered as
-//  anchors.
 
+import ARKit
 import Foundation
 import ModelIO
 
-// MARK: - AKAnchorAssetModel
-
-public class AKAnchorAssetModel: AKMDLAssetModel {
+public class PathSegmentAnchor: AKPathSegmentAnchor {
     
-    // Initializes the AKMDLAssetModel with an MDLAsset.
-    // This assumes that it will be rendered as an anchor and therefore
-    // creates vertex descriptors for the anchor render pipeline.
-    public convenience init(asset: MDLAsset) {
-        let vertexDescriptor = AKMDLAssetModel.newAnchorVertexDescriptor()
-        self.init(asset: asset, vertexDescriptor: vertexDescriptor)
+    public static var type: String {
+        return "PathSegmentAnchor"
     }
-
+    public var worldLocation: AKWorldLocation
+    public var heading: AKHeading = SameHeading()
+    public var asset: MDLAsset
+    public var identifier: UUID?
+    public var effects: [AnyEffect<Any>]?
+    public var shaderPreference: ShaderPreference = .simple
+    public var arAnchor: ARAnchor?
+    
+    public init(at location: AKWorldLocation, identifier: UUID? = nil, effects: [AnyEffect<Any>]? = nil) {
+        self.asset = MDLAsset()
+        self.worldLocation = location
+        self.identifier = identifier
+        self.effects = effects
+    }
+    
+    public func setIdentifier(_ identifier: UUID) {
+        self.identifier = identifier
+    }
+    
+    public func setARAnchor(_ arAnchor: ARAnchor) {
+        self.arAnchor = arAnchor
+        if identifier == nil {
+            identifier = arAnchor.identifier
+        }
+        worldLocation.transform = arAnchor.transform
+    }
+    
 }

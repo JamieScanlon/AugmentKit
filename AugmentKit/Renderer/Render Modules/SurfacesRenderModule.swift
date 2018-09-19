@@ -53,10 +53,6 @@ class SurfacesRenderModule: RenderModule {
     // The number of surface instances to render
     private(set) var surfaceInstanceCount: Int = 0
     
-    // Then indexes of the surface in the ARFrame.anchors array which contain
-    // actual anchors as well as surfaces
-    private(set) var surfaceIndexes = [Int]()
-    
     func initializeBuffers(withDevice aDevice: MTLDevice, maxInFlightBuffers: Int) {
         
         device = aDevice
@@ -69,6 +65,8 @@ class SurfacesRenderModule: RenderModule {
         // argument in the constant address space of our shading functions.
         let surfaceUniformBufferSize = Constants.alignedSurfaceInstanceUniformsSize * maxInFlightBuffers
         let materialUniformBufferSize = RenderModuleConstants.alignedMaterialSize * maxInFlightBuffers
+        let effectsUniformBufferSize = Constants.alignedEffectsUniformSize * maxInFlightBuffers
+        let environmentUniformBufferSize = Constants.alignedEnvironmentUniformSize * maxInFlightBuffers
         
         // Create and allocate our uniform buffer objects. Indicate shared storage so that both the
         // CPU can access the buffer
@@ -77,6 +75,12 @@ class SurfacesRenderModule: RenderModule {
         
         materialUniformBuffer = device?.makeBuffer(length: materialUniformBufferSize, options: .storageModeShared)
         materialUniformBuffer?.label = "MaterialUniformBuffer"
+        
+        effectsUniformBuffer = device?.makeBuffer(length: effectsUniformBufferSize, options: .storageModeShared)
+        effectsUniformBuffer?.label = "EffectsUniformBuffer"
+        
+        environmentUniformBuffer = device?.makeBuffer(length: environmentUniformBufferSize, options: .storageModeShared)
+        environmentUniformBuffer?.label = "EnvironemtUniformBuffer"
         
     }
     
@@ -98,20 +102,20 @@ class SurfacesRenderModule: RenderModule {
         //
         
         // TODO: Add ability to load multiple models by identifier
-        modelProvider.loadModel(forObjectType: GuideSurfaceAnchor.type, identifier: nil) { [weak self] model in
-
-            guard let model = model else {
+        modelProvider.loadAsset(forObjectType: GuideSurfaceAnchor.type, identifier: nil) { [weak self] asset in
+            
+            guard let asset = asset else {
                 print("Warning (SurfacesRenderModule) - Failed to get a model for type \(GuideSurfaceAnchor.type) from the modelProvider. Aborting the render phase.")
                 let newError = AKError.warning(.modelError(.modelNotFound(ModelErrorInfo(type: GuideSurfaceAnchor.type))))
                 recordNewError(newError)
                 completion()
                 return
             }
-
-            self?.surfaceModel = model
-
+            
+            self?.surfaceAsset = asset
+            
             completion()
-
+            
         }
         
     }
@@ -126,7 +130,7 @@ class SurfacesRenderModule: RenderModule {
             return
         }
         
-        guard let surfaceModel = surfaceModel else {
+        guard let surfaceAsset = surfaceAsset else {
             print("Serious Error - surfaceModel not found")
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeModelNotFound, userInfo: nil)
             let newError = AKError.warning(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
@@ -134,24 +138,26 @@ class SurfacesRenderModule: RenderModule {
             return
         }
         
-        if surfaceModel.meshNodeIndices.count > 1 {
-            print("WARNING: More than one mesh was found. Currently only one mesh per anchor is supported.")
-            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeModelNotSupported, userInfo: nil)
-            let newError = AKError.warning(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-            recordNewError(newError)
-        }
+        surfaceMeshGPUData = ModelIOTools.meshGPUData(from: surfaceAsset, device: device, textureBundle: textureBundle, vertexDescriptor: MetalUtilities.createStandardVertexDescriptor())
         
-        surfaceMeshGPUData = meshData(from: surfaceModel, texturebundle: textureBundle)
-        
-        guard let meshGPUData = surfaceMeshGPUData else {
-            print("Serious Error - ERROR: No meshGPUData found when trying to load the pipeline.")
+        guard let surfaceMeshGPUData = surfaceMeshGPUData else {
+            print("Serious Error - ERROR: No meshGPUData found for target when trying to load the pipeline.")
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeIntermediateMeshDataNotFound, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
             return
         }
         
-        guard let surfaceVertexDescriptor = createMetalVertexDescriptor(withFirstModelIOVertexDescriptorIn: surfaceModel.vertexDescriptors) else {
+        if surfaceMeshGPUData.drawData.count > 1 {
+            print("WARNING: More than one mesh was found. Currently only one mesh per anchor is supported.")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeModelNotSupported, userInfo: nil)
+            let newError = AKError.warning(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
+        }
+        
+        let myVertexDescriptor = surfaceMeshGPUData.vertexDescriptor
+        
+        guard let surfaceVertexDescriptor = myVertexDescriptor else {
             print("Serious Error - Failed to create a MetalKit vertex descriptor from ModelIO.")
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeInvalidMeshData, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
@@ -159,11 +165,12 @@ class SurfacesRenderModule: RenderModule {
             return
         }
         
-        for (drawIdx, drawData) in meshGPUData.drawData.enumerated() {
+        for (_, drawData) in surfaceMeshGPUData.drawData.enumerated() {
             let surfacePipelineStateDescriptor = MTLRenderPipelineDescriptor()
             do {
-                let funcConstants = MetalUtilities.getFuncConstantsForDrawDataSet(meshData: surfaceModel.meshes[drawIdx], useMaterials: usesMaterials)
-                let vertexName = "anchorGeometryVertexTransform"
+                let funcConstants = MetalUtilities.getFuncConstants(forDrawData: drawData)
+                // Specify which shader to use based on if the model has skinned puppet suppot
+                let vertexName = (drawData.paletteStartIndex != nil) ? "anchorGeometryVertexTransformSkinned" : "anchorGeometryVertexTransform"
                 let fragFunc = try metalLibrary.makeFunction(name: "anchorGeometryFragmentLighting", constantValues: funcConstants)
                 let vertFunc = try metalLibrary.makeFunction(name: vertexName, constantValues: funcConstants)
                 surfacePipelineStateDescriptor.vertexDescriptor = surfaceVertexDescriptor
@@ -205,35 +212,33 @@ class SurfacesRenderModule: RenderModule {
         
         surfaceUniformBufferOffset = Constants.alignedSurfaceInstanceUniformsSize * bufferIndex
         materialUniformBufferOffset = RenderModuleConstants.alignedMaterialSize * bufferIndex
+        effectsUniformBufferOffset = Constants.alignedEffectsUniformSize * bufferIndex
+        environmentUniformBufferOffset = Constants.alignedEnvironmentUniformSize * bufferIndex
         
         surfaceUniformBufferAddress = surfaceUniformBuffer?.contents().advanced(by: surfaceUniformBufferOffset)
         materialUniformBufferAddress = materialUniformBuffer?.contents().advanced(by: materialUniformBufferOffset)
+        effectsUniformBufferAddress = effectsUniformBuffer?.contents().advanced(by: effectsUniformBufferOffset)
+        environmentUniformBufferAddress = environmentUniformBuffer?.contents().advanced(by: environmentUniformBufferOffset)
         
     }
     
-    func updateBuffers(withARFrame frame: ARFrame, cameraProperties: CameraProperties) {
+    func updateBuffers(withAugmentedAnchors anchors: [AKAugmentedAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+        // Do Nothing
+    }
+    
+    func updateBuffers(withRealAnchors anchors: [AKRealAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
         
         // Update the anchor uniform buffer with transforms of the current frame's anchors
         surfaceInstanceCount = 0
-        surfaceIndexes = []
-        var anchorInstanceCount = 0
+        environmentTextureByUUID = [:]
         
-        for index in 0..<frame.anchors.count {
+        for akAnchor in anchors {
             
-            let anchor = frame.anchors[index]
-            var isSurface = false
-            
-            if let _ = anchor as? ARPlaneAnchor {
-                surfaceInstanceCount += 1
-                surfaceIndexes.append(index)
-                isSurface = true
-            } else {
-                anchorInstanceCount += 1
-            }
-            
-            guard isSurface else {
+            guard let anchor = akAnchor.arAnchor else {
                 continue
             }
+            
+            surfaceInstanceCount += 1
             
             // Ignore anchors that are beyond the renderDistance
             let distance = anchorDistance(withTransform: anchor.transform, cameraProperties: cameraProperties)
@@ -250,49 +255,163 @@ class SurfacesRenderModule: RenderModule {
                 break
             }
             
+            guard let uuid = akAnchor.identifier else {
+                continue
+            }
+            
             // Flip Z axis to convert geometry from right handed to left handed
             var coordinateSpaceTransform = matrix_identity_float4x4
             //coordinateSpaceTransform.columns.2.z = -1.0
             
-            if let model = surfaceModel {
-                
-                let surfaceIndex = surfaceInstanceCount - 1
-                
-                // Apply the world transform (as defined in the imported model) if applicable
-                // We currenly only support a single mesh so we just use the first item
-                if model.meshNodeIndices.count > 0, model.meshNodeIndices[0] < model.worldTransforms.count {
-                    let modelIndex = model.meshNodeIndices[0]
-                    let worldTransform = model.worldTransforms[modelIndex]
-                    coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
-                }
-                
-                var modelMatrix = anchor.transform * coordinateSpaceTransform
-                if let plane = anchor as? ARPlaneAnchor {
-                    if plane.alignment == .horizontal {
-                        // Do Nothing
+            let surfaceIndex = surfaceInstanceCount - 1
+            
+            // Apply the world transform (as defined in the imported model) if applicable
+            // We currenly only support a single mesh so we just use the first item
+            if let drawData = surfaceMeshGPUData?.drawData.first {
+                let worldTransform: matrix_float4x4 = {
+                    if drawData.worldTransformAnimations.count > 0 {
+                        let index = Int(cameraProperties.currentFrame % UInt(drawData.worldTransformAnimations.count))
+                        return drawData.worldTransformAnimations[index]
                     } else {
-                        modelMatrix = modelMatrix.rotate(radians: Float.pi, x: 1, y: 0, z: 0)
+                        return drawData.worldTransform
                     }
-                    modelMatrix = modelMatrix.scale(x: plane.extent.x, y: plane.extent.y, z: plane.extent.z)
-                    modelMatrix = modelMatrix.translate(x: -plane.center.x/2.0, y: -plane.center.y/2.0, z: -plane.center.z/2.0)
-                    
+                }()
+                coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
+            }
+            
+            var modelMatrix = anchor.transform * coordinateSpaceTransform
+            if let plane = anchor as? ARPlaneAnchor {
+                if plane.alignment == .horizontal {
+                    // Do Nothing
+                } else {
+                    modelMatrix = modelMatrix.rotate(radians: Float.pi, x: 1, y: 0, z: 0)
                 }
+                modelMatrix = modelMatrix.scale(x: plane.extent.x, y: plane.extent.y, z: plane.extent.z)
+                modelMatrix = modelMatrix.translate(x: -plane.center.x/2.0, y: -plane.center.y/2.0, z: -plane.center.z/2.0)
                 
-                // Surfaces use the same uniform struct as anchors
-                let surfaceUniforms = surfaceUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: surfaceIndex)
-                surfaceUniforms?.pointee.modelMatrix = modelMatrix
-                
+            }
+            
+            // Surfaces use the same uniform struct as anchors
+            let surfaceUniforms = surfaceUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: surfaceIndex)
+            surfaceUniforms?.pointee.modelMatrix = modelMatrix
+            surfaceUniforms?.pointee.normalMatrix = modelMatrix.normalMatrix
+            
+            //
+            // Update Environment
+            //
+            
+            let environmentProperty = environmentProperties.environmentAnchorsWithReatedAnchors.first(where: {
+                $0.value.contains(uuid)
+            })
+            
+            if let environmentProbeAnchor = environmentProperty?.key, let texture = environmentProbeAnchor.environmentTexture {
+                environmentTextureByUUID[uuid] = texture
+            }
+            
+            environmentData = {
+                var myEnvironmentData = EnvironmentData()
+                if let texture = environmentTextureByUUID[uuid] {
+                    myEnvironmentData.environmentTexture = texture
+                    myEnvironmentData.hasEnvironmentMap = true
+                    return myEnvironmentData
+                } else {
+                    myEnvironmentData.hasEnvironmentMap = false
+                }
+                return myEnvironmentData
+            }()
+            
+            let environmentUniforms = environmentUniformBufferAddress?.assumingMemoryBound(to: EnvironmentUniforms.self).advanced(by: surfaceIndex)
+            
+            // Set up lighting for the scene using the ambient intensity if provided
+            let ambientIntensity: Float = {
+                if let lightEstimate = environmentProperties.lightEstimate {
+                    return Float(lightEstimate.ambientIntensity) / 1000.0
+                } else {
+                    return 1
+                }
+            }()
+            
+            let ambientLightColor: vector_float3 = {
+                if let lightEstimate = environmentProperties.lightEstimate {
+                    return getRGB(from: lightEstimate.ambientColorTemperature)
+                } else {
+                    return vector3(0.5, 0.5, 0.5)
+                }
+            }()
+            
+            environmentUniforms?.pointee.ambientLightColor = ambientLightColor// * ambientIntensity
+            
+            var directionalLightDirection : vector_float3 = vector3(0.0, -1.0, 0.0)
+            directionalLightDirection = simd_normalize(directionalLightDirection)
+            environmentUniforms?.pointee.directionalLightDirection = directionalLightDirection
+            
+            let directionalLightColor: vector_float3 = vector3(0.6, 0.6, 0.6)
+            environmentUniforms?.pointee.directionalLightColor = directionalLightColor * ambientIntensity
+            
+            if environmentData?.hasEnvironmentMap == true {
+                environmentUniforms?.pointee.hasEnvironmentMap = 1
+            } else {
+                environmentUniforms?.pointee.hasEnvironmentMap = 0
+            }
+            
+            //
+            // Update Effects uniform
+            //
+            
+            let effectsUniforms = effectsUniformBufferAddress?.assumingMemoryBound(to: AnchorEffectsUniforms.self).advanced(by: surfaceIndex)
+            var hasSetAlpha = false
+            var hasSetGlow = false
+            var hasSetTint = false
+            var hasSetScale = false
+            if let effects = akAnchor.effects {
+                let currentTime: TimeInterval = Double(cameraProperties.currentFrame) / cameraProperties.frameRate
+                for effect in effects {
+                    switch effect.effectType {
+                    case .alpha:
+                        if let value = effect.value(forTime: currentTime) as? Float {
+                            effectsUniforms?.pointee.alpha = value
+                            hasSetAlpha = true
+                        }
+                    case .glow:
+                        if let value = effect.value(forTime: currentTime) as? Float {
+                            effectsUniforms?.pointee.glow = value
+                            hasSetGlow = true
+                        }
+                    case .tint:
+                        if let value = effect.value(forTime: currentTime) as? float3 {
+                            effectsUniforms?.pointee.tint = value
+                            hasSetTint = true
+                        }
+                    case .scale:
+                        if let value = effect.value(forTime: currentTime) as? Float {
+                            effectsUniforms?.pointee.scale = value
+                            hasSetScale = true
+                        }
+                    }
+                }
+            }
+            if !hasSetAlpha {
+                effectsUniforms?.pointee.alpha = 1
+            }
+            if !hasSetGlow {
+                effectsUniforms?.pointee.glow = 0
+            }
+            if !hasSetTint {
+                effectsUniforms?.pointee.tint = float3(1,1,1)
+            }
+            if !hasSetScale {
+                effectsUniforms?.pointee.scale = 1
             }
             
         }
         
     }
     
-    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties) {
+    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
         // Do Nothing
     }
     
-    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties) {
+    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
         // Do Nothing
     }
     
@@ -316,7 +435,7 @@ class SurfacesRenderModule: RenderModule {
             return
         }
         
-        if let sharedBuffer = sharedModules?.filter({$0.moduleIdentifier == SharedBuffersRenderModule.identifier}).first {
+        if let sharedBuffer = sharedModules?.first(where: {$0.moduleIdentifier == SharedBuffersRenderModule.identifier}) {
             
             renderEncoder.pushDebugGroup("Draw Shared Uniforms")
             
@@ -327,17 +446,37 @@ class SurfacesRenderModule: RenderModule {
             
         }
         
-        for (drawDataIdx, drawData) in meshGPUData.drawData.enumerated() {
+        if let effectsBuffer = effectsUniformBuffer {
             
-            if drawDataIdx < surfacePipelineStates.count {
-                renderEncoder.setRenderPipelineState(surfacePipelineStates[drawDataIdx])
+            renderEncoder.pushDebugGroup("Draw Effects Uniforms")
+            renderEncoder.setVertexBuffer(effectsBuffer, offset: effectsUniformBufferOffset, index: Int(kBufferIndexAnchorEffectsUniforms.rawValue))
+            renderEncoder.setFragmentBuffer(effectsBuffer, offset: effectsUniformBufferOffset, index: Int(kBufferIndexAnchorEffectsUniforms.rawValue))
+            renderEncoder.popDebugGroup()
+            
+        }
+        
+        if let environmentUniformBuffer = environmentUniformBuffer {
+            
+            renderEncoder.pushDebugGroup("Draw Environment Uniforms")
+            if let environmentTexture = environmentData?.environmentTexture, environmentData?.hasEnvironmentMap == true {
+                renderEncoder.setFragmentTexture(environmentTexture, index: Int(kTextureIndexEnvironmentMap.rawValue))
+            }
+            renderEncoder.setFragmentBuffer(environmentUniformBuffer, offset: environmentUniformBufferOffset, index: Int(kBufferIndexEnvironmentUniforms.rawValue))
+            renderEncoder.popDebugGroup()
+            
+        }
+        
+        for (drawDataIndex, drawData) in meshGPUData.drawData.enumerated() {
+            
+            if drawDataIndex < surfacePipelineStates.count {
+                renderEncoder.setRenderPipelineState(surfacePipelineStates[drawDataIndex])
                 renderEncoder.setDepthStencilState(surfaceDepthState)
                 
                 // Set any buffers fed into our render pipeline
                 renderEncoder.setVertexBuffer(surfaceUniformBuffer, offset: surfaceUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
                 
                 var mutableDrawData = drawData
-                mutableDrawData.instCount = surfaceInstanceCount
+                mutableDrawData.instanceCount = surfaceInstanceCount
                 
                 // Set the mesh's vertex data buffers
                 encode(meshGPUData: meshGPUData, fromDrawData: mutableDrawData, with: renderEncoder)
@@ -368,15 +507,20 @@ class SurfacesRenderModule: RenderModule {
         static let maxSurfaceInstanceCount = 64
         // Surfaces use the same uniform struct as anchors
         static let alignedSurfaceInstanceUniformsSize = ((MemoryLayout<AnchorInstanceUniforms>.stride * Constants.maxSurfaceInstanceCount) & ~0xFF) + 0x100
+        static let alignedEffectsUniformSize = ((MemoryLayout<AnchorEffectsUniforms>.stride * Constants.maxSurfaceInstanceCount) & ~0xFF) + 0x100
+        static let alignedEnvironmentUniformSize = ((MemoryLayout<EnvironmentUniforms>.stride * Constants.maxSurfaceInstanceCount) & ~0xFF) + 0x100
     }
     
     private var device: MTLDevice?
     private var textureLoader: MTKTextureLoader?
-    private var surfaceModel: AKModel?
+    private var surfaceAsset: MDLAsset?
     private var surfaceUniformBuffer: MTLBuffer?
     private var materialUniformBuffer: MTLBuffer?
+    private var effectsUniformBuffer: MTLBuffer?
+    private var environmentUniformBuffer: MTLBuffer?
     private var surfacePipelineStates = [MTLRenderPipelineState]() // Store multiple states
     private var surfaceDepthState: MTLDepthStencilState?
+    private var environmentData: EnvironmentData?
     
     // MetalKit meshes containing vertex data and index buffer for our surface geometry
     private var surfaceMeshGPUData: MeshGPUData?
@@ -387,115 +531,27 @@ class SurfacesRenderModule: RenderModule {
     // Offset within materialUniformBuffer to set for the current frame
     private var materialUniformBufferOffset: Int = 0
     
+    // Offset within effectsUniformBuffer to set for the current frame
+    private var effectsUniformBufferOffset: Int = 0
+    
+    // Offset within environmentUniformBuffer to set for the current frame
+    private var environmentUniformBufferOffset: Int = 0
+    
     // Addresses to write surface uniforms to each frame
     private var surfaceUniformBufferAddress: UnsafeMutableRawPointer?
     
     // Addresses to write surface uniforms to each frame
     private var materialUniformBufferAddress: UnsafeMutableRawPointer?
     
-    private var usesMaterials = false
+    // Addresses to write effects uniforms to each frame
+    private var effectsUniformBufferAddress: UnsafeMutableRawPointer?
+    
+    // Addresses to write environment uniforms to each frame
+    private var environmentUniformBufferAddress: UnsafeMutableRawPointer?
     
     // number of frames in the surface animation by surface index
     private var surfaceAnimationFrameCount = [Int]()
     
-    private func meshData(from aModel: AKModel, texturebundle: Bundle) -> MeshGPUData {
-        
-        var myGPUData = MeshGPUData()
-        
-        // Create Vertex Buffers
-        for vtxBuffer in aModel.vertexBuffers {
-            vtxBuffer.withUnsafeBytes { (bytes: UnsafePointer<UInt8>) in
-                guard let aVTXBuffer = device?.makeBuffer(bytes: bytes, length: vtxBuffer.count, options: .storageModeShared) else {
-                    let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeRenderPipelineInitializationFailed, userInfo: nil)
-                    let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-                    recordNewError(newError)
-                    fatalError("Failed to create a buffer from the device.")
-                }
-                myGPUData.vtxBuffers.append(aVTXBuffer)
-            }
-            
-        }
-        
-        // Create Index Buffers
-        for idxBuffer in aModel.indexBuffers {
-            idxBuffer.withUnsafeBytes { (bytes: UnsafePointer<UInt8>) in
-                guard let aIDXBuffer = device?.makeBuffer(bytes: bytes, length: idxBuffer.count, options: .storageModeShared) else {
-                    let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeRenderPipelineInitializationFailed, userInfo: nil)
-                    let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-                    recordNewError(newError)
-                    fatalError("Failed to create a buffer from the device.")
-                }
-                myGPUData.indexBuffers.append(aIDXBuffer)
-            }
-        }
-        
-        // Create Texture Buffers
-        for texturePath in aModel.texturePaths {
-            myGPUData.textures.append(createMTLTexture(inBundle: texturebundle, fromAssetPath: texturePath, withTextureLoader: textureLoader))
-        }
-        
-        // Encode the data in the meshes as DrawData objects and store them in the MeshGPUData
-        var instStartIdx = 0
-        var paletteStartIdx = 0
-        for (meshIdx, meshData) in aModel.meshes.enumerated() {
-            
-            var drawData = DrawData()
-            drawData.vbCount = meshData.vbCount
-            drawData.vbStartIdx = meshData.vbStartIdx
-            drawData.ibStartIdx = meshData.ibStartIdx
-            drawData.instCount = !aModel.instanceCount.isEmpty ? aModel.instanceCount[meshIdx] : 1
-            drawData.instBufferStartIdx = instStartIdx
-            if !aModel.meshSkinIndices.isEmpty,
-                let paletteIndex = aModel.meshSkinIndices[instStartIdx] {
-                drawData.paletteSize = aModel.skins[paletteIndex].jointPaths.count
-                drawData.paletteStartIndex = paletteStartIdx
-                paletteStartIdx += drawData.paletteSize * drawData.instCount
-            }
-            instStartIdx += drawData.instCount
-            usesMaterials = (!meshData.materials.isEmpty)
-            for subIndex in 0..<meshData.idxCounts.count {
-                var subData = DrawSubData()
-                subData.idxCount = meshData.idxCounts[subIndex]
-                subData.idxType = MetalUtilities.convertToMTLIndexType(from: meshData.idxTypes[subIndex])
-                subData.materialUniforms = usesMaterials ? MetalUtilities.convertToMaterialUniform(from: meshData.materials[subIndex])
-                    : MaterialUniforms()
-                if usesMaterials {
-                    
-                    guard let materialUniformBuffer = materialUniformBuffer else {
-                        print("Serious Error - Material Uniform Buffer is nil")
-                        let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeRenderPipelineInitializationFailed, userInfo: nil)
-                        let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-                        recordNewError(newError)
-                        return myGPUData
-                    }
-                    
-                    MetalUtilities.convertMaterialBuffer(from: meshData.materials[subIndex], with: materialUniformBuffer, offset: materialUniformBufferOffset)
-                    subData.materialBuffer = materialUniformBuffer
-                    
-                }
-                subData.baseColorTextureIndex = usesMaterials ? meshData.materials[subIndex].baseColor.1 : nil
-                subData.normalTextureIndex = usesMaterials ? meshData.materials[subIndex].normalMap : nil
-                subData.ambientOcclusionTextureIndex = usesMaterials ? meshData.materials[subIndex].ambientOcclusionMap.1 : nil
-                subData.roughnessTextureIndex = usesMaterials ? meshData.materials[subIndex].roughness.1 : nil
-                subData.metallicTextureIndex = usesMaterials ? meshData.materials[subIndex].metallic.1 : nil
-                subData.irradianceTextureIndex = usesMaterials ? meshData.materials[subIndex].irradianceColorMap.1 : nil
-                subData.subsurfaceTextureIndex = usesMaterials ? meshData.materials[subIndex].subsurface.1 : nil
-                subData.specularTextureIndex = usesMaterials ? meshData.materials[subIndex].specular.1 : nil
-                subData.specularTintTextureIndex = usesMaterials ? meshData.materials[subIndex].specularTint.1 : nil
-                subData.anisotropicTextureIndex = usesMaterials ? meshData.materials[subIndex].anisotropic.1 : nil
-                subData.sheenTextureIndex = usesMaterials ? meshData.materials[subIndex].sheen.1 : nil
-                subData.sheenTintTextureIndex = usesMaterials ? meshData.materials[subIndex].sheenTint.1 : nil
-                subData.clearcoatTextureIndex = usesMaterials ? meshData.materials[subIndex].clearcoat.1 : nil
-                subData.clearcoatGlossTextureIndex = usesMaterials ? meshData.materials[subIndex].clearcoatGloss.1 : nil
-                drawData.subData.append(subData)
-            }
-            
-            myGPUData.drawData.append(drawData)
-            
-        }
-        
-        return myGPUData
-        
-    }
+    private var environmentTextureByUUID = [UUID: MTLTexture]()
     
 }

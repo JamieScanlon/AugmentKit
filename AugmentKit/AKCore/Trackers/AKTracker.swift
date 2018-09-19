@@ -33,9 +33,10 @@ import Foundation
 //  An AKTracker is a geometrical object that tracks another moving object or position.
 //  The object's geometry is defiened by the `model` property.
 //  The object's position is not fixed in world space but is relative.
-public protocol AKTracker: AKGeometricEntity {
+public protocol AKTracker: class, AKGeometricEntity {
     
     var position: AKRelativePosition { get set }
+    func setIdentifier(_ identifier: UUID)
     
 }
 

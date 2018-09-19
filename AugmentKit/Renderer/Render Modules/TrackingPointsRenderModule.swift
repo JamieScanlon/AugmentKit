@@ -106,14 +106,14 @@ class TrackingPointsRenderModule: RenderModule {
         let trackingPointVertexDescriptor = MTLVertexDescriptor()
         
         // Positions
-        trackingPointVertexDescriptor.attributes[0].format = .float4
-        trackingPointVertexDescriptor.attributes[0].offset = 0
-        trackingPointVertexDescriptor.attributes[0].bufferIndex = Int(kBufferIndexTrackingPointData.rawValue)
+        trackingPointVertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)].format = .float4
+        trackingPointVertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)].offset = 0
+        trackingPointVertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)].bufferIndex = Int(kBufferIndexTrackingPointData.rawValue)
         
         // Color
-        trackingPointVertexDescriptor.attributes[5].format = .float4
-        trackingPointVertexDescriptor.attributes[5].offset = 16
-        trackingPointVertexDescriptor.attributes[5].bufferIndex = Int(kBufferIndexTrackingPointData.rawValue)
+        trackingPointVertexDescriptor.attributes[Int(kVertexAttributeColor.rawValue)].format = .float4
+        trackingPointVertexDescriptor.attributes[Int(kVertexAttributeColor.rawValue)].offset = 16
+        trackingPointVertexDescriptor.attributes[Int(kVertexAttributeColor.rawValue)].bufferIndex = Int(kBufferIndexTrackingPointData.rawValue)
         
         // Buffer Layout
         trackingPointVertexDescriptor.layouts[Int(kBufferIndexTrackingPointData.rawValue)].stride = 32
@@ -165,11 +165,11 @@ class TrackingPointsRenderModule: RenderModule {
     }
     
     // Update the buffer data
-    func updateBuffers(withARFrame frame: ARFrame, cameraProperties: CameraProperties) {
+    func updateBuffers(withAugmentedAnchors anchors: [AKAugmentedAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
         
         trackingPointCount = 0
         
-        guard let rawFeaturePoints = frame.rawFeaturePoints else {
+        guard let rawFeaturePoints = cameraProperties.rawFeaturePoints else {
             return
         }
         
@@ -201,11 +201,15 @@ class TrackingPointsRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties) {
+    func updateBuffers(withRealAnchors: [AKRealAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
         // Do Nothing
     }
     
-    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties) {
+    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+        // Do Nothing
+    }
+    
+    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
         // Do Nothing
     }
     
@@ -225,7 +229,7 @@ class TrackingPointsRenderModule: RenderModule {
         
         renderEncoder.setRenderPipelineState(trackingPointPipelineState)
         renderEncoder.setVertexBuffer(trackingPointDataBuffer, offset: trackingPointDataBufferOffset, index: Int(kBufferIndexTrackingPointData.rawValue))
-        if let sharedBuffer = sharedModules?.filter({$0.moduleIdentifier == SharedBuffersRenderModule.identifier}).first {
+        if let sharedBuffer = sharedModules?.first(where: {$0.moduleIdentifier == SharedBuffersRenderModule.identifier}) {
             renderEncoder.pushDebugGroup("Draw Shared Uniforms")
             renderEncoder.setVertexBuffer(sharedBuffer.sharedUniformBuffer, offset: sharedBuffer.sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
             renderEncoder.popDebugGroup()

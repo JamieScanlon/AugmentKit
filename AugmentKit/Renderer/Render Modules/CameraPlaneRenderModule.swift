@@ -97,14 +97,14 @@ class CameraPlaneRenderModule: RenderModule {
         let imagePlaneVertexDescriptor = MTLVertexDescriptor()
         
         // Positions.
-        imagePlaneVertexDescriptor.attributes[0].format = .float2
-        imagePlaneVertexDescriptor.attributes[0].offset = 0
-        imagePlaneVertexDescriptor.attributes[0].bufferIndex = Int(kBufferIndexMeshPositions.rawValue)
+        imagePlaneVertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)].format = .float2
+        imagePlaneVertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)].offset = 0
+        imagePlaneVertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)].bufferIndex = Int(kBufferIndexMeshPositions.rawValue)
         
         // Texture coordinates.
-        imagePlaneVertexDescriptor.attributes[1].format = .float2
-        imagePlaneVertexDescriptor.attributes[1].offset = 8
-        imagePlaneVertexDescriptor.attributes[1].bufferIndex = Int(kBufferIndexMeshPositions.rawValue)
+        imagePlaneVertexDescriptor.attributes[Int(kVertexAttributeTexcoord.rawValue)].format = .float2
+        imagePlaneVertexDescriptor.attributes[Int(kVertexAttributeTexcoord.rawValue)].offset = 8
+        imagePlaneVertexDescriptor.attributes[Int(kVertexAttributeTexcoord.rawValue)].bufferIndex = Int(kBufferIndexMeshPositions.rawValue)
         
         // Buffer Layout
         imagePlaneVertexDescriptor.layouts[0].stride = 16
@@ -160,10 +160,10 @@ class CameraPlaneRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withARFrame frame: ARFrame, cameraProperties: CameraProperties) {
+    func updateBuffers(withAugmentedAnchors anchors: [AKAugmentedAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
         
         // Create two textures (Y and CbCr) from the provided frame's captured image
-        let pixelBuffer = frame.capturedImage
+        let pixelBuffer = cameraProperties.capturedImage
         
         if (CVPixelBufferGetPlaneCount(pixelBuffer) < 2) {
             return
@@ -174,7 +174,7 @@ class CameraPlaneRenderModule: RenderModule {
         
         if cameraProperties.viewportSizeDidChange {
             // Update the texture coordinates of our image plane to aspect fill the viewport
-            let displayToCameraTransform = frame.displayTransform(for: cameraProperties.orientation, viewportSize: cameraProperties.viewportSize).inverted()
+            let displayToCameraTransform = cameraProperties.displayTransform.inverted()
             
             if let vertexData = imagePlaneVertexBuffer?.contents().assumingMemoryBound(to: Float.self) {
                 for index in 0...3 {
@@ -189,11 +189,15 @@ class CameraPlaneRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties) {
+    func updateBuffers(withRealAnchors: [AKRealAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
         // Do Nothing
     }
     
-    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties) {
+    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+        // Do Nothing
+    }
+    
+    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
         // Do Nothing
     }
     

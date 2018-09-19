@@ -28,15 +28,16 @@
 import UIKit
 import Metal
 import MetalKit
+import ModelIO
 import ARKit
 import AugmentKit
 
 class ViewController: UIViewController {
     
     var world: AKWorld?
-    var pinModel: AKModel?
-    var shipModel: AKModel?
-    var maxModel: AKModel?
+    var pinAsset: MDLAsset?
+    var shipAsset: MDLAsset?
+    var maxAsset: MDLAsset?
     
     @IBOutlet var infoView: UIView?
     @IBOutlet var debugInfoAnchorCounts: UILabel?
@@ -69,19 +70,20 @@ class ViewController: UIViewController {
             
             // Add a user tracking anchor.
             if let asset = MDLAssetTools.assetFromImage(inBundle: Bundle.main, withName: "compass_512.png") {
-                let myUserTrackerModel = AKAnchorAssetModel(asset: asset)
                 // Position it 3 meters down from the camera
                 let offsetTransform = matrix_identity_float4x4.translate(x: 0, y: -3, z: 0)
-                let userTracker = UserTracker(withModel: myUserTrackerModel, withUserRelativeTransform: offsetTransform)
-                userTracker.position.heading = WorldHeading(withWorld: myWorld, worldHeadingType: .north)
+                let userTracker = UserTracker(withModelAsset: asset, withUserRelativeTransform: offsetTransform)
+                userTracker.position.heading = WorldHeading(withWorld: myWorld, worldHeadingType: .north(0))
                 myWorld.add(tracker: userTracker)
             }
             
             // Add a Gaze Target
             // Make it about 20cm square.
+            // Add an effect to make it fade in and out
             if let asset = MDLAssetTools.assetFromImage(inBundle: Bundle.main, withName: "Gaze_Target.png", extension: "", scale: 0.2) {
-                let myGazeTargetModel = AKAnchorAssetModel(asset: asset)
-                let gazeTarget = GazeTarget(withModel: myGazeTargetModel, withUserRelativeTransform: matrix_identity_float4x4)
+                let gazeTarget = GazeTarget(withModelAsset: asset, withUserRelativeTransform: matrix_identity_float4x4)
+                let alphaEffect = PulsingAlphaEffect(minValue: 0.2, maxValue: 1)
+                gazeTarget.effects = [AnyEffect(alphaEffect)]
                 myWorld.add(gazeTarget: gazeTarget)
             }
             
@@ -125,13 +127,17 @@ class ViewController: UIViewController {
     @objc
     fileprivate func handleTap(gestureRecognize: UITapGestureRecognizer) {
         
-//        guard let world = world else {
-//            return
-//        }
-//
-//        guard let currentWorldLocation = world.currentWorldLocation else {
-//            return
-//        }
+        guard let world = world else {
+            return
+        }
+
+        guard let currentWorldLocation = world.currentWorldLocation else {
+            return
+        }
+        
+        guard let gazeLocation = world.currentGazeLocation else {
+            return
+        }
         
         // Example:
         // Create a square path
@@ -191,14 +197,58 @@ class ViewController: UIViewController {
 //
 //        let path = PathAnchor(withWorldLocaitons: [location1, location2, location3, location4, location5, location6, location7, location8, location9, location1])
 //        world.add(akPath: path)
+        
+        // Example:
+        // Render a UIView as a surface in the AR World 2 meters in from of the current location. Use an AlwaysFacingMeHeading
+        // Heading to follow me as I walk around.
+//        let textView = UITextView(frame: CGRect(x: 0, y: 0, width: 300, height: 500))
+//        textView.font = UIFont(descriptor: .preferredFontDescriptor(withTextStyle: .body), size: 14)
+//        textView.textColor = UIColor(red: 200/255, green: 109/255, blue: 215/255, alpha: 1)
+//        textView.text = """
+//A way out west there was a fella,
+//fella I want to tell you about, fella
+//by the name of Jeff Lebowski. At
+//least, that was the handle his lovin'
+//parents gave him, but he never had
+//much use for it himself. This
+//Lebowski, he called himself the Dude.
+//Now, Dude, that's a name no one would
+//self-apply where I come from. But
+//then, there was a lot about the Dude
+//that didn't make a whole lot of sense
+//to me. And a lot about where he
+//lived, like- wise. But then again,
+//maybe that's why I found the place
+//s'durned innarestin'...
+//"""
+//        textView.backgroundColor = .clear
+//        let location = world.worldLocationWithDistanceFromMe(metersAbove: 0, metersInFront: 2)!
+//        let heading = AlwaysFacingMeHeading(withWorldLocaiton: location)
+//        let viewSurface = AugmentedUIViewSurface(withView: textView, at: location, heading: heading)
+//        world.add(anchor: viewSurface)
 
+    }
+    
+    @IBAction func exportButtonClicked(_ sender: UIButton) {
+        guard let world = world else {
+            return
+        }
+        world.getArchivedWorldMap() { (fileURL, error) in
+            if let fileURL = fileURL {
+                let activityItems = [fileURL]
+                let activityViewController = UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+                DispatchQueue.main.async { [weak self] in
+                    self?.present(activityViewController, animated: true, completion: nil)
+                }
+            }
+        }
     }
     
     @IBAction fileprivate func markerTapped(_ sender: UIButton) {
         
         // Create a new anchor at the current locaiton
-        
-        guard let anchorModel = pinModel else {
+
+        guard let anchorModel = pinAsset else {
             return
         }
         
@@ -206,12 +256,14 @@ class ViewController: UIViewController {
             return
         }
         
-        guard let currentWorldLocation = world.currentWorldLocation else {
+        guard let location = world.currentGazeLocation else {
             return
         }
         
-        let anchorLocation = GroundFixedWorldLocation(worldLocation: currentWorldLocation, world: world)
-        let newObject = AugmentedAnchor(withAKModel: anchorModel, at: anchorLocation)
+        let anchorLocation = GroundFixedWorldLocation(worldLocation: location, world: world)
+        let newObject = AugmentedAnchor(withModelAsset: anchorModel, at: anchorLocation)
+        let scaleEffect = ConstantScaleEffect(scaleValue: 0.01)
+        newObject.effects = [AnyEffect(scaleEffect)]
         world.add(anchor: newObject)
         
     }
@@ -219,8 +271,8 @@ class ViewController: UIViewController {
     @IBAction fileprivate func maxTapped(_ sender: UIButton) {
         
         // Create a new anchor at the current locaiton
-        
-        guard let anchorModel = maxModel else {
+
+        guard let anchorModel = maxAsset else {
             return
         }
         
@@ -228,12 +280,12 @@ class ViewController: UIViewController {
             return
         }
         
-        guard let currentWorldLocation = world.currentWorldLocation else {
+        guard let location = world.currentGazeLocation else {
             return
         }
         
-        let anchorLocation = GroundFixedWorldLocation(worldLocation: currentWorldLocation, world: world)
-        let newObject = AugmentedAnchor(withAKModel: anchorModel, at: currentWorldLocation)
+        let anchorLocation = GroundFixedWorldLocation(worldLocation: location, world: world)
+        let newObject = AugmentedAnchor(withModelAsset: anchorModel, at: anchorLocation)
         world.add(anchor: newObject)
         
     }
@@ -241,8 +293,8 @@ class ViewController: UIViewController {
     @IBAction fileprivate func planeTapped(_ sender: UIButton) {
         
         // Create a new anchor at the current locaiton
-        
-        guard let anchorModel = shipModel else {
+
+        guard let anchorModel = shipAsset else {
             return
         }
         
@@ -250,11 +302,11 @@ class ViewController: UIViewController {
             return
         }
         
-        guard let currentWorldLocation = world.currentWorldLocation else {
+        guard let location = world.currentGazeLocation else {
             return
         }
         
-        let newObject = AugmentedAnchor(withAKModel: anchorModel, at: currentWorldLocation)
+        let newObject = AugmentedAnchor(withModelAsset: anchorModel, at: location)
         world.add(anchor: newObject)
         
     }
@@ -262,13 +314,15 @@ class ViewController: UIViewController {
     fileprivate func loadAnchorModels() {
         
         //
-        // Download a zipped Model
+        // Download a usdz Model
         //
         
-//        let url = URL(string: "https://s3-us-west-2.amazonaws.com/com.tenthlettermade.public/PinAKModelArchive.zip")!
-//        let remoteModel = AKRemoteArchivedModel(remoteURL: url)
-//        remoteModel.compressor = Compressor()
-//        pinModel = remoteModel
+//        let url = URL(string: "https://example.com/path/to/model.usdz")!
+//        let remoteModel = RemoteModelLoader().loadModel(withURL: url) { (filePath, error) in
+//            let url = URL(fileURLWithPath: filePath)
+//            let remoteAsset = MDLAsset(url: url)
+//            self.pinModel = remoteAsset
+//        }
         
         
         //
@@ -281,24 +335,29 @@ class ViewController: UIViewController {
             return
         }
         
-        guard let pinAsset = AKSceneKitUtils.mdlAssetFromScene(named: "Pin.scn", world: world) else {
+//        guard let aPinAsset = AKSceneKitUtils.mdlAssetFromScene(named: "Pin.scn", world: world) else {
+//            print("ERROR: Could not load the SceneKit model")
+//            return
+//        }
+        
+        guard let aPinAsset = MDLAssetTools.asset(named: "retrotv.usdz", inBundle: Bundle.main) else {
+            print("ERROR: Could not load the USDZ model")
+            return
+        }
+        
+        guard let aShipAsset = AKSceneKitUtils.mdlAssetFromScene(named: "ship.scn", world: world) else {
             print("ERROR: Could not load the SceneKit model")
             return
         }
         
-        guard let shipAsset = AKSceneKitUtils.mdlAssetFromScene(named: "ship.scn", world: world) else {
+        guard let aMaxAsset = AKSceneKitUtils.mdlAssetFromScene(named: "Art.scnassets/character/max.scn", world: world) else {
             print("ERROR: Could not load the SceneKit model")
             return
         }
         
-        guard let maxAsset = AKSceneKitUtils.mdlAssetFromScene(named: "Art.scnassets/character/max.scn", world: world) else {
-            print("ERROR: Could not load the SceneKit model")
-            return
-        }
-
-        pinModel = AKMDLAssetModel(asset: pinAsset, vertexDescriptor: AKMDLAssetModel.newAnchorVertexDescriptor())
-        shipModel = AKMDLAssetModel(asset: shipAsset, vertexDescriptor: AKMDLAssetModel.newAnchorVertexDescriptor())
-        maxModel = AKMDLAssetModel(asset: maxAsset, vertexDescriptor: AKMDLAssetModel.newAnchorVertexDescriptor())
+        pinAsset = aPinAsset
+        shipAsset = aShipAsset
+        maxAsset = aMaxAsset
         
     }
     
@@ -332,30 +391,4 @@ extension ViewController: AKWorldMonitor {
         }
     }
     
-}
-
-// MARK: - Model Compressor
-
-class Compressor: ModelCompressor {
-    
-    func zipModel(withFileURLs fileURLs: [URL], toDestinationFilePath destinationFilePath: String) -> URL? {
-        
-        guard let zipFileURL = try? Zip.quickZipFiles(fileURLs, fileName: destinationFilePath) else {
-            print("SerializeUtil: Serious Error. Could not archive the model file at \(fileURLs.first?.path ?? "nil")")
-            return nil
-        }
-        
-        return zipFileURL
-        
-    }
-    
-    func unzipModel(withFileURL filePath: URL) -> URL? {
-        do {
-            let unzipDirectory = try Zip.quickUnzipFile(filePath)
-            return unzipDirectory
-        } catch {
-            print(error.localizedDescription)
-            return nil
-        }
-    }
 }

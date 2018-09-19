@@ -118,8 +118,7 @@ class PathsRenderModule: RenderModule {
         let asset = MDLAsset(bufferAllocator: metalAllocator)
         asset.add(mesh)
         
-        let myModel = AKMDLAssetModel(asset: asset, vertexDescriptor: createVertexDescriptor())
-        pathSegmentModel = myModel
+        pathSegmentAsset = asset
     
         completion()
         
@@ -151,32 +150,34 @@ class PathsRenderModule: RenderModule {
             return
         }
         
-        guard let pathSegmentModel = pathSegmentModel else {
-            print("Serious Error - pathSegmentModel not found")
+        guard let pathSegmentAsset = pathSegmentAsset else {
+            print("Serious Error - pathSegmentAsset not found")
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeModelNotFound, userInfo: nil)
             let newError = AKError.warning(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
             return
         }
         
-        if pathSegmentModel.meshNodeIndices.count > 1 {
-            print("WARNING: More than one mesh was found. Currently only one mesh per anchor is supported.")
-            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeModelNotSupported, userInfo: nil)
-            let newError = AKError.warning(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-            recordNewError(newError)
-        }
+        pathMeshGPUData = ModelIOTools.meshGPUData(from: pathSegmentAsset, device: device, textureBundle: textureBundle, vertexDescriptor: MetalUtilities.createStandardVertexDescriptor())
         
-        pathMeshGPUData = meshData(from: pathSegmentModel, texturebundle: textureBundle)
-        
-        guard let meshGPUData = pathMeshGPUData else {
-            print("Serious Error - ERROR: No meshGPUData found when trying to load the pipeline.")
+        guard let pathMeshGPUData = pathMeshGPUData else {
+            print("Serious Error - ERROR: No meshGPUData for target found when trying to load the pipeline.")
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeIntermediateMeshDataNotFound, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
             return
         }
         
-        guard let pathVertexDescriptor = createMetalVertexDescriptor(withFirstModelIOVertexDescriptorIn: pathSegmentModel.vertexDescriptors) else {
+        if pathMeshGPUData.drawData.count > 1 {
+            print("WARNING: More than one mesh was found. Currently only one mesh per anchor is supported.")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeModelNotSupported, userInfo: nil)
+            let newError = AKError.warning(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
+        }
+        
+        let myVertexDescriptor = pathMeshGPUData.vertexDescriptor
+        
+        guard let pathVertexDescriptor = myVertexDescriptor else {
             print("Serious Error - Failed to create a MetalKit vertex descriptor from ModelIO.")
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeInvalidMeshData, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
@@ -184,7 +185,7 @@ class PathsRenderModule: RenderModule {
             return
         }
         
-        for (drawIdx, drawData) in meshGPUData.drawData.enumerated() {
+        for (_, _) in pathMeshGPUData.drawData.enumerated() {
             let pathPipelineStateDescriptor = MTLRenderPipelineDescriptor()
             pathPipelineStateDescriptor.vertexDescriptor = pathVertexDescriptor
             pathPipelineStateDescriptor.vertexFunction = pointVertexShader
@@ -231,15 +232,19 @@ class PathsRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withARFrame frame: ARFrame, cameraProperties: CameraProperties) {
+    func updateBuffers(withAugmentedAnchors anchors: [AKAugmentedAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
         // Do Nothing
     }
     
-    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties) {
+    func updateBuffers(withRealAnchors: [AKRealAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
         // Do Nothing
     }
     
-    func updateBuffers(withPaths paths: [AKPath], cameraProperties theCameraProperties: CameraProperties) {
+    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+        // Do Nothing
+    }
+    
+    func updateBuffers(withPaths paths: [AKPath], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
         
         // Update the anchor uniform buffer with transforms of the current frame's anchors
         pathSegmentInstanceCount = 0
@@ -264,7 +269,7 @@ class PathsRenderModule: RenderModule {
                 // Clip the paths to the render sphere
                 let p0 = float3(myLastAnchor.worldLocation.transform.columns.3.x, myLastAnchor.worldLocation.transform.columns.3.y, myLastAnchor.worldLocation.transform.columns.3.z)
                 let p1 = float3(anchor.worldLocation.transform.columns.3.x, anchor.worldLocation.transform.columns.3.y, anchor.worldLocation.transform.columns.3.z)
-                let sphereIntersection = renderShpereIntersectionOfPath(withPoint0: p0, point1: p1, cameraProperties: theCameraProperties)
+                let sphereIntersection = renderShpereIntersectionOfPath(withPoint0: p0, point1: p1, cameraProperties: cameraProperties)
                 guard sphereIntersection.isInside else {
                     lastAnchor = anchor
                     continue
@@ -334,17 +339,56 @@ class PathsRenderModule: RenderModule {
                 let pathSegmentIndex = pathSegmentInstanceCount - 1
                 let pathUniforms = pathUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: pathSegmentIndex)
                 pathUniforms?.pointee.modelMatrix = modelMatrix
+                pathUniforms?.pointee.normalMatrix = modelMatrix.normalMatrix
                 
                 //
-                // Update the Effects uniform
+                // Update Effects uniform
                 //
                 
                 let effectsUniforms = effectsUniformBufferAddress?.assumingMemoryBound(to: AnchorEffectsUniforms.self).advanced(by: pathSegmentIndex)
-                effectsUniforms?.pointee.alpha = 1 // TODO: Implement
-                effectsUniforms?.pointee.glow = 0 // TODO: Implement
-                effectsUniforms?.pointee.tint = float3(1,0.25,0.25) // TODO: Implement
-                
-                lastAnchor = anchor
+                var hasSetAlpha = false
+                var hasSetGlow = false
+                var hasSetTint = false
+                var hasSetScale = false
+                if let effects = anchor.effects {
+                    let currentTime: TimeInterval = Double(cameraProperties.currentFrame) / cameraProperties.frameRate
+                    for effect in effects {
+                        switch effect.effectType {
+                        case .alpha:
+                            if let value = effect.value(forTime: currentTime) as? Float {
+                                effectsUniforms?.pointee.alpha = value
+                                hasSetAlpha = true
+                            }
+                        case .glow:
+                            if let value = effect.value(forTime: currentTime) as? Float {
+                                effectsUniforms?.pointee.glow = value
+                                hasSetGlow = true
+                            }
+                        case .tint:
+                            if let value = effect.value(forTime: currentTime) as? float3 {
+                                effectsUniforms?.pointee.tint = value
+                                hasSetTint = true
+                            }
+                        case .scale:
+                            if let value = effect.value(forTime: currentTime) as? Float {
+                                effectsUniforms?.pointee.scale = value
+                                hasSetScale = true
+                            }
+                        }
+                    }
+                }
+                if !hasSetAlpha {
+                    effectsUniforms?.pointee.alpha = 1
+                }
+                if !hasSetGlow {
+                    effectsUniforms?.pointee.glow = 0
+                }
+                if !hasSetTint {
+                    effectsUniforms?.pointee.tint = float3(1,1,1)
+                }
+                if !hasSetScale {
+                    effectsUniforms?.pointee.scale = 1
+                }
                 
             }
             
@@ -376,7 +420,7 @@ class PathsRenderModule: RenderModule {
             return
         }
         
-        if let sharedBuffer = sharedModules?.filter({$0.moduleIdentifier == SharedBuffersRenderModule.identifier}).first {
+        if let sharedBuffer = sharedModules?.first(where: {$0.moduleIdentifier == SharedBuffersRenderModule.identifier}) {
             
             renderEncoder.pushDebugGroup("Draw Shared Uniforms")
             
@@ -390,22 +434,23 @@ class PathsRenderModule: RenderModule {
         if let effectsBuffer = effectsUniformBuffer {
             
             renderEncoder.pushDebugGroup("Draw Effects Uniforms")
+            renderEncoder.setVertexBuffer(effectsBuffer, offset: effectsUniformBufferOffset, index: Int(kBufferIndexAnchorEffectsUniforms.rawValue))
             renderEncoder.setFragmentBuffer(effectsBuffer, offset: effectsUniformBufferOffset, index: Int(kBufferIndexAnchorEffectsUniforms.rawValue))
             renderEncoder.popDebugGroup()
             
         }
         
-        for (drawDataIdx, drawData) in meshGPUData.drawData.enumerated() {
+        for (drawDataIndex, drawData) in meshGPUData.drawData.enumerated() {
             
-            if drawDataIdx < pathPipelineStates.count {
-                renderEncoder.setRenderPipelineState(pathPipelineStates[drawDataIdx])
+            if drawDataIndex < pathPipelineStates.count {
+                renderEncoder.setRenderPipelineState(pathPipelineStates[drawDataIndex])
                 renderEncoder.setDepthStencilState(pathDepthState)
                 
                 // Set any buffers fed into our render pipeline
                 renderEncoder.setVertexBuffer(pathUniformBuffer, offset: pathUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
                 
                 var mutableDrawData = drawData
-                mutableDrawData.instCount = pathSegmentInstanceCount
+                mutableDrawData.instanceCount = pathSegmentInstanceCount
                 
                 // Set the mesh's vertex data buffers
                 encode(meshGPUData: meshGPUData, fromDrawData: mutableDrawData, with: renderEncoder)
@@ -434,7 +479,7 @@ class PathsRenderModule: RenderModule {
     
     private var device: MTLDevice?
     private var textureLoader: MTKTextureLoader?
-    private var pathSegmentModel: AKModel?
+    private var pathSegmentAsset: MDLAsset?
     private var pathUniformBuffer: MTLBuffer?
     private var materialUniformBuffer: MTLBuffer?
     private var effectsUniformBuffer: MTLBuffer?
@@ -469,8 +514,6 @@ class PathsRenderModule: RenderModule {
         static let alignedEffectsUniformSize = ((MemoryLayout<AnchorEffectsUniforms>.stride * Constants.maxPathSegmentInstanceCount) & ~0xFF) + 0x100
     }
     
-    private var usesMaterials = false
-    
     // number of frames in the path animation by path index
     private var pathAnimationFrameCount = [Int]()
     
@@ -486,26 +529,26 @@ class PathsRenderModule: RenderModule {
         // -------- Buffer 0 --------
         
         // Positions
-        pathsVertexDescriptor.attributes[0].format = .float3 // 12 bytes
-        pathsVertexDescriptor.attributes[0].offset = 0
-        pathsVertexDescriptor.attributes[0].bufferIndex = Int(kBufferIndexMeshPositions.rawValue)
+        pathsVertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)].format = .float3 // 12 bytes
+        pathsVertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)].offset = 0
+        pathsVertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)].bufferIndex = Int(kBufferIndexMeshPositions.rawValue)
         
         // -------- Buffer 1 --------
         
         // Texture coordinates
-        pathsVertexDescriptor.attributes[1].format = .float2 // 8 bytes
-        pathsVertexDescriptor.attributes[1].offset = 0
-        pathsVertexDescriptor.attributes[1].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
+        pathsVertexDescriptor.attributes[Int(kVertexAttributeTexcoord.rawValue)].format = .float2 // 8 bytes
+        pathsVertexDescriptor.attributes[Int(kVertexAttributeTexcoord.rawValue)].offset = 0
+        pathsVertexDescriptor.attributes[Int(kVertexAttributeTexcoord.rawValue)].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
         
         // Normals
-        pathsVertexDescriptor.attributes[2].format = .float3 // 12 bytes
-        pathsVertexDescriptor.attributes[2].offset = 8
-        pathsVertexDescriptor.attributes[2].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
+        pathsVertexDescriptor.attributes[Int(kVertexAttributeNormal.rawValue)].format = .float3 // 12 bytes
+        pathsVertexDescriptor.attributes[Int(kVertexAttributeNormal.rawValue)].offset = 8
+        pathsVertexDescriptor.attributes[Int(kVertexAttributeNormal.rawValue)].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
         
         // Color
-        pathsVertexDescriptor.attributes[5].format = .float3 // 12 bytes
-        pathsVertexDescriptor.attributes[5].offset = 20
-        pathsVertexDescriptor.attributes[5].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
+        pathsVertexDescriptor.attributes[Int(kVertexAttributeColor.rawValue)].format = .float3 // 12 bytes
+        pathsVertexDescriptor.attributes[Int(kVertexAttributeColor.rawValue)].offset = 20
+        pathsVertexDescriptor.attributes[Int(kVertexAttributeColor.rawValue)].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
         
         //
         // Layouts
@@ -535,106 +578,6 @@ class PathsRenderModule: RenderModule {
         (vertexDescriptor.attributes[Int(kVertexAttributeColor.rawValue)] as! MDLVertexAttribute).name = MDLVertexAttributeColor
         
         return vertexDescriptor
-        
-    }
-    
-    private func meshData(from aModel: AKModel, texturebundle: Bundle) -> MeshGPUData {
-        
-        var myGPUData = MeshGPUData()
-        
-        // Create Vertex Buffers
-        for vtxBuffer in aModel.vertexBuffers {
-            vtxBuffer.withUnsafeBytes { (bytes: UnsafePointer<UInt8>) in
-                guard let aVTXBuffer = device?.makeBuffer(bytes: bytes, length: vtxBuffer.count, options: .storageModeShared) else {
-                    let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeRenderPipelineInitializationFailed, userInfo: nil)
-                    let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-                    recordNewError(newError)
-                    fatalError("Failed to create a buffer from the device.")
-                }
-                myGPUData.vtxBuffers.append(aVTXBuffer)
-            }
-            
-        }
-        
-        // Create Index Buffers
-        for idxBuffer in aModel.indexBuffers {
-            idxBuffer.withUnsafeBytes { (bytes: UnsafePointer<UInt8>) in
-                guard let aIDXBuffer = device?.makeBuffer(bytes: bytes, length: idxBuffer.count, options: .storageModeShared) else {
-                    let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeRenderPipelineInitializationFailed, userInfo: nil)
-                    let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-                    recordNewError(newError)
-                    fatalError("Failed to create a buffer from the device.")
-                }
-                myGPUData.indexBuffers.append(aIDXBuffer)
-            }
-        }
-        
-        // Create Texture Buffers
-        for texturePath in aModel.texturePaths {
-            myGPUData.textures.append(createMTLTexture(inBundle: texturebundle, fromAssetPath: texturePath, withTextureLoader: textureLoader))
-        }
-        
-        // Encode the data in the meshes as DrawData objects and store them in the MeshGPUData
-        var instStartIdx = 0
-        var paletteStartIdx = 0
-        for (meshIdx, meshData) in aModel.meshes.enumerated() {
-            
-            var drawData = DrawData()
-            drawData.vbCount = meshData.vbCount
-            drawData.vbStartIdx = meshData.vbStartIdx
-            drawData.ibStartIdx = meshData.ibStartIdx
-            drawData.instCount = !aModel.instanceCount.isEmpty ? aModel.instanceCount[meshIdx] : 1
-            drawData.instBufferStartIdx = instStartIdx
-            if !aModel.meshSkinIndices.isEmpty,
-                let paletteIndex = aModel.meshSkinIndices[instStartIdx] {
-                drawData.paletteSize = aModel.skins[paletteIndex].jointPaths.count
-                drawData.paletteStartIndex = paletteStartIdx
-                paletteStartIdx += drawData.paletteSize * drawData.instCount
-            }
-            instStartIdx += drawData.instCount
-            usesMaterials = (!meshData.materials.isEmpty)
-            for subIndex in 0..<meshData.idxCounts.count {
-                var subData = DrawSubData()
-                subData.idxCount = meshData.idxCounts[subIndex]
-                subData.idxType = MetalUtilities.convertToMTLIndexType(from: meshData.idxTypes[subIndex])
-                subData.materialUniforms = usesMaterials ? MetalUtilities.convertToMaterialUniform(from: meshData.materials[subIndex])
-                    : MaterialUniforms()
-                if usesMaterials {
-                    
-                    guard let materialUniformBuffer = materialUniformBuffer else {
-                        print("Serious Error - Material Uniform Buffer is nil")
-                        let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeRenderPipelineInitializationFailed, userInfo: nil)
-                        let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-                        recordNewError(newError)
-                        return myGPUData
-                    }
-                    
-                    MetalUtilities.convertMaterialBuffer(from: meshData.materials[subIndex], with: materialUniformBuffer, offset: materialUniformBufferOffset)
-                    subData.materialBuffer = materialUniformBuffer
-                    
-                }
-                subData.baseColorTextureIndex = usesMaterials ? meshData.materials[subIndex].baseColor.1 : nil
-                subData.normalTextureIndex = usesMaterials ? meshData.materials[subIndex].normalMap : nil
-                subData.ambientOcclusionTextureIndex = usesMaterials ? meshData.materials[subIndex].ambientOcclusionMap.1 : nil
-                subData.roughnessTextureIndex = usesMaterials ? meshData.materials[subIndex].roughness.1 : nil
-                subData.metallicTextureIndex = usesMaterials ? meshData.materials[subIndex].metallic.1 : nil
-                subData.irradianceTextureIndex = usesMaterials ? meshData.materials[subIndex].irradianceColorMap.1 : nil
-                subData.subsurfaceTextureIndex = usesMaterials ? meshData.materials[subIndex].subsurface.1 : nil
-                subData.specularTextureIndex = usesMaterials ? meshData.materials[subIndex].specular.1 : nil
-                subData.specularTintTextureIndex = usesMaterials ? meshData.materials[subIndex].specularTint.1 : nil
-                subData.anisotropicTextureIndex = usesMaterials ? meshData.materials[subIndex].anisotropic.1 : nil
-                subData.sheenTextureIndex = usesMaterials ? meshData.materials[subIndex].sheen.1 : nil
-                subData.sheenTintTextureIndex = usesMaterials ? meshData.materials[subIndex].sheenTint.1 : nil
-                subData.clearcoatTextureIndex = usesMaterials ? meshData.materials[subIndex].clearcoat.1 : nil
-                subData.clearcoatGlossTextureIndex = usesMaterials ? meshData.materials[subIndex].clearcoatGloss.1 : nil
-                drawData.subData.append(subData)
-            }
-            
-            myGPUData.drawData.append(drawData)
-            
-        }
-        
-        return myGPUData
         
     }
     

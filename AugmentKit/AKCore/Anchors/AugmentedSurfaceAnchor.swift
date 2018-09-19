@@ -1,5 +1,5 @@
 //
-//  AugmentedAnchor.swift
+//  AugmentedSurfaceAnchor.swift
 //  AugmentKit
 //
 //  MIT License
@@ -25,18 +25,19 @@
 //  SOFTWARE.
 //
 //
-//  A generic AR object that can be placed in the AR world. These can be created
-//  and given to the AR engine to render in the AR world.
+//  A generic implementation of AKAugmentedSurfaceAnchor that renders a MDLTexture
+//  on a simple plane with a given extent
 //
 
 import ARKit
 import Foundation
-import ModelIO
+import MetalKit
+import simd
 
-public class AugmentedAnchor: AKAugmentedAnchor {
+public class AugmentedSurfaceAnchor: AKAugmentedSurfaceAnchor {
     
     public static var type: String {
-        return "AugmentedAnchor"
+        return "AugmentedSurface"
     }
     public var worldLocation: AKWorldLocation
     public var heading: AKHeading = NorthHeading()
@@ -46,9 +47,30 @@ public class AugmentedAnchor: AKAugmentedAnchor {
     public var shaderPreference: ShaderPreference = .pbr
     public var arAnchor: ARAnchor?
     
-    public init(withModelAsset asset: MDLAsset, at location: AKWorldLocation) {
+    public init(withTexture texture: MDLTexture, extent: vector_float3, at location: AKWorldLocation, heading: AKHeading? = nil, withAllocator metalAllocator: MTKMeshBufferAllocator? = nil) {
+        
+        let mesh = MDLMesh(planeWithExtent: extent, segments: vector2(1, 1), geometryType: .triangles, allocator: metalAllocator)
+        let scatteringFunction = MDLScatteringFunction()
+        let material = MDLMaterial(name: "baseMaterial", scatteringFunction: scatteringFunction)
+        let textureSampler = MDLTextureSampler()
+        textureSampler.texture = texture
+        let property = MDLMaterialProperty(name: "baseColor", semantic: MDLMaterialSemantic.baseColor, textureSampler: textureSampler)
+        material.setProperty(property)
+        
+        for submesh in mesh.submeshes!  {
+            if let submesh = submesh as? MDLSubmesh {
+                submesh.material = material
+            }
+        }
+        let asset = MDLAsset(bufferAllocator: metalAllocator)
+        asset.add(mesh)
+        
         self.asset = asset
         self.worldLocation = location
+        if let heading = heading {
+            self.heading = heading
+        }
+        
     }
     
     public func setIdentifier(_ identifier: UUID) {
@@ -65,14 +87,14 @@ public class AugmentedAnchor: AKAugmentedAnchor {
     
 }
 
-extension AugmentedAnchor: CustomDebugStringConvertible, CustomStringConvertible {
+extension AugmentedSurfaceAnchor: CustomDebugStringConvertible, CustomStringConvertible {
     
     public var description: String {
         return debugDescription
     }
     
     public var debugDescription: String {
-        let myDescription = "<AugmentedAnchor: \(Unmanaged.passUnretained(self).toOpaque())> worldLocation: \(worldLocation), identifier:\(identifier?.debugDescription ?? "None"), effects: \(effects?.debugDescription ?? "None"), arAnchor: \(arAnchor?.debugDescription ?? "None"), asset: \(asset)"
+        let myDescription = "<AugmentedSurfaceAnchor: \(Unmanaged.passUnretained(self).toOpaque())> worldLocation: \(worldLocation), identifier:\(identifier?.uuidString ?? "None"), effects: \(effects?.debugDescription ?? "None"), arAnchor: \(arAnchor?.debugDescription ?? "None"), asset: \(asset)"
         return myDescription
     }
     

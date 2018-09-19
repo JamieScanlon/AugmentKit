@@ -1,5 +1,5 @@
 //
-//  ModelCompressor.swift
+//  AKAugmentedAnchor.swift
 //  AugmentKit
 //
 //  MIT License
@@ -24,14 +24,17 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 //
+//  Represents an anchor placed in the AR world. This anchor only exists in the AR world
+//  as opposed to a real anchor like a detected horizontal / vertical plane which exists
+//  in the physical world.
+//
 
+import ARKit
 import Foundation
 
-public protocol ModelCompressor {
-    
-    //  Returns a URL to the desination folder if the operation succeeded.
-    func zipModel(withFileURLs: [URL], toDestinationFilePath: String) -> URL?
-    //  Returns a URL to the desination folder if the operation succeeded.
-    func unzipModel(withFileURL: URL) -> URL?
-    
+// MARK: - AKAugmentedAnchor
+
+public protocol AKAugmentedAnchor: AKAnchor {
+    var arAnchor: ARAnchor? { get }
+    func setARAnchor(_ arachor: ARAnchor)
 }

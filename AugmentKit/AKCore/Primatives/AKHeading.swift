@@ -28,43 +28,105 @@
 import Foundation
 import GLKit
 
+// MARK: - HeadingType
+
+//  .absolute headings are headings defined relative to the AR World's axis
+//  .relative headings are headings defined relative to another heading or transform
 public enum HeadingType {
-    case fixed
+    case absolute
     case relative
 }
 
-public struct HeadingRotation: Equatable {
-    public var radiansX: Double = 0
-    public var radiansY: Double = 0
-    public var radiansZ: Double = 0
+// MARK: - HeadingType
+
+public enum HeadingValidationError: Error {
+    case combinedAbsoluteHeadings
 }
+
+// MARK: - HeadingRotation
+
+public struct HeadingRotation: Equatable {
+    public var quaternion: simd_quatf
+    init() {
+        self.quaternion = simd_quatf(vector: float4(0, 0, 0, 1))
+    }
+    init(withQuaternion quaternion: simd_quatf) {
+        self.quaternion = quaternion
+    }
+    init(withEulerAngles eulerAngles: EulerAngles) {
+        // Follow the ZYX rotation order convention
+        var q = simd_quatf(angle: eulerAngles.roll, axis: float3(0, 0, 1))
+        q *= simd_quatf(angle: eulerAngles.yaw, axis: float3(0, 1, 0))
+        q *= simd_quatf(angle: eulerAngles.pitch, axis: float3(1, 0, 0))
+        self.quaternion = q
+    }
+}
+
+// MARK: - AKHeading
 
 public protocol AKHeading {
     var type: HeadingType { get }
-    var offsetRoation: HeadingRotation { get }
+    var offsetRotation: HeadingRotation { get }
     mutating func updateHeading(withPosition: AKRelativePosition)
 }
 
-extension AKHeading {
-    public static func headingFrom(fromQuaternion quaternion: GLKQuaternion) -> HeadingRotation {
-        let eulerAngles = QuaternionUtilities.quaternionToEulerAngle(quaternion: quaternion)
-        let rotation = HeadingRotation(radiansX: Double(eulerAngles.pitch), radiansY: Double(eulerAngles.yaw), radiansZ: Double(eulerAngles.roll))
-        return rotation
+// MARK: - SameHeading
+
+//  A relative heading that matches the heading of it's parent. This is the simplest heading
+//  and is the default heading for Real anchors which (due to the fact that they represent
+//  real world geometries) must match the heading of their parent objects.
+public class SameHeading: AKHeading {
+    public var type: HeadingType = .relative
+    public var offsetRotation = HeadingRotation()
+    public func updateHeading(withPosition: AKRelativePosition) {
+        // Do Nothing
     }
 }
 
-public class Heading: AKHeading {
+// MARK: - NorthHeading
+
+//  An absolute heading that is aligned with the AR World's axis. This is the simplest heading
+//  and is the default heading for Augmented anchors.
+public class NorthHeading: AKHeading {
+    public var type: HeadingType = .absolute
+    public var offsetRotation = HeadingRotation()
+    public func updateHeading(withPosition: AKRelativePosition) {
+        // Do Nothing
+    }
+}
+
+// MARK: - AlwaysFacingMeHeading
+
+public class AlwaysFacingMeHeading: AKHeading {
+    public var type: HeadingType
+    public var offsetRotation: HeadingRotation
+    public var worldLocation: AKWorldLocation
     
-    public enum ValidationError: Error {
-        case combinedFixedheadings
+    public init(withWorldLocaiton worldLocation: AKWorldLocation) {
+        self.type = .absolute
+        self.offsetRotation = HeadingRotation()
+        self.worldLocation = worldLocation
     }
     
-    public var type: HeadingType
-    public var offsetRoation: HeadingRotation
+    public func updateHeading(withPosition position: AKRelativePosition) {
+        let thisTransform = worldLocation.transform
+        let meTransform = position.transform
+        let quaternion = thisTransform.lookAtQuaternion(position: float3(meTransform.columns.3.x, meTransform.columns.3.y, meTransform.columns.3.z))
+        offsetRotation = HeadingRotation(withQuaternion: quaternion)
+    }
+}
+
+// MARK: - Heading
+
+//  A General use AKHeading implementation.
+public class Heading: AKHeading {
     
-    public init(withType type: HeadingType, offsetRoation: HeadingRotation) {
+    public var type: HeadingType
+    public var offsetRotation: HeadingRotation
+    
+    public init(withType type: HeadingType, offsetRotation: HeadingRotation) {
         self.type = type
-        self.offsetRoation = offsetRoation
+        self.offsetRotation = offsetRotation
     }
     
     public func updateHeading(withPosition: AKRelativePosition) {
@@ -72,27 +134,31 @@ public class Heading: AKHeading {
     }
     
     //  Adds all offsets and returns a new heading. If all of the headings are relative,
-    //  the new heading will be relative. If one of the headings is fixed, than the new
-    //  heading will be fixed. If there is more than one fixed heading, this function will
+    //  the new heading will be relative. If one of the headings is absolute, than the new
+    //  heading will be absolute. If there is more than one absolute heading, this function will
     //  throw an error.
-    public static func heading(byCombining headings: [Heading]) throws -> Heading {
+    public static func heading(byCombining headings: [Heading]) throws -> Heading? {
         
         var type = HeadingType.relative
-        var offsetX: Double = 0
-        var offsetY: Double = 0
-        var offsetZ: Double = 0
+        var offsetQ: simd_quatf?
         for heading in headings {
-            if type == .fixed && heading.type == .fixed {
-                throw ValidationError.combinedFixedheadings
-            } else if heading.type == .fixed {
-                type = .fixed
+            if type == .absolute && heading.type == .absolute {
+                throw HeadingValidationError.combinedAbsoluteHeadings
+            } else if heading.type == .absolute {
+                type = .absolute
             }
-            offsetX += heading.offsetRoation.radiansX
-            offsetY += heading.offsetRoation.radiansY
-            offsetZ += heading.offsetRoation.radiansZ
+            if let anOffsetQ = offsetQ {
+                offsetQ = anOffsetQ * heading.offsetRotation.quaternion
+            } else {
+                offsetQ = heading.offsetRotation.quaternion
+            }
         }
         
-        return Heading(withType: type, offsetRoation: HeadingRotation(radiansX: offsetX, radiansY: offsetY, radiansZ: offsetZ))
+        if let offsetQ = offsetQ {
+            return Heading(withType: type, offsetRotation: HeadingRotation(withQuaternion: offsetQ))
+        } else {
+            return nil
+        }
         
     }
     
@@ -100,36 +166,54 @@ public class Heading: AKHeading {
 
 // MARK: - WorldHeading
 
+//  An absolute heading where the heading can be initialized relative to due north or
+//  Looking at a AKWorldLocation
 public class WorldHeading: AKHeading {
     
     public enum WorldHeadingType {
-        case north
-//        case lookAt
+        case north(_ offsetDegrees: Double)
+        case lookAt(_ this: AKWorldLocation, _ that: AKWorldLocation)
     }
     
-    public var worldHeadingType: WorldHeadingType
+    public var worldHeadingType: WorldHeadingType {
+        didSet {
+            needsUpdate = true
+        }
+    }
     public var type: HeadingType
-    public var offsetRoation: HeadingRotation
+    public var offsetRotation: HeadingRotation
     
     public init(withWorld world: AKWorld, worldHeadingType: WorldHeadingType) {
         self.world = world
         self.worldHeadingType = worldHeadingType
-        self.type = .fixed
-        self.offsetRoation = HeadingRotation()
+        self.type = .absolute
+        self.offsetRotation = HeadingRotation()
     }
     
     public func updateHeading(withPosition position: AKRelativePosition) {
+        
+        guard needsUpdate else {
+            return
+        }
+        
         if let world = world {
             switch worldHeadingType {
-            case .north:
+            case .north(let offsetDegrees):
                 if let referenceWorldLocation = world.referenceWorldLocation {
                     let referenceQuaternion = referenceWorldLocation.transform.quaternion()
-                    offsetRoation = WorldHeading.headingFrom(fromQuaternion: referenceQuaternion)
+                    offsetRotation = HeadingRotation(withQuaternion: referenceQuaternion * simd_quatf(angle: Float(offsetDegrees), axis: float3(0, 1, 0)))
                 }
+            case .lookAt(let thisWorldLocation, let thatWorldLocation):
+                let thisTransform = thisWorldLocation.transform
+                let thatTransform = thatWorldLocation.transform
+                let quaternion = thisTransform.lookAtQuaternion(position: float3(thatTransform.columns.3.x, thatTransform.columns.3.y, thatTransform.columns.3.z))
+                offsetRotation = HeadingRotation(withQuaternion: quaternion)
             }
         }
+        
     }
     
     fileprivate weak var world: AKWorld?
+    fileprivate var needsUpdate = true
     
 }

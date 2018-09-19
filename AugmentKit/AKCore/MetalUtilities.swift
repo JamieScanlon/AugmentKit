@@ -229,12 +229,10 @@ public extension float4x4 {
     }
     
     public static func makeLookAt(eyeX: Float, eyeY: Float, eyeZ: Float, centerX: Float, centerY: Float, centerZ: Float, upX: Float, upY: Float, upZ: Float) -> float4x4 {
-        return unsafeBitCast(GLKMatrix4MakeLookAt(eyeX, eyeY, eyeZ, centerX, centerY, centerZ, upX, upY, upZ), to: float4x4.self)
+        let quaternion = simd_quatf(vector: float4(0, 0, 0, 1))
+        let lookAtQ = quaternion.lookAt(eye: float3(eyeX, eyeY, eyeZ), center: float3(centerX, centerY, centerZ), up: float3(upX, upY, upZ))
+        return lookAtQ.toMatrix4()
     }
-    
-//    public static func makeQuaternion(from: float4x4) -> GLKQuaternion {
-//        return GLKQuaternionMakeWithMatrix4(unsafeBitCast(from, to: GLKMatrix4.self))
-//    }
 
     public static func makeQuaternion(from: float4x4) -> simd_quatf {
         return simd_quatf(from)
@@ -252,10 +250,6 @@ public extension float4x4 {
         return self * float4x4.makeTranslation(x: x, y: y, z: z)
     }
     
-//    public func quaternion() -> GLKQuaternion {
-//        return float4x4.makeQuaternion(from: self)
-//    }
-
     public func quaternion() -> simd_quatf {
         return float4x4.makeQuaternion(from: self)
     }
@@ -276,8 +270,12 @@ public extension float4x4 {
         return true
     }
     
-    public func lookAt(position: float4) -> simd_quatf {
-        let quaternion = float4x4.makeLookAt(eyeX: columns.3.x, eyeY: columns.3.y, eyeZ: -columns.3.z, centerX: position.x, centerY: position.y, centerZ: position.z, upX: 0, upY: 1, upZ: 0).quaternion()
+    public func lookAtMatrix(position: float3) -> float4x4 {
+        return lookAtQuaternion(position: position).toMatrix4()
+    }
+    
+    public func lookAtQuaternion(position: float3) -> simd_quatf {
+        let quaternion = float4x4.makeLookAt(eyeX: columns.3.x, eyeY: columns.3.y, eyeZ: columns.3.z, centerX: position.x, centerY: position.y, centerZ: position.z, upX: 0, upY: 1, upZ: 0).quaternion()
         return quaternion
     }
     
@@ -344,51 +342,90 @@ public struct EulerAngles {
 extension simd_quatf {
     
     //  Returns a rotation matrix (column major, p' = M * p)
-    func toMatrix4() -> matrix_float4x4 {
-        let w = real
-        let v = imag
+    public func toMatrix4() -> matrix_float4x4 {
+        let normalizedQuaternion = normalized
+        let w = normalizedQuaternion.real
+        let v = normalizedQuaternion.imag
         let w2 = w * w
         let x2 = v.x * v.x
         let y2 = v.y * v.y
         let z2 = v.z * v.z
         var m = matrix_identity_float4x4
-        m.columns.0.x = w2 + x2 - y2 - z2
-        m.columns.0.y = 2 * v.x * v.y - 2 * w * v.z
-        m.columns.0.z = 2 * v.x * v.z + 2 * w * v.y
-        m.columns.1.x = 2 * v.x * v.y + 2 * w * v.z
-        m.columns.1.y = w2 - x2 + y2 - z2
-        m.columns.1.z = 2 * v.y * v.z - 2 * w * v.x
-        m.columns.2.x = 2 * v.x * v.z - 2 * w * v.y
-        m.columns.2.y = 2 * v.y * v.z + 2 * w * v.x
-        m.columns.2.z = w2 - x2 - y2 + z2
-        m.columns.3.w = w2 + x2 + y2 + z2 // = 1 if unit quaternion
+        
+        m.columns.0.x = x2 - y2 - z2 + w2
+        m.columns.1.y = -x2 + y2 - z2 + w2
+        m.columns.2.z = -x2 - y2 + z2 + w2
+        
+        var tmp1 = v.x * v.y
+        var tmp2 = v.z * w
+        m.columns.1.x = 2.0 * (tmp1 + tmp2)
+        m.columns.0.y = 2.0 * (tmp1 - tmp2)
+        
+        tmp1 = v.x * v.z
+        tmp2 = v.y * w
+        m.columns.2.x = 2.0 * (tmp1 - tmp2)
+        m.columns.0.z = 2.0 * (tmp1 + tmp2)
+        
+        tmp1 = v.y * v.z
+        tmp2 = v.x * w
+        m.columns.2.y = 2.0 * (tmp1 + tmp2)
+        m.columns.1.z = 2.0 * (tmp1 - tmp2)
+        
+        m = m.inverse
+        
         return m
     }
     
-    func lookAt(eye: simd_float3, center: simd_float3, up: simd_float3) -> simd_quatf {
-        let E = -eye
-        let N = simd_normalize(eye - center)
-        let U = simd_normalize(cross(up, N))
-        let V = cross(N, U)
+    public func lookAt(eye: simd_float3, center: simd_float3, up: simd_float3) -> simd_quatf {
+        
+        // Normalized vector of the starting orientation. Assume that the starting orientation is
+        // pointed alon the z axis
+        let E = simd_normalize(float3(0, 0, 1) - eye)
+        
+        // Normalized vector of the target
+        let zaxis = simd_normalize(center - eye)
+        // Check for edge cases:
+        // - No rotation
+        if zaxis.x.isNaN || zaxis.y.isNaN || zaxis.z.isNaN {
+            return simd_quatf(vector: float4(0, 0, 0, 1))
+        }
+        
+        var xaxis = simd_normalize(cross(up, zaxis))
+        // Check for edge cases:
+        // - target is straigh up. In this case the math falls apart
+        if xaxis.x.isNaN || xaxis.y.isNaN || xaxis.z.isNaN {
+            xaxis = float3(0)
+        }
+        
+        var yaxis = cross(zaxis, xaxis)
+        // Check for edge cases:
+        // - target is straigh up. In this case the math falls apart
+        if yaxis.x.isNaN || yaxis.y.isNaN || yaxis.z.isNaN {
+            yaxis = float3(0)
+        }
+        
+        // Build the transform matrix
         var P = simd_float4(0)
         var Q = simd_float4(0)
         var R = simd_float4(0)
         var S = simd_float4(0)
-        P.x = U.x
-        P.y = U.y
-        P.z = U.z
-        P.w = dot(U, E)
-        Q.x = V.x
-        Q.y = V.y
-        Q.z = V.z
-        Q.w = dot(V, E)
-        R.x = N.x
-        R.y = N.y
-        R.z = N.z
-        R.w = dot(N, E)
+        P.x = xaxis.x
+        P.y = xaxis.y
+        P.z = xaxis.z
+        P.w = dot(xaxis, E)
+        Q.x = yaxis.x
+        Q.y = yaxis.y
+        Q.z = yaxis.z
+        Q.w = dot(yaxis, E)
+        R.x = zaxis.x
+        R.y = zaxis.y
+        R.z = zaxis.z
+        R.w = dot(zaxis, E)
         S.w = 1
+        
         let matrix = simd_float4x4(P, Q, R, S)
         return simd_quatf(matrix)
+        
     }
     
 }

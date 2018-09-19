@@ -48,7 +48,7 @@ public enum HeadingValidationError: Error {
 public struct HeadingRotation: Equatable {
     public var quaternion: simd_quatf
     init() {
-        self.quaternion = simd_quatf(vector: float4(0, 0, 0, 0))
+        self.quaternion = simd_quatf(vector: float4(0, 0, 0, 1))
     }
     init(withQuaternion quaternion: simd_quatf) {
         self.quaternion = quaternion
@@ -69,17 +69,6 @@ public protocol AKHeading {
     var offsetRotation: HeadingRotation { get }
     mutating func updateHeading(withPosition: AKRelativePosition)
 }
-//
-//extension AKHeading {
-//    public static func heading(fromQuaternion quaternion: GLKQuaternion) -> HeadingRotation {
-//        let eulerAngles = QuaternionUtilities.quaternionToEulerAngle(quaternion: quaternion)
-//        return heading(fromEulerAngles: eulerAngles)
-//    }
-//    public static func heading(fromEulerAngles eulerAngles: EulerAngles) -> HeadingRotation {
-//        let rotation = HeadingRotation(withEulerAngles: eulerAngles)
-//        return rotation
-//    }
-//}
 
 // MARK: - SameHeading
 
@@ -106,9 +95,9 @@ public class NorthHeading: AKHeading {
     }
 }
 
-// MARK: - FacingMeHeading
+// MARK: - AlwaysFacingMeHeading
 
-public class FacingMeHeading: AKHeading {
+public class AlwaysFacingMeHeading: AKHeading {
     public var type: HeadingType
     public var offsetRotation: HeadingRotation
     public var worldLocation: AKWorldLocation
@@ -122,9 +111,8 @@ public class FacingMeHeading: AKHeading {
     public func updateHeading(withPosition position: AKRelativePosition) {
         let thisTransform = worldLocation.transform
         let meTransform = position.transform
-        let quaternion = thisTransform.lookAt(position: meTransform.columns.3)
+        let quaternion = thisTransform.lookAtQuaternion(position: float3(meTransform.columns.3.x, meTransform.columns.3.y, meTransform.columns.3.z))
         offsetRotation = HeadingRotation(withQuaternion: quaternion)
-        print("offsetRotation: \(offsetRotation)")
     }
 }
 
@@ -218,10 +206,7 @@ public class WorldHeading: AKHeading {
             case .lookAt(let thisWorldLocation, let thatWorldLocation):
                 let thisTransform = thisWorldLocation.transform
                 let thatTransform = thatWorldLocation.transform
-                let quaternion = thisTransform.lookAt(position: thatTransform.columns.3)
-                print("thisTransform: \(thisTransform)")
-                print("thatTransform: \(thatTransform)")
-                print("quaternion: \(quaternion)")
+                let quaternion = thisTransform.lookAtQuaternion(position: float3(thatTransform.columns.3.x, thatTransform.columns.3.y, thatTransform.columns.3.z))
                 offsetRotation = HeadingRotation(withQuaternion: quaternion)
             }
         }

@@ -108,7 +108,7 @@ public struct DrawSubData {
         case kTextureIndexClearcoatGlossMap:
             return kFunctionConstantClearcoatGlossMapIndex
         default:
-            assert(false)
+            return kFunctionConstantBaseColorMapIndex
         }
     }
 }

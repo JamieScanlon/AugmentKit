@@ -662,7 +662,7 @@ extension AKWorld {
         
     }
     
-    public func headingLookingAtMe(from worldLocation: AKWorldLocation) -> AKHeading? {
+    public func headingFacingAtMe(from worldLocation: AKWorldLocation) -> AKHeading? {
         guard let currentWorldLocation = currentWorldLocation else {
             return nil
         }

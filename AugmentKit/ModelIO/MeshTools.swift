@@ -37,7 +37,12 @@ import AugmentKitShader
 
 extension MDLAsset {
 
-    //  Find an MDLObject by its path from MDLAsset level
+    /**
+     Find an MDLObject by its path from MDLAsset level
+     - Parameters:
+        - _: the path
+     - Returns: and `MDLObject` if found
+     */
     func objectAtPath(_ path: String) -> MDLObject? {
         // pathArray[] is always ""
         let pathArray = path.components(separatedBy: "/")
@@ -68,9 +73,18 @@ extension MDLAsset {
 
 // MARK: - MDLAssetTools
 
-//  Tools for creating ModelIO objects
+/**
+ Tools for creating ModelIO's `MDLAsset` objects
+ */
 public class MDLAssetTools {
-    
+    /**
+     Creates an `MDLAsset` object from a `ModelIO` compatable model file. The method looks for a file with the specified name in the specified bundle and uses the specified `MTKMeshBufferAllocator` to create the `MDLAsset`.
+     - Parameters:
+        - named: The specified name of the file
+        - inBundle: The `Bundle` where the asset can be found
+        - allocator: A `MTKMeshBufferAllocator` that will be used to create the `MDLAsset`
+     - Returns: A new `MDLAsset`
+     */
     public static func asset(named: String, inBundle bundle: Bundle, allocator: MTKMeshBufferAllocator? = nil) -> MDLAsset? {
         
         guard let fileURL = bundle.url(forResource: named, withExtension: "") else {
@@ -78,13 +92,20 @@ public class MDLAssetTools {
             return nil
         }
         
-        return MDLAsset(url: fileURL, vertexDescriptor: MetalUtilities.createStandardVertexDescriptor(), bufferAllocator: allocator)
+        return MDLAsset(url: fileURL, vertexDescriptor: RenderUtilities.createStandardVertexDescriptor(), bufferAllocator: allocator)
         
     }
     
-    //  Creates a horizontal surface in the x-z plane with a material based on a base color texture file.
-    //  The aspect ratio of the surface matches the aspect ratio of the base color image and the largest dimemsion
-    //  is given by the scale argument (defaults to 1)
+    /**
+     Creates a horizontal surface in the x-z plane with a material based on a base color image texture file. The aspect ratio of the surface matches the aspect ratio of the base color image and the largest dimemsion is given by the scale argument (defaults to 1)
+     - Parameters:
+        - inBundle: The `Bundle` where the asset can be found
+        - withName: The specified name of the image file
+        - extension: The image file's extension
+        - scale: The scale at which to render the image, 1 represinting 1 meter
+        - allocator: A `MTKMeshBufferAllocator` that will be used to create the `MDLAsset`
+     - Returns: A new `MDLAsset`
+     */
     public static func assetFromImage(inBundle bundle: Bundle, withName name: String, extension fileExtension: String = "", scale: Float = 1, allocator: MTKMeshBufferAllocator? = nil) -> MDLAsset? {
         
         let fullFileName: String = {
@@ -99,9 +120,17 @@ public class MDLAssetTools {
         
     }
     
-    //  Creates a horizontal surface in the x-z plane with a material based on base color, specular, and emmision texture files.
-    //  The aspect ratio of the surface matches the aspect ratio of the base color image and the largest dimemsion
-    //  is given by the scale argument (defaults to 1)
+    /**
+     Creates a horizontal surface in the x-z plane with a material based on base color, specular, and emmision image texture files.  The aspect ratio of the surface matches the aspect ratio of the base color image and the largest dimemsion is given by the scale argument (defaults to 1)
+     - Parameters:
+        - inBundle: The `Bundle` where the asset can be found
+        - withBaseColorFileName: The specified name of the base color image texture file
+        - specularFileName: The specified name of the specular image texture file
+        - emissionFileName: The specified name of the emission image texture file
+        - scale: The scale at which to render the image, 1 represinting 1 meter
+        - allocator: A `MTKMeshBufferAllocator` that will be used to create the `MDLAsset`
+     - Returns: A new `MDLAsset`
+     */
     public static func assetFromImage(inBundle bundle: Bundle, withBaseColorFileName baseColorFileName: String, specularFileName: String? = nil, emissionFileName: String? = nil, scale: Float = 1, allocator: MTKMeshBufferAllocator? = nil) -> MDLAsset? {
         
         guard let baseColorFileURL = bundle.url(forResource: baseColorFileName, withExtension: "") else {
@@ -154,7 +183,12 @@ public class MDLAssetTools {
         return asset
         
     }
-    
+    /**
+     Sets texture properties on a provided `MDLMaterial`
+     - Parameters:
+        - material: a `MDLMaterial` to modify.
+        - textures: a dictionary of dectures where the keys are the `MDLMaterialSemantic` and the value is a `URL` to the texture file.
+     */
     public static func setTextureProperties(material: MDLMaterial, textures: [MDLMaterialSemantic: URL]) {
         for (key, url) in textures {
             let value = url.lastPathComponent
@@ -167,15 +201,18 @@ public class MDLAssetTools {
 
 // MARK: - JointPathRemappable
 
-//  Protocol for remapping joint paths (e.g. between a skeleton's complete joint list
-//  and the the subset bound to a particular mesh)
+/**
+ Protocol for remapping joint paths (e.g. between a skeleton's complete joint list and the the subset bound to a particular mesh)
+ */
 protocol JointPathRemappable {
     var jointPaths: [String] { get }
 }
 
 // MARK: - ModelIOTools
 
-//  Tools for parsing ModelIO objects
+/**
+ Tools for parsing ModelIO objects
+ */
 class ModelIOTools {
     
     // MARK: Encoding Mesh Data
@@ -196,7 +233,7 @@ class ModelIOTools {
             if let vertexDescriptor = vertexDescriptor {
                 return vertexDescriptor
             } else {
-                return MetalUtilities.createStandardVertexDescriptor()
+                return RenderUtilities.createStandardVertexDescriptor()
             }
         }()
         
@@ -455,7 +492,7 @@ class ModelIOTools {
                 
                 
                 subData.indexCount = submesh.indexCount
-                subData.indexType = MetalUtilities.convertToMTLIndexType(from: submesh.indexType)
+                subData.indexType = RenderUtilities.convertToMTLIndexType(from: submesh.indexType)
                 
                 var material = MaterialUniforms()
                 if let mdlMaterial = submesh.material {

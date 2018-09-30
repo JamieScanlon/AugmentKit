@@ -28,16 +28,34 @@
 import Foundation
 import simd
 
+/**
+ A three dimensional vector object
+ */
 public struct AKVector: Equatable {
+    /**
+     The X component
+     */
     public var x: Double = 0
+    /**
+     The Y component
+     */
     public var y: Double = 0
+    /**
+     The Z component
+     */
     public var z: Double = 0
+    /**
+     Normalize the vector
+     */
     mutating func normalize() {
         let newVecor = simd.normalize(double3(x, y, z))
         x = newVecor.x
         y = newVecor.y
         z = newVecor.z
     }
+    /**
+     Createds a normalized vector from the current vector
+     */
     func normalized() -> AKVector {
         let newVecor = simd.normalize(double3(x, y, z))
         return AKVector(x: newVecor.x, y: newVecor.y, z: newVecor.z)

@@ -138,7 +138,7 @@ class SurfacesRenderModule: RenderModule {
             return
         }
         
-        surfaceMeshGPUData = ModelIOTools.meshGPUData(from: surfaceAsset, device: device, textureBundle: textureBundle, vertexDescriptor: MetalUtilities.createStandardVertexDescriptor())
+        surfaceMeshGPUData = ModelIOTools.meshGPUData(from: surfaceAsset, device: device, textureBundle: textureBundle, vertexDescriptor: RenderUtilities.createStandardVertexDescriptor())
         
         guard let surfaceMeshGPUData = surfaceMeshGPUData else {
             print("Serious Error - ERROR: No meshGPUData found for target when trying to load the pipeline.")
@@ -168,7 +168,7 @@ class SurfacesRenderModule: RenderModule {
         for (_, drawData) in surfaceMeshGPUData.drawData.enumerated() {
             let surfacePipelineStateDescriptor = MTLRenderPipelineDescriptor()
             do {
-                let funcConstants = MetalUtilities.getFuncConstants(forDrawData: drawData)
+                let funcConstants = RenderUtilities.getFuncConstants(forDrawData: drawData)
                 // Specify which shader to use based on if the model has skinned puppet suppot
                 let vertexName = (drawData.paletteStartIndex != nil) ? "anchorGeometryVertexTransformSkinned" : "anchorGeometryVertexTransform"
                 let fragFunc = try metalLibrary.makeFunction(name: "anchorGeometryFragmentLighting", constantValues: funcConstants)

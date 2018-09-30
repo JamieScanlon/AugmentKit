@@ -24,22 +24,29 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 //
-//  An AKAnchor is a geometrical object 'anchored' to a location. The object itself may
-//  have animation but its position is essentially fixed in space.
-//  The object's geometry is defiened by the `model` property.
-//  The objects position in the world is defined by the worldLocation property.
-//  The conforming object must be a class, i.e. must have reference symantics.
-//
 
 import ARKit
 import Foundation
 
 // MARK: - AKAnchor
 
+/**
+ An `AKAnchor` is a geometrical object 'anchored' to a location. The object itself may have animation but its position is essentially fixed in space. The object's geometry is defiened by the `model` property. The objects position in the world is defined by the worldLocation property. The conforming object must be a class, i.e. must have reference symantics.
+ */
 public protocol AKAnchor: class, AKGeometricEntity {
-    
+    /**
+     The location in the ARWorld
+     */
     var worldLocation: AKWorldLocation { get set }
+    /**
+     The heading in the ARWorld
+     */
     var heading: AKHeading { get set }
+    /**
+     Set the identifier for this instance
+     - Parameters:
+        - _: A UUID
+     */
     func setIdentifier(_ identifier: UUID)
     
 }

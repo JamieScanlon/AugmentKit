@@ -24,11 +24,6 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 //
-//
-// A single class to hold all world state. It manades it's own Metal Device, Renderer,
-// and ARSession. Initialize it with a MetalKit View which this class will render into.
-// There should only be one of these per AR View.
-//
 
 import Foundation
 import ARKit
@@ -38,12 +33,25 @@ import CoreLocation
 
 // MARK: - AKWorldConfiguration
 
+/**
+ A configuration object used to initialize the AR world.
+ */
 public struct AKWorldConfiguration {
-    // When true, AKWorld manager is able to translate postions to real
-    // work latitude and longitude. Defaults to `true`
+    /**
+     When true, AKWorld manager is able to translate postions to real work latitude and longitude. Defaults to `true`
+     */
     public var usesLocation = true
-    // Sets the maximum distance (in meters) that will be rendred. Defaults to 500
+    /**
+     Sets the maximum distance (in meters) that will be rendred. Defaults to 500
+     */
     public var renderDistance: Double = 500
+    /**
+     Initialize the `AKWorldConfiguration` object
+     - Parameters:
+        - usesLocation: When true, AKWorld manager is able to translate postions to real work latitude and longitude. Defaults to `true`.
+        - renderDistance: Sets the maximum distance (in meters) that will be rendred. Defaults to 500.
+     
+     */
     public init(usesLocation: Bool = true, renderDistance: Double = 500) {
         
     }
@@ -51,8 +59,14 @@ public struct AKWorldConfiguration {
 
 // MARK: - AKWorldStatus
 
+/**
+ A struct representing the state of the world at an instance in time.
+ */
 public struct AKWorldStatus {
     
+    /**
+     Represents the current world initialization and ready state.
+     */
     public enum Status {
         case notInitialized
         case initializing(ARKitInitializationPhase, SurfacesInitializationPhase, LocationInitializationPhase)
@@ -61,39 +75,74 @@ public struct AKWorldStatus {
         case error
     }
     
+    /**
+     Represents the initialization phase when the world is initializing
+     */
     public enum ARKitInitializationPhase {
         case notStarted
         case initializingARKit
         case ready
     }
     
+    /**
+     Represents the state of surface detection.
+     */
     public enum SurfacesInitializationPhase {
         case notStarted
         case findingSurfaces
         case ready
     }
     
+    /**
+     Represents the state of location services
+     */
     public enum LocationInitializationPhase {
         case notStarted
         case findingLocation
         case ready
     }
     
+    /**
+     Represents the quality of tracking data
+     */
     public enum Quality {
         case notAvailable
         case limited(ARCamera.TrackingState.Reason)
         case normal
     }
     
+    /**
+     The current `AKWorldStatus.Status`.
+     */
     public var status = Status.notInitialized
+    
+    /**
+     The current `AKWorldStatus.Quality`.
+     */
     public var quality = Quality.notAvailable
+    
+    /**
+     An array of `AKError` objects that have been reported so far.
+     */
     public var errors = [AKError]()
+    
+    /**
+     The point in time that this `AKWorldStatus` object describes
+     */
     public var timestamp: Date
     
+    /**
+     Initialize a new `AKWorldStatus` object for a point in time
+     - Parameters:
+        - timestamp: The point in time that this `AKWorldStatus` object describes
+     */
     public init(timestamp: Date) {
         self.timestamp = timestamp
     }
     
+    /**
+     Filters the `errors` array and returns only the serious errors.
+     */
     public func getSeriousErrors() -> [AKError] {
         return errors.filter(){
             switch $0 {
@@ -105,6 +154,9 @@ public struct AKWorldStatus {
         }
     }
     
+    /**
+     Filters the `errors` array and returns only the warnings and recoverable errors.
+     */
     public func getRecoverableErrorsAndWarnings() -> [AKError] {
         return errors.filter(){
             switch $0 {
@@ -122,25 +174,53 @@ public struct AKWorldStatus {
 
 // MARK: - AKWorldMonitor
 
+/**
+ An object that adheres to the `AKWorldMonitor` protocol can receive updates when the world state changes.
+ */
 public protocol AKWorldMonitor {
+    /**
+     Called when the world status changes
+     - Parameters:
+        - worldStatus: The new `AKWorldStatus` object
+     */
     func update(worldStatus: AKWorldStatus)
+    /**
+     Called when the world's render statistics changes
+     - Parameters:
+        - renderStats: The new `RenderStats` object
+     */
     func update(renderStats: RenderStats)
 }
 
 // MARK: - AKWorld
 
+/**
+ A single class to hold all world state. It manages it's own Metal Device, Renderer, and ARSession. Initialize it with a MetalKit View which this class will render into. There should only be one of these per AR View.
+ */
 public class AKWorld: NSObject {
     
+    // MARK: Properties
+    
+    /**
+    The `ARSession` object asociatted with the `AKWorld`.
+    */
     public let session: ARSession
+    /**
+     The `Renderer` object asociatted with the `AKWorld`.
+     */
     public let renderer: Renderer
+    /**
+     The `MTLDevice` object asociatted with the `AKWorld`.
+     */
     public let device: MTLDevice
+    /**
+     The `MTKView` to which the AR world will be rendered.
+     */
     public let renderDestination: MTKView
     
-    //  Returns the current AKWorldLocation of the user (technically the user's device).
-    //  The transform is relative to the ARKit origin which was the position of the camera
-    //  when the AR session starts. This world location contains no rotation information,
-    //  the heading is always aligned to the referenceWorldLocation.
-    //  When usesLocation = true, the axis are rotated such that z points due south.
+    /**
+     The current AKWorldLocation of the user (technically the user's device). The transform is relative to the ARKit origin which was the position of the camera when the AR session starts. This world location contains no rotation information, the heading is always aligned to the referenceWorldLocation. When usesLocation = true, the axis are rotated such that z points due south.
+     */
     public var currentWorldLocation: AKWorldLocation? {
         
         if configuration?.usesLocation == true {
@@ -161,7 +241,9 @@ public class AKWorld: NSObject {
         
     }
     
-    //  Same as currentWorldLocation with the rotation component of the device multiplied in
+    /**
+    Same as currentWorldLocation with the rotation component of the device multiplied in
+     */
     public var currentWorldLocationWithRotation: AKWorldLocation? {
         guard let translationWorldLocation = currentWorldLocation else {
             return nil
@@ -174,14 +256,9 @@ public class AKWorld: NSObject {
         return WorldLocation(transform: newTransform, latitude: translationWorldLocation.latitude, longitude: translationWorldLocation.longitude, elevation: translationWorldLocation.elevation)
     }
     
-    //  A location that represents a reliable AKWorldLocation object tying together a
-    //  real world location (latitude, longitude,  and elevation) to AR world transforms.
-    //  This location has a transform that is relative to origin of the AR world which
-    //  was the position of the camera when the AR session starts.
-    //  When usesLocation = true, the axis of the transform are rotated such that z points due south.
-    //  This transform correlates to the latitude, longitude, and elevation. This reference location
-    //  is the basis for calulating transforms based on new lat, lng, elev or translating a new
-    //  transform to lat, lng, elev
+    /**
+    A location that represents a reliable AKWorldLocation object tying together a real world location (latitude, longitude,  and elevation) to AR world transforms. This location has a transform that is relative to origin of the AR world which was the position of the camera when the AR session starts. When usesLocation = true, the axis of the transform are rotated such that z points due south. This transform correlates to the latitude, longitude, and elevation. This reference location is the basis for calulating transforms based on new lat, lng, elev or translating a new transform to lat, lng, elevation
+     */
     public var referenceWorldLocation: AKWorldLocation? {
         
         if configuration?.usesLocation == true {
@@ -205,10 +282,9 @@ public class AKWorld: NSObject {
         
     }
     
-    //  Returns the current AKWorldLocation of the user's gaze, the point where a vector from
-    //  the center of the device intersects the closes detected surface. The transform is relative
-    //  to the ARKit origin which was the position of the camera when the AR session starts.
-    //  When usesLocation = true, the axis are rotated such that z points due south.
+    /**
+    The current AKWorldLocation of the user's gaze, the point where a vector from the center of the device intersects the closes detected surface. The transform is relative to the ARKit origin which was the position of the camera when the AR session starts. When usesLocation = true, the axis are rotated such that z points due south.
+    */
     public var currentGazeLocation: AKWorldLocation? {
         
         if configuration?.usesLocation == true {
@@ -226,9 +302,9 @@ public class AKWorld: NSObject {
         
     }
     
-    //  Returns the lowest horizontal surface anchor which is assumed to be ground.
-    //  If no horizontal surfaces have been detected, this returns a horizontal
-    //  surface 3m below the current device position.
+    /**
+    The lowest horizontal surface anchor which is assumed to be ground. If no horizontal surfaces have been detected, this returns a horizontal surface 3m below the current device position.
+    */
     public var estimatedGroundLayer: AKRealSurfaceAnchor {
         
         let currentLocation: CLLocation = {
@@ -258,15 +334,30 @@ public class AKWorld: NSObject {
         
     }
     
+    /**
+     The current `AKWorldStatus`
+    */
     public private(set) var worldStatus: AKWorldStatus {
         didSet {
             monitor?.update(worldStatus: worldStatus)
         }
     }
+    
+    /**
+     If provided, the `monitor` will be called when `worldStatus` or `renderStatus` changes. The `monitor` can be used to provide feedback to the user about the state of the AR world and the state of the render pipeline.
+     */
     public var monitor: AKWorldMonitor?
     
     // MARK: Lifecycle
     
+    /**
+     Initializes a new `AKWorld` object.
+     
+     - parameters:
+        - renderDestination: The `MTKView` to which the AR world will be rendered.
+        - configuration: The `AKWorldConfiguration` object used for configuring the world.
+        - textureBundle: The `Bundle` from which the renderer will look for texture assets.
+    */
     public init(renderDestination: MTKView, configuration: AKWorldConfiguration = AKWorldConfiguration(), textureBundle: Bundle? = nil) {
         
         let bundle: Bundle = {
@@ -309,6 +400,9 @@ public class AKWorld: NSObject {
         
     }
     
+    /**
+     Begins AR AR tracking and rendering.
+     */
     public func begin() {
         var newStatus = AKWorldStatus(timestamp: Date())
         newStatus.status = .initializing(.initializingARKit, .notStarted, .notStarted)
@@ -322,41 +416,87 @@ public class AKWorld: NSObject {
     
     // MARK: Adding and removing anchors
     
+    /**
+     Add a new `AKAugmentedAnchor` to the AR world.
+     - Parameters:
+        - anchor: The `AKAugmentedAnchor` object containing model and position information for the rendered anchor.
+     */
     public func add(anchor: AKAugmentedAnchor) {
         renderer.add(akAnchor: anchor)
     }
     
+    /**
+     Remove an `AKAugmentedAnchor` from the AR world.
+     - Parameters:
+        - anchor: The `AKAugmentedAnchor` object to be removed.
+     */
     public func remove(anchor: AKAugmentedAnchor) {
         renderer.remove(akAnchor: anchor)
     }
     
+    /**
+     Add a new `AKAugmentedTracker` to the AR world.
+     - Parameters:
+        - tracker: The `AKAugmentedTracker` object containing model and position information for the rendered tracker.
+     */
     public func add(tracker: AKAugmentedTracker) {
         renderer.add(akTracker: tracker)
     }
     
+    /**
+     Remove an `AKAugmentedTracker` from the AR world.
+     - Parameters:
+        - tracker: The `AKAugmentedTracker` object to be removed.
+     */
     public func remove(tracker: AKAugmentedTracker) {
         renderer.remove(akTracker: tracker)
     }
     
+    /**
+     Add a new `GazeTarget` to the AR world.
+     - Parameters:
+        - gazeTarget: The `GazeTarget` object containing model and position information for the rendered tracker.
+     */
     public func add(gazeTarget: GazeTarget) {
         renderer.add(gazeTarget: gazeTarget)
     }
     
+    /**
+     Remove a `GazeTarget` from the AR world.
+     - Parameters:
+        - gazeTarget: The `GazeTarget` object to be removed.
+     */
     public func remove(gazeTarget: GazeTarget) {
         renderer.remove(gazeTarget: gazeTarget)
     }
     
+    /**
+     Add a new `AKPath` to the AR world.
+     - Parameters:
+        - akPath: The `AKPath` object containing model and position information for the rendered tracker.
+     */
     public func add(akPath: AKPath) {
         renderer.add(akPath: akPath)
     }
     
+    /**
+     Remove an `AKPath` from the AR world.
+     - Parameters:
+        - akPath: The `AKPath` object to be removed.
+     */
     public func remove(akPath: AKPath) {
         renderer.remove(akPath: akPath)
     }
     
     // MARK: World Map
     
-    //  Gets the AKWorldMap from the AR Session
+    /**
+     Gets the `AKWorldMap` from the AR Session.
+     
+     - Parameters:
+        - completion: a block that will be called with either a `AKWorldMap` or an error when the world map has been retrieved.
+     
+     */
     public func getWorldMap(completion: @escaping (AKWorldMap?, Error?) -> Void) {
         
         let session = renderer.session
@@ -371,7 +511,12 @@ public class AKWorld: NSObject {
         
     }
     
-    //  Gets the ARWorldMap and saves it to the temporary directory, returning the URL.
+    /**
+     Gets the ARWorldMap and saves it to the temporary directory, returning the URL.
+     
+     - Parameters:
+        - completion: a block that will be called with either a `URL` or an error when the world map has been retrieved.
+     */
     public func getArchivedWorldMap(completion: @escaping (URL?, Error?) -> Void) {
         
         let session = renderer.session
@@ -389,7 +534,12 @@ public class AKWorld: NSObject {
         
     }
     
-    //  Resets the AR Session with the given inital world map
+    /**
+     Resets the AR Session with the given inital world map.
+     
+     - Parameters:
+        - worldMap: The `AKWorldMap` to restore.
+     */
     public func setWorldMap(worldMap: AKWorldMap) {
         renderer.worldMap = worldMap.arWorldMap
         renderer.reset(options: [])
@@ -401,7 +551,14 @@ public class AKWorld: NSObject {
         }
     }
     
-    //  Load an ARKWorldMap from a file URL
+    /**
+     Load an ARKWorldMap from a file URL.
+     
+     - Parameters:
+        - from: The `URL` to the location of the archived `AKWorldMap` on disk. After unarchiving, `setWorldMap(worldMap:)` will be called the `AKWorldMap` object
+     
+     - Throws: `ARError(.invalidWorldMap)` if the object cannot be unarchived from the specified url.
+     */
     public func loadWorldMap(from url: URL) throws {
         let mapData = try Data(contentsOf: url)
         guard let worldMap = try NSKeyedUnarchiver.unarchivedObject(ofClass: AKWorldMap.self, from: mapData)
@@ -589,6 +746,16 @@ public class AKWorld: NSObject {
 
 extension AKWorld {
     
+    /**
+     Creates a new `AKWorldLocation` object at the given location in the real world. This method uses the most reliable location provided be `CoreLocation` and calculates where the provided latitude, longitude, and elevation are relative to the current position. Because of this, the accuracy of the provided `AKWorldLocation` may be low if this method is called shortly after initializing the AR world.
+     
+     - Parameters:
+        - withLatitude: The latitude of the resulting `AKWorldLocation`
+        - longitude: The longitude of the resulting `AKWorldLocation`
+        - elevation: The elevation of the resulting `AKWorldLocation`
+     
+     - Returns: A new `AKWorldLocation` or nil if there has not been enough time to reliably establish the users current location.
+     */
     public func worldLocation(withLatitude latitude: Double, longitude: Double, elevation: Double?) -> AKWorldLocation? {
         
         guard let configuration = configuration else {
@@ -615,7 +782,16 @@ extension AKWorld {
         
     }
     
-    //  Creates a new world location at a given x, y, z offset from the current users (devices) position.
+    /**
+     Creates a new `AKWorldLocation` object at a given x, y, z offset from the current users location.
+     
+     - Parameters:
+        - withMetersEast: Meters East to offset the new location from the users current location. Use negative values to move the offset in a Westerly direction.
+        - metersUp: Meters Up to offset the new location from the users current location. Use negative values to move the offset in a Downward direction.
+        - metersSouth: Meters South to offset the new location from the users current location. Use negative values to move the offset in a Northerly direction.
+     
+     - Returns: A new `AKWorldLocation` or nil if there has not been enough time to reliably establish the users current location.
+     */
     public func worldLocationFromCurrentLocation(withMetersEast offsetX: Double, metersUp offsetY: Double, metersSouth offsetZ: Double) -> AKWorldLocation? {
         
         guard let currentWorldLocation = currentWorldLocation else {
@@ -637,7 +813,16 @@ extension AKWorld {
         
     }
     
-    //
+    /**
+     Creates a new `AKWorldLocation` object which is offset from the current users location. The offsets are given relative to the devices current orientation.
+     
+     - Parameters:
+        - metersToTheRight: Meters Right to offset the new location from the users current location and orientation. Use negative values to move the offset to the Left.
+        - metersAbove: Meters Above to offset the new location from the users current location and orientation. Use negative values to move the offset Below.
+        - metersInFront: Meters in Front to offset the new location from the users current location and orientation. Use negative values to move the offset to the Back.
+     
+     - Returns: A new `AKWorldLocation` or nil if there has not been enough time to reliably establish the users current location.
+     */
     public func worldLocationWithDistanceFromMe(metersToTheRight metersRelX: Double = 0, metersAbove metersRelY: Double = 0, metersInFront metersRelMinusZ: Double = 0) -> AKWorldLocation? {
         
         guard let currentWorldLocation = currentWorldLocation else {
@@ -662,6 +847,14 @@ extension AKWorld {
         
     }
     
+    /**
+     Creates a new `AKHeading` object which faces the current users location from the `AKWorldLocation` provided. The `AKHeading` is a fixed heading and does NOT re-orient itself as the user continues to move.
+     
+     - Parameters:
+        - from: A `AKWorldLocation` object representing the location of the object that you want to face the user.
+     
+     - Returns: A new `AKHeading` or nil if there has not been enough time to reliably establish the users current location.
+     */
     public func headingFacingAtMe(from worldLocation: AKWorldLocation) -> AKHeading? {
         guard let currentWorldLocation = currentWorldLocation else {
             return nil
@@ -676,11 +869,13 @@ extension AKWorld {
 extension AKWorld: MTKViewDelegate {
     
     // Called whenever view changes orientation or layout is changed
+    /// :nodoc:
     public func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
         renderer.drawRectResized(size: size)
     }
     
     // Called whenever the view needs to render
+    /// :nodoc:
     public func draw(in view: MTKView) {
         renderer.update()
     }
@@ -691,6 +886,7 @@ extension AKWorld: MTKViewDelegate {
 
 extension AKWorld: RenderDelegate {
     
+    /// :nodoc:
     public func renderer(_ renderer: Renderer, didFailWithError error: AKError) {
         var newStatus = AKWorldStatus(timestamp: Date())
         var errors = worldStatus.errors
@@ -704,6 +900,7 @@ extension AKWorld: RenderDelegate {
         worldStatus = newStatus
     }
     
+    /// :nodoc:
     public func rendererWasInterrupted(_ renderer: Renderer) {
         var newStatus = AKWorldStatus(timestamp: Date())
         newStatus.status = .interupted
@@ -711,6 +908,7 @@ extension AKWorld: RenderDelegate {
         worldStatus = newStatus
     }
     
+    /// :nodoc:
     public func rendererInterruptionEnded(_ renderer: Renderer) {
         // Reset tracking and/or remove existing anchors if consistent tracking is required
         var newStatus = AKWorldStatus(timestamp: Date())
@@ -725,10 +923,12 @@ extension AKWorld: RenderDelegate {
 
 extension AKWorld: RenderMonitor {
     
+    /// :nodoc:
     public func update(renderStats: RenderStats) {
         monitor?.update(renderStats: renderStats)
     }
     
+    /// :nodoc:
     public func update(renderErrors: [AKError]) {
         var newStatus = AKWorldStatus(timestamp: Date())
         newStatus.errors = renderErrors

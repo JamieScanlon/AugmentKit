@@ -24,28 +24,61 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 //
-//  A generic implementation of AKRealSurfaceAnchor. Renders a featureless plane
-//  geometry.
-//
 
 import ARKit
 import Foundation
 import MetalKit
 
+/**
+ A generic implementation of AKRealSurfaceAnchor. Renders a featureless plane geometry.
+ */
 public class RealSurfaceAnchor: AKRealSurfaceAnchor {
     
+    /**
+     A type string. Always returns "RealSurface"
+     */
     public static var type: String {
         return "RealSurface"
     }
+    /**
+     The orientation of the surface. Either horizontal or vertical. Defaulets to `ARPlaneAnchor.Alignment.horizontal`
+     */
     public var orientation: ARPlaneAnchor.Alignment = .horizontal
+    /**
+     The location in the ARWorld
+     */
     public var worldLocation: AKWorldLocation
+    /**
+     The heading in the ARWorld. Defaults to `SameHeading()`
+     */
     public var heading: AKHeading = SameHeading()
+    /**
+     The `MDLAsset` associated with the entity.
+     */
     public var asset: MDLAsset
+    /**
+    A unique, per-instance identifier
+    */
     public var identifier: UUID?
+    /**
+     An array of `AKEffect` objects that are applied by the renderer
+     */
     public var effects: [AnyEffect<Any>]?
+    /**
+     Specified a perfered renderer to use when rendering this enitity. Most will use the standard PBR renderer but some entities may prefer a simpiler renderer when they are not trying to achieve the look of real-world objects. Defaults to `ShaderPreference.pbr`
+     */
     public var shaderPreference: ShaderPreference = .pbr
+    /**
+     An `ARAnchor` that will be tracked in the AR world by `ARKit`
+     */
     public var arAnchor: ARAnchor?
     
+    /**
+     Initialize a new object with an `MDLAsset` and an `AKWorldLocation`
+     - Parameters:.
+        - at: The location of the anchor
+        - withAllocator: A `MTKMeshBufferAllocator` with wich to create the plane geometry
+     */
     public init(at location: AKWorldLocation, withAllocator metalAllocator: MTKMeshBufferAllocator? = nil) {
         
         let mesh = MDLMesh(planeWithExtent: vector3(1, 0, 1), segments: vector2(1, 1), geometryType: .triangles, allocator: metalAllocator)
@@ -56,11 +89,19 @@ public class RealSurfaceAnchor: AKRealSurfaceAnchor {
         self.worldLocation = location
         
     }
-    
+    /**
+     Set the identifier for this instance
+     - Parameters:
+        - _: A UUID
+     */
     public func setIdentifier(_ identifier: UUID) {
         self.identifier = identifier
     }
-    
+    /**
+     Sets a new `arAnchor`
+     - Parameters:
+        - _: An `ARAnchor`
+     */
     public func setARAnchor(_ arAnchor: ARAnchor) {
         self.arAnchor = arAnchor
         if identifier == nil {

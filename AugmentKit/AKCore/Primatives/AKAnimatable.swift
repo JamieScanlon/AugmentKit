@@ -29,48 +29,124 @@ import Foundation
 
 // MARK: - AKAnimatable
 
+/**
+ Describes a animatable value. That is, a value that changes over time.
+ */
 public protocol AKAnimatable {
     associatedtype Value
+    /**
+     Retrieve a value.
+     - Parameters:
+        - forTime: The current `TimeInterval`
+     - Returns: The value
+     */
     func value(forTime: TimeInterval) -> Value
 }
 
 // MARK: - AKPulsingAnimatable
 
+/**
+ Describes an `AKAnimatable` that oscillates between a `minValue` and `maxValue` over a time `period`
+ */
 public protocol AKPulsingAnimatable: AKAnimatable {
+    /**
+     The minumum value.
+     */
     var minValue: Value { get }
+    /**
+     The maximum value.
+     */
     var maxValue: Value { get }
+    /**
+     The period.
+     */
     var period: TimeInterval { get }
+    /**
+     The offset to apply to the animation.
+     */
     var periodOffset: TimeInterval { get }
 }
+
 extension AKPulsingAnimatable where Value == Double {
+    /**
+     Retrieve a value.
+     
+     Implementation of the `value(forTime:)` function when `AKAnimatable.Value` is a `Double`
+     
+     - Parameters:
+        - forTime: The current `TimeInterval`
+     - Returns: The value
+     */
     public func value(forTime time: TimeInterval) -> Value {
         let delta = maxValue - minValue
         let progress = ((periodOffset + time).truncatingRemainder(dividingBy: period)) / period
         return minValue + delta * (0.5 + 0.5 * cos(2 * Double.pi * progress))
     }
 }
+
 extension AKPulsingAnimatable where Value == Float {
+    /**
+     Retrieve a value.
+     
+     Implementation of the `value(forTime:)` function when `AKAnimatable.Value` is a `Float`
+     
+     - Parameters:
+        - forTime: The current `TimeInterval`
+     - Returns: The value
+     */
     public func value(forTime time: TimeInterval) -> Value {
         let delta = Double(maxValue - minValue)
         let progress = ((periodOffset + time).truncatingRemainder(dividingBy: period)) / period
         return minValue + Float(delta * (0.5 + 0.5 * cos(2 * Double.pi * progress)))
     }
 }
+
 extension AKPulsingAnimatable where Value == Int {
+    /**
+     Retrieve a value.
+     
+     Implementation of the `value(forTime:)` function when `AKAnimatable.Value` is an `Int`
+     
+     - Parameters:
+        - forTime: The current `TimeInterval`
+     - Returns: The value
+     */
     public func value(forTime time: TimeInterval) -> Value {
         let delta = Double(maxValue - minValue)
         let progress = ((periodOffset + time).truncatingRemainder(dividingBy: period)) / period
         return minValue + Int(delta * (0.5 + 0.5 * cos(2 * Double.pi * progress)))
     }
 }
+
 extension AKPulsingAnimatable where Value == UInt {
+    /**
+     Retrieve a value.
+     
+     Implementation of the `value(forTime:)` function when `AKAnimatable.Value` is a `UInt`
+     
+     - Parameters:
+        - forTime: The current `TimeInterval`
+     - Returns: The value
+     */
     public func value(forTime time: TimeInterval) -> Value {
         let delta = Double(maxValue - minValue)
         let progress = ((periodOffset + time).truncatingRemainder(dividingBy: period)) / period
         return minValue + UInt(delta * (0.5 + 0.5 * cos(2 * Double.pi * progress)))
     }
 }
+
 extension AKPulsingAnimatable where Value == Any {
+    /**
+     Retrieve a value.
+     
+     Implementation of the `value(forTime:)` function when `AKAnimatable.Value` is a `Any`.
+     
+     This implementation checks if `Any` can be downcast to `double`, `Float`, `Int`, or `UInt` and performs the calculations, returning `minValue` otherwise
+     
+     - Parameters:
+        - forTime: The current `TimeInterval`
+     - Returns: The value
+     */
     public func value(forTime time: TimeInterval) -> Value {
         if let aMinValue = minValue as? Double, let aMaxValue = maxValue as? Double {
             let delta = aMaxValue - aMinValue

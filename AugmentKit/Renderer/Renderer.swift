@@ -35,65 +35,190 @@ import ModelIO
 // MARK: - Notifications
 
 public extension Notification.Name {
+    /**
+     A Notification issued when the render's state has changed
+     */
     public static let rendererStateChanged = Notification.Name("com.tenthlettermade.augmentKit.notificaiton.rendererStateChanged")
+    /**
+     A Notification issued when the renderer has detected the first surface
+     */
     public static let surfaceDetectionStateChanged = Notification.Name("com.tenthlettermade.augmentKit.notificaiton.surfaceDetectionStateChanged")
+    /**
+     A Notification issued when the renderer has aborted due to errors.
+     */
     public static let abortedDueToErrors = Notification.Name("com.tenthlettermade.augmentKit.notificaiton.abortedDueToErrors")
 }
 
 // MARK: - RenderDestinationProvider
 
+/**
+ Defines an objecgt that provides the `CAMetalDrawable` as well as the current `MTLRenderPassDescriptor` and some other render properties.
+ */
 public protocol RenderDestinationProvider {
+    /**
+     The current `MTLRenderPassDescriptor`
+     */
     var currentRenderPassDescriptor: MTLRenderPassDescriptor? { get }
+    /**
+     The current `CAMetalDrawable`
+     */
     var currentDrawable: CAMetalDrawable? { get }
+    /**
+     The color `MTLPixelFormat` for the render target
+     */
     var colorPixelFormat: MTLPixelFormat { get set }
+    /**
+     The depth `MTLPixelFormat` for the render target
+     */
     var depthStencilPixelFormat: MTLPixelFormat { get set }
+    /**
+     The pipeline state sample count
+     */
     var sampleCount: Int { get set }
 }
 
 // MARK: - RenderStats
-
+/**
+ An object that contains the current statistics about the render session
+ */
 public struct RenderStats {
+    /**
+     The number of ARKit `ARAnchor`'s being rendered
+     */
     public var arKitAnchorCount: Int
+    /**
+     The total number of `AKAnchor`'s rendered
+     */
     public var numAnchors: Int
+    /**
+     The total number of planes detected
+     */
     public var numPlanes: Int
+    /**
+     The total number of tracking points detected
+     */
     public var numTrackingPoints: Int
+    /**
+     The total number of `AKTracker`'s rendered
+     */
     public var numTrackers: Int
+    /**
+     The total number of `AKTarget`'s rendered
+     */
     public var numTargets: Int
+    /**
+     The total number of `AKPathSegmentAnchor`'s rendered
+     */
     public var numPathSegments: Int
 }
 
 // MARK: - RenderMonitor
-
+/**
+ Describes an object that can be updated with the latest statistics and errors
+ */
 public protocol RenderMonitor {
+    /**
+     Called when there is an update to the render statistics
+     - Parameters:
+        - renderStats: The new `RenderStats`
+     */
     func update(renderStats: RenderStats)
+    /**
+     Called when there is a new error
+     - Parameters:
+        - renderErrors: An array of the recorded `AKError`'s
+     */
     func update(renderErrors: [AKError])
 }
 
 // MARK: - RenderDelegate
-
+/**
+ Describes an object that will be updated with status about the current render state
+ */
 public protocol RenderDelegate {
-    
+    /**
+     Called when there was an error in the render.
+     - Parameters:
+        - _: The `Renderer`
+        - didFailWithError: The `AKError` that occurred
+     */
     func renderer(_ renderer: Renderer, didFailWithError error: AKError)
+    /**
+     Called when the render was interrupted.
+     - Parameters:
+        - _: The `Renderer`
+     */
     func rendererWasInterrupted(_ renderer: Renderer)
+    /**
+     Called when the render resumed after interruption.
+     - Parameters:
+        - _: The `Renderer`
+     */
     func rendererInterruptionEnded(_ renderer: Renderer)
     
 }
 
 // MARK: - CameraProperties
-
+/**
+ An object that stores information about the curent state of the camera
+ */
 public struct CameraProperties {
+    /**
+     Orientation
+     */
     var orientation: UIInterfaceOrientation
+    /**
+     View port size
+     */
     var viewportSize: CGSize
+    /**
+     `true` when the view port size has changed.
+     */
     var viewportSizeDidChange: Bool
+    /**
+     Position relative to the world origin
+     */
     var position: float3
+    /**
+     Heading as a rotation arount the y axis
+     */
     var heading: Double
+    /**
+     The current frame number
+     */
     var currentFrame: UInt
+    /**
+     Frame rate
+     */
     var frameRate: Double = 60
+    /**
+     The `ARCamera`
+     */
     var arCamera: ARCamera
+    /**
+     The captured image coming off og the camera sensor
+     */
     var capturedImage: CVPixelBuffer
+    /**
+     The display transform of the `ARCamera`
+     */
     var displayTransform: CGAffineTransform
+    /**
+     The feature points detected by `ARKit`
+     */
     var rawFeaturePoints: ARPointCloud?
-    
+    /**
+     Initialize e new object with a `UIInterfaceOrientation`, view port size, a viewport size change state, a position, a heading, a current frame number, a `ARFrame`, and the frame rate
+     - Parameters:
+        - orientation: divice orientation
+        - viewportSize: View port size
+        - viewportSizeDidChange: `true` if the view port size changed
+        - position: The position relative to the world axis
+        - heading: The heading as a rotation around the y axis
+        - currentFrame: The currnet frame number
+        - frame: The current `ARFrame`
+        - frameRate: The frame rate
+     */
     init(orientation: UIInterfaceOrientation, viewportSize: CGSize, viewportSizeDidChange: Bool, position: float3, heading: Double, currentFrame: UInt, frame: ARFrame, frameRate: Double = 60) {
         self.orientation = orientation
         self.viewportSize = viewportSize
@@ -110,41 +235,86 @@ public struct CameraProperties {
 }
 
 // MARK: - EnvironmentProperties
-
+/**
+ An object that stores information about the environment
+ */
 public struct EnvironmentProperties {
+    /**
+     ARKit's estimated light properties
+     */
     var lightEstimate: ARLightEstimate?
+    /**
+     A dictionary of `AREnvironmentProbeAnchor`'s and the identifiers of the anchors that they apply to.
+     */
     var environmentAnchorsWithReatedAnchors: [AREnvironmentProbeAnchor: [UUID]] = [:]
 }
 
 // MARK: - Renderer
-
+/**
+ AumentKit's main Metal based render.
+ */
 public class Renderer: NSObject {
     
-    // Debugging
+    /**
+     When set, the monitor gets notified of render status changes.
+     */
     public var monitor: RenderMonitor?
     
+    /**
+     Device orientation. Changing this parameter while the renderer is running triggers a recalculation of the target view port.
+     */
     public var orientation: UIInterfaceOrientation = .portrait {
         didSet {
             viewportSizeDidChange = true
         }
     }
     
+    /**
+     Constants
+     */
     public enum Constants {
+        /**
+         Maximim number of in flight render passes
+         */
         static let maxBuffersInFlight = 3
     }
-    
+    /**
+     State of the renderer
+     */
     public enum RendererState {
+        /**
+         Uninitialized
+         */
         case uninitialized
+        /**
+         Metal and the render piplinge has been initialized
+         */
         case initialized
+        /**
+         Currently Running
+         */
         case running
+        /**
+         Currently Paused
+         */
         case paused
     }
-    
+    /**
+     State of surface detection. Many features of AugmentKit rely on the AR engine to have detected at least one surface so monitoring surface dettection state gives a good indication of the readyness of the render to perform AR calculations reliably
+     */
     public enum SurfaceDetectionState {
+        /**
+         No surfaces have been detected
+         */
         case noneDetected
+        /**
+         At least one surface has been detected
+         */
         case detected
     }
-    
+    /**
+     Current renderer state
+     */
     public fileprivate(set) var state: RendererState = .uninitialized {
         didSet {
             if state != oldValue {
@@ -152,6 +322,9 @@ public class Renderer: NSObject {
             }
         }
     }
+    /**
+     At least one surface has been detected. Many features of AugmentKit rely on the AR engine to have detected at least one surface so monitoring this property gives a good indication of the readyness of the render to perform AR calculations reliably
+     */
     public fileprivate(set) var hasDetectedSurfaces = false {
         didSet {
             if hasDetectedSurfaces != oldValue {
@@ -159,17 +332,30 @@ public class Renderer: NSObject {
             }
         }
     }
-    
+    /**
+     The ARKit session
+     */
     public let session: ARSession
+    /**
+     The Metal device
+     */
     public let device: MTLDevice
+    /**
+     The bundle from which texture assets will be loaded.
+     */
     public let textureBundle: Bundle
-    
+    /**
+     A `ModelProvider` instance which helps with loading and caching of models
+     */
     public var modelProvider: ModelProvider? = AKModelProvider.sharedInstance
+    /**
+     This `RenderDelegate` will get callbacks for errors or interruptions of AR tracking
+     */
     public var delegate: RenderDelegate?
     
-    // Guides for debugging. Turning this on will show the tracking points used by
-    // ARKit as well as detected surfaces. Setting this to true will
-    // affect performance.
+    /**
+     Guides for debugging. Turning this on will show the tracking points used by ARKit as well as detected surfaces. Setting this to true might affect performance.
+     */
     public var showGuides = false {
         didSet {
             if showGuides {
@@ -188,27 +374,35 @@ public class Renderer: NSObject {
             reset()
         }
     }
-    
+    /**
+     If provided, this world map is used during initialization of the ARKit engine
+     */
     public var worldMap: ARWorldMap?
     
-    //  A transform matrix that represents the position of the camera in world space.
-    //  There is no rotation component.
+    /**
+     A transform matrix that represents the current position of the camera in world space. There is no rotation component.
+     */
     public fileprivate(set) var currentCameraPositionTransform: matrix_float4x4?
-    //  A transform matrix that represents the rotation of the camera relative to world space.
-    //  There is no postion component.
+    /**
+     A transform matrix that represents the current rotation of the camera relative to world space. There is no postion component.
+     */
     public var currentCameraRotation: matrix_float4x4? {
         guard let currentCameraQuaternionRotation = currentCameraQuaternionRotation else {
             return nil
         }
-        return unsafeBitCast(GLKMatrix4MakeWithQuaternion(currentCameraQuaternionRotation), to: simd_float4x4.self)
+        return currentCameraQuaternionRotation.toMatrix4()
     }
-    //  A Quaternion that represents the rotation of the camera relative to world space.
-    //  There is no postion component.
-    public fileprivate(set) var currentCameraQuaternionRotation: GLKQuaternion?
-    //  A heading is the degrees, in radians around the Y axis. 0° is due north
-    // and the units go from 0 to π in the counter-clockwise direction and
-    // 0 to -π in the clockwise direction.
+    /**
+     A Quaternion that represents the current rotation of the camera relative to world space. There is no postion component.
+     */
+    public fileprivate(set) var currentCameraQuaternionRotation: simd_quatf?
+    /**
+     The current device's heading. A heading is the degrees, in radians around the Y axis. 0° is due north and the units go from 0 to π in the counter-clockwise direction and 0 to -π in the clockwise direction.
+     */
     public fileprivate(set) var currentCameraHeading: Double?
+    /**
+     The horizontal plane anchor that has the lowest y value and therefore assumed to be ground.
+     */
     public fileprivate(set) var lowestHorizPlaneAnchor: ARPlaneAnchor?
     public var currentFrameNumber: UInt {
         guard worldInitiationTime > 0 && lastFrameTime > 0 else {
@@ -218,9 +412,15 @@ public class Renderer: NSObject {
         let elapsedTime = lastFrameTime - worldInitiationTime
         return UInt(floor(elapsedTime * frameRate))
     }
+    /**
+     Fixed to 60
+     */
     public var frameRate: Double {
         return 60
     }
+    /**
+     A transform that represents the intersection of the current devices gaze (what is dead center in front of it) and the closes detected surface.
+     */
     public var currentGazeTransform: matrix_float4x4 {
         
         guard let currentFrame = session.currentFrame else {
@@ -271,7 +471,14 @@ public class Renderer: NSObject {
         }
         
     }
-    
+    /**
+     Initialize the renderer with an `ARSession`, a `MTLDevice`, a `RenderDestinationProvider`, and a `Bundle`
+     - Parameters:
+        - session: an ARKit session
+        - metalDevice: A metal device (GPU)
+        - renderDestination: Provides the drawable that the renderer will render to.
+        - textureBundle: The default bundle whe texture assets will attempt to load from
+     */
     public init(session: ARSession, metalDevice device: MTLDevice, renderDestination: RenderDestinationProvider, textureBundle: Bundle) {
         
         self.session = session
@@ -287,6 +494,9 @@ public class Renderer: NSObject {
     
     // MARK: - Viewport changes
     
+    /**
+     Call when the viewport size changes tell the renderer to readjust
+     */
     public func drawRectResized(size: CGSize) {
         viewportSize = size
         viewportSizeDidChange = true
@@ -294,6 +504,9 @@ public class Renderer: NSObject {
     
     // MARK: - Lifecycle
     
+    /**
+     Initialize Metal and the render pipeline.
+     */
     public func initialize() {
         
         guard state == .uninitialized else {
@@ -314,7 +527,9 @@ public class Renderer: NSObject {
         state = .initialized
         
     }
-    
+    /**
+     Start the AR session and begin AR tracking
+     */
     public func run() {
         guard state != .uninitialized else {
             return
@@ -323,6 +538,9 @@ public class Renderer: NSObject {
         state = .running
     }
     
+    /**
+     Pause the AR session and AR tracking
+     */
     public func pause() {
         guard state != .uninitialized else {
             return
@@ -331,6 +549,9 @@ public class Renderer: NSObject {
         state = .paused
     }
     
+    /**
+     Reset the AR session and AR tracking
+     */
     public func reset(options: ARSession.RunOptions = [.removeExistingAnchors, .resetTracking]) {
         guard state != .uninitialized else {
             return
@@ -342,6 +563,9 @@ public class Renderer: NSObject {
     
     // MARK: Per-frame update call
     
+    /**
+     Begins a render pass. This method is usually called once per frame.
+     */
     public func update() {
         
         guard let commandQueue = commandQueue else {
@@ -582,7 +806,11 @@ public class Renderer: NSObject {
     
     // MARK: - Adding objects for render
     
-    //  Add a new AKAugmentedAnchor to the AR world
+    /**
+     Add a new AKAugmentedAnchor to the AR world
+     - Parameters:
+        - akAnchor: The anchor to add
+     */
     public func add(akAnchor: AKAugmentedAnchor) {
         
         let arAnchor = ARAnchor(transform: akAnchor.worldLocation.transform)
@@ -612,7 +840,11 @@ public class Renderer: NSObject {
         
     }
     
-    //  Add a new AKAugmentedTracker to the AR world
+    /**
+     Add a new AKAugmentedTracker to the AR world
+     - Parameters:
+        - akTracker: The tracker to add
+     */
     public func add(akTracker: AKAugmentedTracker) {
         
         let identifier = UUID()
@@ -644,7 +876,11 @@ public class Renderer: NSObject {
         
     }
     
-    //  Add a new path to the AR world
+    /**
+     Add a new path to the AR world
+     - Parameters:
+        - akPath: The path to add
+     */
     public func add(akPath: AKPath) {
         
         let identifier = UUID()
@@ -672,6 +908,11 @@ public class Renderer: NSObject {
         
     }
     
+    /**
+     Add a new gaze target to the AR world
+     - Parameters:
+        - gazeTarget: The gaze target to add
+     */
     public func add(gazeTarget: GazeTarget) {
         
         let theType = type(of: gazeTarget).type
@@ -697,6 +938,11 @@ public class Renderer: NSObject {
     
     // MARK: - Removing objects
     
+    /**
+     Remove a new AKAugmentedAnchor to the AR world
+     - Parameters:
+        - akAnchor: The anchor to remove
+     */
     public func remove(akAnchor: AKAugmentedAnchor) {
         
         guard let akAnchorIndex = augmentedAnchors.index(where: {$0.identifier == akAnchor.identifier}) else {
@@ -720,7 +966,11 @@ public class Renderer: NSObject {
         session.remove(anchor: arAnchor)
         
     }
-    
+    /**
+     Remove a new AKAugmentedTracker to the AR world
+     - Parameters:
+        - akTracker: The tracker to remove
+     */
     public func remove(akTracker: AKAugmentedTracker) {
         
         guard let akTrackerIndex = trackers.index(where: {$0.identifier == akTracker.identifier}) else {
@@ -738,7 +988,11 @@ public class Renderer: NSObject {
         geometriesForRenderModule[UnanchoredRenderModule.identifier] = existingGeometries
         
     }
-    
+    /**
+     Remove a new path to the AR world
+     - Parameters:
+        - akPath: The path to remove
+     */
     public func remove(akPath: AKPath) {
         
         guard let akPathIndex = paths.index(where: {$0.identifier == akPath.identifier}) else {
@@ -758,6 +1012,11 @@ public class Renderer: NSObject {
         
     }
     
+    /**
+     Remove a new gaze target to the AR world
+     - Parameters:
+        - gazeTarget: The gaze target to remove
+     */
     public func remove(gazeTarget: GazeTarget) {
         
         guard let gazeTargetIndex = gazeTargets.index(where: {$0.identifier == gazeTarget.identifier}) else {
@@ -1043,34 +1302,21 @@ public class Renderer: NSObject {
 
 extension Renderer: ARSessionDelegate {
     
+    /// :nodoc:
     public func session(_ session: ARSession, didFailWithError error: Error) {
         let newError = AKError.recoverableError(.arkitError(UnderlyingErrorInfo(underlyingError: error)))
         delegate?.renderer(self, didFailWithError: newError)
     }
-    
+     /// :nodoc:
     public func sessionWasInterrupted(_ session: ARSession) {
         delegate?.rendererWasInterrupted(self)
     }
-    
+     /// :nodoc:
     public func sessionInterruptionEnded(_ session: ARSession) {
         delegate?.rendererWasInterrupted(self)
     }
     
-    /**
-     This is called when a new frame has been updated.
-     
-     @param session The session being run.
-     @param frame The frame that has been updated.
-     */
-//    func session(_ session: ARSession, didUpdate frame: ARFrame)
-    
-    
-    /**
-     This is called when new anchors are added to the session.
-     
-     @param session The session being run.
-     @param anchors An array of added anchors.
-     */
+     /// :nodoc:
     public func session(_ session: ARSession, didAdd anchors: [ARAnchor]) {
         anchors.forEach { anchor in
             if let planeAnchor = anchor as? ARPlaneAnchor {
@@ -1142,13 +1388,7 @@ extension Renderer: ARSessionDelegate {
         }
     }
     
-    
-    /**
-     This is called when anchors are updated.
-     
-     @param session The session being run.
-     @param anchors An array of updated anchors.
-     */
+    /// :nodoc:
     public func session(_ session: ARSession, didUpdate anchors: [ARAnchor]) {
         anchors.forEach { anchor in
             if let planeAnchor = anchor as? ARPlaneAnchor {
@@ -1218,15 +1458,6 @@ extension Renderer: ARSessionDelegate {
             }
         }
     }
-    
-    
-    /**
-     This is called when anchors are removed from the session.
-     
-     @param session The session being run.
-     @param anchors An array of removed anchors.
-     */
-//    public func session(_ session: ARSession, didRemove anchors: [ARAnchor]) {}
     
 }
 

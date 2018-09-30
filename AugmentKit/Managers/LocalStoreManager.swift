@@ -26,17 +26,38 @@
 //
 
 import Foundation
-
+/**
+ Defines a managers for the users local store.
+ */
 public protocol LocalStoreManager {
+    /**
+     The users last known location as a serialized `Data` object
+     */
     var lastKnownLocationData: Data? { get }
+    /**
+     Set the users last known location as a serialized `Data` object
+     - Parameters:
+        - _: The new value
+     */
     func setLastKnownLocationData(_ value: Data)
 }
-
+/**
+ A default implementation of `LocalStoreManager` which sotores properties in memory
+ */
 public class DefaultLocalStoreManager: LocalStoreManager {
-    
+    /**
+     A singleton instance
+     */
     public static let shared = DefaultLocalStoreManager()
-    
+    /**
+     The users last known location as a serialized `Data` object
+     */
     public var lastKnownLocationData: Data?
+    /**
+     Set the users last known location as a serialized `Data` object
+     - Parameters:
+        - _: The new value
+     */
     public func setLastKnownLocationData(_ value: Data) {
         lastKnownLocationData = value
     }

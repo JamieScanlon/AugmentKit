@@ -29,47 +29,105 @@ import Foundation
 import CoreLocation
 
 public extension Notification.Name {
+    /**
+     A Notification issued when the location delegate has detected a location change
+     */
     public static let locationDelegateUpdateLocationNotification = Notification.Name("com.tenthlettermade.augmentKit.notificaiton.LocationDelegateUpdateLocation")
+    /**
+     A Notification issued when the location delegate has entered a region
+     */
     public static let locationDelegateNearObjectNotification = Notification.Name("com.tenthlettermade.notificaiton.augmentKit.LocationDelegateNearObjectNotification")
+    /**
+     A Notification issued when the location delegate has a more accuate location available
+     */
     public static let locationDelegateMoreReliableARLocationNotification = Notification.Name("com.tenthlettermade.augmentKit.notificaiton.LocationDelegateMoreReliableARLocation")
+    /**
+     A Notification issued when the location delegate has a more accuate heading available
+     */
     public static let locationDelegateMoreReliableARHeadingNotification = Notification.Name("com.tenthlettermade.augmentKit.notificaiton.LocationDelegateMoreReliableARHeading")
 }
 
 // MARK: - LocationManager
 
+/**
+ Describes ab object responsible for aquiring and monitoring the users location.
+ */
 public protocol LocationManager {
+    /**
+     The backing `CLLocationManager`
+     */
     var clLocationManager: CLLocationManager { get }
+    /**
+     A `LocalStoreManager` that is used to store user location state locally
+     */
     var localStoreManager: LocalStoreManager? { get }
+    /**
+     Returns `true` if location services are available
+     */
     var serviceAvailable: Bool { get }
+    /**
+     Returns `true` if location services have started
+     */
     var serviceStarted: Bool { get }
+    /**
+     The last recorded location
+     */
     var lastLocation: CLLocation? { get }
+    /**
+     The last recorded heading
+     */
     var lastHeadingDirection: CLLocationDirection? { get }
     
-    // Provides the CLLocation with the highest accuracy. This gets updated
-    // With the most recent location if the most recent location has at least
-    // as much accuracy as the last reading.
+    /**
+     Provides the CLLocation with the highest accuracy. This gets updated With the most recent location if the most recent location has at least as much accuracy as the last reading.
+     */
     var mostReliableARLocation: CLLocation? { get }
     
-    // Provides the CLHeading with the highest accuracy. This gets updated
-    // With the most recent location if the most recent location has at least
-    // as much accuracy as the last reading.
+    /**
+     Provides the CLHeading with the highest accuracy. This gets updated with the most recent location if the most recent location has at least as much accuracy as the last reading.
+     */
     var mostReliableARHeading: CLHeading? { get }
     
-    // This should return the CLLocationManager.locationServicesEnabled()
+    /**
+     This should return the CLLocationManager.locationServicesEnabled()
+     */
     func locationServicesEnabled() -> Bool
-    // This should return the CLLocationManager.authorizationStatus()
+    /**
+     This should return the CLLocationManager.authorizationStatus()
+     */
     func authorizationStatus() -> CLAuthorizationStatus
+    /**
+     Change the `serviceAvailable` state
+     */
     func setServiceAvailable(_ value: Bool)
+    /**
+     Change the `serviceStarted` state
+     */
     func setServiceStarted(_ value: Bool)
+    /**
+     Change the `lastLocation` value
+     */
     func setLastLocation(_ value: CLLocation)
+    /**
+     Change the `mostReliableARLocation` value
+     */
     func setMostReliableARLocation(_ value: CLLocation)
+    /**
+     Change the `lastHeadingDirection` value
+     */
     func setLastLocationDirection(_ value: CLLocationDirection)
+    /**
+     Change the `mostReliableARHeading` value
+     */
     func setMostReliableARHeading(_ value: CLHeading)
     
 }
 
 public extension LocationManager {
     
+    /**
+     Starts location services
+     */
     public func startLocationService() {
         
         if locationServicesEnabled() {
@@ -92,6 +150,9 @@ public extension LocationManager {
         
     }
     
+    /**
+     Stops location services
+     */
     public func stopLocationService() {
         
         clLocationManager.stopUpdatingLocation()
@@ -99,20 +160,26 @@ public extension LocationManager {
         setServiceStarted(false)
         
     }
-    
+    /**
+     - Returns: `true` if location services are available
+     */
     public func isLocationServiceAvailable() -> Bool {
         return serviceAvailable
     }
-    
+    /**
+     - Returns: `true` if location services are started
+     */
     public func isServiceStarted() -> Bool {
         return serviceStarted
     }
-    
+    /**
+     - Returns: `true` if location services have been authorized
+     */
     public func hasGivenAutorization() -> Bool {
         return  (authorizationStatus() == .authorizedAlways || authorizationStatus() == .authorizedWhenInUse)
     }
     
-    public func stopMonitoringRegions() {
+    func stopMonitoringRegions() {
         
         setupCLLocationManager()
         
@@ -121,15 +188,21 @@ public extension LocationManager {
         }
         
     }
-    
+    /**
+     Request Always On authoirization with the system
+     */
     public func requestAlwaysAuthorization() {
         clLocationManager.requestAlwaysAuthorization()
     }
-    
+    /**
+     Request When In Use authoirization with the system
+     */
     public func requestInUseAuthorization() {
         clLocationManager.requestWhenInUseAuthorization()
     }
-    
+    /**
+     - Returns: The most recent recorded location
+     */
     public func currentLocation() -> CLLocation? {
         
         guard isLocationServiceAvailable() else {
@@ -156,7 +229,12 @@ public extension LocationManager {
     
     // MARK: CLLocationManagerDelegate Handlers
     
-    // Call this in the locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) Method
+    /**
+     Updated the locations.
+     Call this in the `locationManager(_:,didUpdateLocations:)` method of the `CLLocationManagerDelegate`
+     - Parameters:
+        - _: New Locations
+     */
     func updateLocations(_ locations: [CLLocation]) {
         
         guard let mostRecentLocation = locations.last else {
@@ -187,8 +265,12 @@ public extension LocationManager {
         NotificationCenter.default.post(Notification(name: .locationDelegateUpdateLocationNotification, object: self, userInfo: ["location": mostRecentLocation]))
         
     }
-    
-    // Call this in the locationManager(_ manager: CLLocationManager, didFailWithError error: Error) Method
+    /**
+     Handles and error.
+     Call this in the `locationManager(_:,didFailWithError:)` method of the `CLLocationManagerDelegate`
+     - Parameters:
+        - _: Error
+     */
     func handlerError(_ error: Error) {
         
         print("ERROR: \(error)")
@@ -209,21 +291,34 @@ public extension LocationManager {
         
     }
     
-    // Call this in the locationManagerDidResumeLocationUpdates(_ manager: CLLocationManager) Method
+    /**
+     Gets called when location tracking resumes
+     Call this in the `locationManagerDidResumeLocationUpdates(_:)` method of the `CLLocationManagerDelegate`
+     */
     func didResumeUpdates() {
         if let lastLocation = lastLocation {
             NotificationCenter.default.post(Notification(name: .locationDelegateUpdateLocationNotification, object: self, userInfo: ["location": lastLocation]))
         }
     }
     
-    // Call this in the locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) Method
+    /**
+     Called when entering a region
+     Call this in the `locationManager(_:,didEnterRegion:)` method of the `CLLocationManagerDelegate`
+     - Parameters:
+        - _: Region
+     */
     func didEnterRegion(_ region: CLRegion) {
         setupCLLocationManager()
         NotificationCenter.default.post(Notification(name: .locationDelegateNearObjectNotification, object:self, userInfo:["identifier" : region.identifier]))
         clLocationManager.stopMonitoring(for: region)
     }
     
-    // Call this in the locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) Method
+    /**
+     Called when authorization status changes
+     Call this in the `locationManager(_:,didChangeAuthorization:)` method of the `CLLocationManagerDelegate`
+     - Parameters:
+        - _: Status
+     */
     func didChangeAuthorizationStatus(_ status: CLAuthorizationStatus) {
         
         switch status {
@@ -245,7 +340,12 @@ public extension LocationManager {
         
     }
     
-    // Call this in the locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) Method
+    /**
+     Called when the heading updates
+     Call this in the `locationManager(_:,didUpdateHeading:)` method of the `CLLocationManagerDelegate`
+     - Parameters:
+        - _: New heading
+     */
     func didUpdateHeading(_ newHeading: CLHeading) {
         
         let lastHeading: CLLocationDirection = {

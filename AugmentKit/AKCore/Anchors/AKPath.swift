@@ -26,9 +26,16 @@
 //
 
 import Foundation
-
+/**
+ An `AKPath` draws a path in the AR world. A path is a series of straight line segments each terminated by a special type of anchor called a `AKPathSegmentAnchor`. The geometry of a line segment is an elongated cylinder. The `lineThickness` property represents the diameter of the cross section.
+ */
 public protocol AKPath: AKAugmentedAnchor {
-    // Thickness measured in meters
+    /**
+     Thickness measured in meters
+     */
     var lineThickness: Double { get }
+    /**
+     An array of `AKPathSegmentAnchor` that represent the starting and ending points for the line segments. A path must have at least two `AKPathSegmentAnchor` in the `segmentPoints` array. All segments in a path are connected such that the ending point of one segment is the starting point for the next. Therefor an array of three `AKPathSegmentAnchor` instances represents a path with two line segments
+     */
     var segmentPoints: [AKPathSegmentAnchor] { get }
 }

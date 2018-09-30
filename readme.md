@@ -1,14 +1,14 @@
 ## AugmentKit
 
-ARKit, released by Apple, is an amazing foundation for building AR apps. AugmentKit is built on top of ARKit and provides additional tools for app developers such as Core Location integration and the ability to serialize and transfer 3D models (used as anchors in augmented reality) over the wire. AugmentKit uses the Metal flavor or ARKit and provides it's own 3D model renderer which eliminates the dependancy on SceneKit for most AR apps.
+ARKit, released by Apple, is an amazing foundation for building AR apps. AugmentKit is built on top of ARKit and provides additional tools for app developers building augmented reality apps. AugmentKit uses the Metal flavor or ARKit and provides it's own physically based render (PBR) engine which eliminates the dependancy on SceneKit for most AR apps and is tailored for rendering AR. 
 
 #### AugmentKit vs ARKit
 
-ARKit provides three ways to interact with it. You can use SpriteKit, an unattractive choice for most because SpriteKit is a 2D game engine and AR is fundamentally a 3D technology. The second option is SceneKit, a full 3D game engine, which makes it the most convenient choice for ARKit integration. Finally, the last option is Metal, the most powerful and flexible option, but it is also the most difficult to learn and use. 
+Apple's ARKit provides three ways to create augmented reality apps. You can use SpriteKit, an unattractive choice for most because SpriteKit is a 2D game and render engine and AR is fundamentally a 3D technology. The second option is SceneKit, a full 3D renderer and game engine. And finally Metal, the most powerful and flexible option, but it is also the most difficult to learn and use. 
 
-If you are developing a game, and especially if you already have some knowledge of SceneKit, you probably have enough tools with Apple's frameworks to reach your goals. But if you are an app developer,  and the idea of including a game engine in your project doesn't seem that attractive, AugmentKit may be for you. AugmentKit seeks to be as easy to implement and light weight.
+If you are developing a game, or is you have a significant investment in using SceneKit, you probably have enough tools with Apple's frameworks to reach your goals. Unfortunately SceneKit is a large, general purpose, game and render engine that not only adds complexity, but is often times overkill for most AR apps that just want to render a few models, not entire worlds. If you are an app developer, you may not be interested in immersing your self in the game development techniques in order to build an app, and this is the problem AugmentKit wants to solve. AugmentKit seeks to be an easy to implement and light weight alrenative to using SceneKit for developing AR apps.
 
-Another feature that AugmentKit will provide is integrating more contextual awareness into ARKit. ARKit just deals with tracking the _relative_ position of objects (anchors) in 3D space. But chances are that more sophisticated AR apps are want to integrate things like location awareness and compass direction so that two people running two instances of the app will be able to see and share the same objects, or somebody can 'save' and object in world space and come back to see it days later.
+Along with being simple and light weight, AugmentKit provides more contextual awareness into ARKit. ARKit just deals with tracking the _relative_ position of objects (anchors) in 3D space. But chances are that more sophisticated AR apps are want to integrate things like location awareness and compass direction so that two people running two instances of the app will be able to see and share the same objects, or somebody can 'save' and object in world space and come back to see it days later.
 
 ### What Can AugmentKit Do?
 
@@ -16,13 +16,17 @@ Another feature that AugmentKit will provide is integrating more contextual awar
 
 ![](media/augmentkit-location-anchor.gif)
 
-* ##### Direction aware and surface aware anchors
+* ##### Direction and surface detection
 
 ![](media/augmentkit-target.gif)
 
-* ##### Load and render serialized 3D anchors over the wire
+* ##### Tracking anchors
 
-* ##### Custom render engine
+* ##### Paths
+
+* ##### UIView anchors
+
+* ##### Custom PBR render engine
 
 ### Getting Started
 
@@ -52,9 +56,9 @@ world.begin()
 Now the AugmentKit world is up an running but there's not much to see yet. The fun comes from placing augmented reality objects in the world. The following code could be put in a tap gesture handler. For instance, here's how to add a new MDLAsset to the world at the devices current location.
 
 ```swift
-let anchorModel = AKMDLAssetModel(asset: mdlAsset, vertexDescriptor: AKMDLAssetModel.newAnchorVertexDescriptor())
+let anchorModel = MDLAssetTools.asset(named: "retrotv.usdz", inBundle: Bundle.main)!
 let currentWorldLocation = world.currentWorldLocation
-let newObject = AugmentedObject(withAKModel: anchorModel, at: currentWorldLocation)
+let newObject = AugmentedObject(withModelAsset: anchorModel, at: currentWorldLocation)
 world.add(anchor: newObject)
 ```
 
@@ -63,24 +67,24 @@ world.add(anchor: newObject)
 Trackers are different from anchors in that they are not anchored to a fixed point in the world, they track the movement of another object. Here's an example of a tracker that follows at your feet and always points north. Your own personal compass. 
 
 ```swift
-if let asset = MDLAssetTools.assetFromImage(withName: "compass_512.png") {
-    let myUserTrackerModel = AKAnchorAssetModel(asset: asset)
+if let asset = MDLAssetTools.assetFromImage(inBundle: Bundle.main, withName: "compass_512.png") {
     // Position it 3 meters down from the camera
     let offsetTransform = matrix_identity_float4x4.translate(x: 0, y: -3, z: 0)
-    let userTracker = UserTracker(withModel: myUserTrackerModel, withUserRelativeTransform: offsetTransform)
-    userTracker.position.heading = WorldHeading(withWorld: myWorld, worldHeadingType: .north)
+    let userTracker = UserTracker(withModelAsset: asset, withUserRelativeTransform: offsetTransform)
+    userTracker.position.heading = WorldHeading(withWorld: myWorld, worldHeadingType: .north(0))
     world.add(tracker: userTracker)
 }
 ```
 
 #### Adding a target where you look
 
-Targets are objects that appear at the intersection of a line (vector really) and something else like a plane that ARKit has detected. In this example, the vector points straight out from the device and wherever it intersects the first plane, a target is drawn.
+Targets are objects that appear at the intersection of a line (vector really) and something else like a plane that ARKit has detected. In this example, the vector points straight out from the device and wherever it intersects the first plane, a target is drawn. It also puts a pulsing effect on the gaze target so it appears like an interactive cursor.
 
 ```swift
-if let asset = MDLAssetTools.assetFromImage(withName: "Gaze_Target.png", extension: "", scale: 0.2) {
-    let myGazeTargetModel = AKAnchorAssetModel(asset: asset)
-    let gazeTarget = GazeTarget(withModel: myGazeTargetModel, withUserRelativeTransform: matrix_identity_float4x4)
+if let asset = MDLAssetTools.assetFromImage(inBundle: Bundle.main, withName: "Gaze_Target.png", extension: "", scale: 0.2) {
+    let gazeTarget = GazeTarget(withModelAsset: asset, withUserRelativeTransform: matrix_identity_float4x4)
+    let alphaEffect = PulsingAlphaEffect(minValue: 0.2, maxValue: 1)
+    gazeTarget.effects = [AnyEffect(alphaEffect)]
     world.add(gazeTarget: gazeTarget)
 }
 ```
@@ -130,6 +134,38 @@ let path = PathAnchor(withWorldLocaitons: [location1, location2, location3, loca
 world.add(akPath: path)
 ```
 
+#### Rendering a UIView in the AR world
+
+Any UIView can be rendered as a surface in the AR world. In this example, we will render a UITextView containing a paragraph of text. We will also use a special heading that makes sure the surface always faces you wherever you go
+
+```swift
+let textView = UITextView(frame: CGRect(x: 0, y: 0, width: 300, height: 500))
+textView.font = UIFont(descriptor: .preferredFontDescriptor(withTextStyle: .body), size: 14)
+textView.textColor = UIColor(red: 200/255, green: 109/255, blue: 215/255, alpha: 1)
+textView.text = """
+A way out west there was a fella,
+fella I want to tell you about, fella
+by the name of Jeff Lebowski. At
+least, that was the handle his lovin'
+parents gave him, but he never had
+much use for it himself. This
+Lebowski, he called himself the Dude.
+Now, Dude, that's a name no one would
+self-apply where I come from. But
+then, there was a lot about the Dude
+that didn't make a whole lot of sense
+to me. And a lot about where he
+lived, like- wise. But then again,
+maybe that's why I found the place
+s'durned innarestin'...
+"""
+textView.backgroundColor = .clear
+let location = world.worldLocationWithDistanceFromMe(metersAbove: 0, metersInFront: 2)!
+let heading = AlwaysFacingMeHeading(withWorldLocaiton: location)
+let viewSurface = AugmentedUIViewSurface(withView: textView, at: location, heading: heading)
+world.add(anchor: viewSurface)
+```
+
 ### More Documntation
 
 #### AKWorld
@@ -174,14 +210,14 @@ This project has completed all of the base pre-release functionality. There are 
 
 ### Features
 
-* Written in Swift, ARKit, and Metal 2
+* Written in Swift 4, ARKit 2, and Metal 2
 
 ### Requirements
 
 * A8 or higher iOS devices
-* iOS 11.0 or higher
+* iOS 12.0 or higher
 * Cameras require 60fps support
-* Xcode 9 or higher to build
+* Xcode 10 or higher to build
 
 ### Goals
 
@@ -194,13 +230,21 @@ This project has completed all of the base pre-release functionality. There are 
 
 #### Alpha-Release Project Goals
 
-- [ ] Remove and Update methods for augmented objects
-- [ ] Refinements to UIControls and interactions including exposing tap and other gestures, smoothing
+- [x] Remove and Update methods for augmented objects
+- [x] Refinements to UIControls and interactions including exposing tap and other gestures, smoothing
 - [x] Mechanism for surfacing the state of the world and the renderer so it can be surfaced to the user
 - [x] Mechanism for surfacing errors
-- [ ] Test and fix animation for models
-- [ ] Test and fix a variety of models.
+- [x] Test and fix animation for models
+- [x] Test and fix a variety of models.
 - [x] Support per-instance models
+
+#### Beta-Release Project Goals
+- [ ] Test and fix animation for models
+- [ ] Improve jerky movements with smoothing
+- [ ] Surface culling
+- [ ] Offload many per-frame calculations to GPU Kernel function
+- [ ] Improve render engine
+- [ ] Add support for shadow maps
 
 #### _Stretch Goals_
 

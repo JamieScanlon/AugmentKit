@@ -29,22 +29,33 @@ import Foundation
 import CoreLocation
 import CoreMotion
 
-public class WorldLocationManager: NSObject, LocationManager, MotionManager {
-    
+/**
+ `LocationManager` protocol implementation
+ */
+public class WorldLocationManager: NSObject, LocationManager {
+    /**
+     Singleton instance
+     */
     public static let shared = WorldLocationManager()
-    
+    /**
+     Starts location services
+     */
     public func startServices() {
         startLocationService()
     }
-    
+    /**
+     Stops location services
+     */
     public func stopServices() {
         stopLocationService()
-        stopTrackingCompasDirection()
     }
     
     // MARK: - LocationManager Methods
     
     private var _clLocationManager: CLLocationManager?
+    /**
+     The backing `CLLocationManager`
+     */
     public var clLocationManager: CLLocationManager {
         if let _clLocationManager = _clLocationManager {
             return _clLocationManager
@@ -55,95 +66,109 @@ public class WorldLocationManager: NSObject, LocationManager, MotionManager {
             return aCLLocationManager
         }
     }
+    /**
+     A `LocalStoreManager` that is used to store user location state locally
+     */
     public var localStoreManager: LocalStoreManager? {
         return DefaultLocalStoreManager.shared as LocalStoreManager
     }
+    /**
+     Returns `true` if location services are available
+     */
     public private(set) var serviceAvailable: Bool = false
+    /**
+     Returns `true` if location services have started
+     */
     public private(set) var serviceStarted: Bool = false
+    /**
+     The last recorded location
+     */
     public private(set) var lastLocation: CLLocation?
+    /**
+     Provides the CLLocation with the highest accuracy. This gets updated With the most recent location if the most recent location has at least as much accuracy as the last reading.
+     */
     public private(set) var mostReliableARLocation: CLLocation?
+    /**
+     The last recorded heading
+     */
     public private(set) var lastHeadingDirection: CLLocationDirection?
+    /**
+     Provides the CLHeading with the highest accuracy. This gets updated with the most recent location if the most recent location has at least as much accuracy as the last reading.
+     */
     public private(set) var mostReliableARHeading: CLHeading?
-    
+    /**
+     Returns the CLLocationManager.locationServicesEnabled()
+     */
     public func locationServicesEnabled() -> Bool {
         return CLLocationManager.locationServicesEnabled()
     }
-    
+    /**
+     This should return the CLLocationManager.authorizationStatus()
+     */
     public func authorizationStatus() -> CLAuthorizationStatus {
         return CLLocationManager.authorizationStatus()
     }
+    /**
+     Change the `serviceAvailable` state
+     */
     public func setServiceAvailable(_ value: Bool) {
         serviceAvailable = value
     }
+    /**
+     Change the `serviceStarted` state
+     */
     public func setServiceStarted(_ value: Bool) {
         serviceStarted = value
     }
+    /**
+     Change the `lastLocation` value
+     */
     public func setLastLocation(_ value: CLLocation) {
         lastLocation = value
     }
+    /**
+     Change the `mostReliableARLocation` value
+     */
     public func setMostReliableARLocation(_ value: CLLocation) {
         mostReliableARLocation = value
     }
+    /**
+     Change the `lastHeadingDirection` value
+     */
     public func setLastLocationDirection(_ value: CLLocationDirection) {
         lastHeadingDirection = value
     }
+    /**
+     Change the `mostReliableARHeading` value
+     */
     public func setMostReliableARHeading(_ value: CLHeading) {
         mostReliableARHeading = value
-    }
-    
-    // MARK: - MotionManager Methods
-    
-    private var _cmMotionManager: CMMotionManager?
-    public var cmMotionManager: CMMotionManager {
-        if let _cmMotionManager = _cmMotionManager {
-            return _cmMotionManager
-        } else {
-            let aCMMotionManager = CMMotionManager()
-            _cmMotionManager = aCMMotionManager
-            return aCMMotionManager
-        }
-    }
-    
-    private var _motionQueue: OperationQueue?
-    public var operationQueue: OperationQueue {
-        if let _motionQueue = _motionQueue {
-            return _motionQueue
-        } else {
-            let aMotionQueue = OperationQueue()
-            _motionQueue = aMotionQueue
-            return aMotionQueue
-        }
-    }
-    public var viewPort: ViewPort {
-        let screenSize = DeviceManager.shared.screenSizeInPoints()
-        let viewport = ViewPort(width: Double(screenSize.width), height: Double(screenSize.height))
-        return viewport
     }
     
 }
 
 extension WorldLocationManager: CLLocationManagerDelegate {
-    
+    /// :nodoc:
     public func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         updateLocations(locations)
     }
-    
+    /// :nodoc:
     public func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         handlerError(error)
     }
-    
+    /// :nodoc:
     public func locationManagerDidResumeLocationUpdates(_ manager: CLLocationManager) {
         didResumeUpdates()
     }
-    
+    /// :nodoc:
     public func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
         didEnterRegion(region)
     }
-    
+    /// :nodoc:
     public  func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
         didChangeAuthorizationStatus(status)
     }
-    
+    /// :nodoc:
     public func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
         didUpdateHeading(newHeading)
     }

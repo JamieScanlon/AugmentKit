@@ -24,17 +24,22 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 //
-//
-//  Extensions for loading a model from SceneKit so it can be used as an anchor.
-//  This can be excluded if SceneKit is not being used.
-//
 
 import Foundation
 import SceneKit.ModelIO
 import MetalKit
 
+/**
+ Extensions for loading a model from SceneKit so it can be used as an anchor. This can be excluded if SceneKit is not being used.
+ */
 public class AKSceneKitUtils {
-    
+    /**
+     Creates an `MDLAsset` object from a `SceneKit` file. The method looks for a file with the specified name in the application’s main bundle.
+     - Parameters:
+        - named: The specified name of the `SceneKit` file
+        - world: The `AKWorld`
+     - Returns: A new `MDLAsset`
+     */
     public static func mdlAssetFromScene(named: String, world: AKWorld) -> MDLAsset? {
     
         guard let scene = SCNScene(named: named) else {
@@ -44,7 +49,13 @@ public class AKSceneKitUtils {
         return mdlAssetFromScene(scene, world: world)
         
     }
-    
+    /**
+     Creates an `MDLAsset` object from a `SceneKit` file. The method looks for a file at the specified URL.
+     - Parameters:
+        - withURL: The specified URL of the `SceneKit` file
+        - world: The `AKWorld`
+     - Returns: A new `MDLAsset`
+     */
     public static func mdlAssetFromScene(withURL url: URL, world: AKWorld) -> MDLAsset? {
         
         do {
@@ -55,7 +66,13 @@ public class AKSceneKitUtils {
         }
         
     }
-    
+    /**
+     Creates an `MDLAsset` object from a `SceneKit` `SCNScene`. The method looks for a file at the specified URL.
+     - Parameters:
+        - _: The `SCNScene` file
+        - world: The `AKWorld`
+     - Returns: A new `MDLAsset`
+     */
     public static func mdlAssetFromScene(_ scene: SCNScene, world: AKWorld) -> MDLAsset {
         
         // Create a MetalKit mesh buffer allocator so that ModelIO will load mesh data directly into

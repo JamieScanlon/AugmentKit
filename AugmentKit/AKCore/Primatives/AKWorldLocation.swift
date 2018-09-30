@@ -31,26 +31,59 @@ import CoreLocation
 
 // MARK: - AKWorldLocation
 
-//  A data structure that combines an absolute position (latitude, longitude, and elevation)
-//  with a relative postion (transform) that ties locations in the real world to locations
-//  in AR space.
+/**
+ Combines an absolute position (latitude, longitude, and elevation) with a relative postion (transform) that ties locations in the real world to locations in AR space.
+ */
 public protocol AKWorldLocation {
+    /**
+     A latitude in the the real world
+     */
     var latitude: Double { get set }
+    /**
+     A longitude in the the real world
+     */
     var longitude: Double { get set }
+    /**
+     An elevation in the the real world
+     */
     var elevation: Double { get set }
+    /**
+     A transform, in the coodinate space of the AR eorld, which corresponds to the `latitude`, `longitude`, and `elevation`
+     */
     var transform: matrix_float4x4 { get set }
 }
 
 // MARK: - WorldLocation
 
-// Standard implementation of an AKWorldLocation object
+/**
+ Standard implementation of an AKWorldLocation object
+ */
 public struct WorldLocation: AKWorldLocation {
-    
+    /**
+     A latitude in the the real world
+     */
     public var latitude: Double = 0
+    /**
+     A longitude in the the real world
+     */
     public var longitude: Double = 0
+    /**
+     An elevation in the the real world
+     */
     public var elevation: Double = 0
+    /**
+     A transform, in the coodinate space of the AR world, which corresponds to the `latitude`, `longitude`, and `elevation`
+     */
     public var transform: matrix_float4x4 = matrix_identity_float4x4
     
+    /**
+     Initialize a new structure with a `transform`, a `latitude`, `longitude`, and `elevation`
+     - Parameters:
+        - transform:  A transform, in the coodinate space of the AR world, which corresponds to the `latitude`, `longitude`, and `elevation`
+        - latitude: A latitude in the the real world
+        - longitude: A longitude in the the real world
+        - elevation: An elevation in the the real world
+     */
     public init(transform: matrix_float4x4 = matrix_identity_float4x4, latitude: Double = 0, longitude: Double = 0, elevation: Double = 0) {
         self.transform = transform
         self.latitude = latitude
@@ -58,19 +91,22 @@ public struct WorldLocation: AKWorldLocation {
         self.elevation = elevation
     }
     
-    //  When provided a reference location that has transform that corresponds to a
-    //  latitude, longitude, and elevation, a new location can be created with a transform.
-    //  The latitude, longitude, and elevation will be calculated based on the reference
-    //  location
+    /**
+     Initialize a new structure with a `transform` and a `referenceLocation`.
+     
+     This uses the `transform`, `latitude`, `longitude`, and `elevation` of the `referenceLocation` to calculate the new `AKWorldLocation`.
+     
+     The meters/ºlatitude and meters/ºlongitude change with lat/lng. The `referenceLocation` is used to determine these values so the further the destination is from the reference location, the less accurate the resulting calculation is. It's usually fine unless you need very accuate calculations when the locations are tens or hundreds of km away.
+     
+     - Parameters:
+        - transform: A transform of the new location in the coodinate space of the AR world
+        - referenceLocation: Another `AKWorldLocation` which contains reliable `transform`, `latitude`, `longitude`, and `elevation` properties.
+     */
     public init(transform: matrix_float4x4, referenceLocation: AKWorldLocation) {
         
         self.transform = transform
         
-        // The meters/ºlatitude and meters/ºlongitude change with lat/lng. The
-        // reference location is used to determine these values so the further
-        // the destination is from the reference location, the less accurate the
-        // resulting calculation is. It's usually fine unless you need very
-        // accuate calculations when the locations are tens or hundreds of km away
+        
         let latitudeInRadians = referenceLocation.latitude.degreesToRadians()
         let metersPerDegreeLatitude =  111132.92 - 559.82 * cos(2 * latitudeInRadians) + 1.175 * cos(4 * latitudeInRadians) - 0.0023 * cos(6 * latitudeInRadians)
         let metersPerDegreeLongitude = 11412.84 * cos(latitudeInRadians) - 93.5 * cos(3 * latitudeInRadians) + 118 * cos(5 * latitudeInRadians)
@@ -85,9 +121,17 @@ public struct WorldLocation: AKWorldLocation {
         
     }
     
-    //  When provided a reference location that has transform that corresponds to a
-    //  latitude, longitude, and elevation, a new location can be created with a transform.
-    //  The transform will be calculated based on the reference location
+    /**
+     Initializes a new structure with a `latitude`, `longitude`, and `elevation` and a `referenceLocation`.
+     
+     This uses the `transform`, `latitude`, `longitude`, and `elevation` of the `referenceLocation` to calculate the new `AKWorldLocation`.
+     
+     - Parameters:
+        - latitude: A latitude of the new location in the the real world
+        - longitude: A longitude of the new location in the the real world
+        - elevation: An elevation of the new location in the the real world
+        - referenceLocation: Another `AKWorldLocation` which contains reliable `transform`, `latitude`, `longitude`, and `elevation` properties.
+     */
     public init(latitude: Double, longitude: Double, elevation: Double = 0, referenceLocation: AKWorldLocation) {
         
         self.latitude = latitude
@@ -124,18 +168,37 @@ public struct WorldLocation: AKWorldLocation {
 
 // MARK: - WorldLocation
 
-// An implementation that sets the y (vertical) position of an existing locaiton equal to the estimated ground of the world
+/**
+ An implementation of `AKWorldLocation` that sets the y (vertical) position of an existing locaiton equal to the estimated ground of the world. This is useful when placing objects in the AR world that rest on the ground.
+ In order to to get the y value of the estimated ground, a reference to and `AKWorld` object is required.
+ */
 public struct GroundFixedWorldLocation: AKWorldLocation {
-    
+    /**
+     Latitude
+     */
     public var latitude: Double = 0
+    /**
+     Longitude
+     */
     public var longitude: Double = 0
+    /**
+     Elevation
+     */
     public var elevation: Double = 0
-    public var world: AKWorld
+    /**
+     A weak reference to the `AKWorld`
+     */
+    public weak var world: AKWorld?
     
+    /**
+     A transform in the coodinate space of the AR world. The provided value gets mutated so that the y value corresponds to the y value of the estimated ground layer as provided by the `world`
+     */
     public var transform: matrix_float4x4 {
         get {
             var convertedTransform = originalTransform
-            let worldGroundTransform = world.estimatedGroundLayer.worldLocation.transform
+            guard let worldGroundTransform = world?.estimatedGroundLayer.worldLocation.transform else {
+                return convertedTransform
+            }
             convertedTransform.columns.3.y = worldGroundTransform.columns.3.y
             return convertedTransform
         }
@@ -144,6 +207,12 @@ public struct GroundFixedWorldLocation: AKWorldLocation {
         }
     }
     
+    /**
+     Initializes a new structure with a `AKWorldLocation` and a reference to a `AKWorld` object
+     - Parameters:
+        - worldLocation: An existing `AKWorldLocation`
+        - world: A reference the the `AKWorld`
+     */
     public init(worldLocation: AKWorldLocation, world: AKWorld) {
         
         self.originalTransform = worldLocation.transform

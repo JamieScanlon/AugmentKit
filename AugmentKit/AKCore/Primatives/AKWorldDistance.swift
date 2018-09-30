@@ -29,14 +29,38 @@ import Foundation
 
 // MARK: - AKWorldDistance
 
-//  A data structure that represents the distance in meters between tow points in world space.
+/**
+ Represents the distance in meters between two points in the AR world.
+ */
 public struct AKWorldDistance {
+    /**
+     Meters in the X direcrion
+     */
     public var metersX: Double
+    /**
+     Meters in the Y direcrion
+     */
     public var metersY: Double
+    /**
+     Meters in the Z direcrion
+     */
     public var metersZ: Double
+    /**
+     The distance in the X/Z directrion in meters
+     */
     public private(set) var distance2D: Double
+    /**
+     The distance in meters
+     */
     public private(set) var distance3D: Double
     
+    /**
+     Initializes a new structure with meters X, Y, and Z
+     - Parameters:
+        - metersX: X value in meters
+        - metersY: Y value in meters
+        - metersZ: Z value in meters
+     */
     public init(metersX: Double = 0, metersY: Double = 0, metersZ: Double = 0) {
         self.metersX = metersX
         self.metersY = metersY

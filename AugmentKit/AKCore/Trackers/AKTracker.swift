@@ -30,29 +30,37 @@ import Foundation
 
 // MARK: - AKTracker
 
-//  An AKTracker is a geometrical object that tracks another moving object or position.
-//  The object's geometry is defiened by the `model` property.
-//  The object's position is not fixed in world space but is relative.
+/**
+ An AKTracker is a geometrical object that tracks another moving object or position. The object's geometry is defiened by the `model` property. The object's position is not fixed in world space but is relative.
+ */
 public protocol AKTracker: class, AKGeometricEntity {
-    
+    /**
+     The position of the tracker. The position is relative to the objects this tracks.
+     */
     var position: AKRelativePosition { get set }
+    /**
+     Set the identifier for this instance
+     - Parameters:
+        - _: A UUID
+     */
     func setIdentifier(_ identifier: UUID)
     
 }
 
 // MARK: - AKAugmentedTracker
 
-//  Represents a tracker placed in the AR world. This tracker only exists in the AR world
-//  as opposed to a real tracker like a person or a car which exists
-//  in the physical world.
+/**
+ Represents a tracker placed in the AR world. This tracker only exists in the AR world as opposed to a real tracker like a person or a car which exists in the physical world.
+ */
 public protocol AKAugmentedTracker: AKTracker {
     
 }
 
 // MARK: - AKRealTracker
 
-//  Represents a tracker in the AR world that is tied to an moving object in the real world.
-//  For example a person or a car.
+/**
+ Represents a tracker in the AR world that is tied to an moving object in the real world. For example a person or a car.
+ */
 public protocol AKRealTracker: AKTracker {
     
 }

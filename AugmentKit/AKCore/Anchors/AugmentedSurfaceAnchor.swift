@@ -24,29 +24,60 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 //
-//
-//  A generic implementation of AKAugmentedSurfaceAnchor that renders a MDLTexture
-//  on a simple plane with a given extent
-//
 
 import ARKit
 import Foundation
 import MetalKit
 import simd
 
+/**
+ A generic implementation of `AKAugmentedSurfaceAnchor` that renders a `MDLTexture` on a simple plane with a given extent
+ */
 public class AugmentedSurfaceAnchor: AKAugmentedSurfaceAnchor {
     
+    /**
+     A type string. Always returns "AugmentedSurface"
+     */
     public static var type: String {
         return "AugmentedSurface"
     }
+    /**
+     The location in the ARWorld
+     */
     public var worldLocation: AKWorldLocation
+    /**
+     The heading in the ARWorld. Defaults to `NorthHeading()`
+     */
     public var heading: AKHeading = NorthHeading()
+    /**
+     The `MDLAsset` associated with the entity.
+     */
     public var asset: MDLAsset
+    /**
+     A unique, per-instance identifier
+     */
     public var identifier: UUID?
+    /**
+     An array of `AKEffect` objects that are applied by the renderer
+     */
     public var effects: [AnyEffect<Any>]?
+    /**
+     Specified a perfered renderer to use when rendering this enitity. Most will use the standard PBR renderer but some entities may prefer a simpiler renderer when they are not trying to achieve the look of real-world objects. Defaults to `ShaderPreference.pbr`
+     */
     public var shaderPreference: ShaderPreference = .pbr
+    /**
+     An `ARAnchor` that will be tracked in the AR world by `ARKit`
+     */
     public var arAnchor: ARAnchor?
-    
+    /**
+     Initialize a new object with a `MDLTexture` and an extent representing the size at a `AKWorldLocation` and AKHeading using a `MTKMeshBufferAllocator` for allocating the geometry
+     - Parameters:.
+        - withTexture: The `MDLTexture` containing the image texture
+        - extent: The size of the geometry in meters
+        - at: The location of the anchor
+        - heading: The heading for the anchor
+        - withAllocator: A `MTKMeshBufferAllocator` with wich to create the plane geometry
+     */
     public init(withTexture texture: MDLTexture, extent: vector_float3, at location: AKWorldLocation, heading: AKHeading? = nil, withAllocator metalAllocator: MTKMeshBufferAllocator? = nil) {
         
         let mesh = MDLMesh(planeWithExtent: extent, segments: vector2(1, 1), geometryType: .triangles, allocator: metalAllocator)
@@ -72,11 +103,19 @@ public class AugmentedSurfaceAnchor: AKAugmentedSurfaceAnchor {
         }
         
     }
-    
+    /**
+     Set the identifier for this instance
+     - Parameters:
+        - _: A UUID
+     */
     public func setIdentifier(_ identifier: UUID) {
         self.identifier = identifier
     }
-    
+    /**
+     Sets a new `arAnchor`
+     - Parameters:
+        - _: An `ARAnchor`
+     */
     public func setARAnchor(_ arAnchor: ARAnchor) {
         self.arAnchor = arAnchor
         if identifier == nil {
@@ -87,12 +126,15 @@ public class AugmentedSurfaceAnchor: AKAugmentedSurfaceAnchor {
     
 }
 
+/// :nodoc:
 extension AugmentedSurfaceAnchor: CustomDebugStringConvertible, CustomStringConvertible {
     
+    /// :nodoc:
     public var description: String {
         return debugDescription
     }
     
+    /// :nodoc:
     public var debugDescription: String {
         let myDescription = "<AugmentedSurfaceAnchor: \(Unmanaged.passUnretained(self).toOpaque())> worldLocation: \(worldLocation), identifier:\(identifier?.uuidString ?? "None"), effects: \(effects?.debugDescription ?? "None"), arAnchor: \(arAnchor?.debugDescription ?? "None"), asset: \(asset)"
         return myDescription

@@ -30,19 +30,24 @@ import simd
 
 // MARK: - AKTarget
 
-//  An AKTarget is a geometrical object which is positioned at the intersection of
-//  a vector and another AKGeometricEntity. The vector is relative to a position.
-//  For example:
-//    An AKTarget might be the red dot of a laser pointer. Where the laser
-//    intersects a screen is be where the geometry of the dot is rendered. The
-//    location of the intersection is determined by the vector representing
-//    the direction the laser pointer is pointed as well as the postion of
-//    the laser pointer itself in the world.
-//  The object's geometry is defiened by the `model` property.
-//  The object's position is not fixed in world space but is relative.
-//  The object's vectorDirection is relative to it's position and can be a unit vector
+/**
+ An `AKTarget` is a geometrical object which is positioned at the intersection of a vector and another `AKGeometricEntity`. The vector is relative to a position.
+ - Example:
+ An `AKTarget` might be the red dot of a laser pointer. Where the laser intersects a screen is be where the geometry of the dot is rendered. The location of the intersection is determined by the vector representing the direction the laser pointer is pointed as well as the postion of the laser pointer itself in the world.
+ */
 public protocol AKTarget: AKGeometricEntity {
+    /**
+     A direction vector relative to it's position and can be a unit vector
+     */
     var vectorDirection: AKVector { get }
+    /**
+     A relative position
+     */
     var position: AKRelativePosition { get }
+    /**
+     Set the identifier for this instance
+     - Parameters:
+        - _: A UUID
+     */
     func setIdentifier(_ identifier: UUID)
 }

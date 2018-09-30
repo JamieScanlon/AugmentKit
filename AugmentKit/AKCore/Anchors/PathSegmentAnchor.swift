@@ -24,37 +24,76 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 //
-//  A generic implementation of a AKPathSegmentAnchor
-//
 
 import ARKit
 import Foundation
 import ModelIO
 
+/**
+ A generic implementation of a AKPathSegmentAnchor. Instead of creating these objects directly, these objects should be created as part of creating a new `AKPath` instance.
+ */
 public class PathSegmentAnchor: AKPathSegmentAnchor {
     
+    /**
+     A type string. Always returns "PathSegmentAnchor"
+     */
     public static var type: String {
         return "PathSegmentAnchor"
     }
+    /**
+     The location in the ARWorld.
+     */
     public var worldLocation: AKWorldLocation
+    /**
+     The heading in the ARWorld. Defaults to `SameHeading()`
+     */
     public var heading: AKHeading = SameHeading()
+    /**
+     The `MDLAsset` associated with the entity.
+     */
     public var asset: MDLAsset
+    /**
+     A unique, per-instance identifier
+     */
     public var identifier: UUID?
+    /**
+     An array of `AKEffect` objects that are applied by the renderer
+     */
     public var effects: [AnyEffect<Any>]?
+    /**
+     Specified a perfered renderer to use when rendering this enitity. Most will use the standard PBR renderer but some entities may prefer a simpiler renderer when they are not trying to achieve the look of real-world objects. Defaults to `ShaderPreference.simple`
+     */
     public var shaderPreference: ShaderPreference = .simple
+    /**
+     An `ARAnchor` that will be tracked in the AR world by `ARKit`
+     */
     public var arAnchor: ARAnchor?
-    
+    /**
+     Initialize an object with an array of `AKWorldLocation`s
+     - Parameters:
+        - at: The location of the anchor
+        - identifier: A unique, per-instance identifier
+        - effects: An array of `AKEffect` objects that are applied by the renderer
+     */
     public init(at location: AKWorldLocation, identifier: UUID? = nil, effects: [AnyEffect<Any>]? = nil) {
         self.asset = MDLAsset()
         self.worldLocation = location
         self.identifier = identifier
         self.effects = effects
     }
-    
+    /**
+     Set the identifier for this instance
+     - Parameters:
+        - _: A UUID
+     */
     public func setIdentifier(_ identifier: UUID) {
         self.identifier = identifier
     }
-    
+    /**
+     Sets a new `arAnchor`
+     - Parameters:
+        - _: An `ARAnchor`
+     */
     public func setARAnchor(_ arAnchor: ARAnchor) {
         self.arAnchor = arAnchor
         if identifier == nil {

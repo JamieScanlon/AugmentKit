@@ -24,21 +24,43 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 //
-//  Extends ARKit's ARWorldMap to add a world location properties which ties the
-//  World Map to a specific location in the real world.
+
 
 import ARKit
 import UIKit
 import simd
 
+/**
+ Wraps ARKit's `ARWorldMap` and adds world location properties which ties the World Map to a specific location in the real world. The `ARWorldMap` provides enough information to tie all of the anchors in `arWorldMap` to real world locations. The `transform`, a position in the coordinate space of the `arWorldMap` is mapped to the `latitude`, `longitude`, and `elevation`. From one knowd reference location,  the `latitude`, `longitude`, and `elevation` of every other point in the coordinate space of `arWorldMap` can be calculated.
+ */
 public class AKWorldMap: NSObject, NSCopying, NSSecureCoding {
     
+    /**
+     The latitude of a reference location given by the `transform`
+     */
     public var latitude: Double?
+    /**
+     The longitude of a reference location given by the `transform`
+     */
     public var longitude: Double?
+    /**
+     The elevation of a reference location given by the `transform`
+     */
     public var elevation: Double?
+    /**
+     The position transform of a reference location in the coordinate space of the `arWordMap`
+     */
     public var transform: matrix_float4x4?
+    /**
+     An `ARWorldMap` instance aquired from ARKit
+     */
     public var arWorldMap: ARWorldMap
-    
+    /**
+     Initialize a new object with an `ARWorldMap` and an `AKWorldLocation`
+     - Parameters:
+        - withARWorldMap: An `ARWorldMap` instance aquired from ARKit
+        - worldLocation: An `AKWorldLocation` instance used as a reference location to populate the `latitude`, `longitude`, and `elevation`
+     */
     public init(withARWorldMap arWorldMap: ARWorldMap , worldLocation: AKWorldLocation? = nil) {
         self.arWorldMap = arWorldMap
         if let worldLocation = worldLocation {
@@ -51,6 +73,7 @@ public class AKWorldMap: NSObject, NSCopying, NSSecureCoding {
     
     // MARK: NSCopying
     
+    /// :nodoc:
     public func copy(with zone: NSZone? = nil) -> Any {
         let aCopy = super.copy()
         if aCopy is AKWorldMap {
@@ -65,6 +88,7 @@ public class AKWorldMap: NSObject, NSCopying, NSSecureCoding {
     
     // MARK: NSSecureCoding
     
+    /// :nodoc:
     public required init?(coder aDecoder: NSCoder) {
         guard let worldMap = ARWorldMap(coder: aDecoder) else {
             return nil
@@ -76,6 +100,7 @@ public class AKWorldMap: NSObject, NSCopying, NSSecureCoding {
         self.arWorldMap = worldMap
     }
     
+    /// :nodoc:
     public func encode(with aCoder: NSCoder) {
         aCoder.encode(latitude, forKey: "latitude")
         aCoder.encode(longitude, forKey: "longitude")
@@ -86,11 +111,15 @@ public class AKWorldMap: NSObject, NSCopying, NSSecureCoding {
         arWorldMap.encode(with: aCoder)
     }
     
+    /// :nodoc:
     public static var supportsSecureCoding: Bool = true
     
 }
 
+/// :nodoc:
 extension NSCoder {
+    
+    /// :nodoc:
     func decodeMatrixFloat4x4(forKey key:String) -> matrix_float4x4? {
         guard let array = decodeObject(forKey: key) as? [Float] else {
             return nil
@@ -106,6 +135,7 @@ extension NSCoder {
         )
     }
     
+    /// :nodoc:
     func encodeMatrixFloat4x4(_ value: matrix_float4x4, forKey key: String) {
         let array: [Float] = value.columns.0.map({$0}) + value.columns.1.map({$0}) + value.columns.2.map({$0}) + value.columns.3.map({$0})
         encode(array, forKey: key)

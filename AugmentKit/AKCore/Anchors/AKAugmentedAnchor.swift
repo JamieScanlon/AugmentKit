@@ -24,17 +24,24 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 //
-//  Represents an anchor placed in the AR world. This anchor only exists in the AR world
-//  as opposed to a real anchor like a detected horizontal / vertical plane which exists
-//  in the physical world.
-//
 
 import ARKit
 import Foundation
 
 // MARK: - AKAugmentedAnchor
 
+/**
+ Represents an anchor placed in the AR world. This anchor only exists in the AR world as opposed to a real anchor like a detected horizontal / vertical plane which exists in the physical world.
+ */
 public protocol AKAugmentedAnchor: AKAnchor {
+    /**
+     An `ARAnchor` that will be tracked in the AR world by `ARKit`
+     */
     var arAnchor: ARAnchor? { get }
-    func setARAnchor(_ arachor: ARAnchor)
+    /**
+     Sets a new `arAnchor`
+     - Parameters:
+        - _: An `ARAnchor`
+     */
+    func setARAnchor(_ anchor: ARAnchor)
 }

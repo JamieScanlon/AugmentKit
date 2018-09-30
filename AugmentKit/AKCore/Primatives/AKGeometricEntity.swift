@@ -30,19 +30,28 @@ import ModelIO
 
 // MARK: - AKGeometricEntity
 
-//  An AKGeometricEntity represents a 3D geomentry existing in world space. It may
-//  be a rendered augmented object like a virtual sign or piece of furniture, or it may
-//  be a non-rendered reference geomentry that is used as meta information about the
-//  AR world like a 2D plane might represent a table top or a wall.
-//  The object's geometry is defiened by the `model` property and may
-//  contain animation therefore the geomentry it does not always have to represent a rigid body.
-//  AKGeometricEntity does not contain any position information so it does not mean
-//  anything by itself in the context of the AKWorld. It does serve as a base protocol
-//  for more meaningful Types like AKAnchor and AKTracker.
+/**
+ An `AKGeometricEntity` represents a 3D geomentry existing in world space. It may be a rendered augmented object like a virtual sign or piece of furniture, or it may be a non-rendered reference geomentry that is used as meta information about the AR world like a 2D plane might represent a table top or a wall. The object's geometry is defiened by the `model` property and may contain animation therefore the geomentry it does not always have to represent a rigid body. AKGeometricEntity does not contain any position information so it does not mean anything by itself in the context of the AKWorld. It does serve as a base protocol for more meaningful Types like `AKAnchor` and `AKTracker`.
+ */
 public protocol AKGeometricEntity {
+    /**
+     A type string.
+     */
     static var type: String { get }
+    /**
+     The `MDLAsset` associated with the entity.
+     */
     var asset: MDLAsset { get }
+    /**
+     A unique, per-instance identifier
+     */
     var identifier: UUID? { get }
+    /**
+     An array of `AKEffect` objects that are applied by the renderer
+     */
     var effects: [AnyEffect<Any>]? { get }
+    /**
+     Specified a perfered renderer to use when rendering this enitity. Most will use the standard PBR renderer but some entities may prefer a simpiler renderer when they are not trying to achieve the look of real-world objects.
+     */
     var shaderPreference: ShaderPreference { get }
 }

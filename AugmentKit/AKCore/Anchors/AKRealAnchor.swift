@@ -24,16 +24,24 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 //
-//  Represents an anchor in the AR world that is tied to an object in the real world
-//  for example a detected horizontal / vertical plane wich represents a table or wall
-//
 
 import ARKit
 import Foundation
 
 // MARK: - AKRealAnchor
 
+/**
+ Represents an anchor in the AR world that is tied to an object in the real world for example a detected horizontal / vertical plane wich represents a table or wall
+ */
 public protocol AKRealAnchor: AKAnchor {
+    /**
+     An `ARAnchor` that will be tracked in the AR world by `ARKit`
+     */
     var arAnchor: ARAnchor? { get }
-    func setARAnchor(_ arachor: ARAnchor)
+    /**
+     Sets a new `arAnchor`
+     - Parameters:
+        - _: An `ARAnchor`
+     */
+    func setARAnchor(_ anchor: ARAnchor)
 }

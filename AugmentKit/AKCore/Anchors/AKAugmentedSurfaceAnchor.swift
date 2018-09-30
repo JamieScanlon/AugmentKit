@@ -24,13 +24,12 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 //
-//
-//  And anchor representing an augmented surface plane (one that does not exist in
-//  the real world).
-//
 
 import Foundation
 
+/**
+ And anchor representing an augmented surface plane (one that does not exist in the real world).
+ */
 protocol AKAugmentedSurfaceAnchor: AKAugmentedAnchor {
     
 }

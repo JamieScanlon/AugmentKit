@@ -41,10 +41,19 @@ import AugmentKitShader
 // MARK: - Mesh Data
 
 // MARK: DrawSubData
-//  Data for an individual submesh
+/**
+ Data for an individual submesh.
+ `DrawSubData` is a data structure for the render engine. The structure of this data object is intended to contain all the data needed to set up the Metal pipline in a way where there is not much, if any, translation required between the properties here and the properties of the render pipleine objects.
+ */
 public struct DrawSubData {
-    var indexCount = 0 // The number of indices in the submesh’s index buffer.
-    var indexType = MTLIndexType.uint16 // The data type for each element in the submesh’s index buffer.
+    /**
+     The number of indices in the submesh’s index buffer.
+     */
+    var indexCount = 0
+    /**
+     The data type for each element in the submesh’s index buffer.
+     */
+    var indexType = MTLIndexType.uint16
     var indexBuffer: MTLBuffer?
     var baseColorTexture: MTLTexture?
     var normalTexture: MTLTexture?
@@ -69,7 +78,7 @@ public struct DrawSubData {
         for textureIndex in 0..<kNumTextureIndices.rawValue {
             let constantIndex = mapTextureBindPoint(to: TextureIndices(rawValue:textureIndex))
 
-            if MetalUtilities.isTexturedProperty(constantIndex, at: quality) && !MetalUtilities.isTexturedProperty(constantIndex, at: QualityLevel(rawValue: quality.rawValue + 1)) {
+            if RenderUtilities.isTexturedProperty(constantIndex, at: quality) && !RenderUtilities.isTexturedProperty(constantIndex, at: QualityLevel(rawValue: quality.rawValue + 1)) {
                 //materialUniforms.mapWeights[textureIndex] = globalWeight
             } else {
                 //materialUniforms.mapWeights[textureIndex] = 1.0
@@ -114,10 +123,16 @@ public struct DrawSubData {
 }
 
 // MARK: DrawData
-//  Data for an individual mesh
+/**
+ Data for an individual mesh.
+ `DrawData` is a data structure for the render engine. The structure of this data object is intended to contain all the data needed to set up the Metal pipline in a way where there is not much, if any, translation required between the properties here and the properties of the render pipleine objects.
+ */
 public struct DrawData {
     var vertexBuffers = [MTLBuffer]()
-    var instanceCount = 0 // Used in the render pipeline to store the number of instances of this type to render
+    /**
+     Used in the render pipeline to store the number of instances of this type to render
+     */
+    var instanceCount = 0
     var paletteStartIndex: Int?
     var paletteSize = 0
     var subData = [DrawSubData]()
@@ -142,7 +157,10 @@ public struct DrawData {
 }
 
 // MARK: MeshGPUData
-//  Data for an object containing one or more meshes
+/**
+ Data for an object containing one or more meshes.
+ `MeshGPUData` is a data structure for the render engine. The structure of this data object is intended to contain all the data needed to set up the Metal pipline in a way where there is not much, if any, translation required between the properties here and the properties of the render pipleine objects.
+ */
 public struct MeshGPUData {
     var drawData = [DrawData]()
     var vertexDescriptor: MTLVertexDescriptor?
@@ -150,15 +168,28 @@ public struct MeshGPUData {
 }
 
 // MARK: MeshGPUData
+/**
+ Specified the prefered shader to use for rendering.
+ */
 public enum ShaderPreference {
+    /**
+     A simple shader that only uses base color. Objects rendered with the simple shader are not intended to look real and the lighting properties are not affected at all by the environment.
+     */
     case simple
+    /**
+     A phisically based shader that is intended to render an object realistically in the environment.
+     */
     case pbr
 }
 
 // MARK: - Puppet Animation (Not currently supported by renderer)
 
 // MARK: SkinData
-//  Describes how a mesh is bound to a skeleton
+
+/**
+ Data that describes how a mesh is bound to a skeleton.
+ `SkinData` is a data structure for the render engine. The structure of this data object is intended to contain all the data needed to set up the Metal pipline in a way where there is not much, if any, translation required between the properties here and the properties of the render pipleine objects.
+ */
 public struct SkinData: JointPathRemappable {
     var jointPaths = [String]()
     var skinToSkeletonMap = [Int]()
@@ -167,7 +198,11 @@ public struct SkinData: JointPathRemappable {
 }
 
 // MARK: AnimatedSkeleton
-//  Stores skeleton data as well as its time-sampled animation
+//
+/**
+ Data that stores skeleton data as well as its time-sampled animation.
+ `AnimatedSkeleton` is a data structure for the render engine. The structure of this data object is intended to contain all the data needed to set up the Metal pipline in a way where there is not much, if any, translation required between the properties here and the properties of the render pipleine objects.
+ */
 public struct AnimatedSkeleton: JointPathRemappable {
     var jointPaths = [String]()
     var parentIndices = [Int?]()
@@ -184,7 +219,10 @@ public struct AnimatedSkeleton: JointPathRemappable {
 
 // MARK: - Environment
 // MARK: EnvironmentData
-//  Stores any parameters related to the environment that may affect the rendered objects
+/**
+ Data that stores any parameters related to the environment that may affect the rendered objects.
+ `EnvironmentData` is a data structure for the render engine. The structure of this data object is intended to contain all the data needed to set up the Metal pipline in a way where there is not much, if any, translation required between the properties here and the properties of the render pipleine objects.
+ */
 public struct EnvironmentData {
     var hasEnvironmentMap = false
     var environmentTexture: MTLTexture?

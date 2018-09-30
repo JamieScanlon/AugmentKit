@@ -30,12 +30,30 @@ import simd
 import CoreGraphics.CGImage
 import ModelIO
 
+/**
+ A `AugmentedSurfaceAnchor` subclass that is able to display the contents of a `UIView` as the texture for the surface.
+ */
 public class AugmentedUIViewSurface: AugmentedSurfaceAnchor {
     
+    /**
+     A view that will be used as a texture for the surface
+     */
     public var view: UIView
+    /**
+     The bytes per row of the captured image from the `UIView`
+     */
     public fileprivate(set) var bytesPerRow: Int
+    /**
+     The total bytes of the captured image from the `UIView`
+     */
     public fileprivate(set) var totalBytes: Int
-    
+    /**
+     Initialize a new object with a `UIView` and a `AKHeading`
+     - Parameters:
+        - withView: A `UIView` that will be captured and rendered on the surface.
+        - at: The location of the anchor
+        - heading: The heading for the anchor
+     */
     public init(withView view: UIView, at location: AKWorldLocation, heading: AKHeading? = nil) {
         
         self.view = view

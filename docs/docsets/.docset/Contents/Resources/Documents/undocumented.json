@@ -1,0 +1,215 @@
+{
+  "warnings": [
+    {
+      "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/AKWorld.swift",
+      "line": 71,
+      "symbol": "AKWorldStatus.Status.notInitialized",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/AKWorld.swift",
+      "line": 72,
+      "symbol": "AKWorldStatus.Status.initializing(_:_:_:)",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/AKWorld.swift",
+      "line": 73,
+      "symbol": "AKWorldStatus.Status.ready",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/AKWorld.swift",
+      "line": 74,
+      "symbol": "AKWorldStatus.Status.interupted",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/AKWorld.swift",
+      "line": 75,
+      "symbol": "AKWorldStatus.Status.error",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/AKWorld.swift",
+      "line": 82,
+      "symbol": "AKWorldStatus.ARKitInitializationPhase.notStarted",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/AKWorld.swift",
+      "line": 83,
+      "symbol": "AKWorldStatus.ARKitInitializationPhase.initializingARKit",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/AKWorld.swift",
+      "line": 84,
+      "symbol": "AKWorldStatus.ARKitInitializationPhase.ready",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/AKWorld.swift",
+      "line": 91,
+      "symbol": "AKWorldStatus.SurfacesInitializationPhase.notStarted",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/AKWorld.swift",
+      "line": 92,
+      "symbol": "AKWorldStatus.SurfacesInitializationPhase.findingSurfaces",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/AKWorld.swift",
+      "line": 93,
+      "symbol": "AKWorldStatus.SurfacesInitializationPhase.ready",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/AKWorld.swift",
+      "line": 100,
+      "symbol": "AKWorldStatus.LocationInitializationPhase.notStarted",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/AKWorld.swift",
+      "line": 101,
+      "symbol": "AKWorldStatus.LocationInitializationPhase.findingLocation",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/AKWorld.swift",
+      "line": 102,
+      "symbol": "AKWorldStatus.LocationInitializationPhase.ready",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/AKWorld.swift",
+      "line": 109,
+      "symbol": "AKWorldStatus.Quality.notAvailable",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/AKWorld.swift",
+      "line": 110,
+      "symbol": "AKWorldStatus.Quality.limited(_:)",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/AKWorld.swift",
+      "line": 111,
+      "symbol": "AKWorldStatus.Quality.normal",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/Primatives/AKAnimatable.swift",
+      "line": 36,
+      "symbol": "AKAnimatable.Value",
+      "symbol_kind": "source.lang.swift.decl.associatedtype",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/Primatives/AKEffect.swift",
+      "line": 266,
+      "symbol": "PulsingScaleEffect.Value",
+      "symbol_kind": "source.lang.swift.decl.typealias",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/Primatives/AKEffect.swift",
+      "line": 306,
+      "symbol": "PulsingGlowEffect.Value",
+      "symbol_kind": "source.lang.swift.decl.typealias",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/Primatives/AKEffect.swift",
+      "line": 344,
+      "symbol": "PulsingAlphaEffect.Value",
+      "symbol_kind": "source.lang.swift.decl.typealias",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/Primatives/AKHeading.swift",
+      "line": 183,
+      "symbol": "AlwaysFacingMeHeading.init(withWorldLocaiton:)",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/Utility/SHA256.swift",
+      "line": 45,
+      "symbol": "SHA256.init(_:)",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/Utility/SHA256.swift",
+      "line": 49,
+      "symbol": "SHA256.init(_:)",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/Managers/LocationManager.swift",
+      "line": 182,
+      "symbol": "LocationManager.stopMonitoringRegions()",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/Renderer/Renderer.swift",
+      "line": 407,
+      "symbol": "Renderer.currentFrameNumber",
+      "symbol_kind": "source.lang.swift.decl.var.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/marvinscanlon/Documents/AugmentKit/Libraries/ZIPFoundation/Archive.swift",
+      "line": null,
+      "symbol": "Archive.EndOfCentralDirectoryRecord",
+      "symbol_kind": "source.lang.swift.decl.extension",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/marvinscanlon/Documents/AugmentKit/Libraries/ZIPFoundation/Archive.swift",
+      "line": 19,
+      "symbol": "defaultDirectoryPermissions",
+      "symbol_kind": "source.lang.swift.decl.var.global",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/marvinscanlon/Documents/AugmentKit/Libraries/ZIPFoundation/Entry.swift",
+      "line": null,
+      "symbol": "Entry.CentralDirectoryStructure",
+      "symbol_kind": "source.lang.swift.decl.extension",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/marvinscanlon/Documents/AugmentKit/Libraries/ZIPFoundation/Entry.swift",
+      "line": null,
+      "symbol": "Entry.LocalFileHeader",
+      "symbol_kind": "source.lang.swift.decl.extension",
+      "warning": "undocumented"
+    }
+  ],
+  "source_directory": "/Users/marvinscanlon/Documents/AugmentKit"
+}

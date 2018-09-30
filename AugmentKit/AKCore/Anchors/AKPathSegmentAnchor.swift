@@ -24,15 +24,12 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 //
-//
-//  An AR anchor that represents a beginning or end of a path segment. Two or more of
-//  these can be used to create a path in the AR world. These anchors have an empty
-//  model so they cannot be rendered by themselves, They must be used on conjunction
-//  with an AKPath object.
-//
 
 import Foundation
 
+/**
+ An AR anchor that represents a beginning or end of a path segment. Two or more of these can be used to create a path in the AR world. These anchors have an empty model so they cannot be rendered by themselves, They must be used on conjunction with an `AKPath` object.
+ */
 public protocol AKPathSegmentAnchor: AKAugmentedAnchor {
     
 }

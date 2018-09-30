@@ -24,14 +24,16 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 //
-//
-//  And anchor representing a surface plane that has been detected in the real
-//  world. Usually these are provided by the AR engine, not created by hand.
-//
 
 import ARKit
 import Foundation
 
+/**
+ And anchor representing a surface plane that has been detected in the real world. Usually these are provided by the AR engine, not created by hand.
+ */
 public protocol AKRealSurfaceAnchor: AKRealAnchor {
+    /**
+     The orientation of the surface. Either horizontal or vertical
+     */
     var orientation: ARPlaneAnchor.Alignment { get set }
 }

@@ -1,0 +1,1751 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Renderer Class Reference</title>
+    <link rel="stylesheet" type="text/css" href="../css/jazzy.css" />
+    <link rel="stylesheet" type="text/css" href="../css/highlight.css" />
+    <meta charset='utf-8'>
+    <script src="../js/jquery.min.js" defer></script>
+    <script src="../js/jazzy.js" defer></script>
+    
+  </head>
+  <body>
+    <a name="//apple_ref/swift/Class/Renderer" class="dashAnchor"></a>
+    <a title="Renderer Class Reference"></a>
+    <header>
+      <div class="content-wrapper">
+        <p><a href="../index.html"> Docs</a> (95% documented)</p>
+      </div>
+    </header>
+    <div class="content-wrapper">
+      <p id="breadcrumbs">
+        <a href="../index.html"> Reference</a>
+        <img id="carat" src="../img/carat.png" />
+        Renderer Class Reference
+      </p>
+    </div>
+    <div class="content-wrapper">
+      <nav class="sidebar">
+        <ul class="nav-groups">
+          <li class="nav-group-name">
+            <a href="../Classes.html">Classes</a>
+            <ul class="nav-group-tasks">
+              <li class="nav-group-task">
+                <a href="../Classes/AKLocationUtility.html">AKLocationUtility</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Classes/AKModelProvider.html">AKModelProvider</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Classes/AKRelativePosition.html">AKRelativePosition</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Classes/AKSceneKitUtils.html">AKSceneKitUtils</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Classes/AKWorld.html">AKWorld</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Classes/AKWorldMap.html">AKWorldMap</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Classes/AlwaysFacingMeHeading.html">AlwaysFacingMeHeading</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Classes/AnyEffect.html">AnyEffect</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Classes/Archive.html">Archive</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Classes/Archive/ArchiveError.html">– ArchiveError</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Classes/Archive/AccessMode.html">– AccessMode</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Classes/AugmentedAnchor.html">AugmentedAnchor</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Classes/AugmentedSurfaceAnchor.html">AugmentedSurfaceAnchor</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Classes/AugmentedUIViewSurface.html">AugmentedUIViewSurface</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Classes/DefaultLocalStoreManager.html">DefaultLocalStoreManager</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Classes/DeviceManager.html">DeviceManager</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Classes/GazeTarget.html">GazeTarget</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Classes/GuideSurfaceAnchor.html">GuideSurfaceAnchor</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Classes/Heading.html">Heading</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Classes/MDLAssetTools.html">MDLAssetTools</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Classes/NorthHeading.html">NorthHeading</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Classes/PathAnchor.html">PathAnchor</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Classes/PathSegmentAnchor.html">PathSegmentAnchor</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Classes/QuaternionUtilities.html">QuaternionUtilities</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Classes/RealSurfaceAnchor.html">RealSurfaceAnchor</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Classes/Renderer.html">Renderer</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Classes/Renderer.html#/s:10AugmentKit8RendererC9ConstantsO">– Constants</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Classes/Renderer/RendererState.html">– RendererState</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Classes/Renderer/SurfaceDetectionState.html">– SurfaceDetectionState</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Classes/SHA256.html">SHA256</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Classes/SameHeading.html">SameHeading</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Classes/UserTracker.html">UserTracker</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Classes/WorldHeading.html">WorldHeading</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Classes/WorldHeading/WorldHeadingType.html">– WorldHeadingType</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Classes/WorldLocationManager.html">WorldLocationManager</a>
+              </li>
+            </ul>
+          </li>
+          <li class="nav-group-name">
+            <a href="../Global Variables.html">Global Variables</a>
+            <ul class="nav-group-tasks">
+              <li class="nav-group-task">
+                <a href="../Global Variables.html#/s:10AugmentKit25AKErrorCodeDeviceNotFoundSivp">AKErrorCodeDeviceNotFound</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Global Variables.html#/s:10AugmentKit43AKErrorCodeIntermediateMeshDataNotAvailableSivp">AKErrorCodeIntermediateMeshDataNotAvailable</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Global Variables.html#/s:10AugmentKit39AKErrorCodeIntermediateMeshDataNotFoundSivp">AKErrorCodeIntermediateMeshDataNotFound</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Global Variables.html#/s:10AugmentKit26AKErrorCodeInvalidMeshDataSivp">AKErrorCodeInvalidMeshData</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Global Variables.html#/s:10AugmentKit35AKErrorCodeMissingVertexDescriptorsSivp">AKErrorCodeMissingVertexDescriptors</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Global Variables.html#/s:10AugmentKit24AKErrorCodeModelNotFoundSivp">AKErrorCodeModelNotFound</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Global Variables.html#/s:10AugmentKit28AKErrorCodeModelNotSupportedSivp">AKErrorCodeModelNotSupported</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Global Variables.html#/s:10AugmentKit32AKErrorCodeModelProviderNotFoundSivp">AKErrorCodeModelProviderNotFound</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Global Variables.html#/s:10AugmentKit45AKErrorCodeRenderPipelineInitializationFailedSivp">AKErrorCodeRenderPipelineInitializationFailed</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Global Variables.html#/s:10AugmentKit37AKErrorCodeShaderInitializationFailedSivp">AKErrorCodeShaderInitializationFailed</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Global Variables.html#/s:10AugmentKit13AKErrorDomainSSvp">AKErrorDomain</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Global Variables.html#/s:10AugmentKit8crcTableSays6UInt32VGvp">crcTable</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Global Variables.html#/s:10AugmentKit27defaultDirectoryPermissionss6UInt16Vvp">defaultDirectoryPermissions</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Global Variables.html#/s:10AugmentKit22defaultFilePermissionss6UInt16Vvp">defaultFilePermissions</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Global Variables.html#/s:10AugmentKit20defaultReadChunkSizes6UInt32Vvp">defaultReadChunkSize</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Global Variables.html#/s:10AugmentKit21defaultWriteChunkSizes6UInt32Vvp">defaultWriteChunkSize</a>
+              </li>
+            </ul>
+          </li>
+          <li class="nav-group-name">
+            <a href="../Enums.html">Enumerations</a>
+            <ul class="nav-group-tasks">
+              <li class="nav-group-task">
+                <a href="../Enums/AKEffectType.html">AKEffectType</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Enums/AKError.html">AKError</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Enums/AKErrorType.html">AKErrorType</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Enums/CompressionMethod.html">CompressionMethod</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Enums/HeadingType.html">HeadingType</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Enums/HeadingValidationError.html">HeadingValidationError</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Enums/ModelErrorReason.html">ModelErrorReason</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Enums/RenderPipelineErrorReason.html">RenderPipelineErrorReason</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Enums/ShaderPreference.html">ShaderPreference</a>
+              </li>
+            </ul>
+          </li>
+          <li class="nav-group-name">
+            <a href="../Extensions.html">Extensions</a>
+            <ul class="nav-group-tasks">
+              <li class="nav-group-task">
+                <a href="../Extensions/Data.html">Data</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Extensions/FileManager.html">FileManager</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Extensions/FloatingPoint.html">FloatingPoint</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Extensions/Int.html">Int</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Extensions/Notification.html">Notification</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Extensions/Notification/Name.html">– Name</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Extensions/float4x4.html">float4x4</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Extensions/simd_float3.html">simd_float3</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Extensions/simd_float4.html">simd_float4</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Extensions/simd_quatf.html">simd_quatf</a>
+              </li>
+            </ul>
+          </li>
+          <li class="nav-group-name">
+            <a href="../Protocols.html">Protocols</a>
+            <ul class="nav-group-tasks">
+              <li class="nav-group-task">
+                <a href="../Protocols/AKAnchor.html">AKAnchor</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Protocols/AKAnimatable.html">AKAnimatable</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Protocols/AKAugmentedAnchor.html">AKAugmentedAnchor</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Protocols.html#/s:10AugmentKit18AKAugmentedTrackerP">AKAugmentedTracker</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Protocols/AKEffect.html">AKEffect</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Protocols/AKGeometricEntity.html">AKGeometricEntity</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Protocols/AKHeading.html">AKHeading</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Protocols/AKPath.html">AKPath</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Protocols.html#/s:10AugmentKit19AKPathSegmentAnchorP">AKPathSegmentAnchor</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Protocols/AKPulsingAnimatable.html">AKPulsingAnimatable</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Protocols/AKRealAnchor.html">AKRealAnchor</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Protocols/AKRealSurfaceAnchor.html">AKRealSurfaceAnchor</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Protocols.html#/s:10AugmentKit13AKRealTrackerP">AKRealTracker</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Protocols/AKTarget.html">AKTarget</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Protocols/AKTracker.html">AKTracker</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Protocols/AKWorldLocation.html">AKWorldLocation</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Protocols/AKWorldMonitor.html">AKWorldMonitor</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Protocols/LocalStoreManager.html">LocalStoreManager</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Protocols/LocationManager.html">LocationManager</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Protocols/ModelProvider.html">ModelProvider</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Protocols/RenderDelegate.html">RenderDelegate</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Protocols/RenderDestinationProvider.html">RenderDestinationProvider</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Protocols/RenderMonitor.html">RenderMonitor</a>
+              </li>
+            </ul>
+          </li>
+          <li class="nav-group-name">
+            <a href="../Structs.html">Structures</a>
+            <ul class="nav-group-tasks">
+              <li class="nav-group-task">
+                <a href="../Structs/AKVector.html">AKVector</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/AKWorldConfiguration.html">AKWorldConfiguration</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/AKWorldDistance.html">AKWorldDistance</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/AKWorldStatus.html">AKWorldStatus</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/AKWorldStatus/Status.html">– Status</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/AKWorldStatus/ARKitInitializationPhase.html">– ARKitInitializationPhase</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/AKWorldStatus/SurfacesInitializationPhase.html">– SurfacesInitializationPhase</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/AKWorldStatus/LocationInitializationPhase.html">– LocationInitializationPhase</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/AKWorldStatus/Quality.html">– Quality</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs.html#/s:10AugmentKit16AnimatedSkeletonV">AnimatedSkeleton</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs.html#/s:10AugmentKit14AssetErrorInfoV">AssetErrorInfo</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs.html#/s:10AugmentKit16CameraPropertiesV">CameraProperties</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/ConstantAlphaEffect.html">ConstantAlphaEffect</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/ConstantGlowEffect.html">ConstantGlowEffect</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/ConstantScaleEffect.html">ConstantScaleEffect</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/ConstantTintEffect.html">ConstantTintEffect</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs.html#/s:10AugmentKit8DrawDataV">DrawData</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs.html#/s:10AugmentKit11DrawSubDataV">DrawSubData</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/Entry.html">Entry</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/Entry/EntryType.html">– EntryType</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs.html#/s:10AugmentKit15EnvironmentDataV">EnvironmentData</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs.html#/s:10AugmentKit21EnvironmentPropertiesV">EnvironmentProperties</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs.html#/s:10AugmentKit11EulerAnglesV">EulerAngles</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/GroundFixedWorldLocation.html">GroundFixedWorldLocation</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/HeadingRotation.html">HeadingRotation</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs.html#/s:10AugmentKit11MeshGPUDataV">MeshGPUData</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs.html#/s:10AugmentKit14ModelErrorInfoV">ModelErrorInfo</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs.html#/s:10AugmentKit17PipelineErrorInfoV">PipelineErrorInfo</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/PulsingAlphaEffect.html">PulsingAlphaEffect</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/PulsingGlowEffect.html">PulsingGlowEffect</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/PulsingScaleEffect.html">PulsingScaleEffect</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/RenderStats.html">RenderStats</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs.html#/s:10AugmentKit8SkinDataV">SkinData</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs.html#/s:10AugmentKit19UnderlyingErrorInfoV">UnderlyingErrorInfo</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/WorldLocation.html">WorldLocation</a>
+              </li>
+            </ul>
+          </li>
+          <li class="nav-group-name">
+            <a href="../Typealiases.html">Type Aliases</a>
+            <ul class="nav-group-tasks">
+              <li class="nav-group-task">
+                <a href="../Typealiases.html#/s:10AugmentKit5CRC32a">CRC32</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Typealiases.html#/s:10AugmentKit8Consumera">Consumer</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Typealiases.html#/s:10AugmentKit8Providera">Provider</a>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </nav>
+      <article class="main-content">
+        <section>
+          <section class="section">
+            <h1>Renderer</h1>
+              <div class="declaration">
+                <div class="language">
+                  <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">class</span> <span class="kt">Renderer</span> <span class="p">:</span> <span class="kt">NSObject</span></code></pre>
+
+                </div>
+              </div>
+            <p>AumentKit&rsquo;s main Metal based render.</p>
+
+          </section>
+          <section class="section task-group-section">
+            <div class="task-group">
+              <ul>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8RendererC7monitorAA13RenderMonitor_pSgvp"></a>
+                    <a name="//apple_ref/swift/Property/monitor" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8RendererC7monitorAA13RenderMonitor_pSgvp">monitor</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>When set, the monitor gets notified of render status changes.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="k">var</span> <span class="nv">monitor</span><span class="p">:</span> <span class="kt"><a href="../Protocols/RenderMonitor.html">RenderMonitor</a></span><span class="p">?</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8RendererC11orientationSo22UIInterfaceOrientationVvp"></a>
+                    <a name="//apple_ref/swift/Property/orientation" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8RendererC11orientationSo22UIInterfaceOrientationVvp">orientation</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Device orientation. Changing this parameter while the renderer is running triggers a recalculation of the target view port.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="k">var</span> <span class="nv">orientation</span><span class="p">:</span> <span class="kt">UIInterfaceOrientation</span> <span class="p">{</span> <span class="k">get</span> <span class="k">set</span> <span class="p">}</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8RendererC9ConstantsO"></a>
+                    <a name="//apple_ref/swift/Enum/Constants" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8RendererC9ConstantsO">Constants</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Constants</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">enum</span> <span class="kt">Constants</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8RendererC0C5StateO"></a>
+                    <a name="//apple_ref/swift/Enum/RendererState" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8RendererC0C5StateO">RendererState</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>State of the renderer</p>
+
+                        <a href="../Classes/Renderer/RendererState.html" class="slightly-smaller">See more</a>
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">enum</span> <span class="kt">RendererState</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8RendererC21SurfaceDetectionStateO"></a>
+                    <a name="//apple_ref/swift/Enum/SurfaceDetectionState" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8RendererC21SurfaceDetectionStateO">SurfaceDetectionState</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>State of surface detection. Many features of AugmentKit rely on the AR engine to have detected at least one surface so monitoring surface dettection state gives a good indication of the readyness of the render to perform AR calculations reliably</p>
+
+                        <a href="../Classes/Renderer/SurfaceDetectionState.html" class="slightly-smaller">See more</a>
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">enum</span> <span class="kt">SurfaceDetectionState</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8RendererC5stateAC0C5StateOvp"></a>
+                    <a name="//apple_ref/swift/Property/state" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8RendererC5stateAC0C5StateOvp">state</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Current renderer state</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="nf">fileprivate</span><span class="p">(</span><span class="k">set</span><span class="p">)</span> <span class="k">var</span> <span class="nv">state</span><span class="p">:</span> <span class="kt">Renderer</span><span class="o">.</span><span class="kt"><a href="../Classes/Renderer/RendererState.html">RendererState</a></span> <span class="p">{</span> <span class="k">get</span> <span class="k">set</span> <span class="p">}</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8RendererC19hasDetectedSurfacesSbvp"></a>
+                    <a name="//apple_ref/swift/Property/hasDetectedSurfaces" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8RendererC19hasDetectedSurfacesSbvp">hasDetectedSurfaces</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>At least one surface has been detected. Many features of AugmentKit rely on the AR engine to have detected at least one surface so monitoring this property gives a good indication of the readyness of the render to perform AR calculations reliably</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="nf">fileprivate</span><span class="p">(</span><span class="k">set</span><span class="p">)</span> <span class="k">var</span> <span class="nv">hasDetectedSurfaces</span><span class="p">:</span> <span class="kt">Bool</span> <span class="p">{</span> <span class="k">get</span> <span class="k">set</span> <span class="p">}</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8RendererC7sessionSo9ARSessionCvp"></a>
+                    <a name="//apple_ref/swift/Property/session" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8RendererC7sessionSo9ARSessionCvp">session</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>The ARKit session</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="k">let</span> <span class="nv">session</span><span class="p">:</span> <span class="kt">ARSession</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8RendererC6deviceSo9MTLDevice_pvp"></a>
+                    <a name="//apple_ref/swift/Property/device" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8RendererC6deviceSo9MTLDevice_pvp">device</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>The Metal device</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="k">let</span> <span class="nv">device</span><span class="p">:</span> <span class="kt">MTLDevice</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8RendererC13textureBundleSo8NSBundleCvp"></a>
+                    <a name="//apple_ref/swift/Property/textureBundle" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8RendererC13textureBundleSo8NSBundleCvp">textureBundle</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>The bundle from which texture assets will be loaded.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="k">let</span> <span class="nv">textureBundle</span><span class="p">:</span> <span class="kt">Bundle</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8RendererC13modelProviderAA05ModelE0_pSgvp"></a>
+                    <a name="//apple_ref/swift/Property/modelProvider" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8RendererC13modelProviderAA05ModelE0_pSgvp">modelProvider</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>A <code><a href="../Protocols/ModelProvider.html">ModelProvider</a></code> instance which helps with loading and caching of models</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="k">var</span> <span class="nv">modelProvider</span><span class="p">:</span> <span class="kt"><a href="../Protocols/ModelProvider.html">ModelProvider</a></span><span class="p">?</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8RendererC8delegateAA14RenderDelegate_pSgvp"></a>
+                    <a name="//apple_ref/swift/Property/delegate" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8RendererC8delegateAA14RenderDelegate_pSgvp">delegate</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>This <code><a href="../Protocols/RenderDelegate.html">RenderDelegate</a></code> will get callbacks for errors or interruptions of AR tracking</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="k">var</span> <span class="nv">delegate</span><span class="p">:</span> <span class="kt"><a href="../Protocols/RenderDelegate.html">RenderDelegate</a></span><span class="p">?</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8RendererC10showGuidesSbvp"></a>
+                    <a name="//apple_ref/swift/Property/showGuides" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8RendererC10showGuidesSbvp">showGuides</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Guides for debugging. Turning this on will show the tracking points used by ARKit as well as detected surfaces. Setting this to true might affect performance.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="k">var</span> <span class="nv">showGuides</span><span class="p">:</span> <span class="kt">Bool</span> <span class="p">{</span> <span class="k">get</span> <span class="k">set</span> <span class="p">}</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8RendererC8worldMapSo07ARWorldE0CSgvp"></a>
+                    <a name="//apple_ref/swift/Property/worldMap" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8RendererC8worldMapSo07ARWorldE0CSgvp">worldMap</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>If provided, this world map is used during initialization of the ARKit engine</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="k">var</span> <span class="nv">worldMap</span><span class="p">:</span> <span class="kt">ARWorldMap</span><span class="p">?</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8RendererC30currentCameraPositionTransformSo13simd_float4x4aSgvp"></a>
+                    <a name="//apple_ref/swift/Property/currentCameraPositionTransform" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8RendererC30currentCameraPositionTransformSo13simd_float4x4aSgvp">currentCameraPositionTransform</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>A transform matrix that represents the current position of the camera in world space. There is no rotation component.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="nf">fileprivate</span><span class="p">(</span><span class="k">set</span><span class="p">)</span> <span class="k">var</span> <span class="nv">currentCameraPositionTransform</span><span class="p">:</span> <span class="n">matrix_float4x4</span><span class="p">?</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8RendererC21currentCameraRotationSo13simd_float4x4aSgvp"></a>
+                    <a name="//apple_ref/swift/Property/currentCameraRotation" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8RendererC21currentCameraRotationSo13simd_float4x4aSgvp">currentCameraRotation</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>A transform matrix that represents the current rotation of the camera relative to world space. There is no postion component.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="k">var</span> <span class="nv">currentCameraRotation</span><span class="p">:</span> <span class="n">matrix_float4x4</span><span class="p">?</span> <span class="p">{</span> <span class="k">get</span> <span class="p">}</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8RendererC31currentCameraQuaternionRotationSo10simd_quatfaSgvp"></a>
+                    <a name="//apple_ref/swift/Property/currentCameraQuaternionRotation" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8RendererC31currentCameraQuaternionRotationSo10simd_quatfaSgvp">currentCameraQuaternionRotation</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>A Quaternion that represents the current rotation of the camera relative to world space. There is no postion component.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="nf">fileprivate</span><span class="p">(</span><span class="k">set</span><span class="p">)</span> <span class="k">var</span> <span class="nv">currentCameraQuaternionRotation</span><span class="p">:</span> <span class="n">simd_quatf</span><span class="p">?</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8RendererC20currentCameraHeadingSdSgvp"></a>
+                    <a name="//apple_ref/swift/Property/currentCameraHeading" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8RendererC20currentCameraHeadingSdSgvp">currentCameraHeading</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>The current device&rsquo;s heading. A heading is the degrees, in radians around the Y axis. 0° is due north and the units go from 0 to π in the counter-clockwise direction and 0 to -π in the clockwise direction.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="nf">fileprivate</span><span class="p">(</span><span class="k">set</span><span class="p">)</span> <span class="k">var</span> <span class="nv">currentCameraHeading</span><span class="p">:</span> <span class="kt">Double</span><span class="p">?</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8RendererC22lowestHorizPlaneAnchorSo07ARPlaneG0CSgvp"></a>
+                    <a name="//apple_ref/swift/Property/lowestHorizPlaneAnchor" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8RendererC22lowestHorizPlaneAnchorSo07ARPlaneG0CSgvp">lowestHorizPlaneAnchor</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>The horizontal plane anchor that has the lowest y value and therefore assumed to be ground.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="nf">fileprivate</span><span class="p">(</span><span class="k">set</span><span class="p">)</span> <span class="k">var</span> <span class="nv">lowestHorizPlaneAnchor</span><span class="p">:</span> <span class="kt">ARPlaneAnchor</span><span class="p">?</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8RendererC18currentFrameNumberSuvp"></a>
+                    <a name="//apple_ref/swift/Property/currentFrameNumber" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8RendererC18currentFrameNumberSuvp">currentFrameNumber</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Undocumented</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="k">var</span> <span class="nv">currentFrameNumber</span><span class="p">:</span> <span class="kt">UInt</span> <span class="p">{</span> <span class="k">get</span> <span class="p">}</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8RendererC9frameRateSdvp"></a>
+                    <a name="//apple_ref/swift/Property/frameRate" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8RendererC9frameRateSdvp">frameRate</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Fixed to 60</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="k">var</span> <span class="nv">frameRate</span><span class="p">:</span> <span class="kt">Double</span> <span class="p">{</span> <span class="k">get</span> <span class="p">}</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8RendererC20currentGazeTransformSo13simd_float4x4avp"></a>
+                    <a name="//apple_ref/swift/Property/currentGazeTransform" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8RendererC20currentGazeTransformSo13simd_float4x4avp">currentGazeTransform</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>A transform that represents the intersection of the current devices gaze (what is dead center in front of it) and the closes detected surface.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="k">var</span> <span class="nv">currentGazeTransform</span><span class="p">:</span> <span class="n">matrix_float4x4</span> <span class="p">{</span> <span class="k">get</span> <span class="p">}</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8RendererC7session11metalDevice17renderDestination13textureBundleACSo9ARSessionC_So9MTLDevice_pAA06RenderH8Provider_pSo8NSBundleCtcfc"></a>
+                    <a name="//apple_ref/swift/Method/init(session:metalDevice:renderDestination:textureBundle:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8RendererC7session11metalDevice17renderDestination13textureBundleACSo9ARSessionC_So9MTLDevice_pAA06RenderH8Provider_pSo8NSBundleCtcfc">init(session:metalDevice:renderDestination:textureBundle:)</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Initialize the renderer with an <code>ARSession</code>, a <code>MTLDevice</code>, a <code><a href="../Protocols/RenderDestinationProvider.html">RenderDestinationProvider</a></code>, and a <code>Bundle</code></p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="nf">init</span><span class="p">(</span><span class="nv">session</span><span class="p">:</span> <span class="kt">ARSession</span><span class="p">,</span> <span class="n">metalDevice</span> <span class="nv">device</span><span class="p">:</span> <span class="kt">MTLDevice</span><span class="p">,</span> <span class="nv">renderDestination</span><span class="p">:</span> <span class="kt"><a href="../Protocols/RenderDestinationProvider.html">RenderDestinationProvider</a></span><span class="p">,</span> <span class="nv">textureBundle</span><span class="p">:</span> <span class="kt">Bundle</span><span class="p">)</span></code></pre>
+
+                        </div>
+                      </div>
+                      <div>
+                        <h4>Parameters</h4>
+                        <table class="graybox">
+                          <tbody>
+                            <tr>
+                              <td>
+                                <code>
+                                <em>session</em>
+                                </code>
+                              </td>
+                              <td>
+                                <div>
+                                  <p>an ARKit session</p>
+                                </div>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td>
+                                <code>
+                                <em>metalDevice</em>
+                                </code>
+                              </td>
+                              <td>
+                                <div>
+                                  <p>A metal device (GPU)</p>
+                                </div>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td>
+                                <code>
+                                <em>renderDestination</em>
+                                </code>
+                              </td>
+                              <td>
+                                <div>
+                                  <p>Provides the drawable that the renderer will render to.</p>
+                                </div>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td>
+                                <code>
+                                <em>textureBundle</em>
+                                </code>
+                              </td>
+                              <td>
+                                <div>
+                                  <p>The default bundle whe texture assets will attempt to load from</p>
+                                </div>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+              </ul>
+            </div>
+            <div class="task-group">
+              <div class="task-name-container">
+                <a name="/Viewport%20changes"></a>
+                <a name="//apple_ref/swift/Section/Viewport changes" class="dashAnchor"></a>
+                <a href="#/Viewport%20changes">
+                  <h3 class="section-name">Viewport changes</h3>
+                </a>
+              </div>
+              <ul>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8RendererC15drawRectResized4sizeySo6CGSizeV_tF"></a>
+                    <a name="//apple_ref/swift/Method/drawRectResized(size:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8RendererC15drawRectResized4sizeySo6CGSizeV_tF">drawRectResized(size:)</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Call when the viewport size changes tell the renderer to readjust</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">func</span> <span class="nf">drawRectResized</span><span class="p">(</span><span class="nv">size</span><span class="p">:</span> <span class="kt">CGSize</span><span class="p">)</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+              </ul>
+            </div>
+            <div class="task-group">
+              <div class="task-name-container">
+                <a name="/Lifecycle"></a>
+                <a name="//apple_ref/swift/Section/Lifecycle" class="dashAnchor"></a>
+                <a href="#/Lifecycle">
+                  <h3 class="section-name">Lifecycle</h3>
+                </a>
+              </div>
+              <ul>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8RendererC10initializeyyF"></a>
+                    <a name="//apple_ref/swift/Method/initialize()" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8RendererC10initializeyyF">initialize()</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Initialize Metal and the render pipeline.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">func</span> <span class="nf">initialize</span><span class="p">()</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8RendererC3runyyF"></a>
+                    <a name="//apple_ref/swift/Method/run()" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8RendererC3runyyF">run()</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Start the AR session and begin AR tracking</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">func</span> <span class="nf">run</span><span class="p">()</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8RendererC5pauseyyF"></a>
+                    <a name="//apple_ref/swift/Method/pause()" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8RendererC5pauseyyF">pause()</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Pause the AR session and AR tracking</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">func</span> <span class="nf">pause</span><span class="p">()</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8RendererC5reset7optionsySo19ARSessionRunOptionsV_tF"></a>
+                    <a name="//apple_ref/swift/Method/reset(options:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8RendererC5reset7optionsySo19ARSessionRunOptionsV_tF">reset(options:)</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Reset the AR session and AR tracking</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">func</span> <span class="nf">reset</span><span class="p">(</span><span class="nv">options</span><span class="p">:</span> <span class="kt">ARSession</span><span class="o">.</span><span class="kt">RunOptions</span> <span class="o">=</span> <span class="p">[</span><span class="o">.</span><span class="n">removeExistingAnchors</span><span class="p">,</span> <span class="o">.</span><span class="n">resetTracking</span><span class="p">])</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+              </ul>
+            </div>
+            <div class="task-group">
+              <div class="task-name-container">
+                <a name="/Per-frame%20update%20call"></a>
+                <a name="//apple_ref/swift/Section/Per-frame update call" class="dashAnchor"></a>
+                <a href="#/Per-frame%20update%20call">
+                  <h3 class="section-name">Per-frame update call</h3>
+                </a>
+              </div>
+              <ul>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8RendererC6updateyyF"></a>
+                    <a name="//apple_ref/swift/Method/update()" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8RendererC6updateyyF">update()</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Begins a render pass. This method is usually called once per frame.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">func</span> <span class="nf">update</span><span class="p">()</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+              </ul>
+            </div>
+            <div class="task-group">
+              <div class="task-name-container">
+                <a name="/Adding%20objects%20for%20render"></a>
+                <a name="//apple_ref/swift/Section/Adding objects for render" class="dashAnchor"></a>
+                <a href="#/Adding%20objects%20for%20render">
+                  <h3 class="section-name">Adding objects for render</h3>
+                </a>
+              </div>
+              <ul>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8RendererC3add8akAnchoryAA011AKAugmentedF0_p_tF"></a>
+                    <a name="//apple_ref/swift/Method/add(akAnchor:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8RendererC3add8akAnchoryAA011AKAugmentedF0_p_tF">add(akAnchor:)</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Add a new AKAugmentedAnchor to the AR world</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">func</span> <span class="nf">add</span><span class="p">(</span><span class="nv">akAnchor</span><span class="p">:</span> <span class="kt"><a href="../Protocols/AKAugmentedAnchor.html">AKAugmentedAnchor</a></span><span class="p">)</span></code></pre>
+
+                        </div>
+                      </div>
+                      <div>
+                        <h4>Parameters</h4>
+                        <table class="graybox">
+                          <tbody>
+                            <tr>
+                              <td>
+                                <code>
+                                <em>akAnchor</em>
+                                </code>
+                              </td>
+                              <td>
+                                <div>
+                                  <p>The anchor to add</p>
+                                </div>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8RendererC3add9akTrackeryAA011AKAugmentedF0_p_tF"></a>
+                    <a name="//apple_ref/swift/Method/add(akTracker:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8RendererC3add9akTrackeryAA011AKAugmentedF0_p_tF">add(akTracker:)</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Add a new AKAugmentedTracker to the AR world</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">func</span> <span class="nf">add</span><span class="p">(</span><span class="nv">akTracker</span><span class="p">:</span> <span class="kt"><a href="../Protocols.html#/s:10AugmentKit18AKAugmentedTrackerP">AKAugmentedTracker</a></span><span class="p">)</span></code></pre>
+
+                        </div>
+                      </div>
+                      <div>
+                        <h4>Parameters</h4>
+                        <table class="graybox">
+                          <tbody>
+                            <tr>
+                              <td>
+                                <code>
+                                <em>akTracker</em>
+                                </code>
+                              </td>
+                              <td>
+                                <div>
+                                  <p>The tracker to add</p>
+                                </div>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8RendererC3add6akPathyAA6AKPath_p_tF"></a>
+                    <a name="//apple_ref/swift/Method/add(akPath:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8RendererC3add6akPathyAA6AKPath_p_tF">add(akPath:)</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Add a new path to the AR world</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">func</span> <span class="nf">add</span><span class="p">(</span><span class="nv">akPath</span><span class="p">:</span> <span class="kt"><a href="../Protocols/AKPath.html">AKPath</a></span><span class="p">)</span></code></pre>
+
+                        </div>
+                      </div>
+                      <div>
+                        <h4>Parameters</h4>
+                        <table class="graybox">
+                          <tbody>
+                            <tr>
+                              <td>
+                                <code>
+                                <em>akPath</em>
+                                </code>
+                              </td>
+                              <td>
+                                <div>
+                                  <p>The path to add</p>
+                                </div>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8RendererC3add10gazeTargetyAA04GazeF0C_tF"></a>
+                    <a name="//apple_ref/swift/Method/add(gazeTarget:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8RendererC3add10gazeTargetyAA04GazeF0C_tF">add(gazeTarget:)</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Add a new gaze target to the AR world</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">func</span> <span class="nf">add</span><span class="p">(</span><span class="nv">gazeTarget</span><span class="p">:</span> <span class="kt"><a href="../Classes/GazeTarget.html">GazeTarget</a></span><span class="p">)</span></code></pre>
+
+                        </div>
+                      </div>
+                      <div>
+                        <h4>Parameters</h4>
+                        <table class="graybox">
+                          <tbody>
+                            <tr>
+                              <td>
+                                <code>
+                                <em>gazeTarget</em>
+                                </code>
+                              </td>
+                              <td>
+                                <div>
+                                  <p>The gaze target to add</p>
+                                </div>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+              </ul>
+            </div>
+            <div class="task-group">
+              <div class="task-name-container">
+                <a name="/Removing%20objects"></a>
+                <a name="//apple_ref/swift/Section/Removing objects" class="dashAnchor"></a>
+                <a href="#/Removing%20objects">
+                  <h3 class="section-name">Removing objects</h3>
+                </a>
+              </div>
+              <ul>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8RendererC6remove8akAnchoryAA011AKAugmentedF0_p_tF"></a>
+                    <a name="//apple_ref/swift/Method/remove(akAnchor:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8RendererC6remove8akAnchoryAA011AKAugmentedF0_p_tF">remove(akAnchor:)</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Remove a new AKAugmentedAnchor to the AR world</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">func</span> <span class="nf">remove</span><span class="p">(</span><span class="nv">akAnchor</span><span class="p">:</span> <span class="kt"><a href="../Protocols/AKAugmentedAnchor.html">AKAugmentedAnchor</a></span><span class="p">)</span></code></pre>
+
+                        </div>
+                      </div>
+                      <div>
+                        <h4>Parameters</h4>
+                        <table class="graybox">
+                          <tbody>
+                            <tr>
+                              <td>
+                                <code>
+                                <em>akAnchor</em>
+                                </code>
+                              </td>
+                              <td>
+                                <div>
+                                  <p>The anchor to remove</p>
+                                </div>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8RendererC6remove9akTrackeryAA011AKAugmentedF0_p_tF"></a>
+                    <a name="//apple_ref/swift/Method/remove(akTracker:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8RendererC6remove9akTrackeryAA011AKAugmentedF0_p_tF">remove(akTracker:)</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Remove a new AKAugmentedTracker to the AR world</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">func</span> <span class="nf">remove</span><span class="p">(</span><span class="nv">akTracker</span><span class="p">:</span> <span class="kt"><a href="../Protocols.html#/s:10AugmentKit18AKAugmentedTrackerP">AKAugmentedTracker</a></span><span class="p">)</span></code></pre>
+
+                        </div>
+                      </div>
+                      <div>
+                        <h4>Parameters</h4>
+                        <table class="graybox">
+                          <tbody>
+                            <tr>
+                              <td>
+                                <code>
+                                <em>akTracker</em>
+                                </code>
+                              </td>
+                              <td>
+                                <div>
+                                  <p>The tracker to remove</p>
+                                </div>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8RendererC6remove6akPathyAA6AKPath_p_tF"></a>
+                    <a name="//apple_ref/swift/Method/remove(akPath:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8RendererC6remove6akPathyAA6AKPath_p_tF">remove(akPath:)</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Remove a new path to the AR world</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">func</span> <span class="nf">remove</span><span class="p">(</span><span class="nv">akPath</span><span class="p">:</span> <span class="kt"><a href="../Protocols/AKPath.html">AKPath</a></span><span class="p">)</span></code></pre>
+
+                        </div>
+                      </div>
+                      <div>
+                        <h4>Parameters</h4>
+                        <table class="graybox">
+                          <tbody>
+                            <tr>
+                              <td>
+                                <code>
+                                <em>akPath</em>
+                                </code>
+                              </td>
+                              <td>
+                                <div>
+                                  <p>The path to remove</p>
+                                </div>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8RendererC6remove10gazeTargetyAA04GazeF0C_tF"></a>
+                    <a name="//apple_ref/swift/Method/remove(gazeTarget:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8RendererC6remove10gazeTargetyAA04GazeF0C_tF">remove(gazeTarget:)</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Remove a new gaze target to the AR world</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">func</span> <span class="nf">remove</span><span class="p">(</span><span class="nv">gazeTarget</span><span class="p">:</span> <span class="kt"><a href="../Classes/GazeTarget.html">GazeTarget</a></span><span class="p">)</span></code></pre>
+
+                        </div>
+                      </div>
+                      <div>
+                        <h4>Parameters</h4>
+                        <table class="graybox">
+                          <tbody>
+                            <tr>
+                              <td>
+                                <code>
+                                <em>gazeTarget</em>
+                                </code>
+                              </td>
+                              <td>
+                                <div>
+                                  <p>The gaze target to remove</p>
+                                </div>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </section>
+        </section>
+        <section id="footer">
+          <p>&copy; 2018 <a class="link" href="" target="_blank" rel="external"></a>. All rights reserved. (Last updated: 2018-09-30)</p>
+          <p>Generated by <a class="link" href="https://github.com/realm/jazzy" target="_blank" rel="external">jazzy ♪♫ v0.9.3</a>, a <a class="link" href="https://realm.io" target="_blank" rel="external">Realm</a> project.</p>
+        </section>
+      </article>
+    </div>
+  </body>
+</div>
+</html>

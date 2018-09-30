@@ -188,7 +188,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                 }
             }()
             
-            meshGPUDataForAnchorsByUUID[uuid] = ModelIOTools.meshGPUData(from: mdlAsset, device: device, textureBundle: textureBundle, vertexDescriptor: MetalUtilities.createStandardVertexDescriptor(), frameRate: 60, shaderPreference: shaderPreference)
+            meshGPUDataForAnchorsByUUID[uuid] = ModelIOTools.meshGPUData(from: mdlAsset, device: device, textureBundle: textureBundle, vertexDescriptor: RenderUtilities.createStandardVertexDescriptor(), frameRate: 60, shaderPreference: shaderPreference)
             
             guard let meshGPUData = meshGPUDataForAnchorsByUUID[uuid] else {
                 print("Serious Error - ERROR: No meshGPUData found for anchor when trying to load the pipeline.")
@@ -700,7 +700,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         for (_ , drawData) in meshGPUData.drawData.enumerated() {
             let anchorPipelineStateDescriptor = MTLRenderPipelineDescriptor()
             do {
-                let funcConstants = MetalUtilities.getFuncConstants(forDrawData: drawData)
+                let funcConstants = RenderUtilities.getFuncConstants(forDrawData: drawData)
                 // Specify which shader to use based on if the model has skinned puppet suppot
                 let vertexName = (drawData.paletteStartIndex != nil) ? "anchorGeometryVertexTransformSkinned" : "anchorGeometryVertexTransform"
                 let fragmentShaderName: String = {

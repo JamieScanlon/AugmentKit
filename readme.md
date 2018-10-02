@@ -168,41 +168,53 @@ world.add(anchor: viewSurface)
 
 ### More Documntation
 
-#### AKWorld
+[FULL DOCUMENTATION](docs/index.html)
+
+#### Basic Concepts
+
+##### The AR World
+
+The AR world is a layer on top of the real world that you view through the window of the divice running AugmentKit. Everything in the real world exists in the AR world but not necessarily the opposite. In the real world we can specify a concrete location with latitude, longitude and elevation. In the AR world we specify location as distance in the x, y, and z direction from a origin. The origin is arbitrary and is decided when you start an AR session. One of the core responsibilitied of AugmentKit is to tie the arbitrary origin of the AR world to a concrete location in the real world thereby making the locations in the AR world concrete.
+
+##### Real vs. Augmented
+
+AugmentKit tracks objects in the real world as well as the AR world. The most simplest of these is surfaces. Real objects in AugmentKit can be manipulated to some degree, for instance you could turn a wall into a tv screen, but the geometry and positioning of real objects are not controled by AugmentKit. Augmented objects, on the other hand, only exist in the AR world and therefore can be fully manipulated by AugmentKit.
+
+##### Anchors, Trackers, and Targets
+
+There are three basic types of objects in the ARWorld, Anchors, Tracker, and Targets. Any of them can be real or augmented. Anchors are objects that are _fixed_ to a location. An anchor is like a place on a map and does not move. Trackers are objects with a _relative_ location. The location is relative to another object or location. Trackers can move. One ware is by changing their relative location, for example a car moving down the street is a Tracker because it's position is relative to the AR World origin but it's position is changing as the car is moving. The other way Trackers can move is if their relative position is fixed but it's fixed to another moving Tracker, for example a bike mounted to the bike rack of the car. Targets are like Trackers in that they can move, but are slightly different. A Target is an object that is positioned at the intersection of a vector and another object, usually a real surface. The best way to think of Targets is like a the dot of a laser pointer. The laser pointer points in a arbitrary direction (the vector) and where the laser intersects with something else, like a screen. In this example the Target would be the dot of the laser pointer but in the AR World it doesn't have to be a dot, it could be any geometry.
+
+#### Key Classes and Protocols
+
+##### AKWorld
 
 The AKWorld manages the metal renderer, the ARKit engine, and the world state and is the primary way you interact with AugmentKit. When setting up the AKWorld, you provide a configuration object which determines things like weather Location Services are enabled and what the maximum render distance is. As well as being the primary way to add Anchors, Trackers, Targets and Paths, the AKWorld instance also provides state information like the current world locaiton and utility methods for determining the world location based on latitude and longitude. AKWorld also provides some dubuging tools like logging and being able to turn on visualizations of the surfaces and raw tracking points that ARKit is detecting.
 
-#### AKModel
-
-Although you can use any model object that conforms to the AKModel protocol, the framework provides an implementation of AKModel that allows you to provide any MDLAsset object from ModelIO which takes care of parsing and converting the MDLAsset to an AKModel Object. AugmentKit also provides an implementation of AKModel that can be serialized, transmitted over the the wire or stored on disk then deserialized and used for rendering again. This is the means by which models can be shared among different users.
-
-#### AKAnchor
-
-An AKAnchor represents an object that can be rendered into the AKWorld at an anchored (fixed) position. The AKAnchor protocol has two sub protocols, AKAugmentedAnchor and AKRealAnchor that represent augmented objects (objects that don't exist in the real world) and real objects, objects that exist both in the augmented work and the real world
-
-#### AKTracker
-
-An AKTracker represents an object that can be rendered into the AKWorld. It's position is relative to another object and therefore tracks the other opject and is not fixed. The AKTracker protocol has two sub protocols, AKAugmentedTracker and AKRealTracker that represent augmented objects (objects that don't exist in the real world) and real objects, objects that exist both in the augmented work and the real world
-
-#### AKTarget
-
-An AKTarget represents an object that can be rendered into the AKWorld. It's position is determined by a relative position (similar to an AKTracker) and a direction vector. The vector extends from the relative position and where it intersects another object in the AKWorld is where the target is rendered. A good example of this would be an augmented reality laser pointer. The red dot of the laser is where the object is rendered but where that dot is located in the AKWorld depends on where you hold the laser pointer (the position), the direction the laser pointer is pointed (the vector), and what's in its path (an intersection with another object).
-
-#### AKWorldLocation
+##### AKWorldLocation
 
 AKWorldLocation is a protocol that ties together a position in the AR world with a locaiton in the real world. When the ARKit session starts up, it crates an arbitrary coordinate system where the origin is where the device was located at the time of initialization. Every device and every AR session, therefore, has it's own local coordinate system. In order to reason about how the coordinate system relates to actual locations in the real world, AugmentKit uses location services to map a point in the ARKit coordinate system to a latitude and longitude in the real world and stores this as a AKWorldLocation instance. Once a reliable AKWorldLocation is found, other AKWorldLocation objects can be derived by calculating their relative distance from the one reliable reference AKWorldLocation object.
 
-##### WorldLocation
+The WorldLocation and GroundFixedWorldLocation are two concrete implementations of this protocol.
 
-A standard implementaion of AKWorldLocation that provides common initializers that make it easy to derive latitude, longitude, and elevation relative to a reference location
+##### AugmentedObject
 
-##### GroundFixedWorldLocation
+AugmentedObject is a general purpose Anchor class that can be rendered in the AKWorld. As the name implies, it is an augmented object so it does not exist in the real world and it is rendered at a fixed location.
 
-A standard implementaion of AKWorldLocation that fixes the vertical position to the estimated ground of the world. This is most commonly used to place objects such that they appear to be resting on the ground
+##### UserTracker
 
-#### AugmentedObject
+UserTracker is a Tracker that is position relative to the users current location and therefore follows the user. This is a useful class for rendering objects that the user always sees such as UI controls or information.
 
-AugmentedObject is an implementation of the AKAugmentedAnchor protocol that provides a general purpose object to be rendered in the AKWorld. As the AKAugmentedAnchor protocol implies, it is an augmented object so it does not exist in the real world and it is rendered at a fixed location.
+##### GazeTarget
+
+GazeTarget is a special Target object where it's position is th users position and the direction vector is where the user (or device) is looking. In other words it tracks the users gaze. This is a convenient class for implementing a pointer control that can be used to interact with objects in the AR world. You could, for example, inplement a pointer so that when a user presses and holds while pointing to an object, the user can move and rearange the object.
+
+##### PathAnchor
+
+A path in AugmentKit is a special type of augmented anchor. It is a anchor that contains a collection of anchors. Each sub-anchor is the termination of a line segment and the collection is a multi-segment path. By providing the locations of the segment end points, a PathAnchor creates a collection of anchors and renders the line as if playing conenct to dots. 
+
+##### AugmentedUIViewSurface
+
+AugmentedUIViewSurface is an augmented anchor with the geometry of a plane or surface. On to this surface is drawn the contents of ant UIView. In this way it can be thought of as a AR screen that you can build just like you build any screen in UIKit. An because AugmentKit does not have it's own text rendering engine, this is also the best way to render text in the AR world. Anything you can do in a UIView, you can render in the AR world. Animation is not supported yet but will be soon.
 
 ### Alpha-Release
 
@@ -240,6 +252,7 @@ This project has completed all of the base pre-release functionality. There are 
 
 #### Beta-Release Project Goals
 - [ ] Test and fix animation for models
+- [ ] Animated AugmentedUIViewSurface
 - [ ] Improve jerky movements with smoothing
 - [ ] Surface culling
 - [ ] Offload many per-frame calculations to GPU Kernel function

@@ -190,13 +190,6 @@
       "warning": "undocumented"
     },
     {
-      "file": "/Users/marvinscanlon/Documents/AugmentKit/Libraries/ZIPFoundation/Archive.swift",
-      "line": 19,
-      "symbol": "defaultDirectoryPermissions",
-      "symbol_kind": "source.lang.swift.decl.var.global",
-      "warning": "undocumented"
-    },
-    {
       "file": "/Users/marvinscanlon/Documents/AugmentKit/Libraries/ZIPFoundation/Entry.swift",
       "line": null,
       "symbol": "Entry.CentralDirectoryStructure",

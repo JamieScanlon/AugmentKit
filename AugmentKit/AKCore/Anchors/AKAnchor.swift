@@ -31,7 +31,12 @@ import Foundation
 // MARK: - AKAnchor
 
 /**
- An `AKAnchor` is a geometrical object 'anchored' to a location. The object itself may have animation but its position is essentially fixed in space. The object's geometry is defiened by the `model` property. The objects position in the world is defined by the worldLocation property. The conforming object must be a class, i.e. must have reference symantics.
+ 
+ An `AKAnchor` represents an object that can be rendered into the `AKWorld` at an anchored (fixed) position. The `AKAnchor` protocol has two sub protocols, `AKAugmentedAnchor` and `AKRealAnchor` that represent augmented objects (objects that don't exist in the real world) and real objects, objects that exist both in the augmented work and the real world.
+ 
+ An `AKAnchor` is a `AKGeometricEntity`. The object itself may have animation but its position is essentially fixed in space. The object's geometry is defiened by the `model` property. The objects position in the world is defined by the worldLocation property. The conforming object must be a class, i.e. must have reference symantics.
+ 
+
  */
 public protocol AKAnchor: class, AKGeometricEntity {
     /**

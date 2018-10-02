@@ -560,7 +560,9 @@
                     <section class="section">
                       <div class="pointer"></div>
                       <div class="abstract">
-                        <p>An <code>AKAnchor</code> is a geometrical object &lsquo;anchored&rsquo; to a location. The object itself may have animation but its position is essentially fixed in space. The object&rsquo;s geometry is defiened by the <code>model</code> property. The objects position in the world is defined by the worldLocation property. The conforming object must be a class, i.e. must have reference symantics.</p>
+                        <p>An <code>AKAnchor</code> represents an object that can be rendered into the <code><a href="Classes/AKWorld.html">AKWorld</a></code> at an anchored (fixed) position. The <code>AKAnchor</code> protocol has two sub protocols, <code><a href="Protocols/AKAugmentedAnchor.html">AKAugmentedAnchor</a></code> and <code><a href="Protocols/AKRealAnchor.html">AKRealAnchor</a></code> that represent augmented objects (objects that don&rsquo;t exist in the real world) and real objects, objects that exist both in the augmented work and the real world.</p>
+
+<p>An <code>AKAnchor</code> is a <code><a href="Protocols/AKGeometricEntity.html">AKGeometricEntity</a></code>. The object itself may have animation but its position is essentially fixed in space. The object&rsquo;s geometry is defiened by the <code>model</code> property. The objects position in the world is defined by the worldLocation property. The conforming object must be a class, i.e. must have reference symantics.</p>
 
                         <a href="Protocols/AKAnchor.html" class="slightly-smaller">See more</a>
                       </div>
@@ -961,7 +963,7 @@ The <code>updateHeading(withPosition:)</code> method is called once per frame to
                     <section class="section">
                       <div class="pointer"></div>
                       <div class="abstract">
-                        <p>Combines an absolute position (latitude, longitude, and elevation) with a relative postion (transform) that ties locations in the real world to locations in AR space.</p>
+                        <p>AKWorldLocation is a protocol that ties together a position in the AR world with a locaiton in the real world. When the <code>ARKit</code> session starts up, it crates an arbitrary coordinate system where the origin is where the device was located at the time of initialization. Every device and every AR session, therefore, has it&rsquo;s own local coordinate system. In order to reason about how the coordinate system relates to actual locations in the real world, AugmentKit uses location services to map a point in the <code>ARKit</code> coordinate system to a latitude and longitude in the real world and stores this as a <code>AKWorldLocation</code> instance. Once a reliable <code>AKWorldLocation</code> is found, other <code>AKWorldLocation</code> objects can be derived by calculating their relative distance from the one reliable reference AKWorldLocation object.</p>
 
                         <a href="Protocols/AKWorldLocation.html" class="slightly-smaller">See more</a>
                       </div>
@@ -1000,7 +1002,9 @@ The <code>updateHeading(withPosition:)</code> method is called once per frame to
                     <section class="section">
                       <div class="pointer"></div>
                       <div class="abstract">
-                        <p>An <code>AKTarget</code> is a geometrical object which is positioned at the intersection of a vector and another <code><a href="Protocols/AKGeometricEntity.html">AKGeometricEntity</a></code>. The vector is relative to a position.</p>
+                        <p>An <code>AKTarget</code> represents an object that can be rendered into the <code><a href="Classes/AKWorld.html">AKWorld</a></code>. It&rsquo;s position is determined by a relative position (similar to an <code><a href="Protocols/AKTracker.html">AKTracker</a></code>) and a direction vector. The vector extends from the relative position and where it intersects another object in the <code><a href="Classes/AKWorld.html">AKWorld</a></code> is where the target is rendered. A good example of this would be an augmented reality laser pointer. The red dot of the laser is where the object is rendered but where that dot is located in the AKWorld depends on where you hold the laser pointer (the position), the direction the laser pointer is pointed (the vector), and what&rsquo;s in its path (an intersection with another object).</p>
+
+<p>An <code>AKTarget</code> is a <code><a href="Protocols/AKGeometricEntity.html">AKGeometricEntity</a></code>.</p>
 
 <ul>
 <li>Example:
@@ -1044,7 +1048,9 @@ An <code>AKTarget</code> might be the red dot of a laser pointer. Where the lase
                     <section class="section">
                       <div class="pointer"></div>
                       <div class="abstract">
-                        <p>An AKTracker is a geometrical object that tracks another moving object or position. The object&rsquo;s geometry is defiened by the <code>model</code> property. The object&rsquo;s position is not fixed in world space but is relative.</p>
+                        <p>An <code>AKTracker</code> represents an object that can be rendered into the <code><a href="Classes/AKWorld.html">AKWorld</a></code>. It&rsquo;s position is relative to another object and therefore tracks the other opject and is not fixed. The <code>AKTracker</code> protocol has two sub protocols, <code><a href="Protocols.html#/s:10AugmentKit18AKAugmentedTrackerP">AKAugmentedTracker</a></code> and <code><a href="Protocols.html#/s:10AugmentKit13AKRealTrackerP">AKRealTracker</a></code> that represent augmented objects (objects that don&rsquo;t exist in the real world) and real objects, objects that exist both in the augmented work and the real world.</p>
+
+<p>An <code>AKTracker</code> is a <code><a href="Protocols/AKGeometricEntity.html">AKGeometricEntity</a></code>. The object&rsquo;s geometry is defiened by the <code>model</code> property. The object&rsquo;s position is not fixed in world space but is relative.</p>
 
                         <a href="Protocols/AKTracker.html" class="slightly-smaller">See more</a>
                       </div>
@@ -1328,7 +1334,7 @@ An <code>AKTarget</code> might be the red dot of a laser pointer. Where the lase
           </section>
         </section>
         <section id="footer">
-          <p>&copy; 2018 <a class="link" href="" target="_blank" rel="external"></a>. All rights reserved. (Last updated: 2018-09-30)</p>
+          <p>&copy; 2018 <a class="link" href="" target="_blank" rel="external"></a>. All rights reserved. (Last updated: 2018-10-01)</p>
           <p>Generated by <a class="link" href="https://github.com/realm/jazzy" target="_blank" rel="external">jazzy ♪♫ v0.9.3</a>, a <a class="link" href="https://realm.io" target="_blank" rel="external">Realm</a> project.</p>
         </section>
       </article>

@@ -32,7 +32,7 @@ import CoreLocation
 // MARK: - AKWorldLocation
 
 /**
- Combines an absolute position (latitude, longitude, and elevation) with a relative postion (transform) that ties locations in the real world to locations in AR space.
+ AKWorldLocation is a protocol that ties together a position in the AR world with a locaiton in the real world. When the `ARKit` session starts up, it crates an arbitrary coordinate system where the origin is where the device was located at the time of initialization. Every device and every AR session, therefore, has it's own local coordinate system. In order to reason about how the coordinate system relates to actual locations in the real world, AugmentKit uses location services to map a point in the `ARKit` coordinate system to a latitude and longitude in the real world and stores this as a `AKWorldLocation` instance. Once a reliable `AKWorldLocation` is found, other `AKWorldLocation` objects can be derived by calculating their relative distance from the one reliable reference AKWorldLocation object.
  */
 public protocol AKWorldLocation {
     /**
@@ -56,7 +56,7 @@ public protocol AKWorldLocation {
 // MARK: - WorldLocation
 
 /**
- Standard implementation of an AKWorldLocation object
+ A standard implementaion of AKWorldLocation that provides common initializers that make it easy to derive latitude, longitude, and elevation relative to a reference locatio
  */
 public struct WorldLocation: AKWorldLocation {
     /**

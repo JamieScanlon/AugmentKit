@@ -35,6 +35,8 @@ import CoreLocation
 
 /**
  A configuration object used to initialize the AR world.
+
+ The `AKWorld` manages the metal renderer, the `ARKit` engine, and the world state and is the primary way you interact with AugmentKit. When setting up the `AKWorld`, you provide a configuration object which determines things like weather Location Services are enabled and what the maximum render distance is. As well as being the primary way to add Anchors, Trackers, Targets and Paths, the `AKWorld` instance also provides state information like the current world locaiton and utility methods for determining the world location based on latitude and longitude. `AKWorld` also provides some dubuging tools like logging and being able to turn on visualizations of the surfaces and raw tracking points that ARKit is detecting.
  */
 public struct AKWorldConfiguration {
     /**

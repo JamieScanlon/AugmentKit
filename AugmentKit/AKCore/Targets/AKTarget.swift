@@ -31,7 +31,10 @@ import simd
 // MARK: - AKTarget
 
 /**
- An `AKTarget` is a geometrical object which is positioned at the intersection of a vector and another `AKGeometricEntity`. The vector is relative to a position.
+ An `AKTarget` represents an object that can be rendered into the `AKWorld`. It's position is determined by a relative position (similar to an `AKTracker`) and a direction vector. The vector extends from the relative position and where it intersects another object in the `AKWorld` is where the target is rendered. A good example of this would be an augmented reality laser pointer. The red dot of the laser is where the object is rendered but where that dot is located in the AKWorld depends on where you hold the laser pointer (the position), the direction the laser pointer is pointed (the vector), and what's in its path (an intersection with another object).
+ 
+ An `AKTarget` is a `AKGeometricEntity`.
+ 
  - Example:
  An `AKTarget` might be the red dot of a laser pointer. Where the laser intersects a screen is be where the geometry of the dot is rendered. The location of the intersection is determined by the vector representing the direction the laser pointer is pointed as well as the postion of the laser pointer itself in the world.
  */

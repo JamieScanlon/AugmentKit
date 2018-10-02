@@ -31,7 +31,9 @@ import Foundation
 // MARK: - AKTracker
 
 /**
- An AKTracker is a geometrical object that tracks another moving object or position. The object's geometry is defiened by the `model` property. The object's position is not fixed in world space but is relative.
+ An `AKTracker` represents an object that can be rendered into the `AKWorld`. It's position is relative to another object and therefore tracks the other opject and is not fixed. The `AKTracker` protocol has two sub protocols, `AKAugmentedTracker` and `AKRealTracker` that represent augmented objects (objects that don't exist in the real world) and real objects, objects that exist both in the augmented work and the real world.
+ 
+ An `AKTracker` is a `AKGeometricEntity`. The object's geometry is defiened by the `model` property. The object's position is not fixed in world space but is relative.
  */
 public protocol AKTracker: class, AKGeometricEntity {
     /**

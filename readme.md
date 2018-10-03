@@ -168,7 +168,7 @@ world.add(anchor: viewSurface)
 
 ### More Documntation
 
-[FULL DOCUMENTATION](docs/index.html)
+[Full Documentation](http://htmlpreview.github.com/?https://github.com/JamieScanlon/AugmentKit/blob/master/docs/index.html)
 
 #### Basic Concepts
 

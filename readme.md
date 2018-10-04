@@ -12,21 +12,21 @@ Along with being simple and light weight, AugmentKit provides more contextual aw
 
 ### What Can AugmentKit Do?
 
-* ##### Location based anchors
+##### Location based anchors
 
-![](media/augmentkit-location-anchor.gif)
+##### Direction and surface detection
 
-* ##### Direction and surface detection
+![](media/AugmentKit-Sample-2.gif)
 
-![](media/augmentkit-target.gif)
+##### Tracking anchors
 
-* ##### Tracking anchors
+##### Paths
 
-* ##### Paths
+##### UIView anchors
 
-* ##### UIView anchors
+##### Custom PBR render engine
 
-* ##### Custom PBR render engine
+![](media/AugmentKit-Sample-1.gif)
 
 ### Getting Started
 

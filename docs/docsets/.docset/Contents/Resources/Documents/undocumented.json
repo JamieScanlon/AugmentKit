@@ -2,119 +2,119 @@
   "warnings": [
     {
       "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/AKWorld.swift",
-      "line": 71,
+      "line": 73,
       "symbol": "AKWorldStatus.Status.notInitialized",
       "symbol_kind": "source.lang.swift.decl.enumelement",
       "warning": "undocumented"
     },
     {
       "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/AKWorld.swift",
-      "line": 72,
+      "line": 74,
       "symbol": "AKWorldStatus.Status.initializing(_:_:_:)",
       "symbol_kind": "source.lang.swift.decl.enumelement",
       "warning": "undocumented"
     },
     {
       "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/AKWorld.swift",
-      "line": 73,
+      "line": 75,
       "symbol": "AKWorldStatus.Status.ready",
       "symbol_kind": "source.lang.swift.decl.enumelement",
       "warning": "undocumented"
     },
     {
       "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/AKWorld.swift",
-      "line": 74,
+      "line": 76,
       "symbol": "AKWorldStatus.Status.interupted",
       "symbol_kind": "source.lang.swift.decl.enumelement",
       "warning": "undocumented"
     },
     {
       "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/AKWorld.swift",
-      "line": 75,
+      "line": 77,
       "symbol": "AKWorldStatus.Status.error",
       "symbol_kind": "source.lang.swift.decl.enumelement",
       "warning": "undocumented"
     },
     {
       "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/AKWorld.swift",
-      "line": 82,
+      "line": 84,
       "symbol": "AKWorldStatus.ARKitInitializationPhase.notStarted",
       "symbol_kind": "source.lang.swift.decl.enumelement",
       "warning": "undocumented"
     },
     {
       "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/AKWorld.swift",
-      "line": 83,
+      "line": 85,
       "symbol": "AKWorldStatus.ARKitInitializationPhase.initializingARKit",
       "symbol_kind": "source.lang.swift.decl.enumelement",
       "warning": "undocumented"
     },
     {
       "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/AKWorld.swift",
-      "line": 84,
+      "line": 86,
       "symbol": "AKWorldStatus.ARKitInitializationPhase.ready",
       "symbol_kind": "source.lang.swift.decl.enumelement",
       "warning": "undocumented"
     },
     {
       "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/AKWorld.swift",
-      "line": 91,
+      "line": 93,
       "symbol": "AKWorldStatus.SurfacesInitializationPhase.notStarted",
       "symbol_kind": "source.lang.swift.decl.enumelement",
       "warning": "undocumented"
     },
     {
       "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/AKWorld.swift",
-      "line": 92,
+      "line": 94,
       "symbol": "AKWorldStatus.SurfacesInitializationPhase.findingSurfaces",
       "symbol_kind": "source.lang.swift.decl.enumelement",
       "warning": "undocumented"
     },
     {
       "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/AKWorld.swift",
-      "line": 93,
+      "line": 95,
       "symbol": "AKWorldStatus.SurfacesInitializationPhase.ready",
       "symbol_kind": "source.lang.swift.decl.enumelement",
       "warning": "undocumented"
     },
     {
       "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/AKWorld.swift",
-      "line": 100,
+      "line": 102,
       "symbol": "AKWorldStatus.LocationInitializationPhase.notStarted",
       "symbol_kind": "source.lang.swift.decl.enumelement",
       "warning": "undocumented"
     },
     {
       "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/AKWorld.swift",
-      "line": 101,
+      "line": 103,
       "symbol": "AKWorldStatus.LocationInitializationPhase.findingLocation",
       "symbol_kind": "source.lang.swift.decl.enumelement",
       "warning": "undocumented"
     },
     {
       "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/AKWorld.swift",
-      "line": 102,
+      "line": 104,
       "symbol": "AKWorldStatus.LocationInitializationPhase.ready",
       "symbol_kind": "source.lang.swift.decl.enumelement",
       "warning": "undocumented"
     },
     {
       "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/AKWorld.swift",
-      "line": 109,
+      "line": 111,
       "symbol": "AKWorldStatus.Quality.notAvailable",
       "symbol_kind": "source.lang.swift.decl.enumelement",
       "warning": "undocumented"
     },
     {
       "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/AKWorld.swift",
-      "line": 110,
+      "line": 112,
       "symbol": "AKWorldStatus.Quality.limited(_:)",
       "symbol_kind": "source.lang.swift.decl.enumelement",
       "warning": "undocumented"
     },
     {
       "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/AKWorld.swift",
-      "line": 111,
+      "line": 113,
       "symbol": "AKWorldStatus.Quality.normal",
       "symbol_kind": "source.lang.swift.decl.enumelement",
       "warning": "undocumented"

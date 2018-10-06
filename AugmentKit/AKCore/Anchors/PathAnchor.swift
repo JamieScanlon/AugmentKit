@@ -57,7 +57,11 @@ public class PathAnchor: AKPath {
     /**
      An array of `AKEffect` objects that are applied by the renderer
      */
-    public var effects: [AnyEffect<Any>]?
+    public var effects: [AnyEffect<Any>]? {
+        didSet {
+            segmentPoints.forEach { $0.effects = effects }
+        }
+    }
     /**
      Specified a perfered renderer to use when rendering this enitity. Most will use the standard PBR renderer but some entities may prefer a simpiler renderer when they are not trying to achieve the look of real-world objects. Defaults to `ShaderPreference.simple`
      */

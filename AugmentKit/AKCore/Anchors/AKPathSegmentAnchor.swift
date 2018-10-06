@@ -31,5 +31,8 @@ import Foundation
  An AR anchor that represents a beginning or end of a path segment. Two or more of these can be used to create a path in the AR world. These anchors have an empty model so they cannot be rendered by themselves, They must be used on conjunction with an `AKPath` object.
  */
 public protocol AKPathSegmentAnchor: AKAugmentedAnchor {
-    
+    /**
+     An array of `AKEffect` objects that are applied by the renderer
+     */
+    var effects: [AnyEffect<Any>]? { get set }
 }

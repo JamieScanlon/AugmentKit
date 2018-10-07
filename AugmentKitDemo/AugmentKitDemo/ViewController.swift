@@ -61,8 +61,8 @@ class ViewController: UIViewController {
             // Set the initial orientation
             myWorld.renderer.orientation = UIApplication.shared.statusBarOrientation
             
-            // Begin
-            myWorld.begin()
+            // Initialize
+            myWorld.initialize()
             
             world = myWorld
             
@@ -98,12 +98,12 @@ class ViewController: UIViewController {
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        world?.renderer.run()
+        world?.begin()
     }
     
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-        world?.renderer.pause()
+        world?.pause()
     }
     
     override func didReceiveMemoryWarning() {

@@ -403,13 +403,27 @@ public class AKWorld: NSObject {
     }
     
     /**
-     Begins AR AR tracking and rendering.
+     Initializes AR tracking and rendering.
      */
-    public func begin() {
+    public func initialize() {
         var newStatus = AKWorldStatus(timestamp: Date())
         newStatus.status = .initializing(.initializingARKit, .notStarted, .notStarted)
         worldStatus = newStatus
         renderer.initialize()
+    }
+    
+    /**
+     Starts AR tracking and rendering.
+     */
+    public func begin() {
+        renderer.run()
+    }
+    
+    /**
+     Pauses AR tracking and rendering.
+     */
+    public func pause() {
+        renderer.pause()
     }
     
     deinit {

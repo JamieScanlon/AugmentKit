@@ -45,9 +45,10 @@ Make sure the orientation of the device is set.
 world.renderer.orientation = UIApplication.shared.statusBarOrientation
 ```
 
-Begin the AR session.
+Initialize the AR session and begin AR tracking
 
 ```swift
+world.initialize()
 world.begin()
 ```
 

@@ -38,7 +38,7 @@ import simd
  - Example:
  An `AKTarget` might be the red dot of a laser pointer. Where the laser intersects a screen is be where the geometry of the dot is rendered. The location of the intersection is determined by the vector representing the direction the laser pointer is pointed as well as the postion of the laser pointer itself in the world.
  */
-public protocol AKTarget: AKGeometricEntity {
+public protocol AKTarget: class, AKGeometricEntity {
     /**
      A direction vector relative to it's position and can be a unit vector
      */

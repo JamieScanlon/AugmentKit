@@ -673,12 +673,10 @@ public class Renderer: NSObject {
             
             let gazeTransform = currentGazeTransform
             if gazeTransform != matrix_identity_float4x4 {
-                let updatedGazeTargets: [GazeTarget] = gazeTargets.map {
+                gazeTargets.forEach {
                     $0.position.parentPosition?.transform = gazeTransform
                     $0.position.updateTransforms()
-                    return $0
                 }
-                gazeTargets = updatedGazeTargets
             }
             
         }

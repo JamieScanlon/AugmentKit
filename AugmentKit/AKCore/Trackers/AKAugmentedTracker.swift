@@ -1,5 +1,5 @@
 //
-//  AKTracker.swift
+//  AKAugmentedTracker.swift
 //  AugmentKit
 //
 //  MIT License
@@ -24,27 +24,13 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 //
+//
 
 import Foundation
 
-
-// MARK: - AKTracker
-
 /**
- An `AKTracker` represents an object that can be rendered into the `AKWorld`. It's position is relative to another object and therefore tracks the other opject and is not fixed. The `AKTracker` protocol has two sub protocols, `AKAugmentedTracker` and `AKRealTracker` that represent augmented objects (objects that don't exist in the real world) and real objects, objects that exist both in the augmented work and the real world.
- 
- An `AKTracker` is a `AKGeometricEntity`. The object's geometry is defiened by the `model` property. The object's position is not fixed in world space but is relative.
+ Represents a tracker placed in the AR world. This tracker only exists in the AR world as opposed to a real tracker like a person or a car which exists in the physical world.
  */
-public protocol AKTracker: class, AKGeometricEntity {
-    /**
-     The position of the tracker. The position is relative to the objects this tracks.
-     */
-    var position: AKRelativePosition { get set }
-    /**
-     Set the identifier for this instance
-     - Parameters:
-        - _: A UUID
-     */
-    func setIdentifier(_ identifier: UUID)
+public protocol AKAugmentedTracker: AKTracker {
     
 }

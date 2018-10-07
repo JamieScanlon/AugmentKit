@@ -7,8 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		7D02B24420CB98B70055BB57 /* retrotv.usdz in Resources */ = {isa = PBXBuildFile; fileRef = 7D02B24320CB98B70055BB57 /* retrotv.usdz */; };
-		7D1B6F0D1F29851E00AB035D /* Pin.scn in Resources */ = {isa = PBXBuildFile; fileRef = 7D1B6F0C1F2983DA00AB035D /* Pin.scn */; };
 		7D1FC692213C5EA7006CB649 /* AKWorldMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D1FC691213C5EA6006CB649 /* AKWorldMap.swift */; };
 		7D345B07208B83CA00C2D5D0 /* AKWorldLocation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D345B06208B83CA00C2D5D0 /* AKWorldLocation.swift */; };
 		7D345B09208B844600C2D5D0 /* AKWorldDistance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D345B08208B844600C2D5D0 /* AKWorldDistance.swift */; };
@@ -56,23 +54,13 @@
 		7D6E6B701F8F1CDB00EFC667 /* WorldLocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D88D7CF1F0C53590009A154 /* WorldLocationManager.swift */; };
 		7D6E6B711F8F1CDB00EFC667 /* DeviceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DB396A91F1A96350003019B /* DeviceManager.swift */; };
 		7D6E6B721F8F267100EFC667 /* ShaderTypes.h in Headers */ = {isa = PBXBuildFile; fileRef = 7D88D7AE1F0AFD550009A154 /* ShaderTypes.h */; };
-		7D75DCDA207AA3990000EF6E /* Gaze_Target.png in Resources */ = {isa = PBXBuildFile; fileRef = 7D75DCD9207AA3990000EF6E /* Gaze_Target.png */; };
 		7D808FAE209FD3210077FA19 /* AKPath.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D808FAD209FD3210077FA19 /* AKPath.swift */; };
 		7D818909201EB5DB0021694F /* PathsRenderModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D818908201EB5DB0021694F /* PathsRenderModule.swift */; };
-		7D81F47420F47687002FF4B7 /* RemoteModelLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DC785D01FE655C100F82FA4 /* RemoteModelLoader.swift */; };
-		7D88D7AB1F0AFD550009A154 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D88D7AA1F0AFD550009A154 /* AppDelegate.swift */; };
-		7D88D7B21F0AFD550009A154 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D88D7B11F0AFD550009A154 /* ViewController.swift */; };
-		7D88D7B51F0AFD550009A154 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 7D88D7B31F0AFD550009A154 /* Main.storyboard */; };
-		7D88D7B71F0AFD560009A154 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7D88D7B61F0AFD560009A154 /* Assets.xcassets */; };
-		7D88D7BA1F0AFD560009A154 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 7D88D7B81F0AFD560009A154 /* LaunchScreen.storyboard */; };
 		7D8A0A802013D058006CAAAD /* AKRelativePosiiton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D8A0A7F2013D058006CAAAD /* AKRelativePosiiton.swift */; };
 		7D8A0A822013D143006CAAAD /* AKHeading.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D8A0A812013D143006CAAAD /* AKHeading.swift */; };
-		7D8A0A85201514F0006CAAAD /* compass_512.png in Resources */ = {isa = PBXBuildFile; fileRef = 7D8A0A8320150EAD006CAAAD /* compass_512.png */; };
 		7D8D4DE5209E8E6900F98072 /* AKAnimatable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D8D4DE4209E8E6900F98072 /* AKAnimatable.swift */; };
 		7D8D4DE7209E907E00F98072 /* AKEffect.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D8D4DE6209E907E00F98072 /* AKEffect.swift */; };
 		7D9B13AA20A7519F006C2B63 /* SHA256.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D9B13A920A7519F006C2B63 /* SHA256.swift */; };
-		7DA9936B1F907A9A00595435 /* AugmentKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7D6E6B471F8F19C300EFC667 /* AugmentKit.framework */; };
-		7DA9936C1F907A9A00595435 /* AugmentKit.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 7D6E6B471F8F19C300EFC667 /* AugmentKit.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		7DAA7251211D370400AA11AF /* BRDFFunctions.metal in Sources */ = {isa = PBXBuildFile; fileRef = 7DAA7250211D370400AA11AF /* BRDFFunctions.metal */; };
 		7DAA7253211D395900AA11AF /* Common.metal in Sources */ = {isa = PBXBuildFile; fileRef = 7DAA7252211D395900AA11AF /* Common.metal */; };
 		7DAD06BE2071505E00B62B61 /* AKTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DAD06BD2071505E00B62B61 /* AKTracker.swift */; };
@@ -80,11 +68,7 @@
 		7DAD06C22071520F00B62B61 /* AKTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DAD06C12071520F00B62B61 /* AKTarget.swift */; };
 		7DAD06C520716D5600B62B61 /* AKVector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DAD06C420716D5600B62B61 /* AKVector.swift */; };
 		7DB72CD5202424D70050C61D /* AKPathSegmentAnchor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DB72CD4202424D70050C61D /* AKPathSegmentAnchor.swift */; };
-		7DBA369C1F7AE0AE0006310A /* plane_grid.png in Resources */ = {isa = PBXBuildFile; fileRef = 7DBA369B1F7AE0AD0006310A /* plane_grid.png */; };
-		7DBA36A11F7C1AA10006310A /* ship.scn in Resources */ = {isa = PBXBuildFile; fileRef = 7DBA36A01F7C1A310006310A /* ship.scn */; };
-		7DBA36A21F7C1AA50006310A /* texture.png in Resources */ = {isa = PBXBuildFile; fileRef = 7DBA369F1F7C1A310006310A /* texture.png */; };
 		7DC785D71FED819C00F82FA4 /* UnanchoredRenderModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DC785D61FED819C00F82FA4 /* UnanchoredRenderModule.swift */; };
-		7DD1856620B0AE6500165635 /* Art.scnassets in Resources */ = {isa = PBXBuildFile; fileRef = 7DD1856520B0AE6500165635 /* Art.scnassets */; };
 		7DF697EB1FCD26F500292F66 /* AKModelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF697EA1FCD26F500292F66 /* AKModelProvider.swift */; };
 		7DFCF6031FC08CD300E8A560 /* ImageCaptureShaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = 7DFCF6021FC08CD300E8A560 /* ImageCaptureShaders.metal */; };
 		7DFCF6051FC096A900E8A560 /* PointShader.metal in Sources */ = {isa = PBXBuildFile; fileRef = 7DFCF6041FC096A900E8A560 /* PointShader.metal */; };
@@ -102,32 +86,9 @@
 			remoteGlobalIDString = 7D6E6B461F8F19C300EFC667;
 			remoteInfo = AugmentKit;
 		};
-		7DA9936D1F907A9A00595435 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 7D88D79F1F0AFD550009A154 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 7D6E6B461F8F19C300EFC667;
-			remoteInfo = AugmentKit;
-		};
 /* End PBXContainerItemProxy section */
 
-/* Begin PBXCopyFilesBuildPhase section */
-		7DA9936F1F907A9B00595435 /* Embed Frameworks */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 10;
-			files = (
-				7DA9936C1F907A9A00595435 /* AugmentKit.framework in Embed Frameworks */,
-			);
-			name = "Embed Frameworks";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXCopyFilesBuildPhase section */
-
 /* Begin PBXFileReference section */
-		7D02B24320CB98B70055BB57 /* retrotv.usdz */ = {isa = PBXFileReference; lastKnownFileType = file; path = retrotv.usdz; sourceTree = "<group>"; };
-		7D1B6F0C1F2983DA00AB035D /* Pin.scn */ = {isa = PBXFileReference; lastKnownFileType = file.bplist; path = Pin.scn; sourceTree = "<group>"; };
 		7D1FC691213C5EA6006CB649 /* AKWorldMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKWorldMap.swift; sourceTree = "<group>"; };
 		7D345B06208B83CA00C2D5D0 /* AKWorldLocation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKWorldLocation.swift; sourceTree = "<group>"; };
 		7D345B08208B844600C2D5D0 /* AKWorldDistance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKWorldDistance.swift; sourceTree = "<group>"; };
@@ -171,24 +132,15 @@
 		7D6E6B541F8F19C300EFC667 /* AugmentKitTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AugmentKitTests.swift; sourceTree = "<group>"; };
 		7D6E6B561F8F19C400EFC667 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		7D6E6B731F8F283C00EFC667 /* module.modulemap */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.module-map"; path = module.modulemap; sourceTree = "<group>"; };
-		7D75DCD9207AA3990000EF6E /* Gaze_Target.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Gaze_Target.png; sourceTree = "<group>"; };
 		7D808FAD209FD3210077FA19 /* AKPath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKPath.swift; sourceTree = "<group>"; };
 		7D818908201EB5DB0021694F /* PathsRenderModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PathsRenderModule.swift; sourceTree = "<group>"; };
-		7D88D7A71F0AFD550009A154 /* AugmentKit2Demo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AugmentKit2Demo.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		7D88D7AA1F0AFD550009A154 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		7D88D7AC1F0AFD550009A154 /* AnchorShaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = AnchorShaders.metal; sourceTree = "<group>"; };
 		7D88D7AE1F0AFD550009A154 /* ShaderTypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ShaderTypes.h; sourceTree = "<group>"; };
-		7D88D7B11F0AFD550009A154 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
-		7D88D7B41F0AFD550009A154 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
-		7D88D7B61F0AFD560009A154 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		7D88D7B91F0AFD560009A154 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
-		7D88D7BB1F0AFD560009A154 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		7D88D7C61F0C07960009A154 /* LocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationManager.swift; sourceTree = "<group>"; };
 		7D88D7CB1F0C2B0A0009A154 /* LocalStoreManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocalStoreManager.swift; path = AugmentKit/Managers/LocalStoreManager.swift; sourceTree = SOURCE_ROOT; };
 		7D88D7CF1F0C53590009A154 /* WorldLocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WorldLocationManager.swift; path = AugmentKit/Managers/WorldLocationManager.swift; sourceTree = SOURCE_ROOT; };
 		7D8A0A7F2013D058006CAAAD /* AKRelativePosiiton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKRelativePosiiton.swift; sourceTree = "<group>"; };
 		7D8A0A812013D143006CAAAD /* AKHeading.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKHeading.swift; sourceTree = "<group>"; };
-		7D8A0A8320150EAD006CAAAD /* compass_512.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = compass_512.png; sourceTree = "<group>"; };
 		7D8D4DE4209E8E6900F98072 /* AKAnimatable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKAnimatable.swift; sourceTree = "<group>"; };
 		7D8D4DE6209E907E00F98072 /* AKEffect.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKEffect.swift; sourceTree = "<group>"; };
 		7D9B13A920A7519F006C2B63 /* SHA256.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SHA256.swift; sourceTree = "<group>"; };
@@ -204,12 +156,7 @@
 		7DB396AD1F1AFD860003019B /* MeshData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshData.swift; sourceTree = "<group>"; };
 		7DB396AF1F1AFDD30003019B /* MeshTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshTools.swift; sourceTree = "<group>"; };
 		7DB72CD4202424D70050C61D /* AKPathSegmentAnchor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKPathSegmentAnchor.swift; sourceTree = "<group>"; };
-		7DBA369B1F7AE0AD0006310A /* plane_grid.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = plane_grid.png; sourceTree = "<group>"; };
-		7DBA369F1F7C1A310006310A /* texture.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = texture.png; sourceTree = "<group>"; };
-		7DBA36A01F7C1A310006310A /* ship.scn */ = {isa = PBXFileReference; lastKnownFileType = file.bplist; path = ship.scn; sourceTree = "<group>"; };
-		7DC785D01FE655C100F82FA4 /* RemoteModelLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteModelLoader.swift; sourceTree = "<group>"; };
 		7DC785D61FED819C00F82FA4 /* UnanchoredRenderModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnanchoredRenderModule.swift; sourceTree = "<group>"; };
-		7DD1856520B0AE6500165635 /* Art.scnassets */ = {isa = PBXFileReference; lastKnownFileType = wrapper.scnassets; path = Art.scnassets; sourceTree = "<group>"; };
 		7DF697EA1FCD26F500292F66 /* AKModelProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKModelProvider.swift; sourceTree = "<group>"; };
 		7DFCF6021FC08CD300E8A560 /* ImageCaptureShaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = ImageCaptureShaders.metal; sourceTree = "<group>"; };
 		7DFCF6041FC096A900E8A560 /* PointShader.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = PointShader.metal; sourceTree = "<group>"; };
@@ -232,14 +179,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				7D6E6B501F8F19C300EFC667 /* AugmentKit.framework in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		7D88D7A41F0AFD550009A154 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				7DA9936B1F907A9A00595435 /* AugmentKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -393,7 +332,6 @@
 			isa = PBXGroup;
 			children = (
 				7DF098921FDDA349004A92AA /* Libraries */,
-				7D88D7A91F0AFD550009A154 /* Demo */,
 				7D6E6B481F8F19C300EFC667 /* AugmentKit */,
 				7D6E6B531F8F19C300EFC667 /* AugmentKitTests */,
 				7D88D7A81F0AFD550009A154 /* Products */,
@@ -404,26 +342,10 @@
 		7D88D7A81F0AFD550009A154 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				7D88D7A71F0AFD550009A154 /* AugmentKit2Demo.app */,
 				7D6E6B471F8F19C300EFC667 /* AugmentKit.framework */,
 				7D6E6B4F1F8F19C300EFC667 /* AugmentKitTests.xctest */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		7D88D7A91F0AFD550009A154 /* Demo */ = {
-			isa = PBXGroup;
-			children = (
-				7DBA369E1F7C1A180006310A /* Models */,
-				7D88D7AA1F0AFD550009A154 /* AppDelegate.swift */,
-				7DC785D01FE655C100F82FA4 /* RemoteModelLoader.swift */,
-				7D88D7B11F0AFD550009A154 /* ViewController.swift */,
-				7D88D7B31F0AFD550009A154 /* Main.storyboard */,
-				7D88D7B61F0AFD560009A154 /* Assets.xcassets */,
-				7D88D7B81F0AFD560009A154 /* LaunchScreen.storyboard */,
-				7D88D7BB1F0AFD560009A154 /* Info.plist */,
-			);
-			path = Demo;
 			sourceTree = "<group>";
 		};
 		7D88D7C81F0C079B0009A154 /* Managers */ = {
@@ -478,21 +400,6 @@
 				7DB396AD1F1AFD860003019B /* MeshData.swift */,
 			);
 			path = ModelIO;
-			sourceTree = "<group>";
-		};
-		7DBA369E1F7C1A180006310A /* Models */ = {
-			isa = PBXGroup;
-			children = (
-				7D02B24320CB98B70055BB57 /* retrotv.usdz */,
-				7DD1856520B0AE6500165635 /* Art.scnassets */,
-				7D75DCD9207AA3990000EF6E /* Gaze_Target.png */,
-				7D8A0A8320150EAD006CAAAD /* compass_512.png */,
-				7DBA36A01F7C1A310006310A /* ship.scn */,
-				7DBA369F1F7C1A310006310A /* texture.png */,
-				7DBA369B1F7AE0AD0006310A /* plane_grid.png */,
-				7D1B6F0C1F2983DA00AB035D /* Pin.scn */,
-			);
-			path = Models;
 			sourceTree = "<group>";
 		};
 		7DF098921FDDA349004A92AA /* Libraries */ = {
@@ -554,25 +461,6 @@
 			productReference = 7D6E6B4F1F8F19C300EFC667 /* AugmentKitTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		7D88D7A61F0AFD550009A154 /* AugmentKit2Demo */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 7D88D7BF1F0AFD560009A154 /* Build configuration list for PBXNativeTarget "AugmentKit2Demo" */;
-			buildPhases = (
-				7D88D7A31F0AFD550009A154 /* Sources */,
-				7D88D7A41F0AFD550009A154 /* Frameworks */,
-				7D88D7A51F0AFD550009A154 /* Resources */,
-				7DA9936F1F907A9B00595435 /* Embed Frameworks */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				7DA9936E1F907A9A00595435 /* PBXTargetDependency */,
-			);
-			name = AugmentKit2Demo;
-			productName = AugmentKit2;
-			productReference = 7D88D7A71F0AFD550009A154 /* AugmentKit2Demo.app */;
-			productType = "com.apple.product-type.application";
-		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -592,10 +480,6 @@
 						CreatedOnToolsVersion = 9.0;
 						ProvisioningStyle = Automatic;
 					};
-					7D88D7A61F0AFD550009A154 = {
-						CreatedOnToolsVersion = 9.0;
-						LastSwiftMigration = 1000;
-					};
 				};
 			};
 			buildConfigurationList = 7D88D7A21F0AFD550009A154 /* Build configuration list for PBXProject "AugmentKit2" */;
@@ -611,7 +495,6 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				7D88D7A61F0AFD550009A154 /* AugmentKit2Demo */,
 				7D6E6B461F8F19C300EFC667 /* AugmentKit */,
 				7D6E6B4E1F8F19C300EFC667 /* AugmentKitTests */,
 			);
@@ -630,24 +513,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		7D88D7A51F0AFD550009A154 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				7D1B6F0D1F29851E00AB035D /* Pin.scn in Resources */,
-				7D75DCDA207AA3990000EF6E /* Gaze_Target.png in Resources */,
-				7DBA36A21F7C1AA50006310A /* texture.png in Resources */,
-				7D88D7BA1F0AFD560009A154 /* LaunchScreen.storyboard in Resources */,
-				7DBA36A11F7C1AA10006310A /* ship.scn in Resources */,
-				7DD1856620B0AE6500165635 /* Art.scnassets in Resources */,
-				7DBA369C1F7AE0AE0006310A /* plane_grid.png in Resources */,
-				7D88D7B71F0AFD560009A154 /* Assets.xcassets in Resources */,
-				7D88D7B51F0AFD550009A154 /* Main.storyboard in Resources */,
-				7D02B24420CB98B70055BB57 /* retrotv.usdz in Resources */,
-				7D8A0A85201514F0006CAAAD /* compass_512.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -734,16 +599,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		7D88D7A31F0AFD550009A154 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				7D88D7B21F0AFD550009A154 /* ViewController.swift in Sources */,
-				7D88D7AB1F0AFD550009A154 /* AppDelegate.swift in Sources */,
-				7D81F47420F47687002FF4B7 /* RemoteModelLoader.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -752,31 +607,7 @@
 			target = 7D6E6B461F8F19C300EFC667 /* AugmentKit */;
 			targetProxy = 7D6E6B511F8F19C300EFC667 /* PBXContainerItemProxy */;
 		};
-		7DA9936E1F907A9A00595435 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 7D6E6B461F8F19C300EFC667 /* AugmentKit */;
-			targetProxy = 7DA9936D1F907A9A00595435 /* PBXContainerItemProxy */;
-		};
 /* End PBXTargetDependency section */
-
-/* Begin PBXVariantGroup section */
-		7D88D7B31F0AFD550009A154 /* Main.storyboard */ = {
-			isa = PBXVariantGroup;
-			children = (
-				7D88D7B41F0AFD550009A154 /* Base */,
-			);
-			name = Main.storyboard;
-			sourceTree = "<group>";
-		};
-		7D88D7B81F0AFD560009A154 /* LaunchScreen.storyboard */ = {
-			isa = PBXVariantGroup;
-			children = (
-				7D88D7B91F0AFD560009A154 /* Base */,
-			);
-			name = LaunchScreen.storyboard;
-			sourceTree = "<group>";
-		};
-/* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
 		7D6E6B581F8F19C400EFC667 /* Debug */ = {
@@ -974,38 +805,6 @@
 			};
 			name = Release;
 		};
-		7D88D7C01F0AFD560009A154 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				DEVELOPMENT_TEAM = 3XDE7T392Z;
-				INFOPLIST_FILE = Demo/Info.plist;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				PRODUCT_BUNDLE_IDENTIFIER = com.tenthlettermade.AugmentKit2;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_INCLUDE_PATHS = "${SRCROOT}/Libraries/Zip/minizip";
-				SWIFT_VERSION = 4.2;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Debug;
-		};
-		7D88D7C11F0AFD560009A154 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				DEVELOPMENT_TEAM = 3XDE7T392Z;
-				INFOPLIST_FILE = Demo/Info.plist;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				PRODUCT_BUNDLE_IDENTIFIER = com.tenthlettermade.AugmentKit2;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_INCLUDE_PATHS = "${SRCROOT}/Libraries/Zip/minizip";
-				SWIFT_VERSION = 4.2;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Release;
-		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1032,15 +831,6 @@
 			buildConfigurations = (
 				7D88D7BD1F0AFD560009A154 /* Debug */,
 				7D88D7BE1F0AFD560009A154 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		7D88D7BF1F0AFD560009A154 /* Build configuration list for PBXNativeTarget "AugmentKit2Demo" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				7D88D7C01F0AFD560009A154 /* Debug */,
-				7D88D7C11F0AFD560009A154 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

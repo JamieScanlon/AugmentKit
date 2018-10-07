@@ -130,7 +130,7 @@ class ViewController: UIViewController {
         guard let world = world else {
             return
         }
-
+        
         guard let currentWorldLocation = world.currentWorldLocation else {
             return
         }
@@ -141,92 +141,92 @@ class ViewController: UIViewController {
         
         // Example:
         // Create a square path
-//        guard let location1 = world.worldLocationFromCurrentLocation(withMetersEast: 1, metersUp: 0, metersSouth: 0) else {
-//            return
-//        }
-//
-//        guard let location2 = world.worldLocationFromCurrentLocation(withMetersEast: 1, metersUp: 1, metersSouth: 0) else {
-//            return
-//        }
-//
-//        guard let location3 = world.worldLocationFromCurrentLocation(withMetersEast: 0, metersUp: 1, metersSouth: 0) else {
-//            return
-//        }
-//
-//        let path = PathAnchor(withWorldLocaitons: [currentWorldLocation, location1, location2, location3, currentWorldLocation])
-//        world.add(akPath: path)
+        //        guard let location1 = world.worldLocationFromCurrentLocation(withMetersEast: 1, metersUp: 0, metersSouth: 0) else {
+        //            return
+        //        }
+        //
+        //        guard let location2 = world.worldLocationFromCurrentLocation(withMetersEast: 1, metersUp: 1, metersSouth: 0) else {
+        //            return
+        //        }
+        //
+        //        guard let location3 = world.worldLocationFromCurrentLocation(withMetersEast: 0, metersUp: 1, metersSouth: 0) else {
+        //            return
+        //        }
+        //
+        //        let path = PathAnchor(withWorldLocaitons: [currentWorldLocation, location1, location2, location3, currentWorldLocation])
+        //        world.add(akPath: path)
         
         
         // Example:
         // Create a path around the Apple Park building
-//        guard let location1 = world.worldLocation(withLatitude: 37.3335, longitude: -122.0106, elevation: currentWorldLocation.elevation) else {
-//            return
-//        }
-//
-//        guard let location2 = world.worldLocation(withLatitude: 37.3349, longitude: -122.0113, elevation: currentWorldLocation.elevation) else {
-//            return
-//        }
-//
-//        guard let location3 = world.worldLocation(withLatitude: 37.3362, longitude: -122.0106, elevation: currentWorldLocation.elevation) else {
-//            return
-//        }
-//
-//        guard let location4 = world.worldLocation(withLatitude: 37.3367, longitude: -122.0090, elevation: currentWorldLocation.elevation) else {
-//            return
-//        }
-//
-//        guard let location5 = world.worldLocation(withLatitude: 37.3365, longitude: -122.0079, elevation: currentWorldLocation.elevation) else {
-//            return
-//        }
-//
-//        guard let location6 = world.worldLocation(withLatitude: 37.3358, longitude: -122.0070, elevation: currentWorldLocation.elevation) else {
-//            return
-//        }
-//
-//        guard let location7 = world.worldLocation(withLatitude: 37.3348, longitude: -122.0067, elevation: currentWorldLocation.elevation) else {
-//            return
-//        }
-//
-//        guard let location8 = world.worldLocation(withLatitude: 37.3336, longitude: -122.0074, elevation: currentWorldLocation.elevation) else {
-//            return
-//        }
-//
-//        guard let location9 = world.worldLocation(withLatitude: 37.3330, longitude: -122.0090, elevation: currentWorldLocation.elevation) else {
-//            return
-//        }
-//
-//        let path = PathAnchor(withWorldLocaitons: [location1, location2, location3, location4, location5, location6, location7, location8, location9, location1])
-//        world.add(akPath: path)
+        //        guard let location1 = world.worldLocation(withLatitude: 37.3335, longitude: -122.0106, elevation: currentWorldLocation.elevation) else {
+        //            return
+        //        }
+        //
+        //        guard let location2 = world.worldLocation(withLatitude: 37.3349, longitude: -122.0113, elevation: currentWorldLocation.elevation) else {
+        //            return
+        //        }
+        //
+        //        guard let location3 = world.worldLocation(withLatitude: 37.3362, longitude: -122.0106, elevation: currentWorldLocation.elevation) else {
+        //            return
+        //        }
+        //
+        //        guard let location4 = world.worldLocation(withLatitude: 37.3367, longitude: -122.0090, elevation: currentWorldLocation.elevation) else {
+        //            return
+        //        }
+        //
+        //        guard let location5 = world.worldLocation(withLatitude: 37.3365, longitude: -122.0079, elevation: currentWorldLocation.elevation) else {
+        //            return
+        //        }
+        //
+        //        guard let location6 = world.worldLocation(withLatitude: 37.3358, longitude: -122.0070, elevation: currentWorldLocation.elevation) else {
+        //            return
+        //        }
+        //
+        //        guard let location7 = world.worldLocation(withLatitude: 37.3348, longitude: -122.0067, elevation: currentWorldLocation.elevation) else {
+        //            return
+        //        }
+        //
+        //        guard let location8 = world.worldLocation(withLatitude: 37.3336, longitude: -122.0074, elevation: currentWorldLocation.elevation) else {
+        //            return
+        //        }
+        //
+        //        guard let location9 = world.worldLocation(withLatitude: 37.3330, longitude: -122.0090, elevation: currentWorldLocation.elevation) else {
+        //            return
+        //        }
+        //
+        //        let path = PathAnchor(withWorldLocaitons: [location1, location2, location3, location4, location5, location6, location7, location8, location9, location1])
+        //        world.add(akPath: path)
         
         // Example:
         // Render a UIView as a surface in the AR World 2 meters in from of the current location. Use an AlwaysFacingMeHeading
         // Heading to follow me as I walk around.
-//        let textView = UITextView(frame: CGRect(x: 0, y: 0, width: 300, height: 500))
-//        textView.font = UIFont(descriptor: .preferredFontDescriptor(withTextStyle: .body), size: 14)
-//        textView.textColor = UIColor(red: 200/255, green: 109/255, blue: 215/255, alpha: 1)
-//        textView.text = """
-//A way out west there was a fella,
-//fella I want to tell you about, fella
-//by the name of Jeff Lebowski. At
-//least, that was the handle his lovin'
-//parents gave him, but he never had
-//much use for it himself. This
-//Lebowski, he called himself the Dude.
-//Now, Dude, that's a name no one would
-//self-apply where I come from. But
-//then, there was a lot about the Dude
-//that didn't make a whole lot of sense
-//to me. And a lot about where he
-//lived, like- wise. But then again,
-//maybe that's why I found the place
-//s'durned innarestin'...
-//"""
-//        textView.backgroundColor = .clear
-//        let location = world.worldLocationWithDistanceFromMe(metersAbove: 0, metersInFront: 2)!
-//        let heading = AlwaysFacingMeHeading(withWorldLocaiton: location)
-//        let viewSurface = AugmentedUIViewSurface(withView: textView, at: location, heading: heading)
-//        world.add(anchor: viewSurface)
-
+        //        let textView = UITextView(frame: CGRect(x: 0, y: 0, width: 300, height: 500))
+        //        textView.font = UIFont(descriptor: .preferredFontDescriptor(withTextStyle: .body), size: 14)
+        //        textView.textColor = UIColor(red: 200/255, green: 109/255, blue: 215/255, alpha: 1)
+        //        textView.text = """
+        //A way out west there was a fella,
+        //fella I want to tell you about, fella
+        //by the name of Jeff Lebowski. At
+        //least, that was the handle his lovin'
+        //parents gave him, but he never had
+        //much use for it himself. This
+        //Lebowski, he called himself the Dude.
+        //Now, Dude, that's a name no one would
+        //self-apply where I come from. But
+        //then, there was a lot about the Dude
+        //that didn't make a whole lot of sense
+        //to me. And a lot about where he
+        //lived, like- wise. But then again,
+        //maybe that's why I found the place
+        //s'durned innarestin'...
+        //"""
+        //        textView.backgroundColor = .clear
+        //        let location = world.worldLocationWithDistanceFromMe(metersAbove: 0, metersInFront: 2)!
+        //        let heading = AlwaysFacingMeHeading(withWorldLocaiton: location)
+        //        let viewSurface = AugmentedUIViewSurface(withView: textView, at: location, heading: heading)
+        //        world.add(anchor: viewSurface)
+        
     }
     
     @IBAction func exportButtonClicked(_ sender: UIButton) {
@@ -247,7 +247,7 @@ class ViewController: UIViewController {
     @IBAction fileprivate func markerTapped(_ sender: UIButton) {
         
         // Create a new anchor at the current locaiton
-
+        
         guard let anchorModel = pinAsset else {
             return
         }
@@ -271,7 +271,7 @@ class ViewController: UIViewController {
     @IBAction fileprivate func maxTapped(_ sender: UIButton) {
         
         // Create a new anchor at the current locaiton
-
+        
         guard let anchorModel = maxAsset else {
             return
         }
@@ -293,7 +293,7 @@ class ViewController: UIViewController {
     @IBAction fileprivate func planeTapped(_ sender: UIButton) {
         
         // Create a new anchor at the current locaiton
-
+        
         guard let anchorModel = shipAsset else {
             return
         }
@@ -317,12 +317,12 @@ class ViewController: UIViewController {
         // Download a usdz Model
         //
         
-//        let url = URL(string: "https://example.com/path/to/model.usdz")!
-//        let remoteModel = RemoteModelLoader().loadModel(withURL: url) { (filePath, error) in
-//            let url = URL(fileURLWithPath: filePath)
-//            let remoteAsset = MDLAsset(url: url)
-//            self.pinModel = remoteAsset
-//        }
+        //        let url = URL(string: "https://example.com/path/to/model.usdz")!
+        //        let remoteModel = RemoteModelLoader().loadModel(withURL: url) { (filePath, error) in
+        //            let url = URL(fileURLWithPath: filePath)
+        //            let remoteAsset = MDLAsset(url: url)
+        //            self.pinModel = remoteAsset
+        //        }
         
         
         //
@@ -335,10 +335,10 @@ class ViewController: UIViewController {
             return
         }
         
-//        guard let aPinAsset = AKSceneKitUtils.mdlAssetFromScene(named: "Pin.scn", world: world) else {
-//            print("ERROR: Could not load the SceneKit model")
-//            return
-//        }
+        //        guard let aPinAsset = AKSceneKitUtils.mdlAssetFromScene(named: "Pin.scn", world: world) else {
+        //            print("ERROR: Could not load the SceneKit model")
+        //            return
+        //        }
         
         guard let aPinAsset = MDLAssetTools.asset(named: "retrotv.usdz", inBundle: Bundle.main) else {
             print("ERROR: Could not load the USDZ model")

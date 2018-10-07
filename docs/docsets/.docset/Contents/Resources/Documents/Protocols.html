@@ -285,7 +285,7 @@
                 <a href="Protocols/AKPath.html">AKPath</a>
               </li>
               <li class="nav-group-task">
-                <a href="Protocols.html#/s:10AugmentKit19AKPathSegmentAnchorP">AKPathSegmentAnchor</a>
+                <a href="Protocols/AKPathSegmentAnchor.html">AKPathSegmentAnchor</a>
               </li>
               <li class="nav-group-task">
                 <a href="Protocols/AKPulsingAnimatable.html">AKPulsingAnimatable</a>
@@ -633,7 +633,7 @@
                     <section class="section">
                       <div class="pointer"></div>
                       <div class="abstract">
-                        <p>An <code>AKPath</code> draws a path in the AR world. A path is a series of straight line segments each terminated by a special type of anchor called a <code><a href="Protocols.html#/s:10AugmentKit19AKPathSegmentAnchorP">AKPathSegmentAnchor</a></code>. The geometry of a line segment is an elongated cylinder. The <code>lineThickness</code> property represents the diameter of the cross section.</p>
+                        <p>An <code>AKPath</code> draws a path in the AR world. A path is a series of straight line segments each terminated by a special type of anchor called a <code><a href="Protocols/AKPathSegmentAnchor.html">AKPathSegmentAnchor</a></code>. The geometry of a line segment is an elongated cylinder. The <code>lineThickness</code> property represents the diameter of the cross section.</p>
 
                         <a href="Protocols/AKPath.html" class="slightly-smaller">See more</a>
                       </div>
@@ -667,6 +667,7 @@
                       <div class="abstract">
                         <p>An AR anchor that represents a beginning or end of a path segment. Two or more of these can be used to create a path in the AR world. These anchors have an empty model so they cannot be rendered by themselves, They must be used on conjunction with an <code><a href="Protocols/AKPath.html">AKPath</a></code> object.</p>
 
+                        <a href="Protocols/AKPathSegmentAnchor.html" class="slightly-smaller">See more</a>
                       </div>
                       <div class="declaration">
                         <h4>Declaration</h4>
@@ -1017,7 +1018,69 @@ An <code>AKTarget</code> might be the red dot of a laser pointer. Where the lase
                         <h4>Declaration</h4>
                         <div class="language">
                           <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">protocol</span> <span class="kt">AKTarget</span> <span class="p">:</span> <span class="kt"><a href="Protocols/AKGeometricEntity.html">AKGeometricEntity</a></span></code></pre>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">protocol</span> <span class="kt">AKTarget</span> <span class="p">:</span> <span class="kt">AnyObject</span><span class="p">,</span> <span class="kt"><a href="Protocols/AKGeometricEntity.html">AKGeometricEntity</a></span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+              </ul>
+            </div>
+            <div class="task-group">
+              <ul>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit18AKAugmentedTrackerP"></a>
+                    <a name="//apple_ref/swift/Protocol/AKAugmentedTracker" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit18AKAugmentedTrackerP">AKAugmentedTracker</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Represents a tracker placed in the AR world. This tracker only exists in the AR world as opposed to a real tracker like a person or a car which exists in the physical world.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">protocol</span> <span class="kt">AKAugmentedTracker</span> <span class="p">:</span> <span class="kt"><a href="Protocols/AKTracker.html">AKTracker</a></span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+              </ul>
+            </div>
+            <div class="task-group">
+              <ul>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit13AKRealTrackerP"></a>
+                    <a name="//apple_ref/swift/Protocol/AKRealTracker" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit13AKRealTrackerP">AKRealTracker</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Represents a tracker in the AR world that is tied to an moving object in the real world. For example a person or a car.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">protocol</span> <span class="kt">AKRealTracker</span> <span class="p">:</span> <span class="kt"><a href="Protocols/AKTracker.html">AKTracker</a></span></code></pre>
 
                         </div>
                       </div>
@@ -1059,82 +1122,6 @@ An <code>AKTarget</code> might be the red dot of a laser pointer. Where the lase
                         <div class="language">
                           <p class="aside-title">Swift</p>
                           <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">protocol</span> <span class="kt">AKTracker</span> <span class="p">:</span> <span class="kt">AnyObject</span><span class="p">,</span> <span class="kt"><a href="Protocols/AKGeometricEntity.html">AKGeometricEntity</a></span></code></pre>
-
-                        </div>
-                      </div>
-                    </section>
-                  </div>
-                </li>
-              </ul>
-            </div>
-            <div class="task-group">
-              <div class="task-name-container">
-                <a name="/AKAugmentedTracker"></a>
-                <a name="//apple_ref/swift/Section/AKAugmentedTracker" class="dashAnchor"></a>
-                <a href="#/AKAugmentedTracker">
-                  <h3 class="section-name">AKAugmentedTracker</h3>
-                </a>
-              </div>
-              <ul>
-                <li class="item">
-                  <div>
-                    <code>
-                    <a name="/s:10AugmentKit18AKAugmentedTrackerP"></a>
-                    <a name="//apple_ref/swift/Protocol/AKAugmentedTracker" class="dashAnchor"></a>
-                    <a class="token" href="#/s:10AugmentKit18AKAugmentedTrackerP">AKAugmentedTracker</a>
-                    </code>
-                  </div>
-                  <div class="height-container">
-                    <div class="pointer-container"></div>
-                    <section class="section">
-                      <div class="pointer"></div>
-                      <div class="abstract">
-                        <p>Represents a tracker placed in the AR world. This tracker only exists in the AR world as opposed to a real tracker like a person or a car which exists in the physical world.</p>
-
-                      </div>
-                      <div class="declaration">
-                        <h4>Declaration</h4>
-                        <div class="language">
-                          <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">protocol</span> <span class="kt">AKAugmentedTracker</span> <span class="p">:</span> <span class="kt"><a href="Protocols/AKTracker.html">AKTracker</a></span></code></pre>
-
-                        </div>
-                      </div>
-                    </section>
-                  </div>
-                </li>
-              </ul>
-            </div>
-            <div class="task-group">
-              <div class="task-name-container">
-                <a name="/AKRealTracker"></a>
-                <a name="//apple_ref/swift/Section/AKRealTracker" class="dashAnchor"></a>
-                <a href="#/AKRealTracker">
-                  <h3 class="section-name">AKRealTracker</h3>
-                </a>
-              </div>
-              <ul>
-                <li class="item">
-                  <div>
-                    <code>
-                    <a name="/s:10AugmentKit13AKRealTrackerP"></a>
-                    <a name="//apple_ref/swift/Protocol/AKRealTracker" class="dashAnchor"></a>
-                    <a class="token" href="#/s:10AugmentKit13AKRealTrackerP">AKRealTracker</a>
-                    </code>
-                  </div>
-                  <div class="height-container">
-                    <div class="pointer-container"></div>
-                    <section class="section">
-                      <div class="pointer"></div>
-                      <div class="abstract">
-                        <p>Represents a tracker in the AR world that is tied to an moving object in the real world. For example a person or a car.</p>
-
-                      </div>
-                      <div class="declaration">
-                        <h4>Declaration</h4>
-                        <div class="language">
-                          <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">protocol</span> <span class="kt">AKRealTracker</span> <span class="p">:</span> <span class="kt"><a href="Protocols/AKTracker.html">AKTracker</a></span></code></pre>
 
                         </div>
                       </div>
@@ -1334,7 +1321,7 @@ An <code>AKTarget</code> might be the red dot of a laser pointer. Where the lase
           </section>
         </section>
         <section id="footer">
-          <p>&copy; 2018 <a class="link" href="" target="_blank" rel="external"></a>. All rights reserved. (Last updated: 2018-10-03)</p>
+          <p>&copy; 2018 <a class="link" href="" target="_blank" rel="external"></a>. All rights reserved. (Last updated: 2018-10-07)</p>
           <p>Generated by <a class="link" href="https://github.com/realm/jazzy" target="_blank" rel="external">jazzy ♪♫ v0.9.3</a>, a <a class="link" href="https://realm.io" target="_blank" rel="external">Realm</a> project.</p>
         </section>
       </article>

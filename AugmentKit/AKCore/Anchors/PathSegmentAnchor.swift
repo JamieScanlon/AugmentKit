@@ -103,3 +103,18 @@ public class PathSegmentAnchor: AKPathSegmentAnchor {
     }
     
 }
+
+extension PathSegmentAnchor: CustomStringConvertible {
+    /// :nodoc:
+    public var description: String {
+        return debugDescription
+    }
+}
+
+extension PathSegmentAnchor: CustomDebugStringConvertible {
+    /// :nodoc:
+    public var debugDescription: String {
+        let myDescription = "<\(PathSegmentAnchor.type): \(Unmanaged.passUnretained(self).toOpaque())> Identifier: \(identifier?.uuidString ?? "none"), World Location: \(worldLocation), Heading: \(heading)"
+        return myDescription
+    }
+}

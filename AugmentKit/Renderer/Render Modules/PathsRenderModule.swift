@@ -390,6 +390,8 @@ class PathsRenderModule: RenderModule {
                     effectsUniforms?.pointee.scale = 1
                 }
                 
+                lastAnchor = anchor
+                
             }
             
             if pathSegmentInstanceCount > 0 && pathSegmentInstanceCount < Constants.maxPathSegmentInstanceCount {

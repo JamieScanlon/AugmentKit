@@ -328,7 +328,14 @@ public class Renderer: NSObject {
     public fileprivate(set) var hasDetectedSurfaces = false {
         didSet {
             if hasDetectedSurfaces != oldValue {
-                NotificationCenter.default.post(Notification(name: .surfaceDetectionStateChanged, object: self, userInfo: ["newState": hasDetectedSurfaces]))
+                let newState: SurfaceDetectionState = {
+                    if hasDetectedSurfaces {
+                        return .detected
+                    } else {
+                        return .noneDetected
+                    }
+                }()
+                NotificationCenter.default.post(Notification(name: .surfaceDetectionStateChanged, object: self, userInfo: ["newState": newState]))
             }
         }
     }

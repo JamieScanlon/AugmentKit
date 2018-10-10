@@ -328,7 +328,7 @@ class PathsRenderModule: RenderModule {
                 if angle == Double.pi {
                     coordinateSpaceTransform = coordinateSpaceTransform.rotate(radians: Float(angle), x: 0, y: 0, z: 1)
                 } else if Float(angle) > 0 {
-                    coordinateSpaceTransform = coordinateSpaceTransform.rotate(radians: Float(angle), x: Float(t.x), y: Float(t.y), z: Float(-t.z))
+                    coordinateSpaceTransform = coordinateSpaceTransform.rotate(radians: Float(-angle), x: Float(t.x), y: Float(t.y), z: Float(-t.z))
                 }
                 coordinateSpaceTransform = coordinateSpaceTransform.scale(x: 1, y: Float(magDelta), z: 1)
                 

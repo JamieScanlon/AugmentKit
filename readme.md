@@ -22,6 +22,8 @@ Along with being simple and light weight, AugmentKit provides more contextual aw
 
 ##### Paths
 
+![](media/AugmentKit-Sample-3.gif)
+
 ##### UIView anchors
 
 ##### Custom PBR render engine

@@ -75,6 +75,10 @@ public protocol RenderDestinationProvider {
      The pipeline state sample count
      */
     var sampleCount: Int { get set }
+    /**
+     A Boolean value that determines whether the drawable can be used for texture sampling or read/write operations.
+     */
+    var framebufferOnly: Bool { get set }
 }
 
 // MARK: - RenderStats
@@ -247,6 +251,10 @@ public struct EnvironmentProperties {
      A dictionary of `AREnvironmentProbeAnchor`'s and the identifiers of the anchors that they apply to.
      */
     var environmentAnchorsWithReatedAnchors: [AREnvironmentProbeAnchor: [UUID]] = [:]
+    /**
+     The direction the primary light source is pointing
+     */
+    var directionalLightDirection: float3 = float3(0, -1, 0)
 }
 
 // MARK: - Renderer
@@ -732,7 +740,7 @@ public class Renderer: NSObject {
         // pipeline (App, Metal, Drivers, GPU, etc)
         let _ = inFlightSemaphore.wait(timeout: DispatchTime.distantFuture)
         
-        // Create a new command buffer for each renderpass to the current drawable
+        // Create a new command buffer for each frame
         if let commandBuffer = commandQueue.makeCommandBuffer() {
             
             commandBuffer.label = "RenderCommandBuffer"
@@ -769,29 +777,41 @@ public class Renderer: NSObject {
                 }
             }
             
-            // Getting the currentDrawable from the RenderDestinationProvider should be called as
+            //
+            // Setup render passes
+            //
+            
+            // Shadow Map Pass
+            shadowRenderPass?.prepareRenderCommandEncoder(withCommandBuffer: commandBuffer)
+            if let shadowRenderEncoder = shadowRenderPass?.renderCommandEncoder {
+                drawShadowPass(with: shadowRenderEncoder)
+            } else {
+                print("WARNING: Could not create MTLRenderCommandEncoder for the shadow pass. Aborting.")
+            }
+            
+            // Getting the currentRenderPassDescriptor from the RenderDestinationProvider should be called as
             // close as possible to presenting it with the command buffer. The currentDrawable is
             // a scarce resource and holding on to it too long may affect performance
-            if let renderPassDescriptor = renderDestination.currentRenderPassDescriptor, let currentDrawable = renderDestination.currentDrawable, let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) {
+            if let mainRenderPassDescriptor = renderDestination.currentRenderPassDescriptor, let currentDrawable = renderDestination.currentDrawable {
                 
-                renderEncoder.label = "RenderEncoder"
+                mainRenderPass = RenderPass(withDevice: device, renderPassDescriptor: mainRenderPassDescriptor)
+                mainRenderPass?.name = "Main Pass"
+                mainRenderPass?.prepareRenderCommandEncoder(withCommandBuffer: commandBuffer)
                 
-                // Draw
-                for module in renderModules {
-                    if module.isInitialized {
-                        module.draw(withRenderEncoder: renderEncoder, sharedModules: sharedModulesForModule[module.moduleIdentifier])
-                    }
+                if let renderEncoder = mainRenderPass?.renderCommandEncoder {
+                    drawMainPass(with: renderEncoder)
+                } else {
+                    print("WARNING: Could not create MTLRenderCommandEncoder. Aborting draw pass.")
                 }
-                
-                // We're done encoding commands
-                renderEncoder.endEncoding()
                 
                 // Schedule a present once the framebuffer is complete using the current drawable
                 commandBuffer.present(currentDrawable)
+                
             }
             
             // Finalize rendering here & push the command buffer to the GPU
             commandBuffer.commit()
+            
         }
         
         // Update viewportSizeDidChange state
@@ -1071,6 +1091,13 @@ public class Renderer: NSObject {
     fileprivate var defaultLibrary: MTLLibrary?
     fileprivate var commandQueue: MTLCommandQueue?
     
+    // Main Pass
+    fileprivate var mainRenderPass: RenderPass?
+    
+    // Shadow Render Pass
+    fileprivate var shadowMap: MTLTexture?
+    fileprivate var shadowRenderPass: RenderPass?
+    
     // Keeping track of objects to render
     fileprivate var geometriesForRenderModule = [String: [AKGeometricEntity]]()
     fileprivate var augmentedAnchors = [AKAugmentedAnchor]()
@@ -1137,6 +1164,58 @@ public class Renderer: NSObject {
         }()
         
         commandQueue = device.makeCommandQueue()
+        
+        //
+        // Setup Shadow Pass
+        //
+        
+        // Create render pipeline descriptor for shadow pass
+    
+        let shadowVertexFunction = defaultLibrary?.makeFunction(name: "shadowVertexShader")
+        let shadowRenderPipelineDescriptor = MTLRenderPipelineDescriptor()
+        shadowRenderPipelineDescriptor.label = "Shadow Gen"
+        shadowRenderPipelineDescriptor.vertexDescriptor = MTKMetalVertexDescriptorFromModelIO(RenderUtilities.createStandardVertexDescriptor())
+        shadowRenderPipelineDescriptor.vertexFunction = shadowVertexFunction
+        shadowRenderPipelineDescriptor.fragmentFunction = nil
+        shadowRenderPipelineDescriptor.depthAttachmentPixelFormat = .depth32Float
+        
+        // Create depth state descriptor for shadow pass
+    
+        let shadowDepthStateDesc = MTLDepthStencilDescriptor()
+        shadowDepthStateDesc.label = "Shadow Gen";
+//        #if REVERSE_DEPTH
+//        shadowDepthStateDesc.depthCompareFunction = .greaterEqual
+//        #else
+        shadowDepthStateDesc.depthCompareFunction = .lessEqual
+//        #endif
+        shadowDepthStateDesc.isDepthWriteEnabled = true
+        
+        
+        // Create depth texture for shadow pass
+        
+        let shadowTextureDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .depth32Float, width: 2048, height: 2048, mipmapped: false)
+            
+        shadowTextureDesc.resourceOptions = .storageModePrivate
+        shadowTextureDesc.usage = [.renderTarget, .shaderRead]
+        
+        shadowMap = device.makeTexture(descriptor: shadowTextureDesc)
+        shadowMap?.label = "Shadow Map"
+        
+        // Create shadow render pass
+        
+        let shadowRenderPassDescriptor = MTLRenderPassDescriptor()
+        shadowRenderPassDescriptor.depthAttachment.texture = shadowMap
+        shadowRenderPassDescriptor.depthAttachment.loadAction = .clear
+        shadowRenderPassDescriptor.depthAttachment.storeAction = .store
+        shadowRenderPassDescriptor.depthAttachment.clearDepth = 1
+        
+        shadowRenderPass = RenderPass(withDevice: device, renderPassDescriptor: shadowRenderPassDescriptor)
+        shadowRenderPass?.name = "Shadow Render Pass"
+        shadowRenderPass?.usesEffectsBuffer = false
+        shadowRenderPass?.usesEnvironmentBuffer = false
+        shadowRenderPass?.usesCameraOutput = false
+        // TODO: setDepthBias(0.015, slopeScale:7, clamp:0.02)
+        
         
     }
     
@@ -1299,6 +1378,39 @@ public class Renderer: NSObject {
         default:
             return nil
         }
+    }
+    
+    // MARK: Shadow Pass
+    
+    /// Draw to the depth texture from the directional lights point of view to generate the shadow map
+    func drawShadowPass(with commandEncoder: MTLRenderCommandEncoder) {
+        
+        // Draw
+        for module in renderModules {
+            if let shadowRenderPass = shadowRenderPass, module.isInitialized {
+                shadowRenderPass.drawCallGroups = module.drawCallGroups
+//                module.draw(withRenderPass: shadowRenderPass, sharedModules: sharedModulesForModule[module.moduleIdentifier])
+            }
+        }
+        
+        commandEncoder.endEncoding()
+    }
+    
+    // MARK: Main Pass
+    
+    func drawMainPass(with commandEncoder: MTLRenderCommandEncoder) {
+        
+        // Draw
+        for module in renderModules {
+            if let mainRenderPass = mainRenderPass, module.isInitialized {
+                mainRenderPass.drawCallGroups = module.drawCallGroups
+                module.draw(withRenderPass: mainRenderPass, sharedModules: sharedModulesForModule[module.moduleIdentifier])
+            }
+        }
+        
+        // We're done encoding commands
+        commandEncoder.endEncoding()
+        
     }
     
 }

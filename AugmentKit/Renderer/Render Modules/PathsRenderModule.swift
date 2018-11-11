@@ -52,6 +52,7 @@ class PathsRenderModule: RenderModule {
     var sharedModuleIdentifiers: [String]? = [SharedBuffersRenderModule.identifier]
     var renderDistance: Double = 500
     var errors = [AKError]()
+     private(set) var drawCallGroups = [RenderPass.DrawCallGroup]()
     
     // The number of path instances to render
     private(set) var pathSegmentInstanceCount: Int = 0
@@ -134,7 +135,7 @@ class PathsRenderModule: RenderModule {
             return
         }
         
-        guard let pointVertexShader = metalLibrary.makeFunction(name: "pathVertexShader") else {
+        guard let pathVertexShader = metalLibrary.makeFunction(name: "pathVertexShader") else {
             print("Serious Error - failed to create the pathVertexShader function")
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeShaderInitializationFailed, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
@@ -142,7 +143,7 @@ class PathsRenderModule: RenderModule {
             return
         }
         
-        guard let pointFragmentShader = metalLibrary.makeFunction(name: "pathFragmentShader") else {
+        guard let pathFragmentShader = metalLibrary.makeFunction(name: "pathFragmentShader") else {
             print("Serious Error - failed to create the pathFragmentShader function")
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeShaderInitializationFailed, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
@@ -185,11 +186,12 @@ class PathsRenderModule: RenderModule {
             return
         }
         
+        var drawCalls = [RenderPass.DrawCall]()
         for (_, _) in pathMeshGPUData.drawData.enumerated() {
             let pathPipelineStateDescriptor = MTLRenderPipelineDescriptor()
             pathPipelineStateDescriptor.vertexDescriptor = pathVertexDescriptor
-            pathPipelineStateDescriptor.vertexFunction = pointVertexShader
-            pathPipelineStateDescriptor.fragmentFunction = pointFragmentShader
+            pathPipelineStateDescriptor.vertexFunction = pathVertexShader
+            pathPipelineStateDescriptor.fragmentFunction = pathFragmentShader
             pathPipelineStateDescriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
             pathPipelineStateDescriptor.colorAttachments[0].isBlendingEnabled = true
             pathPipelineStateDescriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
@@ -197,6 +199,9 @@ class PathsRenderModule: RenderModule {
             pathPipelineStateDescriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
             pathPipelineStateDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
             pathPipelineStateDescriptor.sampleCount = renderDestination.sampleCount
+            
+            let drawCall = RenderPass.DrawCall(withDevice: device, renderPipelineDescriptor: pathPipelineStateDescriptor)
+            drawCalls.append(drawCall)
             
             do {
                 try pathPipelineStates.append(device.makeRenderPipelineState(descriptor: pathPipelineStateDescriptor))
@@ -211,6 +216,16 @@ class PathsRenderModule: RenderModule {
         pathDepthStateDescriptor.depthCompareFunction = .less
         pathDepthStateDescriptor.isDepthWriteEnabled = true
         pathDepthState = device.makeDepthStencilState(descriptor: pathDepthStateDescriptor)
+        
+        drawCallGroups = [RenderPass.DrawCallGroup]()
+            
+        drawCalls = drawCalls.map{
+            var mutableDrawCall = $0
+            mutableDrawCall.depthStencilState = pathDepthState
+            return mutableDrawCall
+        }
+        let drawCallGroup = RenderPass.DrawCallGroup(drawCalls: drawCalls)
+        drawCallGroups.append(drawCallGroup)
         
         isInitialized = true
         
@@ -371,7 +386,8 @@ class PathsRenderModule: RenderModule {
                             }
                         case .scale:
                             if let value = effect.value(forTime: currentTime) as? Float {
-                                effectsUniforms?.pointee.scale = value
+                                let scaleMatrix = matrix_identity_float4x4
+                                effectsUniforms?.pointee.scale = scaleMatrix.scale(x: value, y: value, z: value)
                                 hasSetScale = true
                             }
                         }
@@ -387,7 +403,7 @@ class PathsRenderModule: RenderModule {
                     effectsUniforms?.pointee.tint = float3(1,1,1)
                 }
                 if !hasSetScale {
-                    effectsUniforms?.pointee.scale = 1
+                    effectsUniforms?.pointee.scale = matrix_identity_float4x4
                 }
                 
                 lastAnchor = anchor
@@ -402,7 +418,74 @@ class PathsRenderModule: RenderModule {
         
     }
     
-    func draw(withRenderEncoder renderEncoder: MTLRenderCommandEncoder, sharedModules: [SharedRenderModule]?) {
+//    func draw(withRenderEncoder renderEncoder: MTLRenderCommandEncoder, sharedModules: [SharedRenderModule]?) {
+//
+//        guard pathSegmentInstanceCount > 0 else {
+//            return
+//        }
+//
+//        // Push a debug group allowing us to identify render commands in the GPU Frame Capture tool
+//        renderEncoder.pushDebugGroup("Draw Paths")
+//
+//        // Set render command encoder state
+//        renderEncoder.setCullMode(.back)
+//
+//        guard let meshGPUData = pathMeshGPUData else {
+//            print("Error: meshGPUData not available a draw time. Aborting")
+//            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeIntermediateMeshDataNotAvailable, userInfo: nil)
+//            let newError = AKError.recoverableError(.renderPipelineError(.drawAborted(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+//            recordNewError(newError)
+//            return
+//        }
+//
+//        if let sharedBuffer = sharedModules?.first(where: {$0.moduleIdentifier == SharedBuffersRenderModule.identifier}) {
+//
+//            renderEncoder.pushDebugGroup("Draw Shared Uniforms")
+//
+//            renderEncoder.setVertexBuffer(sharedBuffer.sharedUniformBuffer, offset: sharedBuffer.sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
+//            renderEncoder.setFragmentBuffer(sharedBuffer.sharedUniformBuffer, offset: sharedBuffer.sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
+//
+//            renderEncoder.popDebugGroup()
+//
+//        }
+//
+//        if let effectsBuffer = effectsUniformBuffer {
+//
+//            renderEncoder.pushDebugGroup("Draw Effects Uniforms")
+//            renderEncoder.setVertexBuffer(effectsBuffer, offset: effectsUniformBufferOffset, index: Int(kBufferIndexAnchorEffectsUniforms.rawValue))
+//            renderEncoder.setFragmentBuffer(effectsBuffer, offset: effectsUniformBufferOffset, index: Int(kBufferIndexAnchorEffectsUniforms.rawValue))
+//            renderEncoder.popDebugGroup()
+//
+//        }
+//
+//        for (drawDataIndex, drawData) in meshGPUData.drawData.enumerated() {
+//
+//            if drawDataIndex < pathPipelineStates.count {
+//                renderEncoder.setRenderPipelineState(pathPipelineStates[drawDataIndex])
+//                renderEncoder.setDepthStencilState(pathDepthState)
+//
+//                // Set any buffers fed into our render pipeline
+//                renderEncoder.setVertexBuffer(pathUniformBuffer, offset: pathUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
+//
+//                var mutableDrawData = drawData
+//                mutableDrawData.instanceCount = pathSegmentInstanceCount
+//
+//                // Set the mesh's vertex data buffers and draw
+//                draw(withDrawData: mutableDrawData, with: renderEncoder)
+//
+//            }
+//
+//        }
+//
+//        renderEncoder.popDebugGroup()
+//
+//    }
+    
+    func draw(withRenderPass renderPass: RenderPass, sharedModules: [SharedRenderModule]?) {
+        
+        guard let renderEncoder = renderPass.renderCommandEncoder else {
+            return
+        }
         
         guard pathSegmentInstanceCount > 0 else {
             return
@@ -442,20 +525,20 @@ class PathsRenderModule: RenderModule {
             
         }
         
-        for (drawDataIndex, drawData) in meshGPUData.drawData.enumerated() {
+        for drawCallGroup in renderPass.drawCallGroups {
             
-            if drawDataIndex < pathPipelineStates.count {
-                renderEncoder.setRenderPipelineState(pathPipelineStates[drawDataIndex])
-                renderEncoder.setDepthStencilState(pathDepthState)
+            for (index, drawCall) in drawCallGroup.drawCalls.enumerated() {
+                
+                drawCall.prepareDrawCall(withRenderPass: renderPass)
                 
                 // Set any buffers fed into our render pipeline
                 renderEncoder.setVertexBuffer(pathUniformBuffer, offset: pathUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
                 
-                var mutableDrawData = drawData
+                var mutableDrawData = meshGPUData.drawData[index]
                 mutableDrawData.instanceCount = pathSegmentInstanceCount
                 
-                // Set the mesh's vertex data buffers
-                encode(meshGPUData: meshGPUData, fromDrawData: mutableDrawData, with: renderEncoder)
+                // Set the mesh's vertex data buffers and draw
+                draw(withDrawData: mutableDrawData, with: renderEncoder)
                 
             }
             

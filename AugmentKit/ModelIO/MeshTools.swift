@@ -344,7 +344,7 @@ class ModelIOTools {
                 
                 // Get the local transform for this node
                 let myLocalTransform: matrix_float4x4 = {
-                    if let transform = object.transform {
+                    if let transform = object.transform, !transform.matrix.isZero() {
                         return transform.matrix
                     } else {
                         return matrix_identity_float4x4

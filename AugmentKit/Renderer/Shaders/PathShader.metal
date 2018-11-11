@@ -60,8 +60,7 @@ vertex PathFragmentInOut pathVertexShader(PathVertexIn in [[stage_in]],
     float4x4 modelMatrix = anchorInstanceUniforms[iid].modelMatrix;
     
     // Apply effects that affect geometry
-    float4x4 scaleMatrix = float4x4(anchorEffectsUniforms[iid].scale);
-    scaleMatrix[3][3] = 1;
+    float4x4 scaleMatrix = anchorEffectsUniforms[iid].scale;
     modelMatrix = modelMatrix * scaleMatrix;
     
     // Transform the model's orientation from world space to camera space.

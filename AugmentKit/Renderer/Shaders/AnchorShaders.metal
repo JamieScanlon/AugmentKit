@@ -437,8 +437,7 @@ vertex ColorInOut anchorGeometryVertexTransform(Vertex in [[stage_in]],
     float3x3 normalMatrix = anchorInstanceUniforms[iid].normalMatrix;
     
     // Apply effects that affect geometry
-    float4x4 scaleMatrix = float4x4(anchorEffectsUniforms[iid].scale);
-    scaleMatrix[3][3] = 1;
+    float4x4 scaleMatrix = anchorEffectsUniforms[iid].scale;
     modelMatrix = modelMatrix * scaleMatrix;
     
     // Transform the model's orientation from world space to camera space.
@@ -487,7 +486,7 @@ vertex ColorInOut anchorGeometryVertexTransformSkinned(Vertex in [[stage_in]],
     float3x3 normalMatrix = anchorInstanceUniforms[iid].normalMatrix;
     
     // Apply effects that affect geometry
-    float4x4 scaleMatrix = float4x4(anchorEffectsUniforms[iid].scale);
+    float4x4 scaleMatrix = anchorEffectsUniforms[iid].scale;
     scaleMatrix[3][3] = 1;
     modelMatrix = modelMatrix * scaleMatrix;
     

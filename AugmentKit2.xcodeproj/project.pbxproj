@@ -74,8 +74,10 @@
 		7DFCF6051FC096A900E8A560 /* PointShader.metal in Sources */ = {isa = PBXBuildFile; fileRef = 7DFCF6041FC096A900E8A560 /* PointShader.metal */; };
 		9614CC13216A5C9100427C6D /* AKAugmentedTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9614CC12216A5C9100427C6D /* AKAugmentedTracker.swift */; };
 		9614CC15216A5CC500427C6D /* AKRealTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9614CC14216A5CC500427C6D /* AKRealTracker.swift */; };
+		965F894F2186BD5E00D1B195 /* RenderPass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 965F894E2186BD5E00D1B195 /* RenderPass.swift */; };
 		96CACF7C2156A051009A8A20 /* RenderUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96CACF7B2156A051009A8A20 /* RenderUtilities.swift */; };
 		96CACF7E2156D3C9009A8A20 /* GeometryUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96CACF7D2156D3C9009A8A20 /* GeometryUtilities.swift */; };
+		96E0B5B121914B3300140317 /* ShadowShader.metal in Sources */ = {isa = PBXBuildFile; fileRef = 96E0B5B021914B3300140317 /* ShadowShader.metal */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -162,8 +164,10 @@
 		7DFCF6041FC096A900E8A560 /* PointShader.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = PointShader.metal; sourceTree = "<group>"; };
 		9614CC12216A5C9100427C6D /* AKAugmentedTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKAugmentedTracker.swift; sourceTree = "<group>"; };
 		9614CC14216A5CC500427C6D /* AKRealTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKRealTracker.swift; sourceTree = "<group>"; };
+		965F894E2186BD5E00D1B195 /* RenderPass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RenderPass.swift; sourceTree = "<group>"; };
 		96CACF7B2156A051009A8A20 /* RenderUtilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RenderUtilities.swift; sourceTree = "<group>"; };
 		96CACF7D2156D3C9009A8A20 /* GeometryUtilities.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = GeometryUtilities.swift; sourceTree = "<group>"; };
+		96E0B5B021914B3300140317 /* ShadowShader.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = ShadowShader.metal; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -210,6 +214,7 @@
 				7DAA7254211D48EE00AA11AF /* BRDFFunctions.h */,
 				7DAA7255211D4A3B00AA11AF /* Common.h */,
 				96CACF7B2156A051009A8A20 /* RenderUtilities.swift */,
+				965F894E2186BD5E00D1B195 /* RenderPass.swift */,
 			);
 			path = Renderer;
 			sourceTree = "<group>";
@@ -245,6 +250,7 @@
 				7D53471E203A961A00714A6F /* PathShader.metal */,
 				7DAA7250211D370400AA11AF /* BRDFFunctions.metal */,
 				7DAA7252211D395900AA11AF /* Common.metal */,
+				96E0B5B021914B3300140317 /* ShadowShader.metal */,
 			);
 			path = Shaders;
 			sourceTree = "<group>";
@@ -557,6 +563,7 @@
 				7DAD06BE2071505E00B62B61 /* AKTracker.swift in Sources */,
 				7D5FDA3C1FC9E70E00BAE104 /* SurfacesRenderModule.swift in Sources */,
 				7D6E6B5E1F8F1C9600EFC667 /* AKSceneKitUtils.swift in Sources */,
+				96E0B5B121914B3300140317 /* ShadowShader.metal in Sources */,
 				7D6979F421287AEF000106DF /* GuideSurfaceAnchor.swift in Sources */,
 				7D6E6B681F8F1CC300EFC667 /* MeshTools.swift in Sources */,
 				7DAD06C22071520F00B62B61 /* AKTarget.swift in Sources */,
@@ -583,6 +590,7 @@
 				7DB72CD5202424D70050C61D /* AKPathSegmentAnchor.swift in Sources */,
 				7D48011C20FDA7C000E4B082 /* Archive+Writing.swift in Sources */,
 				96CACF7E2156D3C9009A8A20 /* GeometryUtilities.swift in Sources */,
+				965F894F2186BD5E00D1B195 /* RenderPass.swift in Sources */,
 				7D6979FC21287EC2000106DF /* PathAnchor.swift in Sources */,
 				7D8D4DE7209E907E00F98072 /* AKEffect.swift in Sources */,
 				7D345B0B208B892200C2D5D0 /* AKError.swift in Sources */,

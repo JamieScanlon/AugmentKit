@@ -48,6 +48,7 @@ class CameraPlaneRenderModule: RenderModule {
     var sharedModuleIdentifiers: [String]? = nil
     var renderDistance: Double = 500
     var errors = [AKError]()
+    private(set) var drawCallGroups = [RenderPass.DrawCallGroup]()
     
     func initializeBuffers(withDevice aDevice: MTLDevice, maxInFlightBuffers: Int) {
         
@@ -142,6 +143,11 @@ class CameraPlaneRenderModule: RenderModule {
         CVMetalTextureCacheCreate(nil, nil, device, nil, &textureCache)
         capturedImageTextureCache = textureCache
         
+        drawCallGroups = [RenderPass.DrawCallGroup]()
+        let drawCall = RenderPass.DrawCall(withDevice: device, renderPipelineDescriptor: capturedImagePipelineStateDescriptor, depthStencilDescriptor: capturedImageDepthStateDescriptor, cullMode: .none)
+        let drawCallGroup = RenderPass.DrawCallGroup(drawCalls: [drawCall])
+        drawCallGroups = [drawCallGroup]
+        
         isInitialized = true
         
     }
@@ -201,39 +207,84 @@ class CameraPlaneRenderModule: RenderModule {
         // Do Nothing
     }
     
-    func draw(withRenderEncoder renderEncoder: MTLRenderCommandEncoder, sharedModules: [SharedRenderModule]?) {
+//    func draw(withRenderEncoder renderEncoder: MTLRenderCommandEncoder, sharedModules: [SharedRenderModule]?) {
+//        
+//        guard let textureY = capturedImageTextureY, let textureCbCr = capturedImageTextureCbCr else {
+//            return
+//        }
+//        
+//        guard let capturedImagePipelineState = capturedImagePipelineState else {
+//            print("Serious Error - Captured Image Pipeline State is nil")
+//            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeRenderPipelineInitializationFailed, userInfo: nil)
+//            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+//            recordNewError(newError)
+//            return
+//        }
+//        
+//        // Push a debug group allowing us to identify render commands in the GPU Frame Capture tool
+//        renderEncoder.pushDebugGroup("Draw Captured Image")
+//        
+//        // Set render command encoder state
+//        renderEncoder.setCullMode(.none)
+//        renderEncoder.setRenderPipelineState(capturedImagePipelineState)
+//        renderEncoder.setDepthStencilState(capturedImageDepthState)
+//        
+//        // Set mesh's vertex buffers
+//        renderEncoder.setVertexBuffer(imagePlaneVertexBuffer, offset: 0, index: Int(kBufferIndexMeshPositions.rawValue))
+//        
+//        // Set any textures read/sampled from our render pipeline
+//        renderEncoder.setFragmentTexture(CVMetalTextureGetTexture(textureY), index: Int(kTextureIndexY.rawValue))
+//        renderEncoder.setFragmentTexture(CVMetalTextureGetTexture(textureCbCr), index: Int(kTextureIndexCbCr.rawValue))
+//        
+//        // Draw each submesh of our mesh
+//        renderEncoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
+//        
+//        renderEncoder.popDebugGroup()
+//        
+//    }
+    
+    func draw(withRenderPass renderPass: RenderPass, sharedModules: [SharedRenderModule]?) {
+        
+        guard renderPass.usesCameraOutput else {
+            return
+        }
+        
+        guard let renderEncoder = renderPass.renderCommandEncoder else {
+            return
+        }
         
         guard let textureY = capturedImageTextureY, let textureCbCr = capturedImageTextureCbCr else {
             return
         }
         
-        guard let capturedImagePipelineState = capturedImagePipelineState else {
-            print("Serious Error - Captured Image Pipeline State is nil")
-            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeRenderPipelineInitializationFailed, userInfo: nil)
-            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-            recordNewError(newError)
-            return
+        for drawCallGroup in renderPass.drawCallGroups {
+            
+            // Geometry Draw Calls
+            for (_, drawCall) in drawCallGroup.drawCalls.enumerated() {
+                
+                // Push a debug group allowing us to identify render commands in the GPU Frame Capture tool
+                renderEncoder.pushDebugGroup("Draw Captured Image")
+                
+                // Set render command encoder state
+                drawCall.prepareDrawCall(withRenderPass: renderPass)
+                
+                // Set mesh's vertex buffers
+                renderEncoder.setVertexBuffer(imagePlaneVertexBuffer, offset: 0, index: Int(kBufferIndexMeshPositions.rawValue))
+                
+                // Set any textures read/sampled from our render pipeline
+                renderEncoder.setFragmentTexture(CVMetalTextureGetTexture(textureY), index: Int(kTextureIndexY.rawValue))
+                renderEncoder.setFragmentTexture(CVMetalTextureGetTexture(textureCbCr), index: Int(kTextureIndexCbCr.rawValue))
+                
+                // Draw each submesh of our mesh
+                renderEncoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
+                
+                renderEncoder.popDebugGroup()
+                
+            }
+            
         }
         
-        // Push a debug group allowing us to identify render commands in the GPU Frame Capture tool
-        renderEncoder.pushDebugGroup("Draw Captured Image")
         
-        // Set render command encoder state
-        renderEncoder.setCullMode(.none)
-        renderEncoder.setRenderPipelineState(capturedImagePipelineState)
-        renderEncoder.setDepthStencilState(capturedImageDepthState)
-        
-        // Set mesh's vertex buffers
-        renderEncoder.setVertexBuffer(imagePlaneVertexBuffer, offset: 0, index: Int(kBufferIndexMeshPositions.rawValue))
-        
-        // Set any textures read/sampled from our render pipeline
-        renderEncoder.setFragmentTexture(CVMetalTextureGetTexture(textureY), index: Int(kTextureIndexY.rawValue))
-        renderEncoder.setFragmentTexture(CVMetalTextureGetTexture(textureCbCr), index: Int(kTextureIndexCbCr.rawValue))
-        
-        // Draw each submesh of our mesh
-        renderEncoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
-        
-        renderEncoder.popDebugGroup()
         
     }
     

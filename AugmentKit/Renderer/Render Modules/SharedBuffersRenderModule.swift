@@ -49,6 +49,7 @@ class SharedBuffersRenderModule: SharedRenderModule {
     var sharedModuleIdentifiers: [String]? = nil
     var renderDistance: Double = 500
     var errors = [AKError]()
+    private(set) var drawCallGroups = [RenderPass.DrawCallGroup]()
     
     // MARK: - RenderModule
     
@@ -104,7 +105,12 @@ class SharedBuffersRenderModule: SharedRenderModule {
         // Do Nothing
     }
     
-    func draw(withRenderEncoder renderEncoder: MTLRenderCommandEncoder, sharedModules: [SharedRenderModule]?) {
+//    func draw(withRenderEncoder renderEncoder: MTLRenderCommandEncoder, sharedModules: [SharedRenderModule]?) {
+//        // Since this is a shared module, it is up to the module that depends on it to setup
+//        // the vertex and fragment shaders and issue the draw calls
+//    }
+    
+    func draw(withRenderPass renderPass: RenderPass, sharedModules: [SharedRenderModule]?) {
         // Since this is a shared module, it is up to the module that depends on it to setup
         // the vertex and fragment shaders and issue the draw calls
     }

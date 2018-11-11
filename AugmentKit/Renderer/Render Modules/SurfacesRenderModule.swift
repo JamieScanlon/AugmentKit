@@ -49,6 +49,7 @@ class SurfacesRenderModule: RenderModule {
     var sharedModuleIdentifiers: [String]? = [SharedBuffersRenderModule.identifier]
     var renderDistance: Double = 500
     var errors = [AKError]()
+    private(set) var drawCallGroups = [RenderPass.DrawCallGroup]()
     
     // The number of surface instances to render
     private(set) var surfaceInstanceCount: Int = 0
@@ -341,7 +342,7 @@ class SurfacesRenderModule: RenderModule {
             
             environmentUniforms?.pointee.ambientLightColor = ambientLightColor// * ambientIntensity
             
-            var directionalLightDirection : vector_float3 = vector3(0.0, -1.0, 0.0)
+            var directionalLightDirection : vector_float3 = environmentProperties.directionalLightDirection
             directionalLightDirection = simd_normalize(directionalLightDirection)
             environmentUniforms?.pointee.directionalLightDirection = directionalLightDirection
             
@@ -384,7 +385,8 @@ class SurfacesRenderModule: RenderModule {
                         }
                     case .scale:
                         if let value = effect.value(forTime: currentTime) as? Float {
-                            effectsUniforms?.pointee.scale = value
+                            let scaleMatrix = matrix_identity_float4x4
+                            effectsUniforms?.pointee.scale = scaleMatrix.scale(x: value, y: value, z: value)
                             hasSetScale = true
                         }
                     }
@@ -400,7 +402,7 @@ class SurfacesRenderModule: RenderModule {
                 effectsUniforms?.pointee.tint = float3(1,1,1)
             }
             if !hasSetScale {
-                effectsUniforms?.pointee.scale = 1
+                effectsUniforms?.pointee.scale = matrix_identity_float4x4
             }
             
         }
@@ -415,7 +417,85 @@ class SurfacesRenderModule: RenderModule {
         // Do Nothing
     }
     
-    func draw(withRenderEncoder renderEncoder: MTLRenderCommandEncoder, sharedModules: [SharedRenderModule]?) {
+//    func draw(withRenderEncoder renderEncoder: MTLRenderCommandEncoder, sharedModules: [SharedRenderModule]?) {
+//        
+//        guard surfaceInstanceCount > 0 else {
+//            return
+//        }
+//        
+//        // Push a debug group allowing us to identify render commands in the GPU Frame Capture tool
+//        renderEncoder.pushDebugGroup("Draw Surfaces")
+//        
+//        // Set render command encoder state
+//        renderEncoder.setCullMode(.none)
+//        
+//        guard let meshGPUData = surfaceMeshGPUData else {
+//            print("Error: meshGPUData not available a draw time. Aborting")
+//            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeIntermediateMeshDataNotAvailable, userInfo: nil)
+//            let newError = AKError.recoverableError(.renderPipelineError(.drawAborted(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+//            recordNewError(newError)
+//            return
+//        }
+//        
+//        if let sharedBuffer = sharedModules?.first(where: {$0.moduleIdentifier == SharedBuffersRenderModule.identifier}) {
+//            
+//            renderEncoder.pushDebugGroup("Draw Shared Uniforms")
+//            
+//            renderEncoder.setVertexBuffer(sharedBuffer.sharedUniformBuffer, offset: sharedBuffer.sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
+//            renderEncoder.setFragmentBuffer(sharedBuffer.sharedUniformBuffer, offset: sharedBuffer.sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
+//            
+//            renderEncoder.popDebugGroup()
+//            
+//        }
+//        
+//        if let effectsBuffer = effectsUniformBuffer {
+//            
+//            renderEncoder.pushDebugGroup("Draw Effects Uniforms")
+//            renderEncoder.setVertexBuffer(effectsBuffer, offset: effectsUniformBufferOffset, index: Int(kBufferIndexAnchorEffectsUniforms.rawValue))
+//            renderEncoder.setFragmentBuffer(effectsBuffer, offset: effectsUniformBufferOffset, index: Int(kBufferIndexAnchorEffectsUniforms.rawValue))
+//            renderEncoder.popDebugGroup()
+//            
+//        }
+//        
+//        if let environmentUniformBuffer = environmentUniformBuffer {
+//            
+//            renderEncoder.pushDebugGroup("Draw Environment Uniforms")
+//            if let environmentTexture = environmentData?.environmentTexture, environmentData?.hasEnvironmentMap == true {
+//                renderEncoder.setFragmentTexture(environmentTexture, index: Int(kTextureIndexEnvironmentMap.rawValue))
+//            }
+//            renderEncoder.setFragmentBuffer(environmentUniformBuffer, offset: environmentUniformBufferOffset, index: Int(kBufferIndexEnvironmentUniforms.rawValue))
+//            renderEncoder.popDebugGroup()
+//            
+//        }
+//        
+//        for (drawDataIndex, drawData) in meshGPUData.drawData.enumerated() {
+//            
+//            if drawDataIndex < surfacePipelineStates.count {
+//                renderEncoder.setRenderPipelineState(surfacePipelineStates[drawDataIndex])
+//                renderEncoder.setDepthStencilState(surfaceDepthState)
+//                
+//                // Set any buffers fed into our render pipeline
+//                renderEncoder.setVertexBuffer(surfaceUniformBuffer, offset: surfaceUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
+//                
+//                var mutableDrawData = drawData
+//                mutableDrawData.instanceCount = surfaceInstanceCount
+//                
+//                // Set the mesh's vertex data buffers and draw
+//                draw(withDrawData: mutableDrawData, with: renderEncoder)
+//                
+//            }
+//            
+//        }
+//        
+//        renderEncoder.popDebugGroup()
+//        
+//    }
+    
+    func draw(withRenderPass renderPass: RenderPass, sharedModules: [SharedRenderModule]?) {
+        
+        guard let renderEncoder = renderPass.renderCommandEncoder else {
+            return
+        }
         
         guard surfaceInstanceCount > 0 else {
             return
@@ -466,20 +546,21 @@ class SurfacesRenderModule: RenderModule {
             
         }
         
-        for (drawDataIndex, drawData) in meshGPUData.drawData.enumerated() {
+        for drawCallGroup in renderPass.drawCallGroups {
             
-            if drawDataIndex < surfacePipelineStates.count {
-                renderEncoder.setRenderPipelineState(surfacePipelineStates[drawDataIndex])
-                renderEncoder.setDepthStencilState(surfaceDepthState)
-                
+            // Geometry Draw Calls
+            for (index, drawCall) in drawCallGroup.drawCalls.enumerated() {
+            
+                drawCall.prepareDrawCall(withRenderPass: renderPass)
+                    
                 // Set any buffers fed into our render pipeline
                 renderEncoder.setVertexBuffer(surfaceUniformBuffer, offset: surfaceUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
                 
-                var mutableDrawData = drawData
+                var mutableDrawData = meshGPUData.drawData[index]
                 mutableDrawData.instanceCount = surfaceInstanceCount
                 
-                // Set the mesh's vertex data buffers
-                encode(meshGPUData: meshGPUData, fromDrawData: mutableDrawData, with: renderEncoder)
+                // Set the mesh's vertex data buffers and draw
+                draw(withDrawData: mutableDrawData, with: renderEncoder)
                 
             }
             

@@ -35,8 +35,7 @@
 
 // MARK: - Indexes
 
-// Buffer index values shared between shader and C code to ensure Metal shader buffer inputs match
-//   Metal API buffer set calls
+/// Buffer index values shared between shader and C code to ensure Metal shader buffer inputs match Metal API buffer set calls
 enum BufferIndices {
     kBufferIndexMeshPositions    = 0,
     kBufferIndexMeshGenerics,
@@ -49,13 +48,13 @@ enum BufferIndices {
     kBufferIndexMeshPaletteSize,
     kBufferIndexAnchorEffectsUniforms,
     kBufferIndexEnvironmentUniforms,
+    kBufferIndexShadowUniforms,
 };
 
-// Attribute index values shared between shader and C code to ensure Metal shader vertex
-//   attribute indices match the Metal API vertex descriptor attribute indices
-// See https://developer.apple.com/documentation/modelio/mdlvertexattribute/vertex_attributes for a
-// full list of attributes supported by ModelIO. The commented out attributes below
-// are the ones that are not yet supported here.
+/**
+ Attribute index values shared between shader and C code to ensure Metal shader vertex attribute indices match the Metal API vertex descriptor attribute indices
+ See https://developer.apple.com/documentation/modelio/mdlvertexattribute/vertex_attributes for a full list of attributes supported by ModelIO. The commented out attributes below are the ones that are not yet supported here.
+ */
 enum VertexAttributes {
     kVertexAttributePosition  = 0,  // Used by all shaders
     kVertexAttributeTexcoord,       // Used by the Image Capture, Anchor, and Path shaders
@@ -73,8 +72,7 @@ enum VertexAttributes {
     //kVertexAttributeSubdivisionStencil,
 };
 
-// Texture index values shared between shader and C code to ensure Metal shader texture indices
-//   match indices of Metal API texture set calls
+/// Texture index values shared between shader and C code to ensure Metal shader texture indices match indices of Metal API texture set calls
 enum TextureIndices {
     // Base Color
     kTextureIndexColor    = 0,
@@ -137,15 +135,14 @@ enum QualityLevel {
 
 // MARK: - Uniforms
 
-// Structure shared between shader and C code that contains general information like camera (eye) transforms
+/// Structure shared between shader and C code that contains general information like camera (eye) transforms
 struct SharedUniforms {
     // Camera (eye) Position Uniforms
     matrix_float4x4 projectionMatrix; // A transform matrix to convert to 'clip space' for the devices screen taking into account the properties of the camera.
     matrix_float4x4 viewMatrix; // A transform matrix for converting from world space to camera (eye) space.
 };
 
-// Structure shared between shader and C code that contains information about the environment like lighting
-//   and environment texture cubemaps
+/// Structure shared between shader and C code that contains information about the environment like lighting and environment texture cubemaps
 struct EnvironmentUniforms {
     // Lighting Properties
     vector_float3 ambientLightColor;
@@ -155,24 +152,21 @@ struct EnvironmentUniforms {
     int hasEnvironmentMap;
 };
 
-// Structure shared between shader and C code that contains information pertaining to a single model like
-//   the model matrix transform
+/// Structure shared between shader and C code that contains information pertaining to a single model like the model matrix transform
 struct AnchorInstanceUniforms {
     matrix_float4x4 modelMatrix; // A transform matrix for the anchor model in world space.
     matrix_float3x3 normalMatrix;
 };
 
-// Structure shared between shader and C code that contains information about effects that should be
-//   applied to a model
+/// Structure shared between shader and C code that contains information about effects that should be applied to a model
 struct AnchorEffectsUniforms {
     float alpha;
     float glow;
     vector_float3 tint;
-    float scale;
+    matrix_float4x4 scale;
 };
 
-// Structure shared between shader and C code that contains information about the material that should be
-//   used to render a model
+/// Structure shared between shader and C code that contains information about the material that should be used to render a model
 struct MaterialUniforms {
     vector_float4 baseColor;
     vector_float3 emissionColor;
@@ -188,6 +182,12 @@ struct MaterialUniforms {
     float sheenTint;
     float clearcoat;
     float clearcoatGloss;
+};
+
+/// Structure shared between shader and C code that contains information about the shadow Model View Projection transform
+struct ShadowUniforms {
+    matrix_float4x4 shadow_mvp_matrix;
+    matrix_float4x4 shadow_mvp_xform_matrix;
 };
 
 // MARK: Lighting Parameters

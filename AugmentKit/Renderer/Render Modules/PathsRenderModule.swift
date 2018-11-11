@@ -418,69 +418,6 @@ class PathsRenderModule: RenderModule {
         
     }
     
-//    func draw(withRenderEncoder renderEncoder: MTLRenderCommandEncoder, sharedModules: [SharedRenderModule]?) {
-//
-//        guard pathSegmentInstanceCount > 0 else {
-//            return
-//        }
-//
-//        // Push a debug group allowing us to identify render commands in the GPU Frame Capture tool
-//        renderEncoder.pushDebugGroup("Draw Paths")
-//
-//        // Set render command encoder state
-//        renderEncoder.setCullMode(.back)
-//
-//        guard let meshGPUData = pathMeshGPUData else {
-//            print("Error: meshGPUData not available a draw time. Aborting")
-//            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeIntermediateMeshDataNotAvailable, userInfo: nil)
-//            let newError = AKError.recoverableError(.renderPipelineError(.drawAborted(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-//            recordNewError(newError)
-//            return
-//        }
-//
-//        if let sharedBuffer = sharedModules?.first(where: {$0.moduleIdentifier == SharedBuffersRenderModule.identifier}) {
-//
-//            renderEncoder.pushDebugGroup("Draw Shared Uniforms")
-//
-//            renderEncoder.setVertexBuffer(sharedBuffer.sharedUniformBuffer, offset: sharedBuffer.sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
-//            renderEncoder.setFragmentBuffer(sharedBuffer.sharedUniformBuffer, offset: sharedBuffer.sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
-//
-//            renderEncoder.popDebugGroup()
-//
-//        }
-//
-//        if let effectsBuffer = effectsUniformBuffer {
-//
-//            renderEncoder.pushDebugGroup("Draw Effects Uniforms")
-//            renderEncoder.setVertexBuffer(effectsBuffer, offset: effectsUniformBufferOffset, index: Int(kBufferIndexAnchorEffectsUniforms.rawValue))
-//            renderEncoder.setFragmentBuffer(effectsBuffer, offset: effectsUniformBufferOffset, index: Int(kBufferIndexAnchorEffectsUniforms.rawValue))
-//            renderEncoder.popDebugGroup()
-//
-//        }
-//
-//        for (drawDataIndex, drawData) in meshGPUData.drawData.enumerated() {
-//
-//            if drawDataIndex < pathPipelineStates.count {
-//                renderEncoder.setRenderPipelineState(pathPipelineStates[drawDataIndex])
-//                renderEncoder.setDepthStencilState(pathDepthState)
-//
-//                // Set any buffers fed into our render pipeline
-//                renderEncoder.setVertexBuffer(pathUniformBuffer, offset: pathUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
-//
-//                var mutableDrawData = drawData
-//                mutableDrawData.instanceCount = pathSegmentInstanceCount
-//
-//                // Set the mesh's vertex data buffers and draw
-//                draw(withDrawData: mutableDrawData, with: renderEncoder)
-//
-//            }
-//
-//        }
-//
-//        renderEncoder.popDebugGroup()
-//
-//    }
-    
     func draw(withRenderPass renderPass: RenderPass, sharedModules: [SharedRenderModule]?) {
         
         guard let renderEncoder = renderPass.renderCommandEncoder else {

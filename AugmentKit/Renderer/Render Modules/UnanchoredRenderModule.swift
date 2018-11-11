@@ -668,9 +668,11 @@ class UnanchoredRenderModule: RenderModule {
                 // Set the mesh's vertex data buffers and draw
                 draw(withDrawData: mutableDrawData, with: renderEncoder, baseIndex: baseIndex)
                 
+                baseIndex += geometryCount
+                
             }
             
-            baseIndex += geometryCount
+//            baseIndex += geometryCount
             
         }
         

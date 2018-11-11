@@ -492,102 +492,6 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         // Do Nothing
     }
     
-//    func draw(withRenderEncoder renderEncoder: MTLRenderCommandEncoder, sharedModules: [SharedRenderModule]?) {
-//        
-//        guard anchorInstanceCount > 0 else {
-//            return
-//        }
-//        
-//        // Push a debug group allowing us to identify render commands in the GPU Frame Capture tool
-//        renderEncoder.pushDebugGroup("Draw Anchors")
-//        
-//        // Set render command encoder state
-//        renderEncoder.setCullMode(.back)
-//        
-//        if let sharedBuffer = sharedModules?.first(where: {$0.moduleIdentifier == SharedBuffersRenderModule.identifier}) {
-//            
-//            renderEncoder.pushDebugGroup("Draw Shared Uniforms")
-//            
-//            renderEncoder.setVertexBuffer(sharedBuffer.sharedUniformBuffer, offset: sharedBuffer.sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
-//            renderEncoder.setFragmentBuffer(sharedBuffer.sharedUniformBuffer, offset: sharedBuffer.sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
-//            
-//            renderEncoder.popDebugGroup()
-//            
-//        }
-//        
-//        if let environmentUniformBuffer = environmentUniformBuffer {
-//            
-//            renderEncoder.pushDebugGroup("Draw Environment Uniforms")
-//            if let environmentTexture = environmentData?.environmentTexture, environmentData?.hasEnvironmentMap == true {
-//                renderEncoder.setFragmentTexture(environmentTexture, index: Int(kTextureIndexEnvironmentMap.rawValue))
-//            }
-//            renderEncoder.setFragmentBuffer(environmentUniformBuffer, offset: environmentUniformBufferOffset, index: Int(kBufferIndexEnvironmentUniforms.rawValue))
-//            renderEncoder.popDebugGroup()
-//            
-//        }
-//        
-//        if let effectsBuffer = effectsUniformBuffer {
-//            
-//            renderEncoder.pushDebugGroup("Draw Effects Uniforms")
-//            renderEncoder.setVertexBuffer(effectsBuffer, offset: effectsUniformBufferOffset, index: Int(kBufferIndexAnchorEffectsUniforms.rawValue))
-//            renderEncoder.setFragmentBuffer(effectsBuffer, offset: effectsUniformBufferOffset, index: Int(kBufferIndexAnchorEffectsUniforms.rawValue))
-//            renderEncoder.popDebugGroup()
-//            
-//        }
-//        
-//        let orderedArray = anchorsByUUID.sorted {
-//            $0.key.uuidString < $1.key.uuidString
-//        }
-//        
-//        var baseIndex = 0
-//        
-//        for item in orderedArray {
-//            
-//            let uuid = item.key
-//            
-//            guard let meshGPUData = meshGPUDataForAnchorsByUUID[uuid] else {
-//                print("Error: Could not find meshGPUData for UUID: \(uuid)")
-//                let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeIntermediateMeshDataNotAvailable, userInfo: nil)
-//                let newError = AKError.recoverableError(.renderPipelineError(.drawAborted(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-//                recordNewError(newError)
-//                continue
-//            }
-//            
-//            guard let myPipelineStates = pipelineStatesForAnchorsByUUID[uuid] else {
-//                continue
-//            }
-//            
-//            let anchorcount = (anchorsByUUID[uuid] ?? []).count
-//            
-//            // Geomentry Draw Calls
-//            for (drawDataIndex, drawData) in meshGPUData.drawData.enumerated() {
-//                
-//                if drawDataIndex < myPipelineStates.count {
-//                    renderEncoder.setRenderPipelineState(myPipelineStates[drawDataIndex])
-//                    renderEncoder.setDepthStencilState(anchorDepthState)
-//                    
-//                    // Set any buffers fed into our render pipeline
-//                    renderEncoder.setVertexBuffer(anchorUniformBuffer, offset: anchorUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
-//                    renderEncoder.setVertexBuffer(paletteBuffer, offset: paletteBufferOffset, index: Int(kBufferIndexMeshPalettes.rawValue))
-//                    
-//                    var mutableDrawData = drawData
-//                    mutableDrawData.instanceCount = anchorcount
-//                    
-//                    // Set the mesh's vertex data buffers and draw
-//                    draw(withDrawData: mutableDrawData, with: renderEncoder, baseIndex: baseIndex)
-//                    
-//                }
-//                
-//            }
-//            
-//             baseIndex += anchorcount
-//            
-//        }
-//        
-//        renderEncoder.popDebugGroup()
-//        
-//    }
-    
     func draw(withRenderPass renderPass: RenderPass, sharedModules: [SharedRenderModule]?) {
         
         guard anchorInstanceCount > 0 else {
@@ -663,9 +567,11 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                 // Set the mesh's vertex data buffers and draw
                 draw(withDrawData: mutableDrawData, with: renderEncoder, baseIndex: baseIndex)
                 
+                baseIndex += anchorcount
+                
             }
             
-            baseIndex += anchorcount
+//            baseIndex += anchorcount
             
         }
         

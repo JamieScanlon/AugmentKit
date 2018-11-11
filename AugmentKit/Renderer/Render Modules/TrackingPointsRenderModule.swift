@@ -221,33 +221,6 @@ class TrackingPointsRenderModule: RenderModule {
         // Do Nothing
     }
     
-    // Update the render encoder for the draw call
-//    func draw(withRenderEncoder renderEncoder: MTLRenderCommandEncoder, sharedModules: [SharedRenderModule]?) {
-//        
-//        guard let trackingPointPipelineState = trackingPointPipelineState else {
-//            return
-//        }
-//        
-//        guard trackingPointCount > 0 else {
-//            return
-//        }
-//        
-//        // Push a debug group allowing us to identify render commands in the GPU Frame Capture tool
-//        renderEncoder.pushDebugGroup("Draw Tracking Points")
-//        
-//        renderEncoder.setRenderPipelineState(trackingPointPipelineState)
-//        renderEncoder.setVertexBuffer(trackingPointDataBuffer, offset: trackingPointDataBufferOffset, index: Int(kBufferIndexTrackingPointData.rawValue))
-//        if let sharedBuffer = sharedModules?.first(where: {$0.moduleIdentifier == SharedBuffersRenderModule.identifier}) {
-//            renderEncoder.pushDebugGroup("Draw Shared Uniforms")
-//            renderEncoder.setVertexBuffer(sharedBuffer.sharedUniformBuffer, offset: sharedBuffer.sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
-//            renderEncoder.popDebugGroup()
-//        }
-//        renderEncoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: trackingPointCount)
-//        
-//        renderEncoder.popDebugGroup()
-//        
-//    }
-    
     func draw(withRenderPass renderPass: RenderPass, sharedModules: [SharedRenderModule]?) {
         
         guard let renderEncoder = renderPass.renderCommandEncoder else {

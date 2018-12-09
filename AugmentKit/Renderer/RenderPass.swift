@@ -31,7 +31,7 @@ class RenderPass {
                 do {
                     return try device.makeRenderPipelineState(descriptor: renderPipelineDescriptor)
                 } catch let error {
-                    print("failed to create render pipeline state for the device.")
+                    print("failed to create render pipeline state for the device. ERROR: \(error)")
                     let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: nil, underlyingError: error))))
                     NotificationCenter.default.post(name: .abortedDueToErrors, object: nil, userInfo: ["errors": [newError]])
                     fatalError()
@@ -70,6 +70,7 @@ class RenderPass {
     class DrawCallGroup {
         
         var uuid: UUID
+        var moduleIdentifier: String?
         var numDrawCalls: Int {
             return drawCalls.count
         }
@@ -82,25 +83,46 @@ class RenderPass {
         
     }
     
-    var renderPassDescriptor: MTLRenderPassDescriptor
+    enum MergePolicy {
+        case preferTemplate
+        case preferInstance
+    }
+    
+    var renderPassDescriptor: MTLRenderPassDescriptor?
     fileprivate(set) var renderCommandEncoder: MTLRenderCommandEncoder?
+    
     var device: MTLDevice
     var name: String?
     var uuid: UUID
-    var usesGeomentryBuffer = true
+    
+    var usesGeomentry = true
+    var usesLighting = true
     var usesSharedBuffer = true
-    var usesEnvironmentBuffer = true
-    var usesEffectsBuffer = true
+    var usesEnvironment = true
+    var usesEffects = true
     var usesCameraOutput = true
+    
     var drawCallGroups = [DrawCallGroup]()
     
-    init(withDevice device: MTLDevice, renderPassDescriptor: MTLRenderPassDescriptor, uuid: UUID = UUID()) {
+    var templateRenderPipelineDescriptor: MTLRenderPipelineDescriptor?
+    var vertexDescriptorMergePolicy = MergePolicy.preferInstance
+    var vertexFunctionMergePolicy = MergePolicy.preferInstance
+    var fragmentFunctionMergePolicy = MergePolicy.preferInstance
+    
+    var depthCompareFunction: MTLCompareFunction?
+    var isDepthWriteEnabled = true
+    
+    init(withDevice device: MTLDevice, renderPassDescriptor: MTLRenderPassDescriptor? = nil, uuid: UUID = UUID()) {
         self.device = device
         self.renderPassDescriptor = renderPassDescriptor
         self.uuid = uuid
     }
     
     func prepareRenderCommandEncoder(withCommandBuffer commandBuffer: MTLCommandBuffer) {
+        
+        guard let renderPassDescriptor = renderPassDescriptor else {
+            return
+        }
         
         let commandEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor)
         commandEncoder?.label = name
@@ -109,6 +131,47 @@ class RenderPass {
         
     }
     
+    /// The `vertexDescriptor`, `vertexFunction`, and `fragmentFunction` properties will only get overriden if the corresponding `MergePolicy`'s are `.preferInstance`
+    func renderPipelineDescriptor(withVertexDescriptor vertexDescriptor: MTLVertexDescriptor? = nil, vertexFunction: MTLFunction? = nil, fragmentFunction: MTLFunction? = nil) -> MTLRenderPipelineDescriptor? {
+        
+        guard let templateRenderPipelineDescriptor = templateRenderPipelineDescriptor else {
+            return nil
+        }
+        
+        if usesGeomentry {
+            if case .preferInstance = vertexDescriptorMergePolicy {
+                templateRenderPipelineDescriptor.vertexDescriptor = vertexDescriptor
+            }
+            if case .preferInstance = vertexFunctionMergePolicy {
+                templateRenderPipelineDescriptor.vertexFunction = vertexFunction
+            }
+        } else {
+            templateRenderPipelineDescriptor.vertexDescriptor = nil
+            templateRenderPipelineDescriptor.vertexFunction = nil
+        }
+        if usesLighting {
+            if case .preferInstance = fragmentFunctionMergePolicy {
+                templateRenderPipelineDescriptor.fragmentFunction = fragmentFunction
+            }
+        } else {
+            templateRenderPipelineDescriptor.fragmentFunction = nil
+        }
+        
+        return templateRenderPipelineDescriptor
+        
+    }
+    
+    func depthStencilDescriptor(withDepthComareFunction aDepthCompareFunction: MTLCompareFunction? = nil) -> MTLDepthStencilDescriptor? {
+        let depthStateDescriptor = MTLDepthStencilDescriptor()
+        depthStateDescriptor.label = name
+        if let depthCompareFunction = depthCompareFunction {
+            depthStateDescriptor.depthCompareFunction =  depthCompareFunction
+        } else if let aDepthCompareFunction = aDepthCompareFunction {
+            depthStateDescriptor.depthCompareFunction =  aDepthCompareFunction
+        }
+        depthStateDescriptor.isDepthWriteEnabled = isDepthWriteEnabled
+        return depthStateDescriptor
+    }
     
     
 }

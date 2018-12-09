@@ -48,7 +48,6 @@ enum BufferIndices {
     kBufferIndexMeshPaletteSize,
     kBufferIndexAnchorEffectsUniforms,
     kBufferIndexEnvironmentUniforms,
-    kBufferIndexShadowUniforms,
 };
 
 /**
@@ -95,6 +94,8 @@ enum TextureIndices {
     kTextureIndexClearcoatGlossMap,
     // Environment
     kTextureIndexEnvironmentMap,
+    // Shadow
+    kTextureIndexShadowMap,
     kNumTextureIndices,
 };
 
@@ -148,8 +149,11 @@ struct EnvironmentUniforms {
     vector_float3 ambientLightColor;
     vector_float3 directionalLightDirection;
     vector_float3 directionalLightColor;
+    matrix_float4x4 directionalLightMVP;
     // Environment
     int hasEnvironmentMap;
+    // Shadow transfor matrix
+    matrix_float4x4 shadowMVPTransformMatrix;
 };
 
 /// Structure shared between shader and C code that contains information pertaining to a single model like the model matrix transform
@@ -182,12 +186,6 @@ struct MaterialUniforms {
     float sheenTint;
     float clearcoat;
     float clearcoatGloss;
-};
-
-/// Structure shared between shader and C code that contains information about the shadow Model View Projection transform
-struct ShadowUniforms {
-    matrix_float4x4 shadow_mvp_matrix;
-    matrix_float4x4 shadow_mvp_xform_matrix;
 };
 
 // MARK: Lighting Parameters

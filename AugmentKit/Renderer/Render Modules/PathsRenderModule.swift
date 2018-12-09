@@ -52,7 +52,6 @@ class PathsRenderModule: RenderModule {
     var sharedModuleIdentifiers: [String]? = [SharedBuffersRenderModule.identifier]
     var renderDistance: Double = 500
     var errors = [AKError]()
-     private(set) var drawCallGroups = [RenderPass.DrawCallGroup]()
     
     // The number of path instances to render
     private(set) var pathSegmentInstanceCount: Int = 0
@@ -125,14 +124,14 @@ class PathsRenderModule: RenderModule {
         
     }
     
-    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle) {
+    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, forRenderPass renderPass: RenderPass? = nil) -> [RenderPass.DrawCallGroup] {
         
         guard let device = device else {
             print("Serious Error - device not found")
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeDeviceNotFound, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return
+            return []
         }
         
         guard let pathVertexShader = metalLibrary.makeFunction(name: "pathVertexShader") else {
@@ -140,7 +139,7 @@ class PathsRenderModule: RenderModule {
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeShaderInitializationFailed, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return
+            return []
         }
         
         guard let pathFragmentShader = metalLibrary.makeFunction(name: "pathFragmentShader") else {
@@ -148,7 +147,7 @@ class PathsRenderModule: RenderModule {
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeShaderInitializationFailed, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return
+            return []
         }
         
         guard let pathSegmentAsset = pathSegmentAsset else {
@@ -156,7 +155,7 @@ class PathsRenderModule: RenderModule {
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeModelNotFound, userInfo: nil)
             let newError = AKError.warning(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return
+            return []
         }
         
         pathMeshGPUData = ModelIOTools.meshGPUData(from: pathSegmentAsset, device: device, textureBundle: textureBundle, vertexDescriptor: RenderUtilities.createStandardVertexDescriptor())
@@ -166,7 +165,7 @@ class PathsRenderModule: RenderModule {
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeIntermediateMeshDataNotFound, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return
+            return []
         }
         
         if pathMeshGPUData.drawData.count > 1 {
@@ -183,7 +182,7 @@ class PathsRenderModule: RenderModule {
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeInvalidMeshData, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return
+            return []
         }
         
         var drawCalls = [RenderPass.DrawCall]()
@@ -216,8 +215,6 @@ class PathsRenderModule: RenderModule {
         pathDepthStateDescriptor.depthCompareFunction = .less
         pathDepthStateDescriptor.isDepthWriteEnabled = true
         pathDepthState = device.makeDepthStencilState(descriptor: pathDepthStateDescriptor)
-        
-        drawCallGroups = [RenderPass.DrawCallGroup]()
             
         drawCalls = drawCalls.map{
             var mutableDrawCall = $0
@@ -225,9 +222,11 @@ class PathsRenderModule: RenderModule {
             return mutableDrawCall
         }
         let drawCallGroup = RenderPass.DrawCallGroup(drawCalls: drawCalls)
-        drawCallGroups.append(drawCallGroup)
+        drawCallGroup.moduleIdentifier = moduleIdentifier
         
         isInitialized = true
+        
+        return [drawCallGroup]
         
     }
     
@@ -247,19 +246,19 @@ class PathsRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withAugmentedAnchors anchors: [AKAugmentedAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+    func updateBuffers(withAugmentedAnchors anchors: [AKAugmentedAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
         // Do Nothing
     }
     
-    func updateBuffers(withRealAnchors: [AKRealAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+    func updateBuffers(withRealAnchors: [AKRealAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
         // Do Nothing
     }
     
-    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
         // Do Nothing
     }
     
-    func updateBuffers(withPaths paths: [AKPath], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+    func updateBuffers(withPaths paths: [AKPath], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
         
         // Update the anchor uniform buffer with transforms of the current frame's anchors
         pathSegmentInstanceCount = 0
@@ -416,6 +415,11 @@ class PathsRenderModule: RenderModule {
             
         }
         
+        //
+        // Update the shadow map
+        //
+        shadowMap = shadowProperties.shadowMap
+        
     }
     
     func draw(withRenderPass renderPass: RenderPass, sharedModules: [SharedRenderModule]?) {
@@ -462,7 +466,15 @@ class PathsRenderModule: RenderModule {
             
         }
         
-        for drawCallGroup in renderPass.drawCallGroups {
+        if let shadowMap = shadowMap {
+            
+            renderEncoder.pushDebugGroup("Attach Shadow Buffer")
+            renderEncoder.setFragmentTexture(shadowMap, index: Int(kTextureIndexShadowMap.rawValue))
+            renderEncoder.popDebugGroup()
+            
+        }
+        
+        for drawCallGroup in renderPass.drawCallGroups.filter({ $0.moduleIdentifier == moduleIdentifier }) {
             
             for (index, drawCall) in drawCallGroup.drawCalls.enumerated() {
                 
@@ -507,6 +519,7 @@ class PathsRenderModule: RenderModule {
     private var effectsUniformBuffer: MTLBuffer?
     private var pathPipelineStates = [MTLRenderPipelineState]() // Store multiple states
     private var pathDepthState: MTLDepthStencilState?
+    private var shadowMap: MTLTexture?
     
     // MetalKit meshes containing vertex data and index buffer for our geometry
     private var pathMeshGPUData: MeshGPUData?

@@ -255,6 +255,25 @@ public struct EnvironmentProperties {
      The direction the primary light source is pointing
      */
     var directionalLightDirection: float3 = float3(0, -1, 0)
+    /**
+     The Model View Projection matrix of the primary light
+     */
+    var directionalLightMVP: float4x4 = matrix_identity_float4x4
+}
+
+// MARK: - ShadowProperties
+/**
+ An object that stores information about the environment
+ */
+public struct ShadowProperties {
+    /**
+     Texture for the shadow depth map
+     */
+    var shadowMap: MTLTexture?
+    /**
+     The `directionalLightMVP` with flipped y/t coordinate and converted from the [-1, 1] range of clip coordinates to [0, 1] range. used for texture sampling the shadow map.
+     */
+    var shadowMVPTransformMatrix: float4x4 = matrix_identity_float4x4
 }
 
 // MARK: - Renderer
@@ -711,14 +730,6 @@ public class Renderer: NSObject {
         }
         
         //
-        // Environment Properties
-        //
-        
-        var environmentProperties = EnvironmentProperties()
-        environmentProperties.environmentAnchorsWithReatedAnchors = environmentAnchorsWithReatedAnchors
-        environmentProperties.lightEstimate = currentFrame.lightEstimate
-        
-        //
         // Camera Properties
         //
         
@@ -731,6 +742,29 @@ public class Renderer: NSObject {
         }()
         
         let cameraProperties = CameraProperties(orientation: orientation, viewportSize: viewportSize, viewportSizeDidChange: viewportSizeDidChange, position: cameraPosition, heading: currentCameraHeading ?? 0, currentFrame: currentFrameNumber, frame: currentFrame, frameRate: frameRate)
+        
+        //
+        // Environment Properties
+        //
+        
+        var environmentProperties = EnvironmentProperties()
+        environmentProperties.environmentAnchorsWithReatedAnchors = environmentAnchorsWithReatedAnchors
+        environmentProperties.lightEstimate = currentFrame.lightEstimate
+        
+        let depthProjectionMatrix = float4x4.makeOrtho(left: cameraPosition.x - 100, right: cameraPosition.x + 100, bottom: cameraPosition.y - 100, top: cameraPosition.y + 100, nearZ: cameraPosition.z + 100, farZ: cameraPosition.z - 100)
+        let depthViewMatrix = float4x4.makeLookAt(eyeX: 0, eyeY: 1, eyeZ: 0, centerX: 0, centerY: 0, centerZ: 0, upX: 0, upY: 1, upZ: 0)
+        environmentProperties.directionalLightMVP = depthProjectionMatrix * depthViewMatrix
+        
+        //
+        // Shadow Properties
+        //
+        
+        var shadowProperties = ShadowProperties()
+        shadowProperties.shadowMap = shadowMap
+        let shadowScale = matrix_identity_float4x4.scale(x: 0.5, y: -0.5, z: 1)
+        let shadowTranslate = matrix_identity_float4x4.translate(x: 0.5, y: 0.5, z: 0)
+        let shadowTransform = shadowTranslate * shadowScale
+        shadowProperties.shadowMVPTransformMatrix = shadowTransform * environmentProperties.directionalLightMVP
         
         //
         // Encode Cammand Buffer
@@ -770,10 +804,10 @@ public class Renderer: NSObject {
             // Update Buffers
             for module in renderModules {
                 if module.isInitialized {
-                    module.updateBuffers(withAugmentedAnchors: augmentedAnchors, cameraProperties: cameraProperties, environmentProperties: environmentProperties)
-                    module.updateBuffers(withRealAnchors: realAnchors, cameraProperties: cameraProperties, environmentProperties: environmentProperties)
-                    module.updateBuffers(withTrackers: trackers, targets: gazeTargets, cameraProperties: cameraProperties, environmentProperties: environmentProperties)
-                    module.updateBuffers(withPaths: paths, cameraProperties: cameraProperties, environmentProperties: environmentProperties)
+                    module.updateBuffers(withAugmentedAnchors: augmentedAnchors, cameraProperties: cameraProperties, environmentProperties: environmentProperties, shadowProperties: shadowProperties)
+                    module.updateBuffers(withRealAnchors: realAnchors, cameraProperties: cameraProperties, environmentProperties: environmentProperties, shadowProperties: shadowProperties)
+                    module.updateBuffers(withTrackers: trackers, targets: gazeTargets, cameraProperties: cameraProperties, environmentProperties: environmentProperties, shadowProperties: shadowProperties)
+                    module.updateBuffers(withPaths: paths, cameraProperties: cameraProperties, environmentProperties: environmentProperties, shadowProperties: shadowProperties)
                 }
             }
             
@@ -793,20 +827,19 @@ public class Renderer: NSObject {
             // close as possible to presenting it with the command buffer. The currentDrawable is
             // a scarce resource and holding on to it too long may affect performance
             if let mainRenderPassDescriptor = renderDestination.currentRenderPassDescriptor, let currentDrawable = renderDestination.currentDrawable {
-                
-                mainRenderPass = RenderPass(withDevice: device, renderPassDescriptor: mainRenderPassDescriptor)
-                mainRenderPass?.name = "Main Pass"
+
+                mainRenderPass?.renderPassDescriptor = mainRenderPassDescriptor
                 mainRenderPass?.prepareRenderCommandEncoder(withCommandBuffer: commandBuffer)
-                
+
                 if let renderEncoder = mainRenderPass?.renderCommandEncoder {
                     drawMainPass(with: renderEncoder)
                 } else {
                     print("WARNING: Could not create MTLRenderCommandEncoder. Aborting draw pass.")
                 }
-                
+
                 // Schedule a present once the framebuffer is complete using the current drawable
                 commandBuffer.present(currentDrawable)
-                
+
             }
             
             // Finalize rendering here & push the command buffer to the GPU
@@ -1169,53 +1202,72 @@ public class Renderer: NSObject {
         // Setup Shadow Pass
         //
         
-        // Create render pipeline descriptor for shadow pass
-    
-        let shadowVertexFunction = defaultLibrary?.makeFunction(name: "shadowVertexShader")
-        let shadowRenderPipelineDescriptor = MTLRenderPipelineDescriptor()
-        shadowRenderPipelineDescriptor.label = "Shadow Gen"
-        shadowRenderPipelineDescriptor.vertexDescriptor = MTKMetalVertexDescriptorFromModelIO(RenderUtilities.createStandardVertexDescriptor())
-        shadowRenderPipelineDescriptor.vertexFunction = shadowVertexFunction
-        shadowRenderPipelineDescriptor.fragmentFunction = nil
-        shadowRenderPipelineDescriptor.depthAttachmentPixelFormat = .depth32Float
-        
-        // Create depth state descriptor for shadow pass
-    
-        let shadowDepthStateDesc = MTLDepthStencilDescriptor()
-        shadowDepthStateDesc.label = "Shadow Gen";
-//        #if REVERSE_DEPTH
-//        shadowDepthStateDesc.depthCompareFunction = .greaterEqual
-//        #else
-        shadowDepthStateDesc.depthCompareFunction = .lessEqual
-//        #endif
-        shadowDepthStateDesc.isDepthWriteEnabled = true
-        
-        
         // Create depth texture for shadow pass
-        
         let shadowTextureDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .depth32Float, width: 2048, height: 2048, mipmapped: false)
-            
         shadowTextureDesc.resourceOptions = .storageModePrivate
         shadowTextureDesc.usage = [.renderTarget, .shaderRead]
-        
         shadowMap = device.makeTexture(descriptor: shadowTextureDesc)
         shadowMap?.label = "Shadow Map"
         
-        // Create shadow render pass
-        
+        // Create shadow render pass descriptor
         let shadowRenderPassDescriptor = MTLRenderPassDescriptor()
         shadowRenderPassDescriptor.depthAttachment.texture = shadowMap
         shadowRenderPassDescriptor.depthAttachment.loadAction = .clear
         shadowRenderPassDescriptor.depthAttachment.storeAction = .store
         shadowRenderPassDescriptor.depthAttachment.clearDepth = 1
         
+        // Create shadow render pass
         shadowRenderPass = RenderPass(withDevice: device, renderPassDescriptor: shadowRenderPassDescriptor)
         shadowRenderPass?.name = "Shadow Render Pass"
-        shadowRenderPass?.usesEffectsBuffer = false
-        shadowRenderPass?.usesEnvironmentBuffer = false
+        shadowRenderPass?.usesGeomentry = true
+        shadowRenderPass?.usesLighting = false
+        shadowRenderPass?.usesEffects = false
+        shadowRenderPass?.usesEnvironment = true
         shadowRenderPass?.usesCameraOutput = false
+        shadowRenderPass?.usesSharedBuffer = true
+        shadowRenderPass?.vertexFunctionMergePolicy = .preferTemplate
+        shadowRenderPass?.fragmentFunctionMergePolicy = .preferTemplate
         // TODO: setDepthBias(0.015, slopeScale:7, clamp:0.02)
+//        #if REVERSE_DEPTH
+//        shadowRenderPass?.depthCompareFunction = .greaterEqual
+//        #else
+        shadowRenderPass?.depthCompareFunction = .lessEqual
+        shadowRenderPass?.isDepthWriteEnabled = true
         
+        // Create render pipeline descriptor for shadow pass
+        let shadowVertexFunction = defaultLibrary?.makeFunction(name: "shadowVertexShader")
+        let shadowRenderPipelineDescriptor = MTLRenderPipelineDescriptor()
+        shadowRenderPipelineDescriptor.label = "Shadow Gen Pass"
+        shadowRenderPipelineDescriptor.vertexFunction = shadowVertexFunction
+        shadowRenderPipelineDescriptor.depthAttachmentPixelFormat = .depth32Float
+        shadowRenderPass?.templateRenderPipelineDescriptor = shadowRenderPipelineDescriptor
+        
+        //
+        // Setup Main Pass
+        //
+        
+        // Create main render pass
+        mainRenderPass = RenderPass(withDevice: device)
+        mainRenderPass?.name = "Main Render Pass"
+        mainRenderPass?.usesGeomentry = true
+        mainRenderPass?.usesLighting = true
+        mainRenderPass?.usesEffects = true
+        mainRenderPass?.usesEnvironment = true
+        mainRenderPass?.usesCameraOutput = true
+        mainRenderPass?.usesSharedBuffer = true
+        mainRenderPass?.depthCompareFunction = .less
+        mainRenderPass?.isDepthWriteEnabled = true
+        
+        // Create render pipeline descriptor for main pass
+        let mainRenderPipelineDescriptor = MTLRenderPipelineDescriptor()
+        mainRenderPipelineDescriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
+        mainRenderPipelineDescriptor.colorAttachments[0].isBlendingEnabled = true
+        mainRenderPipelineDescriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
+        mainRenderPipelineDescriptor.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
+        mainRenderPipelineDescriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
+        mainRenderPipelineDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
+        mainRenderPipelineDescriptor.sampleCount = renderDestination.sampleCount
+        mainRenderPass?.templateRenderPipelineDescriptor = mainRenderPipelineDescriptor
         
     }
     
@@ -1335,7 +1387,8 @@ public class Renderer: NSObject {
                 let geometricEntities = geometriesForRenderModule[module.moduleIdentifier] ?? []
                 module.loadAssets(forGeometricEntities: geometricEntities, fromModelProvider: modelProvider, textureLoader: textureLoader, completion: { [weak self] in
                     if let defaultLibrary = self?.defaultLibrary, let renderDestination = self?.renderDestination {
-                        module.loadPipeline(withMetalLibrary: defaultLibrary, renderDestination: renderDestination, textureBundle: textureBundle)
+                        shadowRenderPass?.drawCallGroups.append(contentsOf: module.loadPipeline(withMetalLibrary: defaultLibrary, renderDestination: renderDestination, textureBundle: textureBundle, forRenderPass: shadowRenderPass))
+                        mainRenderPass?.drawCallGroups.append(contentsOf: module.loadPipeline(withMetalLibrary: defaultLibrary, renderDestination: renderDestination, textureBundle: textureBundle, forRenderPass: mainRenderPass))
                         self?.moduleErrors.append(contentsOf: module.errors)
                         if let moduleErrors = self?.moduleErrors {
                             let seriousErrors: [AKError] =  {
@@ -1388,8 +1441,7 @@ public class Renderer: NSObject {
         // Draw
         for module in renderModules {
             if let shadowRenderPass = shadowRenderPass, module.isInitialized {
-                shadowRenderPass.drawCallGroups = module.drawCallGroups
-//                module.draw(withRenderPass: shadowRenderPass, sharedModules: sharedModulesForModule[module.moduleIdentifier])
+                 module.draw(withRenderPass: shadowRenderPass, sharedModules: sharedModulesForModule[module.moduleIdentifier])
             }
         }
         
@@ -1403,7 +1455,6 @@ public class Renderer: NSObject {
         // Draw
         for module in renderModules {
             if let mainRenderPass = mainRenderPass, module.isInitialized {
-                mainRenderPass.drawCallGroups = module.drawCallGroups
                 module.draw(withRenderPass: mainRenderPass, sharedModules: sharedModulesForModule[module.moduleIdentifier])
             }
         }

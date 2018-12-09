@@ -48,7 +48,6 @@ class UnanchoredRenderModule: RenderModule {
     var sharedModuleIdentifiers: [String]? = [SharedBuffersRenderModule.identifier]
     var renderDistance: Double = 500
     var errors = [AKError]()
-    private(set) var drawCallGroups = [RenderPass.DrawCallGroup]()
     
     // The number of tracker instances to render
     private(set) var trackerInstanceCount: Int = 0
@@ -159,22 +158,22 @@ class UnanchoredRenderModule: RenderModule {
         
     }
     
-    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle) {
+    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, forRenderPass renderPass: RenderPass? = nil) -> [RenderPass.DrawCallGroup] {
         
         guard let device = device else {
             print("Serious Error - device not found")
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeDeviceNotFound, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return
+            return []
         }
         
         let unanchoredDepthStateDescriptor = MTLDepthStencilDescriptor()
         unanchoredDepthStateDescriptor.depthCompareFunction = .less
         unanchoredDepthStateDescriptor.isDepthWriteEnabled = true
-        unanchoredDepthState = device.makeDepthStencilState(descriptor: unanchoredDepthStateDescriptor)
+        let unanchoredDepthState = device.makeDepthStencilState(descriptor: unanchoredDepthStateDescriptor)
         
-        
+        var drawCallGroups = [RenderPass.DrawCallGroup]()
         
         for item in modelAssetsByUUID {
             
@@ -190,16 +189,15 @@ class UnanchoredRenderModule: RenderModule {
             
             meshGPUDataByUUID[uuid] = ModelIOTools.meshGPUData(from: mdlAsset, device: device, textureBundle: textureBundle, vertexDescriptor: RenderUtilities.createStandardVertexDescriptor(), frameRate: 60, shaderPreference: shaderPreference)
             
-            let drawCalls = createPipelineStates(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination)
-            drawCallsByUUID[uuid] = drawCalls.map{
-                var mutableDrawCall = $0
-                mutableDrawCall.depthStencilState = unanchoredDepthState
-                return mutableDrawCall
-            }
+            let drawCallGroup = createPipelineStates(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, unanchoredDepthState: unanchoredDepthState, renderPass: renderPass)
+            drawCallGroup.moduleIdentifier = moduleIdentifier
+            drawCallGroups.append(drawCallGroup)
             
         }
         
         isInitialized = true
+        
+        return drawCallGroups
         
     }
     
@@ -221,7 +219,21 @@ class UnanchoredRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withAugmentedAnchors anchors: [AKAugmentedAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+    func updateBuffers(withAugmentedAnchors anchors: [AKAugmentedAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
+        // Do Nothing
+    }
+    
+    func updateBuffers(withRealAnchors: [AKRealAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
+        // Do Nothing
+    }
+    
+    func updateBuffers(withTrackers trackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
+        
+        // Update the uniform buffer with transforms of the current frame's trackers
+        
+        trackerInstanceCount = 0
+        geometriesByUUID = [:]
+        environmentTextureByUUID = [:]
         
         // Set up lighting for the scene using the ambient intensity if provided
         ambientIntensity = {
@@ -239,21 +251,6 @@ class UnanchoredRenderModule: RenderModule {
                 return vector3(0.5, 0.5, 0.5)
             }
         }()
-        
-    }
-    
-    func updateBuffers(withRealAnchors: [AKRealAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
-        // Do Nothing
-    }
-    
-    func updateBuffers(withTrackers trackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
-        
-        // Update the uniform buffer with transforms of the current frame's trackers
-        
-        trackerInstanceCount = 0
-        geometriesByUUID = [:]
-        environmentTextureByUUID = [:]
-        drawCallGroups = [RenderPass.DrawCallGroup]()
         
         for index in 0..<trackers.count {
             
@@ -347,12 +344,15 @@ class UnanchoredRenderModule: RenderModule {
             
             environmentUniforms?.pointee.ambientLightColor = ambientLightColor ?? vector3(0.5, 0.5, 0.5)
             
-            var directionalLightDirection : vector_float3 = vector3(0.0, -1.0, 0.0)
+            var directionalLightDirection : vector_float3 = environmentProperties.directionalLightDirection
             directionalLightDirection = simd_normalize(directionalLightDirection)
             environmentUniforms?.pointee.directionalLightDirection = directionalLightDirection
             
             let directionalLightColor: vector_float3 = vector3(0.6, 0.6, 0.6)
             environmentUniforms?.pointee.directionalLightColor = directionalLightColor * (ambientIntensity ?? 1)
+            
+            environmentUniforms?.pointee.directionalLightMVP = environmentProperties.directionalLightMVP
+            environmentUniforms?.pointee.shadowMVPTransformMatrix = shadowProperties.shadowMVPTransformMatrix
             
             if environmentData?.hasEnvironmentMap == true {
                 environmentUniforms?.pointee.hasEnvironmentMap = 1
@@ -409,9 +409,6 @@ class UnanchoredRenderModule: RenderModule {
             if !hasSetScale {
                 effectsUniforms?.pointee.scale = matrix_identity_float4x4
             }
-            
-            let drawCallGroup = RenderPass.DrawCallGroup(drawCalls: drawCallsByUUID[uuid] ?? [], uuid: uuid)
-            drawCallGroups.append(drawCallGroup)
             
         }
         
@@ -522,6 +519,9 @@ class UnanchoredRenderModule: RenderModule {
                 let directionalLightColor: vector_float3 = vector3(0.6, 0.6, 0.6)
                 environmentUniforms?.pointee.directionalLightColor = directionalLightColor * (ambientIntensity ?? 1)
                 
+                environmentUniforms?.pointee.directionalLightMVP = environmentProperties.directionalLightMVP
+                environmentUniforms?.pointee.shadowMVPTransformMatrix = shadowProperties.shadowMVPTransformMatrix
+                
                 if environmentData?.hasEnvironmentMap == true {
                     environmentUniforms?.pointee.hasEnvironmentMap = 1
                 } else {
@@ -580,14 +580,16 @@ class UnanchoredRenderModule: RenderModule {
                 
             }
             
-            let drawCallGroup = RenderPass.DrawCallGroup(drawCalls: drawCallsByUUID[uuid] ?? [], uuid: uuid)
-            drawCallGroups.append(drawCallGroup)
-            
         }
+        
+        //
+        // Update the shadow map
+        //
+        shadowMap = shadowProperties.shadowMap
         
     }
     
-    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
         // Do Nothing
     }
     
@@ -618,18 +620,19 @@ class UnanchoredRenderModule: RenderModule {
             
         }
         
-        if let environmentUniformBuffer = environmentUniformBuffer, renderPass.usesEnvironmentBuffer  {
+        if let environmentUniformBuffer = environmentUniformBuffer, renderPass.usesEnvironment  {
             
             renderEncoder.pushDebugGroup("Draw Environment Uniforms")
             if let environmentTexture = environmentData?.environmentTexture, environmentData?.hasEnvironmentMap == true {
                 renderEncoder.setFragmentTexture(environmentTexture, index: Int(kTextureIndexEnvironmentMap.rawValue))
             }
+            renderEncoder.setVertexBuffer(environmentUniformBuffer, offset: environmentUniformBufferOffset, index: Int(kBufferIndexEnvironmentUniforms.rawValue))
             renderEncoder.setFragmentBuffer(environmentUniformBuffer, offset: environmentUniformBufferOffset, index: Int(kBufferIndexEnvironmentUniforms.rawValue))
             renderEncoder.popDebugGroup()
             
         }
         
-        if let effectsBuffer = effectsUniformBuffer, renderPass.usesEffectsBuffer {
+        if let effectsBuffer = effectsUniformBuffer, renderPass.usesEffects {
             
             renderEncoder.pushDebugGroup("Draw Effects Uniforms")
             renderEncoder.setVertexBuffer(effectsBuffer, offset: effectsUniformBufferOffset, index: Int(kBufferIndexAnchorEffectsUniforms.rawValue))
@@ -638,9 +641,17 @@ class UnanchoredRenderModule: RenderModule {
             
         }
         
+        if let shadowMap = shadowMap {
+            
+            renderEncoder.pushDebugGroup("Attach Shadow Buffer")
+            renderEncoder.setFragmentTexture(shadowMap, index: Int(kTextureIndexShadowMap.rawValue))
+            renderEncoder.popDebugGroup()
+            
+        }
+        
         var baseIndex = 0
             
-        for drawCallGroup in renderPass.drawCallGroups {
+        for drawCallGroup in renderPass.drawCallGroups.filter({ $0.moduleIdentifier == moduleIdentifier }) {
             
             let uuid = drawCallGroup.uuid
             
@@ -704,18 +715,13 @@ class UnanchoredRenderModule: RenderModule {
     
     private var device: MTLDevice?
     private var textureLoader: MTKTextureLoader?
-    // TODO: Support per-instance models for trackers and targets
-//    private var trackerAsset: MDLAsset?
-//    private var targetAsset: MDLAsset?
     private var generalTrackerUUID = UUID()
     private var generalTargetUUID = UUID()
     private var modelAssetsByUUID = [UUID: MDLAsset]()
     private var shaderPreferenceByUUID = [UUID: ShaderPreference]()
     private var environmentTextureByUUID = [UUID: MTLTexture]()
-    private var drawCallsByUUID = [UUID: [RenderPass.DrawCall]]()
     // MetalKit meshes containing vertex data and index buffer for our anchor geometry
     private var meshGPUDataByUUID = [UUID: MeshGPUData]()
-    private var pipelineStatesByUUID = [UUID: [MTLRenderPipelineState]]()
     private var geometriesByUUID = [UUID: [AKGeometricEntity]]()
     private var ambientIntensity: Float?
     private var ambientLightColor: vector_float3?
@@ -723,17 +729,8 @@ class UnanchoredRenderModule: RenderModule {
     private var materialUniformBuffer: MTLBuffer?
     private var effectsUniformBuffer: MTLBuffer?
     private var environmentUniformBuffer: MTLBuffer?
-//    private var unanchoredPipelineStates = [MTLRenderPipelineState]() // Store multiple states
-    private var unanchoredDepthState: MTLDepthStencilState?
     private var environmentData: EnvironmentData?
-    
-    // MetalKit meshes containing vertex data and index buffer for our tracker geometry
-    // TODO: Support per-instance models for trackers and targets
-//    private var trackerMeshGPUData: MeshGPUData?
-    
-    // MetalKit meshes containing vertex data and index buffer for our target geometry
-    // TODO: Support per-instance models for trackers and targets
-//    private var targetMeshGPUData: MeshGPUData?
+    private var shadowMap: MTLTexture?
     
     // Offset within unanchoredUniformBuffer to set for the current frame
     private var unanchoredUniformBufferOffset: Int = 0
@@ -765,14 +762,14 @@ class UnanchoredRenderModule: RenderModule {
     // number of frames in the target animation by index
     private var targetAnimationFrameCount = [Int]()
     
-    private func createPipelineStates(forUUID uuid: UUID, withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider) -> [RenderPass.DrawCall] {
+    private func createPipelineStates(forUUID uuid: UUID, withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, unanchoredDepthState: MTLDepthStencilState?, renderPass: RenderPass?) -> RenderPass.DrawCallGroup {
         
         guard let device = device else {
             print("Serious Error - device not found")
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeDeviceNotFound, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return []
+            return RenderPass.DrawCallGroup(drawCalls: [], uuid: uuid)
         }
         
         guard let meshGPUData = meshGPUDataByUUID[uuid] else {
@@ -780,7 +777,7 @@ class UnanchoredRenderModule: RenderModule {
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeIntermediateMeshDataNotFound, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return []
+            return RenderPass.DrawCallGroup(drawCalls: [], uuid: uuid)
         }
         
         guard let aVertexDescriptor = meshGPUData.vertexDescriptor else {
@@ -788,59 +785,76 @@ class UnanchoredRenderModule: RenderModule {
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeInvalidMeshData, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return []
+            return RenderPass.DrawCallGroup(drawCalls: [], uuid: uuid)
         }
         
         let shaderPreference = meshGPUData.shaderPreference
         
-        var myPipelineStates = [MTLRenderPipelineState]()
         var drawCalls = [RenderPass.DrawCall]()
-        for (_ , drawData) in meshGPUData.drawData.enumerated() {
-            let pipelineStateDescriptor = MTLRenderPipelineDescriptor()
-            do {
-                let funcConstants = RenderUtilities.getFuncConstants(forDrawData: drawData)
-                // Specify which shader to use based on if the model has skinned puppet suppot
-                let vertexName = (drawData.paletteStartIndex != nil) ? "anchorGeometryVertexTransformSkinned" : "anchorGeometryVertexTransform"
-                let fragmentShaderName: String = {
-                    if shaderPreference == .simple {
-                        return "anchorGeometryFragmentLightingSimple"
-                    } else {
-                        return "anchorGeometryFragmentLighting"
-                    }
-                }()
-                let fragFunc = try metalLibrary.makeFunction(name: fragmentShaderName, constantValues: funcConstants)
-                let vertFunc = try metalLibrary.makeFunction(name: vertexName, constantValues: funcConstants)
-                pipelineStateDescriptor.vertexDescriptor = aVertexDescriptor
-                pipelineStateDescriptor.vertexFunction = vertFunc
-                pipelineStateDescriptor.fragmentFunction = fragFunc
-                pipelineStateDescriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
-                pipelineStateDescriptor.colorAttachments[0].isBlendingEnabled = true
-                pipelineStateDescriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
-                pipelineStateDescriptor.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
-                pipelineStateDescriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-                pipelineStateDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-                pipelineStateDescriptor.sampleCount = renderDestination.sampleCount
-            } catch let error {
-                print("Failed to create pipeline state descriptor, error \(error)")
-                let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: error))))
-                recordNewError(newError)
-            }
+        for drawData in meshGPUData.drawData {
             
-            let drawCall = RenderPass.DrawCall(withDevice: device, renderPipelineDescriptor: pipelineStateDescriptor)
+            let funcConstants = RenderUtilities.getFuncConstants(forDrawData: drawData)
+            
+            let fragFunc: MTLFunction = {
+                do {
+                    let fragmentShaderName: String = {
+                        if shaderPreference == .simple {
+                            return "anchorGeometryFragmentLightingSimple"
+                        } else {
+                            return "anchorGeometryFragmentLighting"
+                        }
+                    }()
+                    return try metalLibrary.makeFunction(name: fragmentShaderName, constantValues: funcConstants)
+                } catch let error {
+                    print("Failed to create fragment function for pipeline state descriptor, error \(error)")
+                    let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: error))))
+                    recordNewError(newError)
+                    fatalError()
+                }
+            }()
+            
+            let vertFunc: MTLFunction = {
+                do {
+                    // Specify which shader to use based on if the model has skinned puppet suppot
+                    let vertexName = drawData.isSkinned ? "anchorGeometryVertexTransformSkinned" : "anchorGeometryVertexTransform"
+                    return try metalLibrary.makeFunction(name: vertexName, constantValues: funcConstants)
+                } catch let error {
+                    print("Failed to create vertex function for pipeline state descriptor, error \(error)")
+                    let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: error))))
+                    recordNewError(newError)
+                    fatalError()
+                }
+            }()
+            
+            let pipelineStateDescriptor: MTLRenderPipelineDescriptor = {
+                
+                if let renderPass = renderPass, let aPipelineDescriptor = renderPass.renderPipelineDescriptor(withVertexDescriptor: aVertexDescriptor, vertexFunction: vertFunc, fragmentFunction: fragFunc) {
+                    return aPipelineDescriptor
+                } else {
+                    let aPipelineDescriptor = MTLRenderPipelineDescriptor()
+                    aPipelineDescriptor.vertexDescriptor = aVertexDescriptor
+                    aPipelineDescriptor.vertexFunction = vertFunc
+                    aPipelineDescriptor.fragmentFunction = fragFunc
+                    aPipelineDescriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
+                    aPipelineDescriptor.colorAttachments[0].isBlendingEnabled = true
+                    aPipelineDescriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
+                    aPipelineDescriptor.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
+                    aPipelineDescriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
+                    aPipelineDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
+                    aPipelineDescriptor.sampleCount = renderDestination.sampleCount
+                    return aPipelineDescriptor
+                }
+                
+            }()
+            
+            var drawCall = RenderPass.DrawCall(withDevice: device, renderPipelineDescriptor: pipelineStateDescriptor)
+            drawCall.depthStencilState = unanchoredDepthState
             drawCalls.append(drawCall)
             
-            do {
-                try myPipelineStates.append(device.makeRenderPipelineState(descriptor: pipelineStateDescriptor))
-            } catch let error {
-                print("Failed to create pipeline state, error \(error)")
-                let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: error))))
-                recordNewError(newError)
-            }
         }
         
-        pipelineStatesByUUID[uuid] = myPipelineStates
-        
-        return drawCalls
+        let drawCallGroup = RenderPass.DrawCallGroup(drawCalls: drawCalls, uuid: uuid)
+        return drawCallGroup
         
     }
     

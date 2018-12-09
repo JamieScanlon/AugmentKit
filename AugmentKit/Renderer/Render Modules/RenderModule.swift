@@ -47,7 +47,6 @@ protocol RenderModule {
     var sharedModuleIdentifiers: [String]? { get }
     var renderDistance: Double { get set }
     var errors: [AKError] { get set }
-    var drawCallGroups: [RenderPass.DrawCallGroup] { get }
     
     //
     // Bootstrap
@@ -60,7 +59,7 @@ protocol RenderModule {
     func loadAssets(forGeometricEntities: [AKGeometricEntity], fromModelProvider: ModelProvider?, textureLoader: MTKTextureLoader, completion: (() -> Void))
     
     /// After this function is called, The Render Pass Desciptors, Textures, Buffers, Render Pipeline State Descriptors, and Depth Stencil Descriptors should all be set up.
-    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle)
+    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, forRenderPass renderPass: RenderPass?) -> [RenderPass.DrawCallGroup]
     
     //
     // Per Frame Updates
@@ -70,16 +69,16 @@ protocol RenderModule {
     func updateBufferState(withBufferIndex: Int)
     
     // Update the buffer data for augmented anchors
-    func updateBuffers(withAugmentedAnchors: [AKAugmentedAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties)
+    func updateBuffers(withAugmentedAnchors: [AKAugmentedAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties)
     
     // Update the buffer data for real anchors
-    func updateBuffers(withRealAnchors: [AKRealAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties)
+    func updateBuffers(withRealAnchors: [AKRealAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties)
     
     // Update the buffer data for trackers
-    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties)
+    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties)
     
     // Update the buffer data for trackers
-    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties)
+    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties)
     
     // Update the render encoder for the draw call. At the end of this method it is expected that
     // drawPrimatives or drawIndexedPrimatives is called.

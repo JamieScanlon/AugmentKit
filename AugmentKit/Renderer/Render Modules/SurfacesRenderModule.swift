@@ -49,7 +49,6 @@ class SurfacesRenderModule: RenderModule {
     var sharedModuleIdentifiers: [String]? = [SharedBuffersRenderModule.identifier]
     var renderDistance: Double = 500
     var errors = [AKError]()
-    private(set) var drawCallGroups = [RenderPass.DrawCallGroup]()
     
     // The number of surface instances to render
     private(set) var surfaceInstanceCount: Int = 0
@@ -121,14 +120,14 @@ class SurfacesRenderModule: RenderModule {
         
     }
     
-    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle) {
+    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, forRenderPass renderPass: RenderPass? = nil) -> [RenderPass.DrawCallGroup] {
         
         guard let device = device else {
             print("Serious Error - device not found")
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeDeviceNotFound, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return
+            return []
         }
         
         guard let surfaceAsset = surfaceAsset else {
@@ -136,7 +135,7 @@ class SurfacesRenderModule: RenderModule {
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeModelNotFound, userInfo: nil)
             let newError = AKError.warning(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return
+            return []
         }
         
         surfaceMeshGPUData = ModelIOTools.meshGPUData(from: surfaceAsset, device: device, textureBundle: textureBundle, vertexDescriptor: RenderUtilities.createStandardVertexDescriptor())
@@ -146,7 +145,7 @@ class SurfacesRenderModule: RenderModule {
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeIntermediateMeshDataNotFound, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return
+            return []
         }
         
         if surfaceMeshGPUData.drawData.count > 1 {
@@ -163,10 +162,17 @@ class SurfacesRenderModule: RenderModule {
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeInvalidMeshData, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return
+            return []
         }
         
-        for (_, drawData) in surfaceMeshGPUData.drawData.enumerated() {
+        let surfaceDepthStateDescriptor = MTLDepthStencilDescriptor()
+        surfaceDepthStateDescriptor.depthCompareFunction = .less
+        surfaceDepthStateDescriptor.isDepthWriteEnabled = true
+        surfaceDepthState = device.makeDepthStencilState(descriptor: surfaceDepthStateDescriptor)
+        
+        var drawCalls = [RenderPass.DrawCall]()
+        
+        for drawData in surfaceMeshGPUData.drawData {
             let surfacePipelineStateDescriptor = MTLRenderPipelineDescriptor()
             do {
                 let funcConstants = RenderUtilities.getFuncConstants(forDrawData: drawData)
@@ -181,6 +187,11 @@ class SurfacesRenderModule: RenderModule {
                 surfacePipelineStateDescriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
                 surfacePipelineStateDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
                 surfacePipelineStateDescriptor.sampleCount = renderDestination.sampleCount
+                
+                var drawCall = RenderPass.DrawCall(withDevice: device, renderPipelineDescriptor: surfacePipelineStateDescriptor)
+                drawCall.depthStencilState = surfaceDepthState
+                drawCalls.append(drawCall)
+                
             } catch let error {
                 print("Failed to create pipeline state descriptor, error \(error)")
                 let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: error))))
@@ -188,7 +199,8 @@ class SurfacesRenderModule: RenderModule {
             }
             
             do {
-                try surfacePipelineStates.append(device.makeRenderPipelineState(descriptor: surfacePipelineStateDescriptor))
+                let surfacePiplineState = try device.makeRenderPipelineState(descriptor: surfacePipelineStateDescriptor)
+                surfacePipelineStates.append(surfacePiplineState)
             } catch let error {
                 print("Failed to create pipeline state, error \(error)")
                 let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: error))))
@@ -196,12 +208,11 @@ class SurfacesRenderModule: RenderModule {
             }
         }
         
-        let surfaceDepthStateDescriptor = MTLDepthStencilDescriptor()
-        surfaceDepthStateDescriptor.depthCompareFunction = .less
-        surfaceDepthStateDescriptor.isDepthWriteEnabled = true
-        surfaceDepthState = device.makeDepthStencilState(descriptor: surfaceDepthStateDescriptor)
-        
         isInitialized = true
+        
+        let drawCallGroup = RenderPass.DrawCallGroup(drawCalls: drawCalls)
+        drawCallGroup.moduleIdentifier = moduleIdentifier
+        return [drawCallGroup]
         
     }
     
@@ -223,11 +234,11 @@ class SurfacesRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withAugmentedAnchors anchors: [AKAugmentedAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+    func updateBuffers(withAugmentedAnchors anchors: [AKAugmentedAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
         // Do Nothing
     }
     
-    func updateBuffers(withRealAnchors anchors: [AKRealAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+    func updateBuffers(withRealAnchors anchors: [AKRealAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
         
         // Update the anchor uniform buffer with transforms of the current frame's anchors
         surfaceInstanceCount = 0
@@ -349,6 +360,9 @@ class SurfacesRenderModule: RenderModule {
             let directionalLightColor: vector_float3 = vector3(0.6, 0.6, 0.6)
             environmentUniforms?.pointee.directionalLightColor = directionalLightColor * ambientIntensity
             
+            environmentUniforms?.pointee.directionalLightMVP = environmentProperties.directionalLightMVP
+            environmentUniforms?.pointee.shadowMVPTransformMatrix = shadowProperties.shadowMVPTransformMatrix
+            
             if environmentData?.hasEnvironmentMap == true {
                 environmentUniforms?.pointee.hasEnvironmentMap = 1
             } else {
@@ -409,11 +423,11 @@ class SurfacesRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
         // Do Nothing
     }
     
-    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
         // Do Nothing
     }
     
@@ -472,7 +486,7 @@ class SurfacesRenderModule: RenderModule {
             
         }
         
-        for drawCallGroup in renderPass.drawCallGroups {
+        for drawCallGroup in renderPass.drawCallGroups.filter({ $0.moduleIdentifier == moduleIdentifier }) {
             
             // Geometry Draw Calls
             for (index, drawCall) in drawCallGroup.drawCalls.enumerated() {

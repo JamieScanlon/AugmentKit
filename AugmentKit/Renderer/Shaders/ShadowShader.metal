@@ -39,14 +39,17 @@ struct ShadowOutput {
     float4 position [[position]];
 };
 
-vertex ShadowOutput shadowVertexShader(device ShadowVertex *positions [[ buffer(kBufferIndexMeshPositions) ]],
-                                       constant ShadowUniforms &shadowUniforms [[ buffer(kBufferIndexShadowUniforms) ]],
-                                       uint vid [[ vertex_id ]]
+vertex ShadowOutput shadowVertexShader( ShadowVertex in [[stage_in]],
+                                       constant EnvironmentUniforms *environmentUniforms [[ buffer(kBufferIndexEnvironmentUniforms) ]],
+                                       uint vid [[ vertex_id ]],
+                                       ushort iid [[instance_id]]
                                        ){
     ShadowOutput out;
     
+    EnvironmentUniforms uniforms = environmentUniforms[iid];
+    float4x4 directionalLightMVP = uniforms.directionalLightMVP;
     // Add vertex pos to fairy position and project to clip-space
-    out.position = shadowUniforms.shadow_mvp_matrix * float4(positions[vid].position, 1.0);
+    out.position = directionalLightMVP * float4(in.position, 1.0);
     
     return out;
 }

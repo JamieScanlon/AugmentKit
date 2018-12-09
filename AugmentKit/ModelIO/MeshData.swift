@@ -154,6 +154,9 @@ public struct DrawData {
     var hasSheenTintMap = false
     var hasClearcoatMap = false
     var hasClearcoatGlossMap = false
+    var isSkinned: Bool {
+        return paletteStartIndex != nil
+    }
 }
 
 // MARK: MeshGPUData

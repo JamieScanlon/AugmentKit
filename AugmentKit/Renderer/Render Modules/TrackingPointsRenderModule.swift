@@ -49,7 +49,6 @@ class TrackingPointsRenderModule: RenderModule {
     var sharedModuleIdentifiers: [String]? = [SharedBuffersRenderModule.identifier]
     var renderDistance: Double = 500
     var errors = [AKError]()
-    private(set) var drawCallGroups = [RenderPass.DrawCallGroup]()
     
     // The number of tracking points to render
     private(set) var trackingPointCount: Int = 0
@@ -77,14 +76,14 @@ class TrackingPointsRenderModule: RenderModule {
     
     // This funciton should set up the vertex descriptors, pipeline / depth state descriptors,
     // textures, etc.
-    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle) {
+    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, forRenderPass renderPass: RenderPass? = nil) -> [RenderPass.DrawCallGroup] {
         
         guard let device = device else {
             print("Serious Error - device not found")
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeDeviceNotFound, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return
+            return []
         }
         
         guard let pointVertexShader = metalLibrary.makeFunction(name: "pointVertexShader") else {
@@ -92,7 +91,7 @@ class TrackingPointsRenderModule: RenderModule {
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeShaderInitializationFailed, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return
+            return []
         }
         
         guard let pointFragmentShader = metalLibrary.makeFunction(name: "pointFragmentShader") else {
@@ -100,7 +99,7 @@ class TrackingPointsRenderModule: RenderModule {
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeShaderInitializationFailed, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return
+            return []
         }
         
         // Create a vertex descriptor for our image plane vertex buffer
@@ -149,14 +148,17 @@ class TrackingPointsRenderModule: RenderModule {
         trackingPointDepthStateDescriptor.isDepthWriteEnabled = false
         trackingPointDepthState = device.makeDepthStencilState(descriptor: trackingPointDepthStateDescriptor)
         
-        drawCallGroups = [RenderPass.DrawCallGroup]()
+        var drawCallGroups = [RenderPass.DrawCallGroup]()
         if let trackingPointPipelineState = trackingPointPipelineState {
             let drawCall = RenderPass.DrawCall(renderPipelineState: trackingPointPipelineState, depthStencilState: trackingPointDepthState, cullMode: .none)
             let drawCallGroup = RenderPass.DrawCallGroup(drawCalls: [drawCall])
+            drawCallGroup.moduleIdentifier = moduleIdentifier
             drawCallGroups = [drawCallGroup]
         }
         
         isInitialized = true
+        
+        return drawCallGroups
         
     }
     
@@ -173,7 +175,7 @@ class TrackingPointsRenderModule: RenderModule {
     }
     
     // Update the buffer data
-    func updateBuffers(withAugmentedAnchors anchors: [AKAugmentedAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+    func updateBuffers(withAugmentedAnchors anchors: [AKAugmentedAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
         
         trackingPointCount = 0
         
@@ -209,15 +211,15 @@ class TrackingPointsRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withRealAnchors: [AKRealAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+    func updateBuffers(withRealAnchors: [AKRealAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
         // Do Nothing
     }
     
-    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
         // Do Nothing
     }
     
-    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
         // Do Nothing
     }
     
@@ -231,7 +233,7 @@ class TrackingPointsRenderModule: RenderModule {
             return
         }
         
-        for drawCallGroup in renderPass.drawCallGroups {
+        for drawCallGroup in renderPass.drawCallGroups.filter({ $0.moduleIdentifier == moduleIdentifier }) {
             
             // Geometry Draw Calls
             for (_, drawCall) in drawCallGroup.drawCalls.enumerated() {

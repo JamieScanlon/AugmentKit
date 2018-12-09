@@ -116,6 +116,7 @@ struct ColorInOut {
     float3 bitangent;
     float3 tangent;
     float2 texCoord [[ function_constant(has_any_map) ]];
+    float3 shadowCoord;
     ushort iid;
 };
 
@@ -125,6 +126,7 @@ constexpr sampler linearSampler (address::repeat, min_filter::linear, mag_filter
 constexpr sampler nearestSampler(address::repeat, min_filter::linear, mag_filter::linear, mip_filter::none);
 //constexpr sampler mipSampler(address::clamp_to_edge, min_filter::linear, mag_filter::linear, mip_filter::linear);
 constexpr sampler reflectiveEnvironmentSampler(address::clamp_to_edge, min_filter::nearest, mag_filter::linear, mip_filter::none);
+constexpr sampler shadowSampler(coord::normalized, filter::linear, mip_filter::none, address::clamp_to_edge, compare_func::less);
 
 float3 computeNormalMap(ColorInOut in, texture2d<float> normalMapTexture) {
     float4 normalMap = float4((float4(normalMapTexture.sample(nearestSampler, float2(in.texCoord)).rgb, 0.0)));
@@ -425,6 +427,7 @@ vertex ColorInOut anchorGeometryVertexTransform(Vertex in [[stage_in]],
                                                 constant SharedUniforms &sharedUniforms [[ buffer(kBufferIndexSharedUniforms) ]],
                                                 constant AnchorInstanceUniforms *anchorInstanceUniforms [[ buffer(kBufferIndexAnchorInstanceUniforms) ]],
                                                 constant AnchorEffectsUniforms *anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]],
+                                                constant EnvironmentUniforms *environmentUniforms [[ buffer(kBufferIndexEnvironmentUniforms) ]],
                                                 uint vid [[vertex_id]],
                                                 ushort iid [[instance_id]]) {
     ColorInOut out;
@@ -454,11 +457,16 @@ vertex ColorInOut anchorGeometryVertexTransform(Vertex in [[stage_in]],
     out.tangent = normalMatrix * in.tangent;
     out.bitangent = normalMatrix * cross(in.normal, in.tangent);
     
+    // Texture Coord
     // Pass along the texture coordinate of our vertex such which we'll use to sample from texture's
     //   in our fragment function, if we need it
     if (has_any_map) {
         out.texCoord = float2(in.texCoord.x, 1.0f - in.texCoord.y);
     }
+    
+    // Shadow Coord
+    EnvironmentUniforms environmentUniform = environmentUniforms[iid];
+    out.shadowCoord = (environmentUniform.shadowMVPTransformMatrix * position).xyz;
     
     out.iid = iid;
     
@@ -473,6 +481,7 @@ vertex ColorInOut anchorGeometryVertexTransformSkinned(Vertex in [[stage_in]],
                                                        constant int &paletteSize [[buffer(kBufferIndexMeshPaletteSize)]],
                                                        constant AnchorInstanceUniforms *anchorInstanceUniforms [[ buffer(kBufferIndexAnchorInstanceUniforms) ]],
                                                        constant AnchorEffectsUniforms *anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]],
+                                                       constant EnvironmentUniforms *environmentUniforms [[ buffer(kBufferIndexEnvironmentUniforms) ]],
                                                        uint vid [[vertex_id]],
                                                        ushort iid [[instance_id]]) {
     
@@ -557,10 +566,11 @@ fragment float4 anchorGeometryFragmentLighting(ColorInOut in [[stage_in]],
                                                texture2d<float> sheenTintMap [[  texture(kTextureIndexSheenTintMap), function_constant(has_sheenTint_map) ]],
                                                texture2d<float> clearcoatMap [[  texture(kTextureIndexClearcoatMap), function_constant(has_clearcoat_map) ]],
                                                texture2d<float> clearcoatGlossMap [[  texture(kTextureIndexClearcoatGlossMap), function_constant(has_clearcoatGloss_map) ]],
-                                               texturecube<float> environmentCubemap [[  texture(kTextureIndexEnvironmentMap) ]]
+                                               texturecube<float> environmentCubemap [[  texture(kTextureIndexEnvironmentMap) ]],
+                                               depth2d<float> shadowMap [[ texture(kTextureIndexShadowMap) ]]
                                                ) {
     
-    float4 final_color = float4(0);
+    float4 finalColor = float4(0);
     ushort iid = in.iid;
     
     LightingParameters parameters = calculateParameters(in,
@@ -589,14 +599,23 @@ fragment float4 anchorGeometryFragmentLighting(ColorInOut in [[stage_in]],
     if ( parameters.baseColor.w <= 0.01f ) {
         discard_fragment();
     }
+    
+    // Compare the depth value in the shadow map to the depth value of the fragment in the sun's.
+    // frame of reference.  If the sample is occluded, it will be zero.
+    float shadowSample = shadowMap.sample_compare(shadowSampler, in.shadowCoord.xy, in.shadowCoord.z);
+    // Lighten shadow to account for ambient light
+    float shadowContribution = shadowSample + 0.1;
+    // Clamp shadow values to 1;
+    shadowContribution = min(1.0, shadowContribution);
+    float4 shadowColor = float4(0.0, 0.0, 0.0, shadowContribution); // Black
 
-//    float4 intermediate_color =  illuminate(parameters);
-    float4 intermediate_color =  float4(parameters.baseColor * illuminate(parameters));
+    float4 intermediateColor = float4(parameters.baseColor * illuminate(parameters));
+    intermediateColor = intermediateColor + shadowColor;
     
     // Apply effects
-    final_color = float4(intermediate_color.rgb * anchorEffectsUniforms[iid].tint, intermediate_color.a * anchorEffectsUniforms[iid].alpha);
+    finalColor = float4(intermediateColor.rgb * anchorEffectsUniforms[iid].tint, intermediateColor.a * anchorEffectsUniforms[iid].alpha);
     
-    return final_color;
+    return finalColor;
     
 }
 

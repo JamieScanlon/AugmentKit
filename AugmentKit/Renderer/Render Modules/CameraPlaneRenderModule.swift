@@ -48,7 +48,6 @@ class CameraPlaneRenderModule: RenderModule {
     var sharedModuleIdentifiers: [String]? = nil
     var renderDistance: Double = 500
     var errors = [AKError]()
-    private(set) var drawCallGroups = [RenderPass.DrawCallGroup]()
     
     func initializeBuffers(withDevice aDevice: MTLDevice, maxInFlightBuffers: Int) {
         
@@ -65,14 +64,14 @@ class CameraPlaneRenderModule: RenderModule {
         completion()
     }
     
-    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle) {
+    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, forRenderPass renderPass: RenderPass? = nil) -> [RenderPass.DrawCallGroup] {
         
         guard let device = device else {
             print("Serious Error - device not found")
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeDeviceNotFound, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return
+            return []
         }
         
         guard let capturedImageVertexTransform = metalLibrary.makeFunction(name: "capturedImageVertexTransform") else {
@@ -80,7 +79,7 @@ class CameraPlaneRenderModule: RenderModule {
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeShaderInitializationFailed, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return
+            return []
         }
         
         guard let capturedImageFragmentShader = metalLibrary.makeFunction(name: "capturedImageFragmentShader") else {
@@ -88,7 +87,7 @@ class CameraPlaneRenderModule: RenderModule {
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeShaderInitializationFailed, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return
+            return []
         }
         
         let capturedImageVertexFunction = capturedImageVertexTransform
@@ -130,7 +129,7 @@ class CameraPlaneRenderModule: RenderModule {
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeRenderPipelineInitializationFailed, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return
+            return []
         }
         
         let capturedImageDepthStateDescriptor = MTLDepthStencilDescriptor()
@@ -143,12 +142,13 @@ class CameraPlaneRenderModule: RenderModule {
         CVMetalTextureCacheCreate(nil, nil, device, nil, &textureCache)
         capturedImageTextureCache = textureCache
         
-        drawCallGroups = [RenderPass.DrawCallGroup]()
         let drawCall = RenderPass.DrawCall(withDevice: device, renderPipelineDescriptor: capturedImagePipelineStateDescriptor, depthStencilDescriptor: capturedImageDepthStateDescriptor, cullMode: .none)
         let drawCallGroup = RenderPass.DrawCallGroup(drawCalls: [drawCall])
-        drawCallGroups = [drawCallGroup]
+        drawCallGroup.moduleIdentifier = moduleIdentifier
         
         isInitialized = true
+        
+        return [drawCallGroup]
         
     }
     
@@ -166,7 +166,7 @@ class CameraPlaneRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withAugmentedAnchors anchors: [AKAugmentedAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+    func updateBuffers(withAugmentedAnchors anchors: [AKAugmentedAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
         
         // Create two textures (Y and CbCr) from the provided frame's captured image
         let pixelBuffer = cameraProperties.capturedImage
@@ -195,15 +195,15 @@ class CameraPlaneRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withRealAnchors: [AKRealAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+    func updateBuffers(withRealAnchors: [AKRealAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
         // Do Nothing
     }
     
-    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
         // Do Nothing
     }
     
-    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
         // Do Nothing
     }
     
@@ -221,7 +221,7 @@ class CameraPlaneRenderModule: RenderModule {
             return
         }
         
-        for drawCallGroup in renderPass.drawCallGroups {
+        for drawCallGroup in renderPass.drawCallGroups.filter({ $0.moduleIdentifier == moduleIdentifier }) {
             
             // Geometry Draw Calls
             for (_, drawCall) in drawCallGroup.drawCalls.enumerated() {

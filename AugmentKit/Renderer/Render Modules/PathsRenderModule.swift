@@ -124,7 +124,7 @@ class PathsRenderModule: RenderModule {
         
     }
     
-    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, forRenderPass renderPass: RenderPass? = nil) -> [RenderPass.DrawCallGroup] {
+    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, forRenderPass renderPass: RenderPass? = nil) -> [DrawCallGroup] {
         
         guard let device = device else {
             print("Serious Error - device not found")
@@ -185,43 +185,47 @@ class PathsRenderModule: RenderModule {
             return []
         }
         
-        var drawCalls = [RenderPass.DrawCall]()
-        for (_, _) in pathMeshGPUData.drawData.enumerated() {
-            let pathPipelineStateDescriptor = MTLRenderPipelineDescriptor()
-            pathPipelineStateDescriptor.vertexDescriptor = pathVertexDescriptor
-            pathPipelineStateDescriptor.vertexFunction = pathVertexShader
-            pathPipelineStateDescriptor.fragmentFunction = pathFragmentShader
-            pathPipelineStateDescriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
-            pathPipelineStateDescriptor.colorAttachments[0].isBlendingEnabled = true
-            pathPipelineStateDescriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
-            pathPipelineStateDescriptor.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
-            pathPipelineStateDescriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-            pathPipelineStateDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-            pathPipelineStateDescriptor.sampleCount = renderDestination.sampleCount
-            
-            let drawCall = RenderPass.DrawCall(withDevice: device, renderPipelineDescriptor: pathPipelineStateDescriptor)
-            drawCalls.append(drawCall)
-            
-            do {
-                try pathPipelineStates.append(device.makeRenderPipelineState(descriptor: pathPipelineStateDescriptor))
-            } catch let error {
-                print("Failed to create pipeline state, error \(error)")
-                let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: error))))
-                recordNewError(newError)
+        var drawCalls = [DrawCall]()
+        
+        let pathDepthStateDescriptor: MTLDepthStencilDescriptor = {
+            if let renderPass = renderPass {
+                let aDepthStateDescriptor = renderPass.depthStencilDescriptor(withDepthComareFunction: .less, isDepthWriteEnabled: true)
+                return aDepthStateDescriptor
+            } else {
+                let aDepthStateDescriptor = MTLDepthStencilDescriptor()
+                aDepthStateDescriptor.depthCompareFunction = .less
+                aDepthStateDescriptor.isDepthWriteEnabled = true
+                return aDepthStateDescriptor
             }
+        }()
+        
+        for (_, _) in pathMeshGPUData.drawData.enumerated() {
+            
+            let pipelineStateDescriptor: MTLRenderPipelineDescriptor = {
+                if let renderPass = renderPass, let aPipelineDescriptor = renderPass.renderPipelineDescriptor(withVertexDescriptor: pathVertexDescriptor, vertexFunction: pathVertexShader, fragmentFunction: pathFragmentShader) {
+                    return aPipelineDescriptor
+                } else {
+                    let aPipelineDescriptor = MTLRenderPipelineDescriptor()
+                    aPipelineDescriptor.vertexDescriptor = pathVertexDescriptor
+                    aPipelineDescriptor.vertexFunction = pathVertexShader
+                    aPipelineDescriptor.fragmentFunction = pathFragmentShader
+                    aPipelineDescriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
+                    aPipelineDescriptor.colorAttachments[0].isBlendingEnabled = true
+                    aPipelineDescriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
+                    aPipelineDescriptor.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
+                    aPipelineDescriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
+                    aPipelineDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
+                    aPipelineDescriptor.sampleCount = renderDestination.sampleCount
+                    return aPipelineDescriptor
+                }
+            }()
+            if let drawCall = renderPass?.drawCall(withRenderPipelineDescriptor: pipelineStateDescriptor, depthStencilDescriptor: pathDepthStateDescriptor) {
+                drawCalls.append(drawCall)
+            }
+            
         }
         
-        let pathDepthStateDescriptor = MTLDepthStencilDescriptor()
-        pathDepthStateDescriptor.depthCompareFunction = .less
-        pathDepthStateDescriptor.isDepthWriteEnabled = true
-        pathDepthState = device.makeDepthStencilState(descriptor: pathDepthStateDescriptor)
-            
-        drawCalls = drawCalls.map{
-            var mutableDrawCall = $0
-            mutableDrawCall.depthStencilState = pathDepthState
-            return mutableDrawCall
-        }
-        let drawCallGroup = RenderPass.DrawCallGroup(drawCalls: drawCalls)
+        let drawCallGroup = DrawCallGroup(drawCalls: drawCalls)
         drawCallGroup.moduleIdentifier = moduleIdentifier
         
         isInitialized = true
@@ -517,8 +521,6 @@ class PathsRenderModule: RenderModule {
     private var pathUniformBuffer: MTLBuffer?
     private var materialUniformBuffer: MTLBuffer?
     private var effectsUniformBuffer: MTLBuffer?
-    private var pathPipelineStates = [MTLRenderPipelineState]() // Store multiple states
-    private var pathDepthState: MTLDepthStencilState?
     private var shadowMap: MTLTexture?
     
     // MetalKit meshes containing vertex data and index buffer for our geometry

@@ -751,7 +751,7 @@ public class Renderer: NSObject {
         environmentProperties.environmentAnchorsWithReatedAnchors = environmentAnchorsWithReatedAnchors
         environmentProperties.lightEstimate = currentFrame.lightEstimate
         
-        let depthProjectionMatrix = float4x4.makeOrtho(left: cameraPosition.x - 100, right: cameraPosition.x + 100, bottom: cameraPosition.y - 100, top: cameraPosition.y + 100, nearZ: cameraPosition.z + 100, farZ: cameraPosition.z - 100)
+        let depthProjectionMatrix = float4x4.makeOrtho(left: cameraPosition.x - 10, right: cameraPosition.x + 10, bottom: cameraPosition.y - 10, top: cameraPosition.y + 10, nearZ: cameraPosition.z + 10, farZ: cameraPosition.z - 10)
         let depthViewMatrix = float4x4.makeLookAt(eyeX: 0, eyeY: 1, eyeZ: 0, centerX: 0, centerY: 0, centerZ: 0, upX: 0, upY: 1, upZ: 0)
         environmentProperties.directionalLightMVP = depthProjectionMatrix * depthViewMatrix
         
@@ -1221,13 +1221,13 @@ public class Renderer: NSObject {
         shadowRenderPass?.name = "Shadow Render Pass"
         shadowRenderPass?.usesGeomentry = true
         shadowRenderPass?.usesLighting = false
-        shadowRenderPass?.usesEffects = false
+        shadowRenderPass?.usesEffects = true
         shadowRenderPass?.usesEnvironment = true
         shadowRenderPass?.usesCameraOutput = false
         shadowRenderPass?.usesSharedBuffer = true
         shadowRenderPass?.vertexFunctionMergePolicy = .preferTemplate
         shadowRenderPass?.fragmentFunctionMergePolicy = .preferTemplate
-        // TODO: setDepthBias(0.015, slopeScale:7, clamp:0.02)
+        shadowRenderPass?.depthBias = RenderPass.DepthBias(bias: 0.015, slopeScale: 7, clamp: 0.02)
 //        #if REVERSE_DEPTH
 //        shadowRenderPass?.depthCompareFunction = .greaterEqual
 //        #else

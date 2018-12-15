@@ -76,7 +76,7 @@ class TrackingPointsRenderModule: RenderModule {
     
     // This funciton should set up the vertex descriptors, pipeline / depth state descriptors,
     // textures, etc.
-    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, forRenderPass renderPass: RenderPass? = nil) -> [RenderPass.DrawCallGroup] {
+    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, forRenderPass renderPass: RenderPass? = nil) -> [DrawCallGroup] {
         
         guard let device = device else {
             print("Serious Error - device not found")
@@ -135,23 +135,13 @@ class TrackingPointsRenderModule: RenderModule {
         trackingPointPipelineStateDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
         trackingPointPipelineStateDescriptor.sampleCount = renderDestination.sampleCount
         
-        do {
-            try trackingPointPipelineState = device.makeRenderPipelineState(descriptor: trackingPointPipelineStateDescriptor)
-        } catch let error {
-            print("Failed to create tracking point pipeline state, error \(error)")
-            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: error))))
-            recordNewError(newError)
-        }
-        
         let trackingPointDepthStateDescriptor = MTLDepthStencilDescriptor()
         trackingPointDepthStateDescriptor.depthCompareFunction = .always
-        trackingPointDepthStateDescriptor.isDepthWriteEnabled = false
-        trackingPointDepthState = device.makeDepthStencilState(descriptor: trackingPointDepthStateDescriptor)
+        trackingPointDepthStateDescriptor.isDepthWriteEnabled = true
         
-        var drawCallGroups = [RenderPass.DrawCallGroup]()
-        if let trackingPointPipelineState = trackingPointPipelineState {
-            let drawCall = RenderPass.DrawCall(renderPipelineState: trackingPointPipelineState, depthStencilState: trackingPointDepthState, cullMode: .none)
-            let drawCallGroup = RenderPass.DrawCallGroup(drawCalls: [drawCall])
+        var drawCallGroups = [DrawCallGroup]()
+        if let drawCall = renderPass?.drawCall(withRenderPipelineDescriptor: trackingPointPipelineStateDescriptor, depthStencilDescriptor: trackingPointDepthStateDescriptor) {
+            let drawCallGroup = DrawCallGroup(drawCalls: [drawCall])
             drawCallGroup.moduleIdentifier = moduleIdentifier
             drawCallGroups = [drawCallGroup]
         }
@@ -283,8 +273,6 @@ class TrackingPointsRenderModule: RenderModule {
     
     private var device: MTLDevice?
     private var trackingPointDataBuffer: MTLBuffer?
-    private var trackingPointPipelineState: MTLRenderPipelineState?
-    private var trackingPointDepthState: MTLDepthStencilState?
     
     // Offset within trackingPointDataBuffer to set for the current frame
     private var trackingPointDataBufferOffset: Int = 0

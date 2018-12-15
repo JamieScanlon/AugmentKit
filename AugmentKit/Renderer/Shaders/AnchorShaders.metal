@@ -466,7 +466,7 @@ vertex ColorInOut anchorGeometryVertexTransform(Vertex in [[stage_in]],
     
     // Shadow Coord
     EnvironmentUniforms environmentUniform = environmentUniforms[iid];
-    out.shadowCoord = (environmentUniform.shadowMVPTransformMatrix * position).xyz;
+    out.shadowCoord = (environmentUniform.shadowMVPTransformMatrix * out.position).xyz;
     
     out.iid = iid;
     
@@ -539,6 +539,10 @@ vertex ColorInOut anchorGeometryVertexTransformSkinned(Vertex in [[stage_in]],
         out.texCoord = float2(in.texCoord.x, 1.0f - in.texCoord.y);
     }
     
+    // Shadow Coord
+    EnvironmentUniforms environmentUniform = environmentUniforms[iid];
+    out.shadowCoord = (environmentUniform.shadowMVPTransformMatrix * out.position).xyz;
+    
     out.iid = iid;
     
     return out;
@@ -602,15 +606,15 @@ fragment float4 anchorGeometryFragmentLighting(ColorInOut in [[stage_in]],
     
     // Compare the depth value in the shadow map to the depth value of the fragment in the sun's.
     // frame of reference.  If the sample is occluded, it will be zero.
-    float shadowSample = shadowMap.sample_compare(shadowSampler, in.shadowCoord.xy, in.shadowCoord.z);
-    // Lighten shadow to account for ambient light
-    float shadowContribution = shadowSample + 0.1;
-    // Clamp shadow values to 1;
-    shadowContribution = min(1.0, shadowContribution);
-    float4 shadowColor = float4(0.0, 0.0, 0.0, shadowContribution); // Black
+//    float shadowSample = shadowMap.sample_compare(shadowSampler, in.shadowCoord.xy, in.shadowCoord.z);
+//    // Lighten shadow to account for ambient light
+//    float shadowContribution = shadowSample + 0.5;
+//    // Clamp shadow values to 1;
+//    shadowContribution = min(1.0, shadowContribution);
+//    float4 shadowColor = float4(1.0, 0.0, 0.0, 1 - shadowContribution); // Black
 
     float4 intermediateColor = float4(parameters.baseColor * illuminate(parameters));
-    intermediateColor = intermediateColor + shadowColor;
+//    intermediateColor = intermediateColor + shadowColor;
     
     // Apply effects
     finalColor = float4(intermediateColor.rgb * anchorEffectsUniforms[iid].tint, intermediateColor.a * anchorEffectsUniforms[iid].alpha);

@@ -64,7 +64,7 @@ class CameraPlaneRenderModule: RenderModule {
         completion()
     }
     
-    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, forRenderPass renderPass: RenderPass? = nil) -> [RenderPass.DrawCallGroup] {
+    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, forRenderPass renderPass: RenderPass? = nil) -> [DrawCallGroup] {
         
         guard let device = device else {
             print("Serious Error - device not found")
@@ -135,15 +135,14 @@ class CameraPlaneRenderModule: RenderModule {
         let capturedImageDepthStateDescriptor = MTLDepthStencilDescriptor()
         capturedImageDepthStateDescriptor.depthCompareFunction = .always
         capturedImageDepthStateDescriptor.isDepthWriteEnabled = false
-        capturedImageDepthState = device.makeDepthStencilState(descriptor: capturedImageDepthStateDescriptor)
         
         // Create captured image texture cache
         var textureCache: CVMetalTextureCache?
         CVMetalTextureCacheCreate(nil, nil, device, nil, &textureCache)
         capturedImageTextureCache = textureCache
         
-        let drawCall = RenderPass.DrawCall(withDevice: device, renderPipelineDescriptor: capturedImagePipelineStateDescriptor, depthStencilDescriptor: capturedImageDepthStateDescriptor, cullMode: .none)
-        let drawCallGroup = RenderPass.DrawCallGroup(drawCalls: [drawCall])
+        let drawCall = DrawCall(withDevice: device, renderPipelineDescriptor: capturedImagePipelineStateDescriptor, depthStencilDescriptor: capturedImageDepthStateDescriptor, cullMode: .none)
+        let drawCallGroup = DrawCallGroup(drawCalls: [drawCall])
         drawCallGroup.moduleIdentifier = moduleIdentifier
         
         isInitialized = true
@@ -281,7 +280,6 @@ class CameraPlaneRenderModule: RenderModule {
     private var device: MTLDevice?
     private var imagePlaneVertexBuffer: MTLBuffer?
     private var capturedImagePipelineState: MTLRenderPipelineState?
-    private var capturedImageDepthState: MTLDepthStencilState?
     private var capturedImageTextureCache: CVMetalTextureCache?
     private var capturedImageTextureY: CVMetalTexture?
     private var capturedImageTextureCbCr: CVMetalTexture?

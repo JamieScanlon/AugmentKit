@@ -157,7 +157,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         
     }
     
-    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, forRenderPass renderPass: RenderPass? = nil) -> [RenderPass.DrawCallGroup] {
+    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, forRenderPass renderPass: RenderPass? = nil) -> [DrawCallGroup] {
         
         guard let device = device else {
             print("Serious Error - device not found")
@@ -176,12 +176,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             return []
         }
         
-        let anchorDepthStateDescriptor = MTLDepthStencilDescriptor()
-        anchorDepthStateDescriptor.depthCompareFunction = .less
-        anchorDepthStateDescriptor.isDepthWriteEnabled = true
-        let anchorDepthState = device.makeDepthStencilState(descriptor: anchorDepthStateDescriptor)
-        
-        var drawCallGroups = [RenderPass.DrawCallGroup]()
+        var drawCallGroups = [DrawCallGroup]()
         
         for item in modelAssetsForAnchorsByUUID {
             
@@ -197,7 +192,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             
             meshGPUDataForAnchorsByUUID[uuid] = ModelIOTools.meshGPUData(from: mdlAsset, device: device, textureBundle: textureBundle, vertexDescriptor: RenderUtilities.createStandardVertexDescriptor(), frameRate: 60, shaderPreference: shaderPreference)
             
-            let drawCallGroup = createPipelineStates(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, depthState: anchorDepthState, renderPass: renderPass)
+            let drawCallGroup = createPipelineStates(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass)
             drawCallGroup.moduleIdentifier = moduleIdentifier
             
             drawCallGroups.append(drawCallGroup)
@@ -666,14 +661,14 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     private var anchorsByUUID = [UUID: [AKAugmentedAnchor]]()
     private var environmentTextureByUUID = [UUID: MTLTexture]()
     
-    private func createPipelineStates(forUUID uuid: UUID, withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, depthState: MTLDepthStencilState?, renderPass: RenderPass?) -> RenderPass.DrawCallGroup {
+    private func createPipelineStates(forUUID uuid: UUID, withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, renderPass: RenderPass?) -> DrawCallGroup {
         
         guard let device = device else {
             print("Serious Error - device not found")
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeDeviceNotFound, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return RenderPass.DrawCallGroup(drawCalls: [], uuid: uuid)
+            return DrawCallGroup(drawCalls: [], uuid: uuid)
         }
         
         guard let meshGPUData = meshGPUDataForAnchorsByUUID[uuid] else {
@@ -681,7 +676,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeIntermediateMeshDataNotFound, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return RenderPass.DrawCallGroup(drawCalls: [], uuid: uuid)
+            return DrawCallGroup(drawCalls: [], uuid: uuid)
         }
         
         let myVertexDescriptor: MTLVertexDescriptor? = meshGPUData.vertexDescriptor
@@ -691,13 +686,13 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeInvalidMeshData, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return RenderPass.DrawCallGroup(drawCalls: [], uuid: uuid)
+            return DrawCallGroup(drawCalls: [], uuid: uuid)
         }
         
         let shaderPreference = meshGPUData.shaderPreference
         
         // Saving all of the states for each mesh in the myPipelineStates array.
-        var drawCalls = [RenderPass.DrawCall]()
+        var drawCalls = [DrawCall]()
         for drawData in meshGPUData.drawData {
             
             let funcConstants = RenderUtilities.getFuncConstants(forDrawData: drawData)
@@ -752,13 +747,25 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                 }
             }()
             
-            var drawCall = RenderPass.DrawCall(withDevice: device, renderPipelineDescriptor: pipelineStateDescriptor)
-            drawCall.depthStencilState = depthState
-            drawCalls.append(drawCall)
+            let anchorDepthStateDescriptor: MTLDepthStencilDescriptor = {
+                if let renderPass = renderPass {
+                    let aDepthStateDescriptor = renderPass.depthStencilDescriptor(withDepthComareFunction: .less, isDepthWriteEnabled: true)
+                    return aDepthStateDescriptor
+                } else {
+                    let aDepthStateDescriptor = MTLDepthStencilDescriptor()
+                    aDepthStateDescriptor.depthCompareFunction = .less
+                    aDepthStateDescriptor.isDepthWriteEnabled = true
+                    return aDepthStateDescriptor
+                }
+            }()
+            
+            if let drawCall = renderPass?.drawCall(withRenderPipelineDescriptor: pipelineStateDescriptor, depthStencilDescriptor: anchorDepthStateDescriptor) {
+                drawCalls.append(drawCall)
+            }
             
         }
         
-        let drawCallGroup = RenderPass.DrawCallGroup(drawCalls: drawCalls, uuid: uuid)
+        let drawCallGroup = DrawCallGroup(drawCalls: drawCalls, uuid: uuid)
         return drawCallGroup
         
     }

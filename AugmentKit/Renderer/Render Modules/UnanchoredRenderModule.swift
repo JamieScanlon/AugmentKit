@@ -158,7 +158,7 @@ class UnanchoredRenderModule: RenderModule {
         
     }
     
-    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, forRenderPass renderPass: RenderPass? = nil) -> [RenderPass.DrawCallGroup] {
+    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, forRenderPass renderPass: RenderPass? = nil) -> [DrawCallGroup] {
         
         guard let device = device else {
             print("Serious Error - device not found")
@@ -168,12 +168,7 @@ class UnanchoredRenderModule: RenderModule {
             return []
         }
         
-        let unanchoredDepthStateDescriptor = MTLDepthStencilDescriptor()
-        unanchoredDepthStateDescriptor.depthCompareFunction = .less
-        unanchoredDepthStateDescriptor.isDepthWriteEnabled = true
-        let unanchoredDepthState = device.makeDepthStencilState(descriptor: unanchoredDepthStateDescriptor)
-        
-        var drawCallGroups = [RenderPass.DrawCallGroup]()
+        var drawCallGroups = [DrawCallGroup]()
         
         for item in modelAssetsByUUID {
             
@@ -189,7 +184,7 @@ class UnanchoredRenderModule: RenderModule {
             
             meshGPUDataByUUID[uuid] = ModelIOTools.meshGPUData(from: mdlAsset, device: device, textureBundle: textureBundle, vertexDescriptor: RenderUtilities.createStandardVertexDescriptor(), frameRate: 60, shaderPreference: shaderPreference)
             
-            let drawCallGroup = createPipelineStates(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, unanchoredDepthState: unanchoredDepthState, renderPass: renderPass)
+            let drawCallGroup = createPipelineStates(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass)
             drawCallGroup.moduleIdentifier = moduleIdentifier
             drawCallGroups.append(drawCallGroup)
             
@@ -762,14 +757,14 @@ class UnanchoredRenderModule: RenderModule {
     // number of frames in the target animation by index
     private var targetAnimationFrameCount = [Int]()
     
-    private func createPipelineStates(forUUID uuid: UUID, withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, unanchoredDepthState: MTLDepthStencilState?, renderPass: RenderPass?) -> RenderPass.DrawCallGroup {
+    private func createPipelineStates(forUUID uuid: UUID, withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, renderPass: RenderPass?) -> DrawCallGroup {
         
         guard let device = device else {
             print("Serious Error - device not found")
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeDeviceNotFound, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return RenderPass.DrawCallGroup(drawCalls: [], uuid: uuid)
+            return DrawCallGroup(drawCalls: [], uuid: uuid)
         }
         
         guard let meshGPUData = meshGPUDataByUUID[uuid] else {
@@ -777,7 +772,7 @@ class UnanchoredRenderModule: RenderModule {
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeIntermediateMeshDataNotFound, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return RenderPass.DrawCallGroup(drawCalls: [], uuid: uuid)
+            return DrawCallGroup(drawCalls: [], uuid: uuid)
         }
         
         guard let aVertexDescriptor = meshGPUData.vertexDescriptor else {
@@ -785,12 +780,12 @@ class UnanchoredRenderModule: RenderModule {
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeInvalidMeshData, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return RenderPass.DrawCallGroup(drawCalls: [], uuid: uuid)
+            return DrawCallGroup(drawCalls: [], uuid: uuid)
         }
         
         let shaderPreference = meshGPUData.shaderPreference
         
-        var drawCalls = [RenderPass.DrawCall]()
+        var drawCalls = [DrawCall]()
         for drawData in meshGPUData.drawData {
             
             let funcConstants = RenderUtilities.getFuncConstants(forDrawData: drawData)
@@ -847,13 +842,25 @@ class UnanchoredRenderModule: RenderModule {
                 
             }()
             
-            var drawCall = RenderPass.DrawCall(withDevice: device, renderPipelineDescriptor: pipelineStateDescriptor)
-            drawCall.depthStencilState = unanchoredDepthState
-            drawCalls.append(drawCall)
+            let unanchoredDepthStateDescriptor: MTLDepthStencilDescriptor = {
+                if let renderPass = renderPass {
+                    let aDepthStateDescriptor = renderPass.depthStencilDescriptor(withDepthComareFunction: .less, isDepthWriteEnabled: true)
+                    return aDepthStateDescriptor
+                } else {
+                    let aDepthStateDescriptor = MTLDepthStencilDescriptor()
+                    aDepthStateDescriptor.depthCompareFunction = .less
+                    aDepthStateDescriptor.isDepthWriteEnabled = true
+                    return aDepthStateDescriptor
+                }
+            }()
+            
+            if let drawCall = renderPass?.drawCall(withRenderPipelineDescriptor: pipelineStateDescriptor, depthStencilDescriptor: unanchoredDepthStateDescriptor) {
+                drawCalls.append(drawCall)
+            }
             
         }
         
-        let drawCallGroup = RenderPass.DrawCallGroup(drawCalls: drawCalls, uuid: uuid)
+        let drawCallGroup = DrawCallGroup(drawCalls: drawCalls, uuid: uuid)
         return drawCallGroup
         
     }

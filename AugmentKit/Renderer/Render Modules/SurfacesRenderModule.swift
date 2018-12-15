@@ -120,7 +120,7 @@ class SurfacesRenderModule: RenderModule {
         
     }
     
-    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, forRenderPass renderPass: RenderPass? = nil) -> [RenderPass.DrawCallGroup] {
+    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, forRenderPass renderPass: RenderPass? = nil) -> [DrawCallGroup] {
         
         guard let device = device else {
             print("Serious Error - device not found")
@@ -165,12 +165,19 @@ class SurfacesRenderModule: RenderModule {
             return []
         }
         
-        let surfaceDepthStateDescriptor = MTLDepthStencilDescriptor()
-        surfaceDepthStateDescriptor.depthCompareFunction = .less
-        surfaceDepthStateDescriptor.isDepthWriteEnabled = true
-        surfaceDepthState = device.makeDepthStencilState(descriptor: surfaceDepthStateDescriptor)
+        let surfaceDepthStateDescriptor: MTLDepthStencilDescriptor = {
+            if let renderPass = renderPass {
+                let aDepthStateDescriptor = renderPass.depthStencilDescriptor(withDepthComareFunction: .less, isDepthWriteEnabled: true)
+                return aDepthStateDescriptor
+            } else {
+                let aDepthStateDescriptor = MTLDepthStencilDescriptor()
+                aDepthStateDescriptor.depthCompareFunction = .less
+                aDepthStateDescriptor.isDepthWriteEnabled = true
+                return aDepthStateDescriptor
+            }
+        }()
         
-        var drawCalls = [RenderPass.DrawCall]()
+        var drawCalls = [DrawCall]()
         
         for drawData in surfaceMeshGPUData.drawData {
             let surfacePipelineStateDescriptor = MTLRenderPipelineDescriptor()
@@ -188,9 +195,9 @@ class SurfacesRenderModule: RenderModule {
                 surfacePipelineStateDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
                 surfacePipelineStateDescriptor.sampleCount = renderDestination.sampleCount
                 
-                var drawCall = RenderPass.DrawCall(withDevice: device, renderPipelineDescriptor: surfacePipelineStateDescriptor)
-                drawCall.depthStencilState = surfaceDepthState
-                drawCalls.append(drawCall)
+                if let drawCall = renderPass?.drawCall(withRenderPipelineDescriptor: surfacePipelineStateDescriptor, depthStencilDescriptor: surfaceDepthStateDescriptor) {
+                    drawCalls.append(drawCall)
+                }
                 
             } catch let error {
                 print("Failed to create pipeline state descriptor, error \(error)")
@@ -210,7 +217,7 @@ class SurfacesRenderModule: RenderModule {
         
         isInitialized = true
         
-        let drawCallGroup = RenderPass.DrawCallGroup(drawCalls: drawCalls)
+        let drawCallGroup = DrawCallGroup(drawCalls: drawCalls)
         drawCallGroup.moduleIdentifier = moduleIdentifier
         return [drawCallGroup]
         
@@ -540,7 +547,6 @@ class SurfacesRenderModule: RenderModule {
     private var effectsUniformBuffer: MTLBuffer?
     private var environmentUniformBuffer: MTLBuffer?
     private var surfacePipelineStates = [MTLRenderPipelineState]() // Store multiple states
-    private var surfaceDepthState: MTLDepthStencilState?
     private var environmentData: EnvironmentData?
     
     // MetalKit meshes containing vertex data and index buffer for our surface geometry

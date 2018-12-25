@@ -398,7 +398,7 @@ public class Renderer: NSObject {
                 }
             } else {
                 var newModules: [RenderModule] = []
-                for module in renderModules {
+                renderModules.forEach { module in
                     if !(module is TrackingPointsRenderModule) {
                         newModules.append(module)
                     }
@@ -549,11 +549,8 @@ public class Renderer: NSObject {
         
         loadMetal()
         
-        for module in renderModules {
-            if !module.isInitialized {
-                hasUninitializedModules = true
-                break
-            }
+        if let _ = renderModules.first(where: {$0.isInitialized == false}) {
+            hasUninitializedModules = true
         }
         
         initializeModules()
@@ -645,10 +642,15 @@ public class Renderer: NSObject {
         //
         
         // Add surface modules for rendering if necessary
-        if surfacesRenderModule == nil && showGuides && realAnchors.count > 0  {
+        if surfacesRenderModule == nil && realAnchors.count > 0  {
             
             let metalAllocator = MTKMeshBufferAllocator(device: device)
-            modelProvider?.registerAsset(GuideSurfaceAnchor.createModelAsset(inBundle: textureBundle, withAllocator: metalAllocator)!, forObjectType: GuideSurfaceAnchor.type, identifier: nil)
+            if showGuides {
+                modelProvider?.registerAsset(GuideSurfaceAnchor.createModelAsset(inBundle: textureBundle, withAllocator: metalAllocator)!, forObjectType: "AnySurface", identifier: nil)
+            } else {
+                // The base color is clear black. The alpha channel will be adjusted according to the shadow map.
+                modelProvider?.registerAsset(RealSurfaceAnchor.createModelAsset(withAllocator: metalAllocator, baseColor: float4(0, 0, 0, 0)), forObjectType: "AnySurface", identifier: nil)
+            }
             
             addModule(forModuelIdentifier: SurfacesRenderModule.identifier)
             
@@ -786,7 +788,7 @@ public class Renderer: NSObject {
             commandBuffer.addCompletedHandler{ [weak self] commandBuffer in
                 if let strongSelf = self {
                     strongSelf.inFlightSemaphore.signal()
-                    for module in strongSelf.renderModules {
+                    strongSelf.renderModules.forEach { module in
                         module.frameEncodingComplete()
                     }
                 }
@@ -795,14 +797,14 @@ public class Renderer: NSObject {
             uniformBufferIndex = (uniformBufferIndex + 1) % Constants.maxBuffersInFlight
             
             // Update Buffer States
-            for module in renderModules {
+            renderModules.forEach { module in
                 if module.isInitialized {
                     module.updateBufferState(withBufferIndex: uniformBufferIndex)
                 }
             }
             
             // Update Buffers
-            for module in renderModules {
+            renderModules.forEach { module in
                 if module.isInitialized {
                     module.updateBuffers(withAugmentedAnchors: augmentedAnchors, cameraProperties: cameraProperties, environmentProperties: environmentProperties, shadowProperties: shadowProperties)
                     module.updateBuffers(withRealAnchors: realAnchors, cameraProperties: cameraProperties, environmentProperties: environmentProperties, shadowProperties: shadowProperties)
@@ -857,7 +859,7 @@ public class Renderer: NSObject {
         }
         monitor?.update(renderErrors: errors)
         
-        let stats = RenderStats(arKitAnchorCount: currentFrame.anchors.count, numAnchors: anchorsRenderModule?.anchorInstanceCount ?? 0, numPlanes: surfacesRenderModule?.surfaceInstanceCount ?? 0, numTrackingPoints: trackingPointRenderModule?.trackingPointCount ?? 0, numTrackers: unanchoredRenderModule?.trackerInstanceCount ?? 0, numTargets: unanchoredRenderModule?.targetInstanceCount ?? 0, numPathSegments: pathsRenderModule?.pathSegmentInstanceCount ?? 0)
+        let stats = RenderStats(arKitAnchorCount: currentFrame.anchors.count, numAnchors: anchorsRenderModule?.anchorInstanceCount ?? 0, numPlanes: surfacesRenderModule?.instanceCount ?? 0, numTrackingPoints: trackingPointRenderModule?.trackingPointCount ?? 0, numTrackers: unanchoredRenderModule?.trackerInstanceCount ?? 0, numTargets: unanchoredRenderModule?.targetInstanceCount ?? 0, numPathSegments: pathsRenderModule?.pathSegmentInstanceCount ?? 0)
         monitor?.update(renderStats: stats)
         
     }
@@ -1338,7 +1340,7 @@ public class Renderer: NSObject {
         var sharedModules: [SharedRenderModule] = []
         var updatedRenderModules: [RenderModule] = []
         
-        for module in renderModules {
+        renderModules.forEach { module in
             
             updatedRenderModules.append(module)
             
@@ -1358,7 +1360,7 @@ public class Renderer: NSObject {
         renderModules = updatedRenderModules.sorted(by: {$0.renderLayer < $1.renderLayer})
         
         // Setup the shared modules map
-        for module in renderModules {
+        renderModules.forEach { module in
             if let sharedModuleIdentifiers = module.sharedModuleIdentifiers, sharedModuleIdentifiers.count > 0 {
                 let foundSharedModules = sharedModules.filter({sharedModuleIdentifiers.contains($0.moduleIdentifier)})
                 sharedModulesForModule[module.moduleIdentifier] = foundSharedModules
@@ -1377,7 +1379,7 @@ public class Renderer: NSObject {
         
         gatherModules()
         
-        for module in renderModules {
+        renderModules.forEach { module in
             
             if !module.isInitialized {
                 // Initialize the module
@@ -1439,7 +1441,7 @@ public class Renderer: NSObject {
     func drawShadowPass(with commandEncoder: MTLRenderCommandEncoder) {
         
         // Draw
-        for module in renderModules {
+        renderModules.forEach { module in
             if let shadowRenderPass = shadowRenderPass, module.isInitialized {
                  module.draw(withRenderPass: shadowRenderPass, sharedModules: sharedModulesForModule[module.moduleIdentifier])
             }
@@ -1453,7 +1455,7 @@ public class Renderer: NSObject {
     func drawMainPass(with commandEncoder: MTLRenderCommandEncoder) {
         
         // Draw
-        for module in renderModules {
+        renderModules.forEach { module in
             if let mainRenderPass = mainRenderPass, module.isInitialized {
                 module.draw(withRenderPass: mainRenderPass, sharedModules: sharedModulesForModule[module.moduleIdentifier])
             }

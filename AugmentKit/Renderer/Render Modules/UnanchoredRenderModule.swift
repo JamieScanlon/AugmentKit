@@ -190,6 +190,13 @@ class UnanchoredRenderModule: RenderModule {
             
         }
         
+        // In the buffer, the anchors are layed out by UUID in sorted order. So if there are
+        // 5 anchors with UUID = "A..." and 3 UUIDs = "B..." and 1 UUID = "C..." then that's
+        // how they will layed out in memory. Therefore updating the buffers is a 2 step process.
+        // First, loop through all of the ARAnchors and gather the UUIDs as well as the counts for each.
+        // Second, layout and update the buffers in the desired order.
+        drawCallGroups.sort { $0.uuid.uuidString < $1.uuid.uuidString }
+        sortedUUIDs = drawCallGroups.map { $0.uuid }
         isInitialized = true
         
         return drawCallGroups
@@ -227,6 +234,7 @@ class UnanchoredRenderModule: RenderModule {
         // Update the uniform buffer with transforms of the current frame's trackers
         
         trackerInstanceCount = 0
+        targetInstanceCount = 0
         geometriesByUUID = [:]
         environmentTextureByUUID = [:]
         
@@ -247,10 +255,15 @@ class UnanchoredRenderModule: RenderModule {
             }
         }()
         
-        for index in 0..<trackers.count {
-            
-            let tracker = trackers[index]
-            
+        var index = 0
+        var trackerUUIDs = trackers.map({$0.identifier})
+        trackerUUIDs.append(generalTrackerUUID)
+        var targetUUIDs = targets.map({$0.identifier})
+        targetUUIDs.append(generalTargetUUID)
+        
+        // Build the geometriesByUUID map
+        
+        trackers.forEach { tracker in
             let uuid: UUID = {
                 if let identifier = tracker.identifier, modelAssetsByUUID[identifier] != nil {
                     return identifier
@@ -258,7 +271,6 @@ class UnanchoredRenderModule: RenderModule {
                     return generalTrackerUUID
                 }
             }()
-            
             if let currentGeometries = geometriesByUUID[uuid] {
                 var mutableCurrentGeometries = currentGeometries
                 mutableCurrentGeometries.append(tracker)
@@ -266,159 +278,9 @@ class UnanchoredRenderModule: RenderModule {
             } else {
                 geometriesByUUID[uuid] = [tracker]
             }
-            
-            // Apply the transform of the tracker relative to the reference transform
-            let trackerAbsoluteTransform = tracker.position.referenceTransform * tracker.position.transform
-            
-            // Ignore anchors that are beyond the renderDistance
-            let distance = anchorDistance(withTransform: trackerAbsoluteTransform, cameraProperties: cameraProperties)
-            guard Double(distance) < renderDistance else {
-                continue
-            }
-            
-            trackerInstanceCount += 1
-            
-            if trackerInstanceCount > Constants.maxTrackerInstanceCount {
-                trackerInstanceCount = Constants.maxTrackerInstanceCount
-                break
-            }
-            
-            // Flip Z axis to convert geometry from right handed to left handed
-            var coordinateSpaceTransform = matrix_identity_float4x4
-            coordinateSpaceTransform.columns.2.z = -1.0
-            
-            let trackerIndex = trackerInstanceCount - 1
-            
-            if let trackerMeshGPUData = meshGPUDataByUUID[uuid] {
-                // Apply the world transform (as defined in the imported model) if applicable
-                // We currenly only support a single mesh so we just use the first item
-                if let drawData = trackerMeshGPUData.drawData.first {
-                    let worldTransform: matrix_float4x4 = {
-                        if drawData.worldTransformAnimations.count > 0 {
-                            let index = Int(cameraProperties.currentFrame % UInt(drawData.worldTransformAnimations.count))
-                            return drawData.worldTransformAnimations[index]
-                        } else {
-                            return drawData.worldTransform
-                        }
-                    }()
-                    coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
-                }
-                
-                let modelMatrix = trackerAbsoluteTransform * coordinateSpaceTransform
-                
-                let trackerUniforms = unanchoredUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: trackerIndex)
-                trackerUniforms?.pointee.modelMatrix = modelMatrix
-                trackerUniforms?.pointee.normalMatrix = modelMatrix.normalMatrix
-            }
-            
-            //
-            // Update Environment
-            //
-            
-            let environmentProperty = environmentProperties.environmentAnchorsWithReatedAnchors.first(where: {
-                $0.value.contains(uuid)
-            })
-            
-            if let environmentProbeAnchor = environmentProperty?.key, let texture = environmentProbeAnchor.environmentTexture {
-                environmentTextureByUUID[uuid] = texture
-            }
-            
-            environmentData = {
-                var myEnvironmentData = EnvironmentData()
-                if let texture = environmentTextureByUUID[uuid] {
-                    myEnvironmentData.environmentTexture = texture
-                    myEnvironmentData.hasEnvironmentMap = true
-                    return myEnvironmentData
-                } else {
-                    myEnvironmentData.hasEnvironmentMap = false
-                }
-                return myEnvironmentData
-            }()
-            
-            let environmentUniforms = environmentUniformBufferAddress?.assumingMemoryBound(to: EnvironmentUniforms.self).advanced(by: trackerIndex)
-            
-            environmentUniforms?.pointee.ambientLightColor = ambientLightColor ?? vector3(0.5, 0.5, 0.5)
-            
-            var directionalLightDirection : vector_float3 = environmentProperties.directionalLightDirection
-            directionalLightDirection = simd_normalize(directionalLightDirection)
-            environmentUniforms?.pointee.directionalLightDirection = directionalLightDirection
-            
-            let directionalLightColor: vector_float3 = vector3(0.6, 0.6, 0.6)
-            environmentUniforms?.pointee.directionalLightColor = directionalLightColor * (ambientIntensity ?? 1)
-            
-            environmentUniforms?.pointee.directionalLightMVP = environmentProperties.directionalLightMVP
-            environmentUniforms?.pointee.shadowMVPTransformMatrix = shadowProperties.shadowMVPTransformMatrix
-            
-            if environmentData?.hasEnvironmentMap == true {
-                environmentUniforms?.pointee.hasEnvironmentMap = 1
-            } else {
-                environmentUniforms?.pointee.hasEnvironmentMap = 0
-            }
-            
-            //
-            // Update Effects uniform
-            //
-            
-            let effectsUniforms = effectsUniformBufferAddress?.assumingMemoryBound(to: AnchorEffectsUniforms.self).advanced(by: trackerIndex)
-            var hasSetAlpha = false
-            var hasSetGlow = false
-            var hasSetTint = false
-            var hasSetScale = false
-            if let effects = tracker.effects {
-                let currentTime: TimeInterval = Double(cameraProperties.currentFrame) / cameraProperties.frameRate
-                for effect in effects {
-                    switch effect.effectType {
-                    case .alpha:
-                        if let value = effect.value(forTime: currentTime) as? Float {
-                            effectsUniforms?.pointee.alpha = value
-                            hasSetAlpha = true
-                        }
-                    case .glow:
-                        if let value = effect.value(forTime: currentTime) as? Float {
-                            effectsUniforms?.pointee.glow = value
-                            hasSetGlow = true
-                        }
-                    case .tint:
-                        if let value = effect.value(forTime: currentTime) as? float3 {
-                            effectsUniforms?.pointee.tint = value
-                            hasSetTint = true
-                        }
-                    case .scale:
-                        if let value = effect.value(forTime: currentTime) as? Float {
-                            let scaleMatrix = matrix_identity_float4x4
-                            effectsUniforms?.pointee.scale = scaleMatrix.scale(x: value, y: value, z: value)
-                            hasSetScale = true
-                        }
-                    }
-                }
-            }
-            if !hasSetAlpha {
-                effectsUniforms?.pointee.alpha = 1
-            }
-            if !hasSetGlow {
-                effectsUniforms?.pointee.glow = 0
-            }
-            if !hasSetTint {
-                effectsUniforms?.pointee.tint = float3(1,1,1)
-            }
-            if !hasSetScale {
-                effectsUniforms?.pointee.scale = matrix_identity_float4x4
-            }
-            
         }
         
-        // Update the uniform buffer with transforms of the current frame's targets
-        
-        targetInstanceCount = 0
-        
-        for index in 0..<targets.count {
-            
-            //
-            // Update the Target uniform
-            //
-            
-            let target = targets[index]
-            
+        targets.forEach { target in
             let uuid: UUID = {
                 if let identifier = target.identifier, modelAssetsByUUID[identifier] != nil {
                     return identifier
@@ -426,7 +288,6 @@ class UnanchoredRenderModule: RenderModule {
                     return generalTargetUUID
                 }
             }()
-            
             if let currentGeometries = geometriesByUUID[uuid] {
                 var mutableCurrentGeometries = currentGeometries
                 mutableCurrentGeometries.append(target)
@@ -434,149 +295,312 @@ class UnanchoredRenderModule: RenderModule {
             } else {
                 geometriesByUUID[uuid] = [target]
             }
+        }
+        
+        for uuid in sortedUUIDs {
             
-            // Apply the transform of the target relative to the reference transform
-            let targetAbsoluteTransform = target.position.referenceTransform * target.position.transform
-            
-            // Ignore anchors that are beyond the renderDistance
-            let distance = anchorDistance(withTransform: targetAbsoluteTransform, cameraProperties: cameraProperties)
-            guard Double(distance) < renderDistance else {
-                continue
-            }
-            
-            targetInstanceCount += 1
-            
-            if targetInstanceCount > Constants.maxTargetInstanceCount {
-                targetInstanceCount = Constants.maxTargetInstanceCount
-                break
-            }
-            
-            // Flip Z axis to convert geometry from right handed to left handed
-            var coordinateSpaceTransform = matrix_identity_float4x4
-            coordinateSpaceTransform.columns.2.z = -1.0
-            
-            let targetIndex = targetInstanceCount - 1
-            let adjustedIndex = targetIndex + trackerInstanceCount
-            
-            if let targetMeshGPUData = meshGPUDataByUUID[uuid] {
-                // Apply the world transform (as defined in the imported model) if applicable
-                // We currenly only support a single mesh so we just use the first item
-                if let drawData = targetMeshGPUData.drawData.first {
-                    let worldTransform: matrix_float4x4 = {
-                        if drawData.worldTransformAnimations.count > 0 {
-                            let index = Int(cameraProperties.currentFrame % UInt(drawData.worldTransformAnimations.count))
-                            return drawData.worldTransformAnimations[index]
+            if trackerUUIDs.contains(uuid) {
+                
+                let akTrackers = geometriesByUUID[uuid] as! [AKTracker]
+                
+                for akTracker in akTrackers {
+                    
+                    // allDrawData contains the meshGPUData for all of the meshes associated with this anchor
+                    guard let allDrawData = meshGPUDataByUUID[uuid]?.drawData else {
+                        continue
+                    }
+                    
+                    // Apply the transform of the target relative to the reference transform
+                    let trackerAbsoluteTransform = akTracker.position.referenceTransform * akTracker.position.transform
+                    
+                    // Ignore anchors that are beyond the renderDistance
+                    let distance = anchorDistance(withTransform: trackerAbsoluteTransform, cameraProperties: cameraProperties)
+                    guard Double(distance) < renderDistance else {
+                        continue
+                    }
+                    
+                    trackerInstanceCount += 1
+                    
+                    if trackerInstanceCount > Constants.maxTrackerInstanceCount {
+                        trackerInstanceCount = Constants.maxTrackerInstanceCount
+                        break
+                    }
+                    
+                    for drawData in allDrawData {
+                        
+                        // Flip Z axis to convert geometry from right handed to left handed
+                        var coordinateSpaceTransform = matrix_identity_float4x4
+                        coordinateSpaceTransform.columns.2.z = -1.0
+                        
+                        let worldTransform: matrix_float4x4 = {
+                            if drawData.worldTransformAnimations.count > 0 {
+                                let index = Int(cameraProperties.currentFrame % UInt(drawData.worldTransformAnimations.count))
+                                return drawData.worldTransformAnimations[index]
+                            } else {
+                                return drawData.worldTransform
+                            }
+                        }()
+                        coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
+                
+                        let modelMatrix = trackerAbsoluteTransform * coordinateSpaceTransform
+                        
+                        let trackerUniforms = unanchoredUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: index)
+                        trackerUniforms?.pointee.modelMatrix = modelMatrix
+                        trackerUniforms?.pointee.normalMatrix = modelMatrix.normalMatrix
+                        
+                        //
+                        // Update Environment
+                        //
+                        
+                        let environmentProperty = environmentProperties.environmentAnchorsWithReatedAnchors.first(where: {
+                            $0.value.contains(uuid)
+                        })
+                        
+                        if let environmentProbeAnchor = environmentProperty?.key, let texture = environmentProbeAnchor.environmentTexture {
+                            environmentTextureByUUID[uuid] = texture
+                        }
+                        
+                        environmentData = {
+                            var myEnvironmentData = EnvironmentData()
+                            if let texture = environmentTextureByUUID[uuid] {
+                                myEnvironmentData.environmentTexture = texture
+                                myEnvironmentData.hasEnvironmentMap = true
+                                return myEnvironmentData
+                            } else {
+                                myEnvironmentData.hasEnvironmentMap = false
+                            }
+                            return myEnvironmentData
+                        }()
+                        
+                        let environmentUniforms = environmentUniformBufferAddress?.assumingMemoryBound(to: EnvironmentUniforms.self).advanced(by: index)
+                        
+                        environmentUniforms?.pointee.ambientLightColor = ambientLightColor ?? vector3(0.5, 0.5, 0.5)
+                        
+                        var directionalLightDirection : vector_float3 = environmentProperties.directionalLightDirection
+                        directionalLightDirection = simd_normalize(directionalLightDirection)
+                        environmentUniforms?.pointee.directionalLightDirection = directionalLightDirection
+                        
+                        let directionalLightColor: vector_float3 = vector3(0.6, 0.6, 0.6)
+                        environmentUniforms?.pointee.directionalLightColor = directionalLightColor * (ambientIntensity ?? 1)
+                        
+                        environmentUniforms?.pointee.directionalLightMVP = environmentProperties.directionalLightMVP
+                        environmentUniforms?.pointee.shadowMVPTransformMatrix = shadowProperties.shadowMVPTransformMatrix
+                        
+                        if environmentData?.hasEnvironmentMap == true {
+                            environmentUniforms?.pointee.hasEnvironmentMap = 1
                         } else {
-                            return drawData.worldTransform
+                            environmentUniforms?.pointee.hasEnvironmentMap = 0
                         }
-                    }()
-                    coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
-                }
-                
-                let modelMatrix = targetAbsoluteTransform * coordinateSpaceTransform
-                
-                let targetUniforms = unanchoredUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: adjustedIndex)
-                targetUniforms?.pointee.modelMatrix = modelMatrix
-                targetUniforms?.pointee.normalMatrix = modelMatrix.normalMatrix
-                
-                //
-                // Update Environment
-                //
-                
-                let environmentProperty = environmentProperties.environmentAnchorsWithReatedAnchors.first(where: {
-                    $0.value.contains(uuid)
-                })
-                
-                if let environmentProbeAnchor = environmentProperty?.key, let texture = environmentProbeAnchor.environmentTexture {
-                    environmentTextureByUUID[uuid] = texture
-                }
-                
-                environmentData = {
-                    var myEnvironmentData = EnvironmentData()
-                    if let texture = environmentTextureByUUID[uuid] {
-                        myEnvironmentData.environmentTexture = texture
-                        myEnvironmentData.hasEnvironmentMap = true
-                        return myEnvironmentData
-                    } else {
-                        myEnvironmentData.hasEnvironmentMap = false
-                    }
-                    return myEnvironmentData
-                }()
-                
-                let environmentUniforms = environmentUniformBufferAddress?.assumingMemoryBound(to: EnvironmentUniforms.self).advanced(by: adjustedIndex)
-                
-                environmentUniforms?.pointee.ambientLightColor = ambientLightColor ?? vector3(0.5, 0.5, 0.5)
-                
-                var directionalLightDirection : vector_float3 = environmentProperties.directionalLightDirection
-                directionalLightDirection = simd_normalize(directionalLightDirection)
-                environmentUniforms?.pointee.directionalLightDirection = directionalLightDirection
-                
-                let directionalLightColor: vector_float3 = vector3(0.6, 0.6, 0.6)
-                environmentUniforms?.pointee.directionalLightColor = directionalLightColor * (ambientIntensity ?? 1)
-                
-                environmentUniforms?.pointee.directionalLightMVP = environmentProperties.directionalLightMVP
-                environmentUniforms?.pointee.shadowMVPTransformMatrix = shadowProperties.shadowMVPTransformMatrix
-                
-                if environmentData?.hasEnvironmentMap == true {
-                    environmentUniforms?.pointee.hasEnvironmentMap = 1
-                } else {
-                    environmentUniforms?.pointee.hasEnvironmentMap = 0
-                }
-                
-                //
-                // Update Effects uniform
-                //
-                
-                let effectsUniforms = effectsUniformBufferAddress?.assumingMemoryBound(to: AnchorEffectsUniforms.self).advanced(by: adjustedIndex)
-                var hasSetAlpha = false
-                var hasSetGlow = false
-                var hasSetTint = false
-                var hasSetScale = false
-                if let effects = target.effects {
-                    let currentTime: TimeInterval = Double(cameraProperties.currentFrame) / cameraProperties.frameRate
-                    for effect in effects {
-                        switch effect.effectType {
-                        case .alpha:
-                            if let value = effect.value(forTime: currentTime) as? Float {
-                                effectsUniforms?.pointee.alpha = value
-                                hasSetAlpha = true
-                            }
-                        case .glow:
-                            if let value = effect.value(forTime: currentTime) as? Float {
-                                effectsUniforms?.pointee.glow = value
-                                hasSetGlow = true
-                            }
-                        case .tint:
-                            if let value = effect.value(forTime: currentTime) as? float3 {
-                                effectsUniforms?.pointee.tint = value
-                                hasSetTint = true
-                            }
-                        case .scale:
-                            if let value = effect.value(forTime: currentTime) as? Float {
-                                let scaleMatrix = matrix_identity_float4x4
-                                effectsUniforms?.pointee.scale = scaleMatrix.scale(x: value, y: value, z: value)
-                                hasSetScale = true
+                        
+                        //
+                        // Update Effects uniform
+                        //
+                        
+                        let effectsUniforms = effectsUniformBufferAddress?.assumingMemoryBound(to: AnchorEffectsUniforms.self).advanced(by: index)
+                        var hasSetAlpha = false
+                        var hasSetGlow = false
+                        var hasSetTint = false
+                        var hasSetScale = false
+                        if let effects = akTracker.effects {
+                            let currentTime: TimeInterval = Double(cameraProperties.currentFrame) / cameraProperties.frameRate
+                            for effect in effects {
+                                switch effect.effectType {
+                                case .alpha:
+                                    if let value = effect.value(forTime: currentTime) as? Float {
+                                        effectsUniforms?.pointee.alpha = value
+                                        hasSetAlpha = true
+                                    }
+                                case .glow:
+                                    if let value = effect.value(forTime: currentTime) as? Float {
+                                        effectsUniforms?.pointee.glow = value
+                                        hasSetGlow = true
+                                    }
+                                case .tint:
+                                    if let value = effect.value(forTime: currentTime) as? float3 {
+                                        effectsUniforms?.pointee.tint = value
+                                        hasSetTint = true
+                                    }
+                                case .scale:
+                                    if let value = effect.value(forTime: currentTime) as? Float {
+                                        let scaleMatrix = matrix_identity_float4x4
+                                        effectsUniforms?.pointee.scale = scaleMatrix.scale(x: value, y: value, z: value)
+                                        hasSetScale = true
+                                    }
+                                }
                             }
                         }
+                        if !hasSetAlpha {
+                            effectsUniforms?.pointee.alpha = 1
+                        }
+                        if !hasSetGlow {
+                            effectsUniforms?.pointee.glow = 0
+                        }
+                        if !hasSetTint {
+                            effectsUniforms?.pointee.tint = float3(1,1,1)
+                        }
+                        if !hasSetScale {
+                            effectsUniforms?.pointee.scale = matrix_identity_float4x4
+                        }
+                        
+                        index += 1
+                        
                     }
+                    
                 }
-                if !hasSetAlpha {
-                    effectsUniforms?.pointee.alpha = 1
-                }
-                if !hasSetGlow {
-                    effectsUniforms?.pointee.glow = 0
-                }
-                if !hasSetTint {
-                    effectsUniforms?.pointee.tint = float3(1,1,1)
-                }
-                if !hasSetScale {
-                    effectsUniforms?.pointee.scale = matrix_identity_float4x4
+                
+            } else if targetUUIDs.contains(uuid) {
+                
+                let akTargets = geometriesByUUID[uuid] as! [AKTarget]
+                
+                for akTarget in akTargets {
+                    
+                    // allDrawData contains the meshGPUData for all of the meshes associated with this anchor
+                    guard let allDrawData = meshGPUDataByUUID[uuid]?.drawData else {
+                        continue
+                    }
+                    
+                    // Apply the transform of the target relative to the reference transform
+                    let targetAbsoluteTransform = akTarget.position.referenceTransform * akTarget.position.transform
+                    
+                    // Ignore anchors that are beyond the renderDistance
+                    let distance = anchorDistance(withTransform: targetAbsoluteTransform, cameraProperties: cameraProperties)
+                    guard Double(distance) < renderDistance else {
+                        continue
+                    }
+                    
+                    targetInstanceCount += 1
+                    
+                    if targetInstanceCount > Constants.maxTargetInstanceCount {
+                        targetInstanceCount = Constants.maxTargetInstanceCount
+                        break
+                    }
+                    
+                    for drawData in allDrawData {
+                    
+                        // Flip Z axis to convert geometry from right handed to left handed
+                        var coordinateSpaceTransform = matrix_identity_float4x4
+                        coordinateSpaceTransform.columns.2.z = -1.0
+                        
+                        let worldTransform: matrix_float4x4 = {
+                            if drawData.worldTransformAnimations.count > 0 {
+                                let index = Int(cameraProperties.currentFrame % UInt(drawData.worldTransformAnimations.count))
+                                return drawData.worldTransformAnimations[index]
+                            } else {
+                                return drawData.worldTransform
+                            }
+                        }()
+                        coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
+                        
+                        let modelMatrix = targetAbsoluteTransform * coordinateSpaceTransform
+                        
+                        let targetUniforms = unanchoredUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: index)
+                        targetUniforms?.pointee.modelMatrix = modelMatrix
+                        targetUniforms?.pointee.normalMatrix = modelMatrix.normalMatrix
+                        
+                        //
+                        // Update Environment
+                        //
+                        
+                        let environmentProperty = environmentProperties.environmentAnchorsWithReatedAnchors.first(where: {
+                            $0.value.contains(uuid)
+                        })
+                        
+                        if let environmentProbeAnchor = environmentProperty?.key, let texture = environmentProbeAnchor.environmentTexture {
+                            environmentTextureByUUID[uuid] = texture
+                        }
+                        
+                        environmentData = {
+                            var myEnvironmentData = EnvironmentData()
+                            if let texture = environmentTextureByUUID[uuid] {
+                                myEnvironmentData.environmentTexture = texture
+                                myEnvironmentData.hasEnvironmentMap = true
+                                return myEnvironmentData
+                            } else {
+                                myEnvironmentData.hasEnvironmentMap = false
+                            }
+                            return myEnvironmentData
+                        }()
+                        
+                        let environmentUniforms = environmentUniformBufferAddress?.assumingMemoryBound(to: EnvironmentUniforms.self).advanced(by: index)
+                        
+                        environmentUniforms?.pointee.ambientLightColor = ambientLightColor ?? vector3(0.5, 0.5, 0.5)
+                        
+                        var directionalLightDirection : vector_float3 = environmentProperties.directionalLightDirection
+                        directionalLightDirection = simd_normalize(directionalLightDirection)
+                        environmentUniforms?.pointee.directionalLightDirection = directionalLightDirection
+                        
+                        let directionalLightColor: vector_float3 = vector3(0.6, 0.6, 0.6)
+                        environmentUniforms?.pointee.directionalLightColor = directionalLightColor * (ambientIntensity ?? 1)
+                        
+                        environmentUniforms?.pointee.directionalLightMVP = environmentProperties.directionalLightMVP
+                        environmentUniforms?.pointee.shadowMVPTransformMatrix = shadowProperties.shadowMVPTransformMatrix
+                        
+                        if environmentData?.hasEnvironmentMap == true {
+                            environmentUniforms?.pointee.hasEnvironmentMap = 1
+                        } else {
+                            environmentUniforms?.pointee.hasEnvironmentMap = 0
+                        }
+                        
+                        //
+                        // Update Effects uniform
+                        //
+                        
+                        let effectsUniforms = effectsUniformBufferAddress?.assumingMemoryBound(to: AnchorEffectsUniforms.self).advanced(by: index)
+                        var hasSetAlpha = false
+                        var hasSetGlow = false
+                        var hasSetTint = false
+                        var hasSetScale = false
+                        if let effects = akTarget.effects {
+                            let currentTime: TimeInterval = Double(cameraProperties.currentFrame) / cameraProperties.frameRate
+                            for effect in effects {
+                                switch effect.effectType {
+                                case .alpha:
+                                    if let value = effect.value(forTime: currentTime) as? Float {
+                                        effectsUniforms?.pointee.alpha = value
+                                        hasSetAlpha = true
+                                    }
+                                case .glow:
+                                    if let value = effect.value(forTime: currentTime) as? Float {
+                                        effectsUniforms?.pointee.glow = value
+                                        hasSetGlow = true
+                                    }
+                                case .tint:
+                                    if let value = effect.value(forTime: currentTime) as? float3 {
+                                        effectsUniforms?.pointee.tint = value
+                                        hasSetTint = true
+                                    }
+                                case .scale:
+                                    if let value = effect.value(forTime: currentTime) as? Float {
+                                        let scaleMatrix = matrix_identity_float4x4
+                                        effectsUniforms?.pointee.scale = scaleMatrix.scale(x: value, y: value, z: value)
+                                        hasSetScale = true
+                                    }
+                                }
+                            }
+                        }
+                        if !hasSetAlpha {
+                            effectsUniforms?.pointee.alpha = 1
+                        }
+                        if !hasSetGlow {
+                            effectsUniforms?.pointee.glow = 0
+                        }
+                        if !hasSetTint {
+                            effectsUniforms?.pointee.tint = float3(1,1,1)
+                        }
+                        if !hasSetScale {
+                            effectsUniforms?.pointee.scale = matrix_identity_float4x4
+                        }
+                        
+                        index += 1
+                        
+                    }
+                    
                 }
                 
             }
             
         }
-        
+
         //
         // Update the shadow map
         //
@@ -712,6 +736,7 @@ class UnanchoredRenderModule: RenderModule {
     private var textureLoader: MTKTextureLoader?
     private var generalTrackerUUID = UUID()
     private var generalTargetUUID = UUID()
+    private var sortedUUIDs = [UUID]()
     private var modelAssetsByUUID = [UUID: MDLAsset]()
     private var shaderPreferenceByUUID = [UUID: ShaderPreference]()
     private var environmentTextureByUUID = [UUID: MTLTexture]()

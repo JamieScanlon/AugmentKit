@@ -663,14 +663,6 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     
     private func createPipelineStates(forUUID uuid: UUID, withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, renderPass: RenderPass?) -> DrawCallGroup {
         
-        guard let device = device else {
-            print("Serious Error - device not found")
-            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeDeviceNotFound, userInfo: nil)
-            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-            recordNewError(newError)
-            return DrawCallGroup(drawCalls: [], uuid: uuid)
-        }
-        
         guard let meshGPUData = meshGPUDataForAnchorsByUUID[uuid] else {
             print("Serious Error - ERROR: No meshGPUData found when trying to load the pipeline.")
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeIntermediateMeshDataNotFound, userInfo: nil)

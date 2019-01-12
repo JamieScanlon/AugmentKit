@@ -85,9 +85,11 @@ class PathsRenderModule: RenderModule {
         effectsUniformBuffer = device?.makeBuffer(length: effectsUniformBufferSize, options: .storageModeShared)
         effectsUniformBuffer?.label = "EffectsUniformBuffer"
         
+        geometricEntities = []
+        
     }
     
-    func loadAssets(forGeometricEntities: [AKGeometricEntity], fromModelProvider: ModelProvider?, textureLoader: MTKTextureLoader, completion: (() -> Void)) {
+    func loadAssets(forGeometricEntities theGeometricEntities: [AKGeometricEntity], fromModelProvider: ModelProvider?, textureLoader: MTKTextureLoader, completion: (() -> Void)) {
         
         guard let device = device else {
             print("Serious Error - device not found")
@@ -119,6 +121,8 @@ class PathsRenderModule: RenderModule {
         asset.add(mesh)
         
         pathSegmentAsset = asset
+        
+        geometricEntities.append(contentsOf: theGeometricEntities)
     
         completion()
         
@@ -198,6 +202,13 @@ class PathsRenderModule: RenderModule {
                 return aDepthStateDescriptor
             }
         }()
+        
+        // Check to make sure this geometry should be rendered in this render pass
+//        if let geometricEntity = geometricEntities.first(where: {$0.identifier == item.key}), let geometryFilterFunction = renderPass?.geometryFilterFunction {
+//            guard geometryFilterFunction(geometricEntity) else {
+//                continue
+//            }
+//        }
         
         for (_, _) in pathMeshGPUData.drawData.enumerated() {
             
@@ -470,7 +481,7 @@ class PathsRenderModule: RenderModule {
             
         }
         
-        if let shadowMap = shadowMap {
+        if let shadowMap = shadowMap, renderPass.usesShadows {
             
             renderEncoder.pushDebugGroup("Attach Shadow Buffer")
             renderEncoder.setFragmentTexture(shadowMap, index: Int(kTextureIndexShadowMap.rawValue))
@@ -517,6 +528,7 @@ class PathsRenderModule: RenderModule {
     
     private var device: MTLDevice?
     private var textureLoader: MTKTextureLoader?
+    private var geometricEntities = [AKGeometricEntity]()
     private var pathSegmentAsset: MDLAsset?
     private var pathUniformBuffer: MTLBuffer?
     private var materialUniformBuffer: MTLBuffer?

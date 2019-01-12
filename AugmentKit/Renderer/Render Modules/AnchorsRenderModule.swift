@@ -89,9 +89,11 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         environmentUniformBuffer = device?.makeBuffer(length: environmentUniformBufferSize, options: .storageModeShared)
         environmentUniformBuffer?.label = "EnvironemtUniformBuffer"
         
+        geometricEntities = []
+        
     }
     
-    func loadAssets(forGeometricEntities geometricEntities: [AKGeometricEntity], fromModelProvider modelProvider: ModelProvider?, textureLoader aTextureLoader: MTKTextureLoader, completion: (() -> Void)) {
+    func loadAssets(forGeometricEntities theGeometricEntities: [AKGeometricEntity], fromModelProvider modelProvider: ModelProvider?, textureLoader aTextureLoader: MTKTextureLoader, completion: (() -> Void)) {
         
         guard let modelProvider = modelProvider else {
             print("Serious Error - Model Provider not found.")
@@ -108,7 +110,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         // Create and load our models
         //
         
-        var numModels = geometricEntities.count
+        var numModels = theGeometricEntities.count
         
         // Load the default model
         modelProvider.loadAsset(forObjectType: "AnyAnchor", identifier: nil) { [weak self] asset in
@@ -129,8 +131,10 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             
         }
         
+        geometricEntities.append(contentsOf: theGeometricEntities)
+        
         // Load the per-geometry models
-        for geometricEntity in geometricEntities {
+        for geometricEntity in theGeometricEntities {
             
             if let identifier = geometricEntity.identifier {
                 modelProvider.loadAsset(forObjectType:  "AnyAnchor", identifier: identifier) { [weak self] asset in
@@ -144,7 +148,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                     }
                     
                     self?.modelAssetsForAnchorsByUUID[identifier] = asset
-                    self?.shaderPreferenceForAnchorsByUUID[identifier] = geometricEntity.shaderPreference
+                    self?.shaderPreferenceByUUID[identifier] = geometricEntity.shaderPreference
                 }
             }
             
@@ -180,10 +184,17 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         
         for item in modelAssetsForAnchorsByUUID {
             
+            // Check to make sure this geometry should be rendered in this render pass
+            if let geometricEntity = geometricEntities.first(where: {$0.identifier == item.key}), let geometryFilterFunction = renderPass?.geometryFilterFunction {
+                guard geometryFilterFunction(geometricEntity) else {
+                    continue
+                }
+            }
+            
             let uuid = item.key
             let mdlAsset = item.value
             let shaderPreference: ShaderPreference = {
-                if let prefernece = shaderPreferenceForAnchorsByUUID[uuid] {
+                if let prefernece = shaderPreferenceByUUID[uuid] {
                     return prefernece
                 } else {
                     return .pbr
@@ -534,7 +545,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             
         }
         
-        if let shadowMap = shadowMap {
+        if let shadowMap = shadowMap, renderPass.usesShadows {
             
             renderEncoder.pushDebugGroup("Attach Shadow Buffer")
             renderEncoder.setFragmentTexture(shadowMap, index: Int(kTextureIndexShadowMap.rawValue))
@@ -610,10 +621,11 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     
     private var device: MTLDevice?
     private var textureLoader: MTKTextureLoader?
+    private var geometricEntities = [AKGeometricEntity]()
     private var generalUUID = UUID()
     private var sortedUUIDs = [UUID]()
     private var modelAssetsForAnchorsByUUID = [UUID: MDLAsset]()
-    private var shaderPreferenceForAnchorsByUUID = [UUID: ShaderPreference]()
+    private var shaderPreferenceByUUID = [UUID: ShaderPreference]()
     private var anchorUniformBuffer: MTLBuffer?
     private var materialUniformBuffer: MTLBuffer?
     private var paletteBuffer: MTLBuffer?

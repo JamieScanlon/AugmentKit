@@ -110,6 +110,7 @@ class RenderPass {
     var usesEnvironment = true
     var usesEffects = true
     var usesCameraOutput = true
+    var usesShadows = true
     
     var drawCallGroups = [DrawCallGroup]()
     
@@ -122,6 +123,9 @@ class RenderPass {
     var depthCompareFunctionMergePolicy = MergePolicy.preferInstance
     var isDepthWriteEnabled = true
     var isDepthWriteEnabledMergePolicy = MergePolicy.preferInstance
+    
+    // Allows the render pass to filter out certain geometries for rendering. Return `false` in order to skip rendering for the given `AKGeometricEntity`
+    var geometryFilterFunction: ((AKGeometricEntity) -> Bool)?
     
     // The following are used to create DrawCall objects
     var cullMode: MTLCullMode = .back

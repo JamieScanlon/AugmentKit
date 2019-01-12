@@ -65,6 +65,10 @@ public class AugmentedAnchor: AKAugmentedAnchor {
      */
     public var shaderPreference: ShaderPreference = .pbr
     /**
+     Indicates whether this geometry participates in the generation of augmented shadows. Since this is an augmented geometry, it does generate shadows.
+     */
+    public var generatesShadows: Bool = true
+    /**
      An `ARAnchor` that will be tracked in the AR world by `ARKit`
      */
     public var arAnchor: ARAnchor?

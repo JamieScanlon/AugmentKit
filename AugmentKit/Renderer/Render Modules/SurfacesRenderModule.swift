@@ -84,9 +84,11 @@ class SurfacesRenderModule: RenderModule {
         environmentUniformBuffer = device?.makeBuffer(length: environmentUniformBufferSize, options: .storageModeShared)
         environmentUniformBuffer?.label = "EnvironemtUniformBuffer"
         
+        geometricEntities = []
+        
     }
     
-    func loadAssets(forGeometricEntities geometricEntities: [AKGeometricEntity], fromModelProvider modelProvider: ModelProvider?, textureLoader aTextureLoader: MTKTextureLoader, completion: (() -> Void)) {
+    func loadAssets(forGeometricEntities theGeometricEntities: [AKGeometricEntity], fromModelProvider modelProvider: ModelProvider?, textureLoader aTextureLoader: MTKTextureLoader, completion: (() -> Void)) {
         
         guard let modelProvider = modelProvider else {
             print("Serious Error - Model Provider not found.")
@@ -103,7 +105,7 @@ class SurfacesRenderModule: RenderModule {
         // Create and load our models
         //
         
-        var numModels = geometricEntities.count
+        var numModels = theGeometricEntities.count
         
         // Load the default model
         modelProvider.loadAsset(forObjectType: "AnySurface", identifier: nil) { [weak self] asset in
@@ -123,6 +125,8 @@ class SurfacesRenderModule: RenderModule {
             }
             
         }
+        
+        geometricEntities.append(contentsOf: theGeometricEntities)
         
         // Load the per-geometry models
         for geometricEntity in geometricEntities {
@@ -175,6 +179,13 @@ class SurfacesRenderModule: RenderModule {
         var drawCallGroups = [DrawCallGroup]()
         
         for item in modelAssetsForAnchorsByUUID {
+            
+            // Check to make sure this geometry should be rendered in this render pass
+            if let geometricEntity = geometricEntities.first(where: {$0.identifier == item.key}), let geometryFilterFunction = renderPass?.geometryFilterFunction {
+                guard geometryFilterFunction(geometricEntity) else {
+                    continue
+                }
+            }
             
             let uuid = item.key
             let mdlAsset = item.value
@@ -524,7 +535,7 @@ class SurfacesRenderModule: RenderModule {
             
         }
         
-        if let shadowMap = shadowMap {
+        if let shadowMap = shadowMap, renderPass.usesShadows {
             
             renderEncoder.pushDebugGroup("Attach Shadow Buffer")
             renderEncoder.setFragmentTexture(shadowMap, index: Int(kTextureIndexShadowMap.rawValue))
@@ -598,6 +609,7 @@ class SurfacesRenderModule: RenderModule {
     
     private var device: MTLDevice?
     private var textureLoader: MTKTextureLoader?
+    private var geometricEntities = [AKGeometricEntity]()
     private var generalUUID = UUID()
     private var sortedUUIDs = [UUID]()
     private var modelAssetsForAnchorsByUUID = [UUID: MDLAsset]()

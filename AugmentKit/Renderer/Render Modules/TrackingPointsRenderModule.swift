@@ -78,14 +78,6 @@ class TrackingPointsRenderModule: RenderModule {
     // textures, etc.
     func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, forRenderPass renderPass: RenderPass? = nil) -> [DrawCallGroup] {
         
-        guard let device = device else {
-            print("Serious Error - device not found")
-            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeDeviceNotFound, userInfo: nil)
-            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-            recordNewError(newError)
-            return []
-        }
-        
         guard let pointVertexShader = metalLibrary.makeFunction(name: "pointVertexShader") else {
             print("Serious Error - failed to create the pointVertexShader function")
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeShaderInitializationFailed, userInfo: nil)

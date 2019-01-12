@@ -60,17 +60,14 @@ vertex ShadowOutput shadowVertexShader( ShadowVertex in [[stage_in]],
     float4x4 scaleMatrix = anchorEffectsUniforms[iid].scale;
     modelMatrix = modelMatrix * scaleMatrix;
     
-    // Transform the model's orientation from world space to camera space.
-//    float4x4 modelViewMatrix = sharedUniforms.viewMatrix * modelMatrix;
-//
-//    // Calculate the position of our vertex in clip space and output for clipping and rasterization
-//    position = sharedUniforms.projectionMatrix * modelViewMatrix * position;
-    position = modelMatrix * position;
-    
     EnvironmentUniforms uniforms = environmentUniforms[iid];
     float4x4 directionalLightMVP = uniforms.directionalLightMVP;
-    // Add vertex pos to fairy position and project to clip-space
-    out.position = directionalLightMVP * position;
+    
+    // Calculate the position of our vertex in clip space and output for clipping and rasterization
+    position =  directionalLightMVP * modelMatrix * position;
+    
+    out.position = position;
+//    out.position = float4(position.x, position.y, -0.01, 1.0);
     
     return out;
 }

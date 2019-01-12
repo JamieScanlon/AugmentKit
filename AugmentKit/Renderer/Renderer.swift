@@ -652,7 +652,39 @@ public class Renderer: NSObject {
                 modelProvider?.registerAsset(RealSurfaceAnchor.createModelAsset(withAllocator: metalAllocator, baseColor: float4(0, 0, 0, 0)), forObjectType: "AnySurface", identifier: nil)
             }
             
+            realAnchors.forEach { anAnchor in
+                // Keep track of the anchor bucketed by the RenderModule
+                // This will be used to load individual models per anchor.
+                if let existingGeometries = geometriesForRenderModule[SurfacesRenderModule.identifier] {
+                    var mutableExistingGeometries = existingGeometries
+                    mutableExistingGeometries.append(anAnchor)
+                    geometriesForRenderModule[SurfacesRenderModule.identifier] = mutableExistingGeometries
+                    anchorsRenderModule?.isInitialized = false
+                    hasUninitializedModules = true
+                } else {
+                    geometriesForRenderModule[SurfacesRenderModule.identifier] = [anAnchor]
+                }
+            }
+            
             addModule(forModuelIdentifier: SurfacesRenderModule.identifier)
+            
+        } else if surfacesRenderModule != nil && (geometriesForRenderModule[SurfacesRenderModule.identifier]?.count ?? 0) != realAnchors.count {
+            
+            // Update the geometries as they get added or removed
+            geometriesForRenderModule[SurfacesRenderModule.identifier] = []
+            realAnchors.forEach { anAnchor in
+                // Keep track of the anchor bucketed by the RenderModule
+                // This will be used to load individual models per anchor.
+                if let existingGeometries = geometriesForRenderModule[SurfacesRenderModule.identifier] {
+                    var mutableExistingGeometries = existingGeometries
+                    mutableExistingGeometries.append(anAnchor)
+                    geometriesForRenderModule[SurfacesRenderModule.identifier] = mutableExistingGeometries
+                    anchorsRenderModule?.isInitialized = false
+                    hasUninitializedModules = true
+                } else {
+                    geometriesForRenderModule[SurfacesRenderModule.identifier] = [anAnchor]
+                }
+            }
             
         }
         
@@ -753,8 +785,8 @@ public class Renderer: NSObject {
         environmentProperties.environmentAnchorsWithReatedAnchors = environmentAnchorsWithReatedAnchors
         environmentProperties.lightEstimate = currentFrame.lightEstimate
         
-        let depthProjectionMatrix = float4x4.makeOrtho(left: cameraPosition.x - 10, right: cameraPosition.x + 10, bottom: cameraPosition.y - 10, top: cameraPosition.y + 10, nearZ: cameraPosition.z + 10, farZ: cameraPosition.z - 10)
-        let depthViewMatrix = float4x4.makeLookAt(eyeX: 0, eyeY: 1, eyeZ: 0, centerX: 0, centerY: 0, centerZ: 0, upX: 0, upY: 1, upZ: 0)
+        let depthProjectionMatrix = float4x4.makeOrtho(left: -10, right: 10, bottom: -10, top: 10, nearZ: -10, farZ: 10)
+        let depthViewMatrix = float4x4.makeLookAt(eyeX: 0, eyeY: 10, eyeZ: 0, centerX: 0, centerY: 0, centerZ: 0, upX: 0, upY: 1, upZ: 0)
         environmentProperties.directionalLightMVP = depthProjectionMatrix * depthViewMatrix
         
         //
@@ -1227,6 +1259,7 @@ public class Renderer: NSObject {
         shadowRenderPass?.usesEnvironment = true
         shadowRenderPass?.usesCameraOutput = false
         shadowRenderPass?.usesSharedBuffer = true
+        shadowRenderPass?.usesShadows = false // the shadow pass does not use the results of the shadow pass (obviously)
         shadowRenderPass?.vertexFunctionMergePolicy = .preferTemplate
         shadowRenderPass?.fragmentFunctionMergePolicy = .preferTemplate
         shadowRenderPass?.depthBias = RenderPass.DepthBias(bias: 0.015, slopeScale: 7, clamp: 0.02)
@@ -1243,6 +1276,9 @@ public class Renderer: NSObject {
         shadowRenderPipelineDescriptor.vertexFunction = shadowVertexFunction
         shadowRenderPipelineDescriptor.depthAttachmentPixelFormat = .depth32Float
         shadowRenderPass?.templateRenderPipelineDescriptor = shadowRenderPipelineDescriptor
+        shadowRenderPass?.geometryFilterFunction = { geometry in
+            return geometry.generatesShadows == true
+        }
         
         //
         // Setup Main Pass
@@ -1257,6 +1293,7 @@ public class Renderer: NSObject {
         mainRenderPass?.usesEnvironment = true
         mainRenderPass?.usesCameraOutput = true
         mainRenderPass?.usesSharedBuffer = true
+        mainRenderPass?.usesShadows = true
         mainRenderPass?.depthCompareFunction = .less
         mainRenderPass?.isDepthWriteEnabled = true
         
@@ -1651,6 +1688,7 @@ fileprivate class InterpolatingAugmentedAnchor: AKAugmentedAnchor {
     var identifier: UUID?
     var effects: [AnyEffect<Any>]?
     public var shaderPreference: ShaderPreference = .pbr
+    public var generatesShadows: Bool = true
     var arAnchor: ARAnchor?
 
     init(withAKAugmentedAnchor akAugmentedAnchor: AKAugmentedAnchor) {

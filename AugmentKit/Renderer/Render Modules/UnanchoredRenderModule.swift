@@ -84,9 +84,11 @@ class UnanchoredRenderModule: RenderModule {
         environmentUniformBuffer = device?.makeBuffer(length: environmentUniformBufferSize, options: .storageModeShared)
         environmentUniformBuffer?.label = "EnvironmentUniformBuffer"
         
+        geometricEntities = []
+        
     }
     
-    func loadAssets(forGeometricEntities: [AKGeometricEntity], fromModelProvider modelProvider: ModelProvider?, textureLoader aTextureLoader: MTKTextureLoader, completion: (() -> Void)) {
+    func loadAssets(forGeometricEntities theGeometricEntities: [AKGeometricEntity], fromModelProvider modelProvider: ModelProvider?, textureLoader aTextureLoader: MTKTextureLoader, completion: (() -> Void)) {
         
         guard let modelProvider = modelProvider else {
             print("Serious Error - Model Provider not found.")
@@ -156,6 +158,8 @@ class UnanchoredRenderModule: RenderModule {
             
         }
         
+        geometricEntities.append(contentsOf: theGeometricEntities)
+        
     }
     
     func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, forRenderPass renderPass: RenderPass? = nil) -> [DrawCallGroup] {
@@ -171,6 +175,13 @@ class UnanchoredRenderModule: RenderModule {
         var drawCallGroups = [DrawCallGroup]()
         
         for item in modelAssetsByUUID {
+            
+            // Check to make sure this geometry should be rendered in this render pass
+            if let geometricEntity = geometricEntities.first(where: {$0.identifier == item.key}), let geometryFilterFunction = renderPass?.geometryFilterFunction {
+                guard geometryFilterFunction(geometricEntity) else {
+                    continue
+                }
+            }
             
             let uuid = item.key
             let mdlAsset = item.value
@@ -660,7 +671,7 @@ class UnanchoredRenderModule: RenderModule {
             
         }
         
-        if let shadowMap = shadowMap {
+        if let shadowMap = shadowMap, renderPass.usesShadows {
             
             renderEncoder.pushDebugGroup("Attach Shadow Buffer")
             renderEncoder.setFragmentTexture(shadowMap, index: Int(kTextureIndexShadowMap.rawValue))
@@ -734,6 +745,7 @@ class UnanchoredRenderModule: RenderModule {
     
     private var device: MTLDevice?
     private var textureLoader: MTKTextureLoader?
+    private var geometricEntities = [AKGeometricEntity]()
     private var generalTrackerUUID = UUID()
     private var generalTargetUUID = UUID()
     private var sortedUUIDs = [UUID]()
@@ -783,14 +795,6 @@ class UnanchoredRenderModule: RenderModule {
     private var targetAnimationFrameCount = [Int]()
     
     private func createPipelineStates(forUUID uuid: UUID, withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, renderPass: RenderPass?) -> DrawCallGroup {
-        
-        guard let device = device else {
-            print("Serious Error - device not found")
-            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeDeviceNotFound, userInfo: nil)
-            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-            recordNewError(newError)
-            return DrawCallGroup(drawCalls: [], uuid: uuid)
-        }
         
         guard let meshGPUData = meshGPUDataByUUID[uuid] else {
             print("Serious Error - ERROR: No meshGPUData found when trying to load the pipeline.")

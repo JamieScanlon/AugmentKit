@@ -67,6 +67,10 @@ public class PathAnchor: AKPath {
      */
     public var shaderPreference: ShaderPreference = .simple
     /**
+     Indicates whether this geometry participates in the generation of augmented shadows. Defaults to `false`
+     */
+    public var generatesShadows: Bool = false
+    /**
      Thickness measured in meters. Defaults to 10cm
      */
     public var lineThickness: Double = 0.1

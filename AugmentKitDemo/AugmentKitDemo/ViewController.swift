@@ -260,8 +260,9 @@ class ViewController: UIViewController {
             return
         }
         
-        let anchorLocation = GroundFixedWorldLocation(worldLocation: location, world: world)
-        let newObject = AugmentedAnchor(withModelAsset: anchorModel, at: anchorLocation)
+//        let anchorLocation = GroundFixedWorldLocation(worldLocation: location, world: world)
+//        let newObject = AugmentedAnchor(withModelAsset: anchorModel, at: anchorLocation)
+        let newObject = AugmentedAnchor(withModelAsset: anchorModel, at: location)
         let scaleEffect = ConstantScaleEffect(scaleValue: 0.01)
         newObject.effects = [AnyEffect(scaleEffect)]
         world.add(anchor: newObject)

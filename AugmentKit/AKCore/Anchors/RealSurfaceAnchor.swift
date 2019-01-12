@@ -69,6 +69,10 @@ public class RealSurfaceAnchor: AKRealSurfaceAnchor {
      */
     public var shaderPreference: ShaderPreference = .pbr
     /**
+     Indicates whether this geometry participates in the generation of augmented shadows. Since this is a geometry that represents a real world object, it does not generate shadows.
+     */
+    public var generatesShadows: Bool = false
+    /**
      An `ARAnchor` that will be tracked in the AR world by `ARKit`
      */
     public var arAnchor: ARAnchor?

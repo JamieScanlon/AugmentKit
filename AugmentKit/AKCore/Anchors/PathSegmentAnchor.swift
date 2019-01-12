@@ -65,6 +65,10 @@ public class PathSegmentAnchor: AKPathSegmentAnchor {
      */
     public var shaderPreference: ShaderPreference = .simple
     /**
+     Indicates whether this geometry participates in the generation of augmented shadows. Defaults to `false`
+     */
+    public var generatesShadows: Bool = false
+    /**
      An `ARAnchor` that will be tracked in the AR world by `ARKit`
      */
     public var arAnchor: ARAnchor?

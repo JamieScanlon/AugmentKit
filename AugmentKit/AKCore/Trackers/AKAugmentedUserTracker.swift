@@ -79,6 +79,10 @@ public class UserTracker: AKAugmentedUserTracker {
      */
     public var shaderPreference: ShaderPreference = .pbr
     /**
+     Indicates whether this geometry participates in the generation of augmented shadows. Defaults to `false`.
+     */
+    public var generatesShadows: Bool = false
+    /**
      The position of the tracker. The position is relative to the user.
      */
     public var position: AKRelativePosition

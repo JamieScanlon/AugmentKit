@@ -69,6 +69,10 @@ public class RealSurfaceAnchor: AKRealSurfaceAnchor {
      */
     public var shaderPreference: ShaderPreference = .pbr
     /**
+     Indicates whether this geometry participates in the generation of augmented shadows. Since this is a geometry that represents a real world object, it does not generate shadows.
+     */
+    public var generatesShadows: Bool = false
+    /**
      An `ARAnchor` that will be tracked in the AR world by `ARKit`
      */
     public var arAnchor: ARAnchor?
@@ -80,14 +84,8 @@ public class RealSurfaceAnchor: AKRealSurfaceAnchor {
         - withAllocator: A `MTKMeshBufferAllocator` with wich to create the plane geometry
      */
     public init(at location: AKWorldLocation, withAllocator metalAllocator: MTKMeshBufferAllocator? = nil) {
-        
-        let mesh = MDLMesh(planeWithExtent: vector3(1, 0, 1), segments: vector2(1, 1), geometryType: .triangles, allocator: metalAllocator)
-        let asset = MDLAsset(bufferAllocator: metalAllocator)
-        asset.add(mesh)
-        
-        self.asset = asset
+        self.asset = RealSurfaceAnchor.createModelAsset(withAllocator: metalAllocator)
         self.worldLocation = location
-        
     }
     /**
      Set the identifier for this instance
@@ -108,6 +106,30 @@ public class RealSurfaceAnchor: AKRealSurfaceAnchor {
             identifier = arAnchor.identifier
         }
         worldLocation.transform = arAnchor.transform
+    }
+    
+    /**
+     Creates a generic plane asset with a base color (defaults to white). The plane geometry is created using the `MTKMeshBufferAllocator`
+     - Parameters:
+     - withAllocator: A `MTKMeshBufferAllocator` with wich to create the plane geometry
+     */
+    public static func createModelAsset(withAllocator metalAllocator: MTKMeshBufferAllocator?, baseColor: float4 = float4(1, 1, 1, 1)) -> MDLAsset {
+        
+        let mesh = MDLMesh(planeWithExtent: vector3(1, 0, 1), segments: vector2(1, 1), geometryType: .triangles, allocator: metalAllocator)
+        let scatteringFunction = MDLScatteringFunction()
+        let material = MDLMaterial(name: "baseMaterial", scatteringFunction: scatteringFunction)
+        let property = MDLMaterialProperty(name: "bsseColor", semantic: .baseColor, float4: baseColor) // Clear white
+        material.setProperty(property)
+        for submesh in mesh.submeshes!  {
+            if let submesh = submesh as? MDLSubmesh {
+                submesh.material = material
+            }
+        }
+        let asset = MDLAsset(bufferAllocator: metalAllocator)
+        asset.add(mesh)
+        
+        return asset
+        
     }
     
 }

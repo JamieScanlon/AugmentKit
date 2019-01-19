@@ -58,9 +58,8 @@ protocol RenderModule {
     // Load the data from the Model Provider.
     func loadAssets(forGeometricEntities: [AKGeometricEntity], fromModelProvider: ModelProvider?, textureLoader: MTKTextureLoader, completion: (() -> Void))
     
-    // This funciton should set up the vertex descriptors, pipeline / depth state descriptors,
-    // textures, etc.
-    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle)
+    /// After this function is called, The Render Pass Desciptors, Textures, Buffers, Render Pipeline State Descriptors, and Depth Stencil Descriptors should all be set up.
+    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, forRenderPass renderPass: RenderPass?) -> [DrawCallGroup]
     
     //
     // Per Frame Updates
@@ -70,20 +69,20 @@ protocol RenderModule {
     func updateBufferState(withBufferIndex: Int)
     
     // Update the buffer data for augmented anchors
-    func updateBuffers(withAugmentedAnchors: [AKAugmentedAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties)
+    func updateBuffers(withAugmentedAnchors: [AKAugmentedAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties)
     
     // Update the buffer data for real anchors
-    func updateBuffers(withRealAnchors: [AKRealAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties)
+    func updateBuffers(withRealAnchors: [AKRealAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties)
     
     // Update the buffer data for trackers
-    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties)
+    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties)
     
     // Update the buffer data for trackers
-    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties)
+    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties)
     
     // Update the render encoder for the draw call. At the end of this method it is expected that
     // drawPrimatives or drawIndexedPrimatives is called.
-    func draw(withRenderEncoder: MTLRenderCommandEncoder, sharedModules: [SharedRenderModule]?)
+    func draw(withRenderPass renderPass: RenderPass, sharedModules: [SharedRenderModule]?)
     
     // Called when Metal and the GPU has fully finished proccssing the commands we're encoding
     // this frame. This indicates when the dynamic buffers, that we're writing to this frame,
@@ -102,11 +101,18 @@ protocol RenderModule {
 
 extension RenderModule {
     
-    func encode(meshGPUData: MeshGPUData, fromDrawData drawData: DrawData, with renderEncoder: MTLRenderCommandEncoder, baseIndex: Int = 0, environmentData: EnvironmentData? = nil) {
+    func draw(withDrawData drawData: DrawData, with renderEncoder: MTLRenderCommandEncoder, baseIndex: Int = 0, environmentData: EnvironmentData? = nil) {
         
         // Set mesh's vertex buffers
         for (index, vertexBuffer) in drawData.vertexBuffers.enumerated() {
             renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: index)
+        }
+        
+        // Set the palette offset info
+        if var paletteStartIndex = drawData.paletteStartIndex {
+            renderEncoder.setVertexBytes(&paletteStartIndex, length: 8, index: Int(kBufferIndexMeshPaletteIndex.rawValue))
+            var paletteSize = drawData.paletteSize
+            renderEncoder.setVertexBytes(&paletteSize, length: 8, index: Int(kBufferIndexMeshPaletteSize.rawValue))
         }
         
         // Draw each submesh of our mesh
@@ -134,13 +140,6 @@ extension RenderModule {
             
             renderEncoder.setFragmentBytes(&materialUniforms, length: RenderModuleConstants.alignedMaterialSize, index: Int(kBufferIndexMaterialUniforms.rawValue))
             renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: indexCount, indexType: indexType, indexBuffer: indexBuffer, indexBufferOffset: 0, instanceCount: drawData.instanceCount, baseVertex: 0, baseInstance: baseIndex)
-        }
-        
-        // Set the palette offset into
-        if var paletteStartIndex = drawData.paletteStartIndex {
-            renderEncoder.setVertexBytes(&paletteStartIndex, length: 8, index: Int(kBufferIndexMeshPaletteIndex.rawValue))
-            var paletteSize = drawData.paletteSize
-            renderEncoder.setVertexBytes(&paletteSize, length: 8, index: Int(kBufferIndexMeshPaletteSize.rawValue))
         }
         
     }

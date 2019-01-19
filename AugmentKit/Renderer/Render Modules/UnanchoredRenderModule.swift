@@ -84,9 +84,11 @@ class UnanchoredRenderModule: RenderModule {
         environmentUniformBuffer = device?.makeBuffer(length: environmentUniformBufferSize, options: .storageModeShared)
         environmentUniformBuffer?.label = "EnvironmentUniformBuffer"
         
+        geometricEntities = []
+        
     }
     
-    func loadAssets(forGeometricEntities: [AKGeometricEntity], fromModelProvider modelProvider: ModelProvider?, textureLoader aTextureLoader: MTKTextureLoader, completion: (() -> Void)) {
+    func loadAssets(forGeometricEntities theGeometricEntities: [AKGeometricEntity], fromModelProvider modelProvider: ModelProvider?, textureLoader aTextureLoader: MTKTextureLoader, completion: (() -> Void)) {
         
         guard let modelProvider = modelProvider else {
             print("Serious Error - Model Provider not found.")
@@ -98,6 +100,7 @@ class UnanchoredRenderModule: RenderModule {
         }
         
         textureLoader = aTextureLoader
+        geometricEntities.append(contentsOf: theGeometricEntities)
         
         //
         // Create and load our models
@@ -105,6 +108,7 @@ class UnanchoredRenderModule: RenderModule {
             
         var hasLoadedTrackerAsset = false
         var hasLoadedTargetAsset = false
+        var numModels = theGeometricEntities.count
         
         // TODO: Add ability to load multiple models by identifier
         modelProvider.loadAsset(forObjectType: UserTracker.type, identifier: nil) { [weak self] asset in
@@ -121,11 +125,11 @@ class UnanchoredRenderModule: RenderModule {
                 return
             }
             
-            self?.trackerAsset = asset
+            self?.modelAssetsByUUID[generalTrackerUUID] = asset
             
             // TODO: Figure out a way to load a new model per tracker.
             
-            if hasLoadedTrackerAsset && hasLoadedTargetAsset {
+            if hasLoadedTrackerAsset && hasLoadedTargetAsset && numModels <= 0 {
                 completion()
             }
             
@@ -146,11 +150,37 @@ class UnanchoredRenderModule: RenderModule {
                 return
             }
             
-            self?.targetAsset = asset
+            self?.modelAssetsByUUID[generalTargetUUID] = asset
             
             // TODO: Figure out a way to load a new model per target.
             
-            if hasLoadedTrackerAsset && hasLoadedTargetAsset {
+            if hasLoadedTrackerAsset && hasLoadedTargetAsset && numModels <= 0 {
+                completion()
+            }
+            
+        }
+        
+        // Load the per-geometry models
+        for geometricEntity in theGeometricEntities {
+            
+            if let identifier = geometricEntity.identifier {
+                modelProvider.loadAsset(forObjectType:  "AnyUnanchored", identifier: identifier) { [weak self] asset in
+                    
+                    guard let asset = asset else {
+                        print("Warning (AnchorsRenderModule) - Failed to get a MDLAsset for type \"AnyAnchor\") with identifier \(identifier) from the modelProvider. Aborting the render phase.")
+                        let newError = AKError.warning(.modelError(.modelNotFound(ModelErrorInfo(type:  "AnyAnchor", identifier: identifier))))
+                        recordNewError(newError)
+                        completion()
+                        return
+                    }
+                    
+                    self?.modelAssetsByUUID[identifier] = asset
+                    self?.shaderPreferenceByUUID[identifier] = geometricEntity.shaderPreference
+                }
+            }
+            
+            numModels -= 1
+            if hasLoadedTrackerAsset && hasLoadedTargetAsset && numModels <= 0 {
                 completion()
             }
             
@@ -158,163 +188,58 @@ class UnanchoredRenderModule: RenderModule {
         
     }
     
-    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle) {
+    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, forRenderPass renderPass: RenderPass? = nil) -> [DrawCallGroup] {
         
         guard let device = device else {
             print("Serious Error - device not found")
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeDeviceNotFound, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return
+            return []
         }
         
-        if trackerAsset != nil {
+        var drawCallGroups = [DrawCallGroup]()
+        let filteredGeometryUUIDs = geometricEntities.compactMap({$0.identifier})
+        let filteredModelsByUUID = modelAssetsByUUID.filter { (uuid, asset) in
+            filteredGeometryUUIDs.contains(uuid)
+        }
+        for item in filteredModelsByUUID {
             
-            trackerMeshGPUData = {
-                if let trackerAsset = trackerAsset {
-                    return ModelIOTools.meshGPUData(from: trackerAsset, device: device, textureBundle: textureBundle, vertexDescriptor: RenderUtilities.createStandardVertexDescriptor())
+            // Check to make sure this geometry should be rendered in this render pass
+            if let geometricEntity = geometricEntities.first(where: {$0.identifier == item.key}), let geometryFilterFunction = renderPass?.geometryFilterFunction {
+                guard geometryFilterFunction(geometricEntity) else {
+                    continue
+                }
+            }
+            
+            let uuid = item.key
+            let mdlAsset = item.value
+            let shaderPreference: ShaderPreference = {
+                if let prefernece = shaderPreferenceByUUID[uuid] {
+                    return prefernece
                 } else {
-                    return nil
+                    return .pbr
                 }
             }()
             
-            guard let trackerMeshGPUData = trackerMeshGPUData else {
-                print("Serious Error - ERROR: No meshGPUData found for target when trying to load the pipeline.")
-                let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeIntermediateMeshDataNotFound, userInfo: nil)
-                let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-                recordNewError(newError)
-                return
-            }
+            meshGPUDataByUUID[uuid] = ModelIOTools.meshGPUData(from: mdlAsset, device: device, textureBundle: textureBundle, vertexDescriptor: RenderUtilities.createStandardVertexDescriptor(), frameRate: 60, shaderPreference: shaderPreference)
             
-            if trackerMeshGPUData.drawData.count > 1 {
-                print("WARNING: More than one mesh was found. Currently only one mesh per tracker is supported.")
-                let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeModelNotSupported, userInfo: nil)
-                let newError = AKError.warning(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-                recordNewError(newError)
-            }
-            
-            let myTrackerVertexDescriptor = trackerMeshGPUData.vertexDescriptor
-            
-            guard let trackerVertexDescriptor = myTrackerVertexDescriptor else {
-                print("Serious Error - Failed to create a MetalKit vertex descriptor from ModelIO.")
-                let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeInvalidMeshData, userInfo: nil)
-                let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-                recordNewError(newError)
-                return
-            }
-            
-            for (_ , drawData) in trackerMeshGPUData.drawData.enumerated() {
-                let trackerPipelineStateDescriptor = MTLRenderPipelineDescriptor()
-                do {
-                    let funcConstants = RenderUtilities.getFuncConstants(forDrawData: drawData)
-                    // Specify which shader to use based on if the model has skinned puppet suppot
-                    let vertexName = (drawData.paletteStartIndex != nil) ? "anchorGeometryVertexTransformSkinned" : "anchorGeometryVertexTransform"
-                    let fragFunc = try metalLibrary.makeFunction(name: "anchorGeometryFragmentLighting", constantValues: funcConstants)
-                    let vertFunc = try metalLibrary.makeFunction(name: vertexName, constantValues: funcConstants)
-                    trackerPipelineStateDescriptor.vertexDescriptor = trackerVertexDescriptor
-                    trackerPipelineStateDescriptor.vertexFunction = vertFunc
-                    trackerPipelineStateDescriptor.fragmentFunction = fragFunc
-                    trackerPipelineStateDescriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
-                    trackerPipelineStateDescriptor.colorAttachments[0].isBlendingEnabled = true
-                    trackerPipelineStateDescriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
-                    trackerPipelineStateDescriptor.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
-                    trackerPipelineStateDescriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-                    trackerPipelineStateDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-                    trackerPipelineStateDescriptor.sampleCount = renderDestination.sampleCount
-                } catch let error {
-                    print("Failed to create pipeline state descriptor, error \(error)")
-                    let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: error))))
-                    recordNewError(newError)
-                }
-                
-                do {
-                    try unanchoredPipelineStates.append(device.makeRenderPipelineState(descriptor: trackerPipelineStateDescriptor))
-                } catch let error {
-                    print("Failed to create pipeline state, error \(error)")
-                    let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: error))))
-                    recordNewError(newError)
-                }
-            }
+            let drawCallGroup = createPipelineStates(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass)
+            drawCallGroup.moduleIdentifier = moduleIdentifier
+            drawCallGroups.append(drawCallGroup)
             
         }
         
-        if targetAsset != nil {
-            
-            targetMeshGPUData = {
-                if let targetAsset = targetAsset {
-                    return ModelIOTools.meshGPUData(from: targetAsset, device: device, textureBundle: textureBundle, vertexDescriptor: RenderUtilities.createStandardVertexDescriptor())
-                } else {
-                    return nil
-                }
-            }()
-            
-            guard let targetMeshGPUData = targetMeshGPUData else {
-                print("Serious Error - ERROR: No meshGPUData for target found when trying to load the pipeline.")
-                let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeIntermediateMeshDataNotFound, userInfo: nil)
-                let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-                recordNewError(newError)
-                return
-            }
-            
-            if targetMeshGPUData.drawData.count > 1 {
-                print("WARNING: More than one mesh was found. Currently only one mesh per target is supported.")
-                let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeModelNotSupported, userInfo: nil)
-                let newError = AKError.warning(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-                recordNewError(newError)
-            }
-            
-            let myTargetVertexDescriptor = targetMeshGPUData.vertexDescriptor
-            
-            guard let targetVertexDescriptor = myTargetVertexDescriptor else {
-                print("Serious Error - Failed to create a MetalKit vertex descriptor from ModelIO.")
-                let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeInvalidMeshData, userInfo: nil)
-                let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-                recordNewError(newError)
-                return
-            }
-        
-            for (_, drawData) in targetMeshGPUData.drawData.enumerated() {
-                let targetPipelineStateDescriptor = MTLRenderPipelineDescriptor()
-                do {
-                    let funcConstants = RenderUtilities.getFuncConstants(forDrawData: drawData)
-                    // Specify which shader to use based on if the model has skinned puppet suppot
-                    let vertexName = (drawData.paletteStartIndex != nil) ? "anchorGeometryVertexTransformSkinned" : "anchorGeometryVertexTransform"
-                    let fragFunc = try metalLibrary.makeFunction(name: "anchorGeometryFragmentLighting", constantValues: funcConstants)
-                    let vertFunc = try metalLibrary.makeFunction(name: vertexName, constantValues: funcConstants)
-                    targetPipelineStateDescriptor.vertexDescriptor = targetVertexDescriptor
-                    targetPipelineStateDescriptor.vertexFunction = vertFunc
-                    targetPipelineStateDescriptor.fragmentFunction = fragFunc
-                    targetPipelineStateDescriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
-                    targetPipelineStateDescriptor.colorAttachments[0].isBlendingEnabled = true
-                    targetPipelineStateDescriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
-                    targetPipelineStateDescriptor.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
-                    targetPipelineStateDescriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-                    targetPipelineStateDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-                    targetPipelineStateDescriptor.sampleCount = renderDestination.sampleCount
-                } catch let error {
-                    print("Failed to create pipeline state descriptor, error \(error)")
-                    let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: error))))
-                    recordNewError(newError)
-                }
-                
-                do {
-                    try unanchoredPipelineStates.append(device.makeRenderPipelineState(descriptor: targetPipelineStateDescriptor))
-                } catch let error {
-                    print("Failed to create pipeline state, error \(error)")
-                    let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: error))))
-                    recordNewError(newError)
-                }
-                
-            }
-            
-        }
-        
-        let unanchoredDepthStateDescriptor = MTLDepthStencilDescriptor()
-        unanchoredDepthStateDescriptor.depthCompareFunction = .less
-        unanchoredDepthStateDescriptor.isDepthWriteEnabled = true
-        unanchoredDepthState = device.makeDepthStencilState(descriptor: unanchoredDepthStateDescriptor)
-        
+        // In the buffer, the anchors are layed out by UUID in sorted order. So if there are
+        // 5 anchors with UUID = "A..." and 3 UUIDs = "B..." and 1 UUID = "C..." then that's
+        // how they will layed out in memory. Therefore updating the buffers is a 2 step process.
+        // First, loop through all of the ARAnchors and gather the UUIDs as well as the counts for each.
+        // Second, layout and update the buffers in the desired order.
+        drawCallGroups.sort { $0.uuid.uuidString < $1.uuid.uuidString }
+        sortedUUIDs = drawCallGroups.map { $0.uuid }
         isInitialized = true
+        
+        return drawCallGroups
         
     }
     
@@ -336,7 +261,22 @@ class UnanchoredRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withAugmentedAnchors anchors: [AKAugmentedAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+    func updateBuffers(withAugmentedAnchors anchors: [AKAugmentedAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
+        // Do Nothing
+    }
+    
+    func updateBuffers(withRealAnchors: [AKRealAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
+        // Do Nothing
+    }
+    
+    func updateBuffers(withTrackers trackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
+        
+        // Update the uniform buffer with transforms of the current frame's trackers
+        
+        trackerInstanceCount = 0
+        targetInstanceCount = 0
+        geometriesByUUID = [:]
+        environmentTextureByUUID = [:]
         
         // Set up lighting for the scene using the ambient intensity if provided
         ambientIntensity = {
@@ -355,301 +295,368 @@ class UnanchoredRenderModule: RenderModule {
             }
         }()
         
-    }
-    
-    func updateBuffers(withRealAnchors: [AKRealAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
-        // Do Nothing
-    }
-    
-    func updateBuffers(withTrackers trackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+        var index = 0
+        var trackerUUIDs = trackers.map({$0.identifier})
+        trackerUUIDs.append(generalTrackerUUID)
+        var targetUUIDs = targets.map({$0.identifier})
+        targetUUIDs.append(generalTargetUUID)
         
-        // Update the uniform buffer with transforms of the current frame's trackers
+        // Build the geometriesByUUID map
         
-        trackerInstanceCount = 0
-        
-        for index in 0..<trackers.count {
-            
-            let tracker = trackers[index]
-            let uuid = tracker.identifier!
-            
-            // Apply the transform of the tracker relative to the reference transform
-            let trackerAbsoluteTransform = tracker.position.referenceTransform * tracker.position.transform
-            
-            // Ignore anchors that are beyond the renderDistance
-            let distance = anchorDistance(withTransform: trackerAbsoluteTransform, cameraProperties: cameraProperties)
-            guard Double(distance) < renderDistance else {
-                continue
-            }
-            
-            trackerInstanceCount += 1
-            
-            if trackerInstanceCount > Constants.maxTrackerInstanceCount {
-                trackerInstanceCount = Constants.maxTrackerInstanceCount
-                break
-            }
-            
-            // Flip Z axis to convert geometry from right handed to left handed
-            var coordinateSpaceTransform = matrix_identity_float4x4
-            coordinateSpaceTransform.columns.2.z = -1.0
-            
-            let trackerIndex = trackerInstanceCount - 1
-            
-            if let trackerMeshGPUData = trackerMeshGPUData {
-                // Apply the world transform (as defined in the imported model) if applicable
-                // We currenly only support a single mesh so we just use the first item
-                if let drawData = trackerMeshGPUData.drawData.first {
-                    let worldTransform: matrix_float4x4 = {
-                        if drawData.worldTransformAnimations.count > 0 {
-                            let index = Int(cameraProperties.currentFrame % UInt(drawData.worldTransformAnimations.count))
-                            return drawData.worldTransformAnimations[index]
-                        } else {
-                            return drawData.worldTransform
-                        }
-                    }()
-                    coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
-                }
-                
-                let modelMatrix = trackerAbsoluteTransform * coordinateSpaceTransform
-                
-                let trackerUniforms = unanchoredUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: trackerIndex)
-                trackerUniforms?.pointee.modelMatrix = modelMatrix
-                trackerUniforms?.pointee.normalMatrix = modelMatrix.normalMatrix
-            }
-            
-            //
-            // Update Environment
-            //
-            
-            environmentData = {
-                var myEnvironmentData = EnvironmentData()
-                if let texture = environmentTextureByUUID[uuid] {
-                    myEnvironmentData.environmentTexture = texture
-                    myEnvironmentData.hasEnvironmentMap = true
-                    return myEnvironmentData
+        trackers.forEach { tracker in
+            let uuid: UUID = {
+                if let identifier = tracker.identifier, modelAssetsByUUID[identifier] != nil {
+                    return identifier
                 } else {
-                    myEnvironmentData.hasEnvironmentMap = false
+                    return generalTrackerUUID
                 }
-                return myEnvironmentData
             }()
-            
-            let environmentUniforms = environmentUniformBufferAddress?.assumingMemoryBound(to: EnvironmentUniforms.self).advanced(by: trackerIndex)
-            
-            environmentUniforms?.pointee.ambientLightColor = ambientLightColor ?? vector3(0.5, 0.5, 0.5)
-            
-            var directionalLightDirection : vector_float3 = vector3(0.0, -1.0, 0.0)
-            directionalLightDirection = simd_normalize(directionalLightDirection)
-            environmentUniforms?.pointee.directionalLightDirection = directionalLightDirection
-            
-            let directionalLightColor: vector_float3 = vector3(0.6, 0.6, 0.6)
-            environmentUniforms?.pointee.directionalLightColor = directionalLightColor * (ambientIntensity ?? 1)
-            
-            if environmentData?.hasEnvironmentMap == true {
-                environmentUniforms?.pointee.hasEnvironmentMap = 1
+            if let currentGeometries = geometriesByUUID[uuid] {
+                var mutableCurrentGeometries = currentGeometries
+                mutableCurrentGeometries.append(tracker)
+                geometriesByUUID[uuid] = mutableCurrentGeometries
             } else {
-                environmentUniforms?.pointee.hasEnvironmentMap = 0
+                geometriesByUUID[uuid] = [tracker]
             }
-            
-            //
-            // Update Effects uniform
-            //
-            
-            let effectsUniforms = effectsUniformBufferAddress?.assumingMemoryBound(to: AnchorEffectsUniforms.self).advanced(by: trackerIndex)
-            var hasSetAlpha = false
-            var hasSetGlow = false
-            var hasSetTint = false
-            var hasSetScale = false
-            if let effects = tracker.effects {
-                let currentTime: TimeInterval = Double(cameraProperties.currentFrame) / cameraProperties.frameRate
-                for effect in effects {
-                    switch effect.effectType {
-                    case .alpha:
-                        if let value = effect.value(forTime: currentTime) as? Float {
-                            effectsUniforms?.pointee.alpha = value
-                            hasSetAlpha = true
-                        }
-                    case .glow:
-                        if let value = effect.value(forTime: currentTime) as? Float {
-                            effectsUniforms?.pointee.glow = value
-                            hasSetGlow = true
-                        }
-                    case .tint:
-                        if let value = effect.value(forTime: currentTime) as? float3 {
-                            effectsUniforms?.pointee.tint = value
-                            hasSetTint = true
-                        }
-                    case .scale:
-                        if let value = effect.value(forTime: currentTime) as? Float {
-                            effectsUniforms?.pointee.scale = value
-                            hasSetScale = true
-                        }
-                    }
-                }
-            }
-            if !hasSetAlpha {
-                effectsUniforms?.pointee.alpha = 1
-            }
-            if !hasSetGlow {
-                effectsUniforms?.pointee.glow = 0
-            }
-            if !hasSetTint {
-                effectsUniforms?.pointee.tint = float3(1,1,1)
-            }
-            if !hasSetScale {
-                effectsUniforms?.pointee.scale = 1
-            }
-            
         }
         
-        // Update the uniform buffer with transforms of the current frame's targets
-        
-        targetInstanceCount = 0
-        
-        for index in 0..<targets.count {
-            
-            //
-            // Update the Target uniform
-            //
-            
-            let target = targets[index]
-            let uuid = target.identifier!
-            
-            // Apply the transform of the target relative to the reference transform
-            let targetAbsoluteTransform = target.position.referenceTransform * target.position.transform
-            
-            // Ignore anchors that are beyond the renderDistance
-            let distance = anchorDistance(withTransform: targetAbsoluteTransform, cameraProperties: cameraProperties)
-            guard Double(distance) < renderDistance else {
-                continue
-            }
-            
-            targetInstanceCount += 1
-            
-            if targetInstanceCount > Constants.maxTargetInstanceCount {
-                targetInstanceCount = Constants.maxTargetInstanceCount
-                break
-            }
-            
-            // Flip Z axis to convert geometry from right handed to left handed
-            var coordinateSpaceTransform = matrix_identity_float4x4
-            coordinateSpaceTransform.columns.2.z = -1.0
-            
-            let targetIndex = targetInstanceCount - 1
-            let adjustedIndex = targetIndex + trackerInstanceCount
-            
-            if let targetMeshGPUData = targetMeshGPUData {
-                // Apply the world transform (as defined in the imported model) if applicable
-                // We currenly only support a single mesh so we just use the first item
-                if let drawData = targetMeshGPUData.drawData.first {
-                    let worldTransform: matrix_float4x4 = {
-                        if drawData.worldTransformAnimations.count > 0 {
-                            let index = Int(cameraProperties.currentFrame % UInt(drawData.worldTransformAnimations.count))
-                            return drawData.worldTransformAnimations[index]
-                        } else {
-                            return drawData.worldTransform
-                        }
-                    }()
-                    coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
-                }
-                
-                let modelMatrix = targetAbsoluteTransform * coordinateSpaceTransform
-                
-                let targetUniforms = unanchoredUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: adjustedIndex)
-                targetUniforms?.pointee.modelMatrix = modelMatrix
-                targetUniforms?.pointee.normalMatrix = modelMatrix.normalMatrix
-                
-                //
-                // Update Environment
-                //
-                
-                environmentData = {
-                    var myEnvironmentData = EnvironmentData()
-                    if let texture = environmentTextureByUUID[uuid] {
-                        myEnvironmentData.environmentTexture = texture
-                        myEnvironmentData.hasEnvironmentMap = true
-                        return myEnvironmentData
-                    } else {
-                        myEnvironmentData.hasEnvironmentMap = false
-                    }
-                    return myEnvironmentData
-                }()
-                
-                let environmentUniforms = environmentUniformBufferAddress?.assumingMemoryBound(to: EnvironmentUniforms.self).advanced(by: adjustedIndex)
-                
-                environmentUniforms?.pointee.ambientLightColor = ambientLightColor ?? vector3(0.5, 0.5, 0.5)
-                
-                var directionalLightDirection : vector_float3 = vector3(0.0, -1.0, 0.0)
-                directionalLightDirection = simd_normalize(directionalLightDirection)
-                environmentUniforms?.pointee.directionalLightDirection = directionalLightDirection
-                
-                let directionalLightColor: vector_float3 = vector3(0.6, 0.6, 0.6)
-                environmentUniforms?.pointee.directionalLightColor = directionalLightColor * (ambientIntensity ?? 1)
-                
-                if environmentData?.hasEnvironmentMap == true {
-                    environmentUniforms?.pointee.hasEnvironmentMap = 1
+        targets.forEach { target in
+            let uuid: UUID = {
+                if let identifier = target.identifier, modelAssetsByUUID[identifier] != nil {
+                    return identifier
                 } else {
-                    environmentUniforms?.pointee.hasEnvironmentMap = 0
+                    return generalTargetUUID
                 }
+            }()
+            if let currentGeometries = geometriesByUUID[uuid] {
+                var mutableCurrentGeometries = currentGeometries
+                mutableCurrentGeometries.append(target)
+                geometriesByUUID[uuid] = mutableCurrentGeometries
+            } else {
+                geometriesByUUID[uuid] = [target]
+            }
+        }
+        
+        for uuid in sortedUUIDs {
+            
+            if trackerUUIDs.contains(uuid) {
                 
-                //
-                // Update Effects uniform
-                //
+                let akTrackers = geometriesByUUID[uuid] as! [AKTracker]
                 
-                let effectsUniforms = effectsUniformBufferAddress?.assumingMemoryBound(to: AnchorEffectsUniforms.self).advanced(by: adjustedIndex)
-                var hasSetAlpha = false
-                var hasSetGlow = false
-                var hasSetTint = false
-                var hasSetScale = false
-                if let effects = target.effects {
-                    let currentTime: TimeInterval = Double(cameraProperties.currentFrame) / cameraProperties.frameRate
-                    for effect in effects {
-                        switch effect.effectType {
-                        case .alpha:
-                            if let value = effect.value(forTime: currentTime) as? Float {
-                                effectsUniforms?.pointee.alpha = value
-                                hasSetAlpha = true
+                for akTracker in akTrackers {
+                    
+                    // allDrawData contains the meshGPUData for all of the meshes associated with this anchor
+                    guard let allDrawData = meshGPUDataByUUID[uuid]?.drawData else {
+                        continue
+                    }
+                    
+                    // Apply the transform of the target relative to the reference transform
+                    let trackerAbsoluteTransform = akTracker.position.referenceTransform * akTracker.position.transform
+                    
+                    // Ignore anchors that are beyond the renderDistance
+                    let distance = anchorDistance(withTransform: trackerAbsoluteTransform, cameraProperties: cameraProperties)
+                    guard Double(distance) < renderDistance else {
+                        continue
+                    }
+                    
+                    trackerInstanceCount += 1
+                    
+                    if trackerInstanceCount > Constants.maxTrackerInstanceCount {
+                        trackerInstanceCount = Constants.maxTrackerInstanceCount
+                        break
+                    }
+                    
+                    for drawData in allDrawData {
+                        
+                        // Flip Z axis to convert geometry from right handed to left handed
+                        var coordinateSpaceTransform = matrix_identity_float4x4
+                        coordinateSpaceTransform.columns.2.z = -1.0
+                        
+                        let worldTransform: matrix_float4x4 = {
+                            if drawData.worldTransformAnimations.count > 0 {
+                                let index = Int(cameraProperties.currentFrame % UInt(drawData.worldTransformAnimations.count))
+                                return drawData.worldTransformAnimations[index]
+                            } else {
+                                return drawData.worldTransform
                             }
-                        case .glow:
-                            if let value = effect.value(forTime: currentTime) as? Float {
-                                effectsUniforms?.pointee.glow = value
-                                hasSetGlow = true
+                        }()
+                        coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
+                
+                        let modelMatrix = trackerAbsoluteTransform * coordinateSpaceTransform
+                        
+                        let trackerUniforms = unanchoredUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: index)
+                        trackerUniforms?.pointee.modelMatrix = modelMatrix
+                        trackerUniforms?.pointee.normalMatrix = modelMatrix.normalMatrix
+                        
+                        //
+                        // Update Environment
+                        //
+                        
+                        let environmentProperty = environmentProperties.environmentAnchorsWithReatedAnchors.first(where: {
+                            $0.value.contains(uuid)
+                        })
+                        
+                        if let environmentProbeAnchor = environmentProperty?.key, let texture = environmentProbeAnchor.environmentTexture {
+                            environmentTextureByUUID[uuid] = texture
+                        }
+                        
+                        environmentData = {
+                            var myEnvironmentData = EnvironmentData()
+                            if let texture = environmentTextureByUUID[uuid] {
+                                myEnvironmentData.environmentTexture = texture
+                                myEnvironmentData.hasEnvironmentMap = true
+                                return myEnvironmentData
+                            } else {
+                                myEnvironmentData.hasEnvironmentMap = false
                             }
-                        case .tint:
-                            if let value = effect.value(forTime: currentTime) as? float3 {
-                                effectsUniforms?.pointee.tint = value
-                                hasSetTint = true
-                            }
-                        case .scale:
-                            if let value = effect.value(forTime: currentTime) as? Float {
-                                effectsUniforms?.pointee.scale = value
-                                hasSetScale = true
+                            return myEnvironmentData
+                        }()
+                        
+                        let environmentUniforms = environmentUniformBufferAddress?.assumingMemoryBound(to: EnvironmentUniforms.self).advanced(by: index)
+                        
+                        environmentUniforms?.pointee.ambientLightColor = ambientLightColor ?? vector3(0.5, 0.5, 0.5)
+                        
+                        var directionalLightDirection : vector_float3 = environmentProperties.directionalLightDirection
+                        directionalLightDirection = simd_normalize(directionalLightDirection)
+                        environmentUniforms?.pointee.directionalLightDirection = directionalLightDirection
+                        
+                        let directionalLightColor: vector_float3 = vector3(0.6, 0.6, 0.6)
+                        environmentUniforms?.pointee.directionalLightColor = directionalLightColor * (ambientIntensity ?? 1)
+                        
+                        environmentUniforms?.pointee.directionalLightMVP = environmentProperties.directionalLightMVP
+                        environmentUniforms?.pointee.shadowMVPTransformMatrix = shadowProperties.shadowMVPTransformMatrix
+                        
+                        if environmentData?.hasEnvironmentMap == true {
+                            environmentUniforms?.pointee.hasEnvironmentMap = 1
+                        } else {
+                            environmentUniforms?.pointee.hasEnvironmentMap = 0
+                        }
+                        
+                        //
+                        // Update Effects uniform
+                        //
+                        
+                        let effectsUniforms = effectsUniformBufferAddress?.assumingMemoryBound(to: AnchorEffectsUniforms.self).advanced(by: index)
+                        var hasSetAlpha = false
+                        var hasSetGlow = false
+                        var hasSetTint = false
+                        var hasSetScale = false
+                        if let effects = akTracker.effects {
+                            let currentTime: TimeInterval = Double(cameraProperties.currentFrame) / cameraProperties.frameRate
+                            for effect in effects {
+                                switch effect.effectType {
+                                case .alpha:
+                                    if let value = effect.value(forTime: currentTime) as? Float {
+                                        effectsUniforms?.pointee.alpha = value
+                                        hasSetAlpha = true
+                                    }
+                                case .glow:
+                                    if let value = effect.value(forTime: currentTime) as? Float {
+                                        effectsUniforms?.pointee.glow = value
+                                        hasSetGlow = true
+                                    }
+                                case .tint:
+                                    if let value = effect.value(forTime: currentTime) as? float3 {
+                                        effectsUniforms?.pointee.tint = value
+                                        hasSetTint = true
+                                    }
+                                case .scale:
+                                    if let value = effect.value(forTime: currentTime) as? Float {
+                                        let scaleMatrix = matrix_identity_float4x4
+                                        effectsUniforms?.pointee.scale = scaleMatrix.scale(x: value, y: value, z: value)
+                                        hasSetScale = true
+                                    }
+                                }
                             }
                         }
+                        if !hasSetAlpha {
+                            effectsUniforms?.pointee.alpha = 1
+                        }
+                        if !hasSetGlow {
+                            effectsUniforms?.pointee.glow = 0
+                        }
+                        if !hasSetTint {
+                            effectsUniforms?.pointee.tint = float3(1,1,1)
+                        }
+                        if !hasSetScale {
+                            effectsUniforms?.pointee.scale = matrix_identity_float4x4
+                        }
+                        
+                        index += 1
+                        
                     }
+                    
                 }
-                if !hasSetAlpha {
-                    effectsUniforms?.pointee.alpha = 1
-                }
-                if !hasSetGlow {
-                    effectsUniforms?.pointee.glow = 0
-                }
-                if !hasSetTint {
-                    effectsUniforms?.pointee.tint = float3(1,1,1)
-                }
-                if !hasSetScale {
-                    effectsUniforms?.pointee.scale = 1
+                
+            } else if targetUUIDs.contains(uuid) {
+                
+                let akTargets = geometriesByUUID[uuid] as! [AKTarget]
+                
+                for akTarget in akTargets {
+                    
+                    // allDrawData contains the meshGPUData for all of the meshes associated with this anchor
+                    guard let allDrawData = meshGPUDataByUUID[uuid]?.drawData else {
+                        continue
+                    }
+                    
+                    // Apply the transform of the target relative to the reference transform
+                    let targetAbsoluteTransform = akTarget.position.referenceTransform * akTarget.position.transform
+                    
+                    // Ignore anchors that are beyond the renderDistance
+                    let distance = anchorDistance(withTransform: targetAbsoluteTransform, cameraProperties: cameraProperties)
+                    guard Double(distance) < renderDistance else {
+                        continue
+                    }
+                    
+                    targetInstanceCount += 1
+                    
+                    if targetInstanceCount > Constants.maxTargetInstanceCount {
+                        targetInstanceCount = Constants.maxTargetInstanceCount
+                        break
+                    }
+                    
+                    for drawData in allDrawData {
+                    
+                        // Flip Z axis to convert geometry from right handed to left handed
+                        var coordinateSpaceTransform = matrix_identity_float4x4
+                        coordinateSpaceTransform.columns.2.z = -1.0
+                        
+                        let worldTransform: matrix_float4x4 = {
+                            if drawData.worldTransformAnimations.count > 0 {
+                                let index = Int(cameraProperties.currentFrame % UInt(drawData.worldTransformAnimations.count))
+                                return drawData.worldTransformAnimations[index]
+                            } else {
+                                return drawData.worldTransform
+                            }
+                        }()
+                        coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
+                        
+                        let modelMatrix = targetAbsoluteTransform * coordinateSpaceTransform
+                        
+                        let targetUniforms = unanchoredUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: index)
+                        targetUniforms?.pointee.modelMatrix = modelMatrix
+                        targetUniforms?.pointee.normalMatrix = modelMatrix.normalMatrix
+                        
+                        //
+                        // Update Environment
+                        //
+                        
+                        let environmentProperty = environmentProperties.environmentAnchorsWithReatedAnchors.first(where: {
+                            $0.value.contains(uuid)
+                        })
+                        
+                        if let environmentProbeAnchor = environmentProperty?.key, let texture = environmentProbeAnchor.environmentTexture {
+                            environmentTextureByUUID[uuid] = texture
+                        }
+                        
+                        environmentData = {
+                            var myEnvironmentData = EnvironmentData()
+                            if let texture = environmentTextureByUUID[uuid] {
+                                myEnvironmentData.environmentTexture = texture
+                                myEnvironmentData.hasEnvironmentMap = true
+                                return myEnvironmentData
+                            } else {
+                                myEnvironmentData.hasEnvironmentMap = false
+                            }
+                            return myEnvironmentData
+                        }()
+                        
+                        let environmentUniforms = environmentUniformBufferAddress?.assumingMemoryBound(to: EnvironmentUniforms.self).advanced(by: index)
+                        
+                        environmentUniforms?.pointee.ambientLightColor = ambientLightColor ?? vector3(0.5, 0.5, 0.5)
+                        
+                        var directionalLightDirection : vector_float3 = environmentProperties.directionalLightDirection
+                        directionalLightDirection = simd_normalize(directionalLightDirection)
+                        environmentUniforms?.pointee.directionalLightDirection = directionalLightDirection
+                        
+                        let directionalLightColor: vector_float3 = vector3(0.6, 0.6, 0.6)
+                        environmentUniforms?.pointee.directionalLightColor = directionalLightColor * (ambientIntensity ?? 1)
+                        
+                        environmentUniforms?.pointee.directionalLightMVP = environmentProperties.directionalLightMVP
+                        environmentUniforms?.pointee.shadowMVPTransformMatrix = shadowProperties.shadowMVPTransformMatrix
+                        
+                        if environmentData?.hasEnvironmentMap == true {
+                            environmentUniforms?.pointee.hasEnvironmentMap = 1
+                        } else {
+                            environmentUniforms?.pointee.hasEnvironmentMap = 0
+                        }
+                        
+                        //
+                        // Update Effects uniform
+                        //
+                        
+                        let effectsUniforms = effectsUniformBufferAddress?.assumingMemoryBound(to: AnchorEffectsUniforms.self).advanced(by: index)
+                        var hasSetAlpha = false
+                        var hasSetGlow = false
+                        var hasSetTint = false
+                        var hasSetScale = false
+                        if let effects = akTarget.effects {
+                            let currentTime: TimeInterval = Double(cameraProperties.currentFrame) / cameraProperties.frameRate
+                            for effect in effects {
+                                switch effect.effectType {
+                                case .alpha:
+                                    if let value = effect.value(forTime: currentTime) as? Float {
+                                        effectsUniforms?.pointee.alpha = value
+                                        hasSetAlpha = true
+                                    }
+                                case .glow:
+                                    if let value = effect.value(forTime: currentTime) as? Float {
+                                        effectsUniforms?.pointee.glow = value
+                                        hasSetGlow = true
+                                    }
+                                case .tint:
+                                    if let value = effect.value(forTime: currentTime) as? float3 {
+                                        effectsUniforms?.pointee.tint = value
+                                        hasSetTint = true
+                                    }
+                                case .scale:
+                                    if let value = effect.value(forTime: currentTime) as? Float {
+                                        let scaleMatrix = matrix_identity_float4x4
+                                        effectsUniforms?.pointee.scale = scaleMatrix.scale(x: value, y: value, z: value)
+                                        hasSetScale = true
+                                    }
+                                }
+                            }
+                        }
+                        if !hasSetAlpha {
+                            effectsUniforms?.pointee.alpha = 1
+                        }
+                        if !hasSetGlow {
+                            effectsUniforms?.pointee.glow = 0
+                        }
+                        if !hasSetTint {
+                            effectsUniforms?.pointee.tint = float3(1,1,1)
+                        }
+                        if !hasSetScale {
+                            effectsUniforms?.pointee.scale = matrix_identity_float4x4
+                        }
+                        
+                        index += 1
+                        
+                    }
+                    
                 }
                 
             }
             
         }
+
+        //
+        // Update the shadow map
+        //
+        shadowMap = shadowProperties.shadowMap
         
     }
     
-    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
         // Do Nothing
     }
     
-    func draw(withRenderEncoder renderEncoder: MTLRenderCommandEncoder, sharedModules: [SharedRenderModule]?) {
+    func draw(withRenderPass renderPass: RenderPass, sharedModules: [SharedRenderModule]?) {
+        
+        guard let renderEncoder = renderPass.renderCommandEncoder else {
+            return
+        }
         
         guard trackerInstanceCount > 0 || targetInstanceCount > 0 else {
             return
@@ -661,15 +668,7 @@ class UnanchoredRenderModule: RenderModule {
         // Set render command encoder state
         renderEncoder.setCullMode(.back)
         
-        guard trackerMeshGPUData != nil || targetMeshGPUData != nil else {
-            print("Error: Mesh GPU Data not available a draw time. Aborting")
-            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeIntermediateMeshDataNotAvailable, userInfo: nil)
-            let newError = AKError.recoverableError(.renderPipelineError(.drawAborted(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-            recordNewError(newError)
-            return
-        }
-        
-        if let sharedBuffer = sharedModules?.first(where: {$0.moduleIdentifier == SharedBuffersRenderModule.identifier}) {
+        if let sharedBuffer = sharedModules?.first(where: {$0.moduleIdentifier == SharedBuffersRenderModule.identifier}), renderPass.usesSharedBuffer  {
             
             renderEncoder.pushDebugGroup("Draw Shared Uniforms")
             
@@ -680,18 +679,19 @@ class UnanchoredRenderModule: RenderModule {
             
         }
         
-        if let environmentUniformBuffer = environmentUniformBuffer {
+        if let environmentUniformBuffer = environmentUniformBuffer, renderPass.usesEnvironment  {
             
             renderEncoder.pushDebugGroup("Draw Environment Uniforms")
             if let environmentTexture = environmentData?.environmentTexture, environmentData?.hasEnvironmentMap == true {
                 renderEncoder.setFragmentTexture(environmentTexture, index: Int(kTextureIndexEnvironmentMap.rawValue))
             }
+            renderEncoder.setVertexBuffer(environmentUniformBuffer, offset: environmentUniformBufferOffset, index: Int(kBufferIndexEnvironmentUniforms.rawValue))
             renderEncoder.setFragmentBuffer(environmentUniformBuffer, offset: environmentUniformBufferOffset, index: Int(kBufferIndexEnvironmentUniforms.rawValue))
             renderEncoder.popDebugGroup()
             
         }
         
-        if let effectsBuffer = effectsUniformBuffer {
+        if let effectsBuffer = effectsUniformBuffer, renderPass.usesEffects {
             
             renderEncoder.pushDebugGroup("Draw Effects Uniforms")
             renderEncoder.setVertexBuffer(effectsBuffer, offset: effectsUniformBufferOffset, index: Int(kBufferIndexAnchorEffectsUniforms.rawValue))
@@ -700,48 +700,50 @@ class UnanchoredRenderModule: RenderModule {
             
         }
         
-        if let trackerMeshGPUData = trackerMeshGPUData {
+        if let shadowMap = shadowMap, renderPass.usesShadows {
             
-            for (drawDataIndex, drawData) in trackerMeshGPUData.drawData.enumerated() {
-                
-                if drawDataIndex < unanchoredPipelineStates.count {
-                    renderEncoder.setRenderPipelineState(unanchoredPipelineStates[drawDataIndex])
-                    renderEncoder.setDepthStencilState(unanchoredDepthState)
-                    
-                    // Set any buffers fed into our render pipeline
-                    renderEncoder.setVertexBuffer(unanchoredUniformBuffer, offset: unanchoredUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
-                    
-                    var mutableDrawData = drawData
-                    mutableDrawData.instanceCount = trackerInstanceCount
-                    
-                    // Set the mesh's vertex data buffers
-                    encode(meshGPUData: trackerMeshGPUData, fromDrawData: mutableDrawData, with: renderEncoder)
-                    
-                }
-                
-            }
+            renderEncoder.pushDebugGroup("Attach Shadow Buffer")
+            renderEncoder.setFragmentTexture(shadowMap, index: Int(kTextureIndexShadowMap.rawValue))
+            renderEncoder.popDebugGroup()
             
         }
         
-        if let targetMeshGPUData = targetMeshGPUData {
-            for (drawDataIndex, drawData) in targetMeshGPUData.drawData.enumerated() {
+        var baseIndex = 0
+            
+        for drawCallGroup in renderPass.drawCallGroups.filter({ $0.moduleIdentifier == moduleIdentifier }) {
+            
+            let uuid = drawCallGroup.uuid
+            
+            guard let meshGPUData = meshGPUDataByUUID[uuid] else {
+                print("Error: Could not find meshGPUData for UUID: \(uuid)")
+                let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeIntermediateMeshDataNotAvailable, userInfo: nil)
+                let newError = AKError.recoverableError(.renderPipelineError(.drawAborted(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+                recordNewError(newError)
+                continue
+            }
+            
+            let geometryCount = (geometriesByUUID[uuid] ?? []).count
+            
+            // Geometry Draw Calls
+            for (index, drawCall) in drawCallGroup.drawCalls.enumerated() {
                 
-                if drawDataIndex < unanchoredPipelineStates.count {
-                    renderEncoder.setRenderPipelineState(unanchoredPipelineStates[drawDataIndex + targetMeshGPUData.drawData.count])
-                    renderEncoder.setDepthStencilState(unanchoredDepthState)
-                    
-                    // Set any buffers fed into our render pipeline
-                    renderEncoder.setVertexBuffer(unanchoredUniformBuffer, offset: unanchoredUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
-                    
-                    var mutableDrawData = drawData
-                    mutableDrawData.instanceCount = targetInstanceCount
-                    
-                    // Set the mesh's vertex data buffers
-                    encode(meshGPUData: targetMeshGPUData, fromDrawData: mutableDrawData, with: renderEncoder, baseIndex: trackerInstanceCount)
-                    
-                }
+                drawCall.prepareDrawCall(withRenderPass: renderPass)
+                
+                // Set any buffers fed into our render pipeline
+                renderEncoder.setVertexBuffer(unanchoredUniformBuffer, offset: unanchoredUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
+                
+                var mutableDrawData = meshGPUData.drawData[index]
+                mutableDrawData.instanceCount = trackerInstanceCount
+                
+                // Set the mesh's vertex data buffers and draw
+                draw(withDrawData: mutableDrawData, with: renderEncoder, baseIndex: baseIndex)
+                
+                baseIndex += geometryCount
                 
             }
+            
+//            baseIndex += geometryCount
+            
         }
         
         renderEncoder.popDebugGroup()
@@ -772,27 +774,24 @@ class UnanchoredRenderModule: RenderModule {
     
     private var device: MTLDevice?
     private var textureLoader: MTKTextureLoader?
-    // TODO: Support per-instance models for trackers and targets
-    private var trackerAsset: MDLAsset?
-    private var targetAsset: MDLAsset?
+    private var geometricEntities = [AKGeometricEntity]()
+    private var generalTrackerUUID = UUID()
+    private var generalTargetUUID = UUID()
+    private var sortedUUIDs = [UUID]()
+    private var modelAssetsByUUID = [UUID: MDLAsset]()
+    private var shaderPreferenceByUUID = [UUID: ShaderPreference]()
     private var environmentTextureByUUID = [UUID: MTLTexture]()
+    // MetalKit meshes containing vertex data and index buffer for our anchor geometry
+    private var meshGPUDataByUUID = [UUID: MeshGPUData]()
+    private var geometriesByUUID = [UUID: [AKGeometricEntity]]()
     private var ambientIntensity: Float?
     private var ambientLightColor: vector_float3?
     private var unanchoredUniformBuffer: MTLBuffer?
     private var materialUniformBuffer: MTLBuffer?
     private var effectsUniformBuffer: MTLBuffer?
     private var environmentUniformBuffer: MTLBuffer?
-    private var unanchoredPipelineStates = [MTLRenderPipelineState]() // Store multiple states
-    private var unanchoredDepthState: MTLDepthStencilState?
     private var environmentData: EnvironmentData?
-    
-    // MetalKit meshes containing vertex data and index buffer for our tracker geometry
-    // TODO: Support per-instance models for trackers and targets
-    private var trackerMeshGPUData: MeshGPUData?
-    
-    // MetalKit meshes containing vertex data and index buffer for our target geometry
-    // TODO: Support per-instance models for trackers and targets
-    private var targetMeshGPUData: MeshGPUData?
+    private var shadowMap: MTLTexture?
     
     // Offset within unanchoredUniformBuffer to set for the current frame
     private var unanchoredUniformBufferOffset: Int = 0
@@ -823,5 +822,105 @@ class UnanchoredRenderModule: RenderModule {
     
     // number of frames in the target animation by index
     private var targetAnimationFrameCount = [Int]()
+    
+    private func createPipelineStates(forUUID uuid: UUID, withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, renderPass: RenderPass?) -> DrawCallGroup {
+        
+        guard let meshGPUData = meshGPUDataByUUID[uuid] else {
+            print("Serious Error - ERROR: No meshGPUData found when trying to load the pipeline.")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeIntermediateMeshDataNotFound, userInfo: nil)
+            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
+            return DrawCallGroup(drawCalls: [], uuid: uuid)
+        }
+        
+        guard let aVertexDescriptor = meshGPUData.vertexDescriptor else {
+            print("Serious Error - Failed to create a MetalKit vertex descriptor from ModelIO.")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeInvalidMeshData, userInfo: nil)
+            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
+            return DrawCallGroup(drawCalls: [], uuid: uuid)
+        }
+        
+        let shaderPreference = meshGPUData.shaderPreference
+        
+        var drawCalls = [DrawCall]()
+        for drawData in meshGPUData.drawData {
+            
+            let funcConstants = RenderUtilities.getFuncConstants(forDrawData: drawData)
+            
+            let fragFunc: MTLFunction = {
+                do {
+                    let fragmentShaderName: String = {
+                        if shaderPreference == .simple {
+                            return "anchorGeometryFragmentLightingSimple"
+                        } else {
+                            return "anchorGeometryFragmentLighting"
+                        }
+                    }()
+                    return try metalLibrary.makeFunction(name: fragmentShaderName, constantValues: funcConstants)
+                } catch let error {
+                    print("Failed to create fragment function for pipeline state descriptor, error \(error)")
+                    let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: error))))
+                    recordNewError(newError)
+                    fatalError()
+                }
+            }()
+            
+            let vertFunc: MTLFunction = {
+                do {
+                    // Specify which shader to use based on if the model has skinned puppet suppot
+                    let vertexName = drawData.isSkinned ? "anchorGeometryVertexTransformSkinned" : "anchorGeometryVertexTransform"
+                    return try metalLibrary.makeFunction(name: vertexName, constantValues: funcConstants)
+                } catch let error {
+                    print("Failed to create vertex function for pipeline state descriptor, error \(error)")
+                    let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: error))))
+                    recordNewError(newError)
+                    fatalError()
+                }
+            }()
+            
+            let pipelineStateDescriptor: MTLRenderPipelineDescriptor = {
+                
+                if let renderPass = renderPass, let aPipelineDescriptor = renderPass.renderPipelineDescriptor(withVertexDescriptor: aVertexDescriptor, vertexFunction: vertFunc, fragmentFunction: fragFunc) {
+                    return aPipelineDescriptor
+                } else {
+                    let aPipelineDescriptor = MTLRenderPipelineDescriptor()
+                    aPipelineDescriptor.vertexDescriptor = aVertexDescriptor
+                    aPipelineDescriptor.vertexFunction = vertFunc
+                    aPipelineDescriptor.fragmentFunction = fragFunc
+                    aPipelineDescriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
+                    aPipelineDescriptor.colorAttachments[0].isBlendingEnabled = true
+                    aPipelineDescriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
+                    aPipelineDescriptor.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
+                    aPipelineDescriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
+                    aPipelineDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
+                    aPipelineDescriptor.sampleCount = renderDestination.sampleCount
+                    return aPipelineDescriptor
+                }
+                
+            }()
+            
+            let unanchoredDepthStateDescriptor: MTLDepthStencilDescriptor = {
+                if let renderPass = renderPass {
+                    let aDepthStateDescriptor = renderPass.depthStencilDescriptor(withDepthComareFunction: .less, isDepthWriteEnabled: true)
+                    return aDepthStateDescriptor
+                } else {
+                    let aDepthStateDescriptor = MTLDepthStencilDescriptor()
+                    aDepthStateDescriptor.depthCompareFunction = .less
+                    aDepthStateDescriptor.isDepthWriteEnabled = true
+                    return aDepthStateDescriptor
+                }
+            }()
+            
+            if let drawCall = renderPass?.drawCall(withRenderPipelineDescriptor: pipelineStateDescriptor, depthStencilDescriptor: unanchoredDepthStateDescriptor) {
+                drawCalls.append(drawCall)
+            }
+            
+        }
+        
+        let drawCallGroup = DrawCallGroup(drawCalls: drawCalls, uuid: uuid)
+        return drawCallGroup
+        
+    }
     
 }

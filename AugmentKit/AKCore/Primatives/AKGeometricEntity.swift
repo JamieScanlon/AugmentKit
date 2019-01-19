@@ -51,7 +51,11 @@ public protocol AKGeometricEntity {
      */
     var effects: [AnyEffect<Any>]? { get }
     /**
-     Specified a perfered renderer to use when rendering this enitity. Most will use the standard PBR renderer but some entities may prefer a simpiler renderer when they are not trying to achieve the look of real-world objects.
+     Specifies a perfered renderer to use when rendering this enitity. Most will use the standard PBR renderer but some entities may prefer a simpiler renderer when they are not trying to achieve the look of real-world objects.
      */
     var shaderPreference: ShaderPreference { get }
+    /**
+     Indicates whether this geometry participates in the generation of augmented shadows. As a general guide, geometries that represent real world objects should not generate shadows because they have them already. Augmented geometries, however, should have this property enabled.
+     */
+    var generatesShadows: Bool { get }
 }

@@ -76,22 +76,14 @@ class TrackingPointsRenderModule: RenderModule {
     
     // This funciton should set up the vertex descriptors, pipeline / depth state descriptors,
     // textures, etc.
-    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle) {
-        
-        guard let device = device else {
-            print("Serious Error - device not found")
-            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeDeviceNotFound, userInfo: nil)
-            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-            recordNewError(newError)
-            return
-        }
+    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, forRenderPass renderPass: RenderPass? = nil) -> [DrawCallGroup] {
         
         guard let pointVertexShader = metalLibrary.makeFunction(name: "pointVertexShader") else {
             print("Serious Error - failed to create the pointVertexShader function")
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeShaderInitializationFailed, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return
+            return []
         }
         
         guard let pointFragmentShader = metalLibrary.makeFunction(name: "pointFragmentShader") else {
@@ -99,7 +91,7 @@ class TrackingPointsRenderModule: RenderModule {
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeShaderInitializationFailed, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return
+            return []
         }
         
         // Create a vertex descriptor for our image plane vertex buffer
@@ -135,20 +127,20 @@ class TrackingPointsRenderModule: RenderModule {
         trackingPointPipelineStateDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
         trackingPointPipelineStateDescriptor.sampleCount = renderDestination.sampleCount
         
-        do {
-            try trackingPointPipelineState = device.makeRenderPipelineState(descriptor: trackingPointPipelineStateDescriptor)
-        } catch let error {
-            print("Failed to create tracking point pipeline state, error \(error)")
-            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: error))))
-            recordNewError(newError)
-        }
-        
         let trackingPointDepthStateDescriptor = MTLDepthStencilDescriptor()
         trackingPointDepthStateDescriptor.depthCompareFunction = .always
-        trackingPointDepthStateDescriptor.isDepthWriteEnabled = false
-        trackingPointDepthState = device.makeDepthStencilState(descriptor: trackingPointDepthStateDescriptor)
+        trackingPointDepthStateDescriptor.isDepthWriteEnabled = true
+        
+        var drawCallGroups = [DrawCallGroup]()
+        if let drawCall = renderPass?.drawCall(withRenderPipelineDescriptor: trackingPointPipelineStateDescriptor, depthStencilDescriptor: trackingPointDepthStateDescriptor) {
+            let drawCallGroup = DrawCallGroup(drawCalls: [drawCall])
+            drawCallGroup.moduleIdentifier = moduleIdentifier
+            drawCallGroups = [drawCallGroup]
+        }
         
         isInitialized = true
+        
+        return drawCallGroups
         
     }
     
@@ -165,7 +157,7 @@ class TrackingPointsRenderModule: RenderModule {
     }
     
     // Update the buffer data
-    func updateBuffers(withAugmentedAnchors anchors: [AKAugmentedAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+    func updateBuffers(withAugmentedAnchors anchors: [AKAugmentedAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
         
         trackingPointCount = 0
         
@@ -201,22 +193,21 @@ class TrackingPointsRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withRealAnchors: [AKRealAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+    func updateBuffers(withRealAnchors: [AKRealAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
         // Do Nothing
     }
     
-    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
         // Do Nothing
     }
     
-    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties) {
+    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
         // Do Nothing
     }
     
-    // Update the render encoder for the draw call
-    func draw(withRenderEncoder renderEncoder: MTLRenderCommandEncoder, sharedModules: [SharedRenderModule]?) {
+    func draw(withRenderPass renderPass: RenderPass, sharedModules: [SharedRenderModule]?) {
         
-        guard let trackingPointPipelineState = trackingPointPipelineState else {
+        guard let renderEncoder = renderPass.renderCommandEncoder else {
             return
         }
         
@@ -224,19 +215,29 @@ class TrackingPointsRenderModule: RenderModule {
             return
         }
         
-        // Push a debug group allowing us to identify render commands in the GPU Frame Capture tool
-        renderEncoder.pushDebugGroup("Draw Tracking Points")
+        for drawCallGroup in renderPass.drawCallGroups.filter({ $0.moduleIdentifier == moduleIdentifier }) {
+            
+            // Geometry Draw Calls
+            for (_, drawCall) in drawCallGroup.drawCalls.enumerated() {
         
-        renderEncoder.setRenderPipelineState(trackingPointPipelineState)
-        renderEncoder.setVertexBuffer(trackingPointDataBuffer, offset: trackingPointDataBufferOffset, index: Int(kBufferIndexTrackingPointData.rawValue))
-        if let sharedBuffer = sharedModules?.first(where: {$0.moduleIdentifier == SharedBuffersRenderModule.identifier}) {
-            renderEncoder.pushDebugGroup("Draw Shared Uniforms")
-            renderEncoder.setVertexBuffer(sharedBuffer.sharedUniformBuffer, offset: sharedBuffer.sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
-            renderEncoder.popDebugGroup()
+                // Push a debug group allowing us to identify render commands in the GPU Frame Capture tool
+                renderEncoder.pushDebugGroup("Draw Tracking Points")
+                
+                drawCall.prepareDrawCall(withRenderPass: renderPass)
+                
+                renderEncoder.setVertexBuffer(trackingPointDataBuffer, offset: trackingPointDataBufferOffset, index: Int(kBufferIndexTrackingPointData.rawValue))
+                if let sharedBuffer = sharedModules?.first(where: {$0.moduleIdentifier == SharedBuffersRenderModule.identifier}) {
+                    renderEncoder.pushDebugGroup("Draw Shared Uniforms")
+                    renderEncoder.setVertexBuffer(sharedBuffer.sharedUniformBuffer, offset: sharedBuffer.sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
+                    renderEncoder.popDebugGroup()
+                }
+                renderEncoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: trackingPointCount)
+                
+                renderEncoder.popDebugGroup()
+                
+            }
+            
         }
-        renderEncoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: trackingPointCount)
-        
-        renderEncoder.popDebugGroup()
         
     }
     
@@ -264,8 +265,6 @@ class TrackingPointsRenderModule: RenderModule {
     
     private var device: MTLDevice?
     private var trackingPointDataBuffer: MTLBuffer?
-    private var trackingPointPipelineState: MTLRenderPipelineState?
-    private var trackingPointDepthState: MTLDepthStencilState?
     
     // Offset within trackingPointDataBuffer to set for the current frame
     private var trackingPointDataBufferOffset: Int = 0

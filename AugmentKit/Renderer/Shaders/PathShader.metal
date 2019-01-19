@@ -41,12 +41,14 @@ struct PathFragmentInOut {
     float4 position [[position]];
     float4 color;
     ushort iid;
+    float3 shadowCoord;
 };
 
 vertex PathFragmentInOut pathVertexShader(PathVertexIn in [[stage_in]],
                                           constant SharedUniforms &sharedUniforms [[ buffer(kBufferIndexSharedUniforms) ]],
                                           constant AnchorInstanceUniforms *anchorInstanceUniforms [[ buffer(kBufferIndexAnchorInstanceUniforms) ]],
                                           constant AnchorEffectsUniforms *anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]],
+                                          constant EnvironmentUniforms *environmentUniforms [[ buffer(kBufferIndexEnvironmentUniforms) ]],
                                           uint vid [[vertex_id]],
                                           ushort iid [[instance_id]]
                                           ){
@@ -60,8 +62,7 @@ vertex PathFragmentInOut pathVertexShader(PathVertexIn in [[stage_in]],
     float4x4 modelMatrix = anchorInstanceUniforms[iid].modelMatrix;
     
     // Apply effects that affect geometry
-    float4x4 scaleMatrix = float4x4(anchorEffectsUniforms[iid].scale);
-    scaleMatrix[3][3] = 1;
+    float4x4 scaleMatrix = anchorEffectsUniforms[iid].scale;
     modelMatrix = modelMatrix * scaleMatrix;
     
     // Transform the model's orientation from world space to camera space.
@@ -70,6 +71,11 @@ vertex PathFragmentInOut pathVertexShader(PathVertexIn in [[stage_in]],
     // Calculate the position of our vertex in clip space and output for clipping and rasterization
     out.position = sharedUniforms.projectionMatrix * modelViewMatrix * position;
     out.iid = iid;
+    
+    // Shadow Coord
+    EnvironmentUniforms environmentUniform = environmentUniforms[iid];
+    out.shadowCoord = (environmentUniform.shadowMVPTransformMatrix * out.position).xyz;
+
     
     return out;
     

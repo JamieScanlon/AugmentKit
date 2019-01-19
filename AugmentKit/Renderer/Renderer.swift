@@ -75,6 +75,10 @@ public protocol RenderDestinationProvider {
      The pipeline state sample count
      */
     var sampleCount: Int { get set }
+    /**
+     A Boolean value that determines whether the drawable can be used for texture sampling or read/write operations.
+     */
+    var framebufferOnly: Bool { get set }
 }
 
 // MARK: - RenderStats
@@ -247,6 +251,29 @@ public struct EnvironmentProperties {
      A dictionary of `AREnvironmentProbeAnchor`'s and the identifiers of the anchors that they apply to.
      */
     var environmentAnchorsWithReatedAnchors: [AREnvironmentProbeAnchor: [UUID]] = [:]
+    /**
+     The direction the primary light source is pointing
+     */
+    var directionalLightDirection: float3 = float3(0, -1, 0)
+    /**
+     The Model View Projection matrix of the primary light
+     */
+    var directionalLightMVP: float4x4 = matrix_identity_float4x4
+}
+
+// MARK: - ShadowProperties
+/**
+ An object that stores information about the environment
+ */
+public struct ShadowProperties {
+    /**
+     Texture for the shadow depth map
+     */
+    var shadowMap: MTLTexture?
+    /**
+     The `directionalLightMVP` with flipped y/t coordinate and converted from the [-1, 1] range of clip coordinates to [0, 1] range. used for texture sampling the shadow map.
+     */
+    var shadowMVPTransformMatrix: float4x4 = matrix_identity_float4x4
 }
 
 // MARK: - Renderer
@@ -371,7 +398,7 @@ public class Renderer: NSObject {
                 }
             } else {
                 var newModules: [RenderModule] = []
-                for module in renderModules {
+                renderModules.forEach { module in
                     if !(module is TrackingPointsRenderModule) {
                         newModules.append(module)
                     }
@@ -522,11 +549,8 @@ public class Renderer: NSObject {
         
         loadMetal()
         
-        for module in renderModules {
-            if !module.isInitialized {
-                hasUninitializedModules = true
-                break
-            }
+        if let _ = renderModules.first(where: {$0.isInitialized == false}) {
+            hasUninitializedModules = true
         }
         
         initializeModules()
@@ -618,12 +642,49 @@ public class Renderer: NSObject {
         //
         
         // Add surface modules for rendering if necessary
-        if surfacesRenderModule == nil && showGuides && realAnchors.count > 0  {
+        if surfacesRenderModule == nil && realAnchors.count > 0  {
             
             let metalAllocator = MTKMeshBufferAllocator(device: device)
-            modelProvider?.registerAsset(GuideSurfaceAnchor.createModelAsset(inBundle: textureBundle, withAllocator: metalAllocator)!, forObjectType: GuideSurfaceAnchor.type, identifier: nil)
+            if showGuides {
+                modelProvider?.registerAsset(GuideSurfaceAnchor.createModelAsset(inBundle: textureBundle, withAllocator: metalAllocator)!, forObjectType: "AnySurface", identifier: nil)
+            } else {
+                // The base color is clear black. The alpha channel will be adjusted according to the shadow map.
+                modelProvider?.registerAsset(RealSurfaceAnchor.createModelAsset(withAllocator: metalAllocator, baseColor: float4(0, 0, 0, 0)), forObjectType: "AnySurface", identifier: nil)
+            }
+            
+            realAnchors.forEach { anAnchor in
+                // Keep track of the anchor bucketed by the RenderModule
+                // This will be used to load individual models per anchor.
+                if let existingGeometries = geometriesForRenderModule[SurfacesRenderModule.identifier] {
+                    var mutableExistingGeometries = existingGeometries
+                    mutableExistingGeometries.append(anAnchor)
+                    geometriesForRenderModule[SurfacesRenderModule.identifier] = mutableExistingGeometries
+                    anchorsRenderModule?.isInitialized = false
+                    hasUninitializedModules = true
+                } else {
+                    geometriesForRenderModule[SurfacesRenderModule.identifier] = [anAnchor]
+                }
+            }
             
             addModule(forModuelIdentifier: SurfacesRenderModule.identifier)
+            
+        } else if surfacesRenderModule != nil && (geometriesForRenderModule[SurfacesRenderModule.identifier]?.count ?? 0) != realAnchors.count {
+            
+            // Update the geometries as they get added or removed
+            geometriesForRenderModule[SurfacesRenderModule.identifier] = []
+            realAnchors.forEach { anAnchor in
+                // Keep track of the anchor bucketed by the RenderModule
+                // This will be used to load individual models per anchor.
+                if let existingGeometries = geometriesForRenderModule[SurfacesRenderModule.identifier] {
+                    var mutableExistingGeometries = existingGeometries
+                    mutableExistingGeometries.append(anAnchor)
+                    geometriesForRenderModule[SurfacesRenderModule.identifier] = mutableExistingGeometries
+                    anchorsRenderModule?.isInitialized = false
+                    hasUninitializedModules = true
+                } else {
+                    geometriesForRenderModule[SurfacesRenderModule.identifier] = [anAnchor]
+                }
+            }
             
         }
         
@@ -703,14 +764,6 @@ public class Renderer: NSObject {
         }
         
         //
-        // Environment Properties
-        //
-        
-        var environmentProperties = EnvironmentProperties()
-        environmentProperties.environmentAnchorsWithReatedAnchors = environmentAnchorsWithReatedAnchors
-        environmentProperties.lightEstimate = currentFrame.lightEstimate
-        
-        //
         // Camera Properties
         //
         
@@ -725,6 +778,29 @@ public class Renderer: NSObject {
         let cameraProperties = CameraProperties(orientation: orientation, viewportSize: viewportSize, viewportSizeDidChange: viewportSizeDidChange, position: cameraPosition, heading: currentCameraHeading ?? 0, currentFrame: currentFrameNumber, frame: currentFrame, frameRate: frameRate)
         
         //
+        // Environment Properties
+        //
+        
+        var environmentProperties = EnvironmentProperties()
+        environmentProperties.environmentAnchorsWithReatedAnchors = environmentAnchorsWithReatedAnchors
+        environmentProperties.lightEstimate = currentFrame.lightEstimate
+        
+        let depthProjectionMatrix = float4x4.makeOrtho(left: -10, right: 10, bottom: -10, top: 10, nearZ: -10, farZ: 10)
+        let depthViewMatrix = float4x4.makeLookAt(eyeX: 0, eyeY: 10, eyeZ: 0, centerX: 0, centerY: 0, centerZ: 0, upX: 0, upY: 1, upZ: 0)
+        environmentProperties.directionalLightMVP = depthProjectionMatrix * depthViewMatrix
+        
+        //
+        // Shadow Properties
+        //
+        
+        var shadowProperties = ShadowProperties()
+        shadowProperties.shadowMap = shadowMap
+        let shadowScale = matrix_identity_float4x4.scale(x: 0.5, y: -0.5, z: 1)
+        let shadowTranslate = matrix_identity_float4x4.translate(x: 0.5, y: 0.5, z: 0)
+        let shadowTransform = shadowTranslate * shadowScale
+        shadowProperties.shadowMVPTransformMatrix = shadowTransform
+        
+        //
         // Encode Cammand Buffer
         //
         
@@ -732,7 +808,7 @@ public class Renderer: NSObject {
         // pipeline (App, Metal, Drivers, GPU, etc)
         let _ = inFlightSemaphore.wait(timeout: DispatchTime.distantFuture)
         
-        // Create a new command buffer for each renderpass to the current drawable
+        // Create a new command buffer for each frame
         if let commandBuffer = commandQueue.makeCommandBuffer() {
             
             commandBuffer.label = "RenderCommandBuffer"
@@ -744,7 +820,7 @@ public class Renderer: NSObject {
             commandBuffer.addCompletedHandler{ [weak self] commandBuffer in
                 if let strongSelf = self {
                     strongSelf.inFlightSemaphore.signal()
-                    for module in strongSelf.renderModules {
+                    strongSelf.renderModules.forEach { module in
                         module.frameEncodingComplete()
                     }
                 }
@@ -753,45 +829,56 @@ public class Renderer: NSObject {
             uniformBufferIndex = (uniformBufferIndex + 1) % Constants.maxBuffersInFlight
             
             // Update Buffer States
-            for module in renderModules {
+            renderModules.forEach { module in
                 if module.isInitialized {
                     module.updateBufferState(withBufferIndex: uniformBufferIndex)
                 }
             }
             
             // Update Buffers
-            for module in renderModules {
+            renderModules.forEach { module in
                 if module.isInitialized {
-                    module.updateBuffers(withAugmentedAnchors: augmentedAnchors, cameraProperties: cameraProperties, environmentProperties: environmentProperties)
-                    module.updateBuffers(withRealAnchors: realAnchors, cameraProperties: cameraProperties, environmentProperties: environmentProperties)
-                    module.updateBuffers(withTrackers: trackers, targets: gazeTargets, cameraProperties: cameraProperties, environmentProperties: environmentProperties)
-                    module.updateBuffers(withPaths: paths, cameraProperties: cameraProperties, environmentProperties: environmentProperties)
+                    module.updateBuffers(withAugmentedAnchors: augmentedAnchors, cameraProperties: cameraProperties, environmentProperties: environmentProperties, shadowProperties: shadowProperties)
+                    module.updateBuffers(withRealAnchors: realAnchors, cameraProperties: cameraProperties, environmentProperties: environmentProperties, shadowProperties: shadowProperties)
+                    module.updateBuffers(withTrackers: trackers, targets: gazeTargets, cameraProperties: cameraProperties, environmentProperties: environmentProperties, shadowProperties: shadowProperties)
+                    module.updateBuffers(withPaths: paths, cameraProperties: cameraProperties, environmentProperties: environmentProperties, shadowProperties: shadowProperties)
                 }
             }
             
-            // Getting the currentDrawable from the RenderDestinationProvider should be called as
+            //
+            // Setup render passes
+            //
+            
+            // Shadow Map Pass
+            shadowRenderPass?.prepareRenderCommandEncoder(withCommandBuffer: commandBuffer)
+            if let shadowRenderEncoder = shadowRenderPass?.renderCommandEncoder {
+                drawShadowPass(with: shadowRenderEncoder)
+            } else {
+                print("WARNING: Could not create MTLRenderCommandEncoder for the shadow pass. Aborting.")
+            }
+            
+            // Getting the currentRenderPassDescriptor from the RenderDestinationProvider should be called as
             // close as possible to presenting it with the command buffer. The currentDrawable is
             // a scarce resource and holding on to it too long may affect performance
-            if let renderPassDescriptor = renderDestination.currentRenderPassDescriptor, let currentDrawable = renderDestination.currentDrawable, let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) {
-                
-                renderEncoder.label = "RenderEncoder"
-                
-                // Draw
-                for module in renderModules {
-                    if module.isInitialized {
-                        module.draw(withRenderEncoder: renderEncoder, sharedModules: sharedModulesForModule[module.moduleIdentifier])
-                    }
+            if let mainRenderPassDescriptor = renderDestination.currentRenderPassDescriptor, let currentDrawable = renderDestination.currentDrawable {
+
+                mainRenderPass?.renderPassDescriptor = mainRenderPassDescriptor
+                mainRenderPass?.prepareRenderCommandEncoder(withCommandBuffer: commandBuffer)
+
+                if let renderEncoder = mainRenderPass?.renderCommandEncoder {
+                    drawMainPass(with: renderEncoder)
+                } else {
+                    print("WARNING: Could not create MTLRenderCommandEncoder. Aborting draw pass.")
                 }
-                
-                // We're done encoding commands
-                renderEncoder.endEncoding()
-                
+
                 // Schedule a present once the framebuffer is complete using the current drawable
                 commandBuffer.present(currentDrawable)
+
             }
             
             // Finalize rendering here & push the command buffer to the GPU
             commandBuffer.commit()
+            
         }
         
         // Update viewportSizeDidChange state
@@ -804,7 +891,7 @@ public class Renderer: NSObject {
         }
         monitor?.update(renderErrors: errors)
         
-        let stats = RenderStats(arKitAnchorCount: currentFrame.anchors.count, numAnchors: anchorsRenderModule?.anchorInstanceCount ?? 0, numPlanes: surfacesRenderModule?.surfaceInstanceCount ?? 0, numTrackingPoints: trackingPointRenderModule?.trackingPointCount ?? 0, numTrackers: unanchoredRenderModule?.trackerInstanceCount ?? 0, numTargets: unanchoredRenderModule?.targetInstanceCount ?? 0, numPathSegments: pathsRenderModule?.pathSegmentInstanceCount ?? 0)
+        let stats = RenderStats(arKitAnchorCount: currentFrame.anchors.count, numAnchors: anchorsRenderModule?.anchorInstanceCount ?? 0, numPlanes: surfacesRenderModule?.instanceCount ?? 0, numTrackingPoints: trackingPointRenderModule?.trackingPointCount ?? 0, numTrackers: unanchoredRenderModule?.trackerInstanceCount ?? 0, numTargets: unanchoredRenderModule?.targetInstanceCount ?? 0, numPathSegments: pathsRenderModule?.pathSegmentInstanceCount ?? 0)
         monitor?.update(renderStats: stats)
         
     }
@@ -1071,6 +1158,13 @@ public class Renderer: NSObject {
     fileprivate var defaultLibrary: MTLLibrary?
     fileprivate var commandQueue: MTLCommandQueue?
     
+    // Main Pass
+    fileprivate var mainRenderPass: RenderPass?
+    
+    // Shadow Render Pass
+    fileprivate var shadowMap: MTLTexture?
+    fileprivate var shadowRenderPass: RenderPass?
+    
     // Keeping track of objects to render
     fileprivate var geometriesForRenderModule = [String: [AKGeometricEntity]]()
     fileprivate var augmentedAnchors = [AKAugmentedAnchor]()
@@ -1137,6 +1231,82 @@ public class Renderer: NSObject {
         }()
         
         commandQueue = device.makeCommandQueue()
+        
+        //
+        // Setup Shadow Pass
+        //
+        
+        // Create depth texture for shadow pass
+        let shadowTextureDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .depth32Float, width: 2048, height: 2048, mipmapped: false)
+        shadowTextureDesc.resourceOptions = .storageModePrivate
+        shadowTextureDesc.usage = [.renderTarget, .shaderRead]
+        shadowMap = device.makeTexture(descriptor: shadowTextureDesc)
+        shadowMap?.label = "Shadow Map"
+        
+        // Create shadow render pass descriptor
+        let shadowRenderPassDescriptor = MTLRenderPassDescriptor()
+        shadowRenderPassDescriptor.depthAttachment.texture = shadowMap
+        shadowRenderPassDescriptor.depthAttachment.loadAction = .clear
+        shadowRenderPassDescriptor.depthAttachment.storeAction = .store
+        shadowRenderPassDescriptor.depthAttachment.clearDepth = 1
+        
+        // Create shadow render pass
+        shadowRenderPass = RenderPass(withDevice: device, renderPassDescriptor: shadowRenderPassDescriptor)
+        shadowRenderPass?.name = "Shadow Render Pass"
+        shadowRenderPass?.usesGeomentry = true
+        shadowRenderPass?.usesLighting = false
+        shadowRenderPass?.usesEffects = true
+        shadowRenderPass?.usesEnvironment = true
+        shadowRenderPass?.usesCameraOutput = false
+        shadowRenderPass?.usesSharedBuffer = true
+        shadowRenderPass?.usesShadows = false // the shadow pass does not use the results of the shadow pass (obviously)
+        shadowRenderPass?.vertexFunctionMergePolicy = .preferTemplate
+        shadowRenderPass?.fragmentFunctionMergePolicy = .preferTemplate
+        shadowRenderPass?.depthBias = RenderPass.DepthBias(bias: 0.015, slopeScale: 7, clamp: 0.02)
+//        #if REVERSE_DEPTH
+//        shadowRenderPass?.depthCompareFunction = .greaterEqual
+//        #else
+        shadowRenderPass?.depthCompareFunction = .lessEqual
+        shadowRenderPass?.isDepthWriteEnabled = true
+        
+        // Create render pipeline descriptor for shadow pass
+        let shadowVertexFunction = defaultLibrary?.makeFunction(name: "shadowVertexShader")
+        let shadowRenderPipelineDescriptor = MTLRenderPipelineDescriptor()
+        shadowRenderPipelineDescriptor.label = "Shadow Gen Pass"
+        shadowRenderPipelineDescriptor.vertexFunction = shadowVertexFunction
+        shadowRenderPipelineDescriptor.depthAttachmentPixelFormat = .depth32Float
+        shadowRenderPass?.templateRenderPipelineDescriptor = shadowRenderPipelineDescriptor
+        shadowRenderPass?.geometryFilterFunction = { geometry in
+            return geometry?.generatesShadows == true
+        }
+        
+        //
+        // Setup Main Pass
+        //
+        
+        // Create main render pass
+        mainRenderPass = RenderPass(withDevice: device)
+        mainRenderPass?.name = "Main Render Pass"
+        mainRenderPass?.usesGeomentry = true
+        mainRenderPass?.usesLighting = true
+        mainRenderPass?.usesEffects = true
+        mainRenderPass?.usesEnvironment = true
+        mainRenderPass?.usesCameraOutput = true
+        mainRenderPass?.usesSharedBuffer = true
+        mainRenderPass?.usesShadows = true
+        mainRenderPass?.depthCompareFunction = .less
+        mainRenderPass?.isDepthWriteEnabled = true
+        
+        // Create render pipeline descriptor for main pass
+        let mainRenderPipelineDescriptor = MTLRenderPipelineDescriptor()
+        mainRenderPipelineDescriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
+        mainRenderPipelineDescriptor.colorAttachments[0].isBlendingEnabled = true
+        mainRenderPipelineDescriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
+        mainRenderPipelineDescriptor.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
+        mainRenderPipelineDescriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
+        mainRenderPipelineDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
+        mainRenderPipelineDescriptor.sampleCount = renderDestination.sampleCount
+        mainRenderPass?.templateRenderPipelineDescriptor = mainRenderPipelineDescriptor
         
     }
     
@@ -1207,7 +1377,7 @@ public class Renderer: NSObject {
         var sharedModules: [SharedRenderModule] = []
         var updatedRenderModules: [RenderModule] = []
         
-        for module in renderModules {
+        renderModules.forEach { module in
             
             updatedRenderModules.append(module)
             
@@ -1227,7 +1397,7 @@ public class Renderer: NSObject {
         renderModules = updatedRenderModules.sorted(by: {$0.renderLayer < $1.renderLayer})
         
         // Setup the shared modules map
-        for module in renderModules {
+        renderModules.forEach { module in
             if let sharedModuleIdentifiers = module.sharedModuleIdentifiers, sharedModuleIdentifiers.count > 0 {
                 let foundSharedModules = sharedModules.filter({sharedModuleIdentifiers.contains($0.moduleIdentifier)})
                 sharedModulesForModule[module.moduleIdentifier] = foundSharedModules
@@ -1246,7 +1416,7 @@ public class Renderer: NSObject {
         
         gatherModules()
         
-        for module in renderModules {
+        renderModules.forEach { module in
             
             if !module.isInitialized {
                 // Initialize the module
@@ -1256,7 +1426,8 @@ public class Renderer: NSObject {
                 let geometricEntities = geometriesForRenderModule[module.moduleIdentifier] ?? []
                 module.loadAssets(forGeometricEntities: geometricEntities, fromModelProvider: modelProvider, textureLoader: textureLoader, completion: { [weak self] in
                     if let defaultLibrary = self?.defaultLibrary, let renderDestination = self?.renderDestination {
-                        module.loadPipeline(withMetalLibrary: defaultLibrary, renderDestination: renderDestination, textureBundle: textureBundle)
+                        shadowRenderPass?.drawCallGroups.append(contentsOf: module.loadPipeline(withMetalLibrary: defaultLibrary, renderDestination: renderDestination, textureBundle: textureBundle, forRenderPass: shadowRenderPass))
+                        mainRenderPass?.drawCallGroups.append(contentsOf: module.loadPipeline(withMetalLibrary: defaultLibrary, renderDestination: renderDestination, textureBundle: textureBundle, forRenderPass: mainRenderPass))
                         self?.moduleErrors.append(contentsOf: module.errors)
                         if let moduleErrors = self?.moduleErrors {
                             let seriousErrors: [AKError] =  {
@@ -1299,6 +1470,37 @@ public class Renderer: NSObject {
         default:
             return nil
         }
+    }
+    
+    // MARK: Shadow Pass
+    
+    /// Draw to the depth texture from the directional lights point of view to generate the shadow map
+    func drawShadowPass(with commandEncoder: MTLRenderCommandEncoder) {
+        
+        // Draw
+        renderModules.forEach { module in
+            if let shadowRenderPass = shadowRenderPass, module.isInitialized {
+                 module.draw(withRenderPass: shadowRenderPass, sharedModules: sharedModulesForModule[module.moduleIdentifier])
+            }
+        }
+        
+        commandEncoder.endEncoding()
+    }
+    
+    // MARK: Main Pass
+    
+    func drawMainPass(with commandEncoder: MTLRenderCommandEncoder) {
+        
+        // Draw
+        renderModules.forEach { module in
+            if let mainRenderPass = mainRenderPass, module.isInitialized {
+                module.draw(withRenderPass: mainRenderPass, sharedModules: sharedModulesForModule[module.moduleIdentifier])
+            }
+        }
+        
+        // We're done encoding commands
+        commandEncoder.endEncoding()
+        
     }
     
 }
@@ -1486,6 +1688,7 @@ fileprivate class InterpolatingAugmentedAnchor: AKAugmentedAnchor {
     var identifier: UUID?
     var effects: [AnyEffect<Any>]?
     public var shaderPreference: ShaderPreference = .pbr
+    public var generatesShadows: Bool = true
     var arAnchor: ARAnchor?
 
     init(withAKAugmentedAnchor akAugmentedAnchor: AKAugmentedAnchor) {

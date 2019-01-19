@@ -344,7 +344,7 @@ class ModelIOTools {
                 
                 // Get the local transform for this node
                 let myLocalTransform: matrix_float4x4 = {
-                    if let transform = object.transform {
+                    if let transform = object.transform, !transform.matrix.isZero() {
                         return transform.matrix
                     } else {
                         return matrix_identity_float4x4
@@ -497,7 +497,7 @@ class ModelIOTools {
                 var material = MaterialUniforms()
                 if let mdlMaterial = submesh.material {
                     
-                    let baseColorProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .baseColor, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloat3Value)
+                    let baseColorProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .baseColor, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloat4Value)
                     let metallicProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .metallic, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloatValue)
                     let roughnessProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .roughness, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloatValue)
                     let ambientOcclusionProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .ambientOcclusion, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloatValue)
@@ -514,10 +514,9 @@ class ModelIOTools {
                     //                        let opacityProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .opacity, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloatValue)
                     
                     // Encode the uniform values
-                    let baseColor = baseColorProperty.uniform ?? float3(1.0, 1.0, 1.0)
-                    material.baseColor = float4(baseColor.x, baseColor.y, baseColor.z, 1.0)
+                    material.baseColor = baseColorProperty.uniform ?? float4(1.0, 1.0, 1.0, 1.0)
                     material.metalness = metallicProperty.uniform ?? 0.0
-                    material.roughness = roughnessProperty.uniform ?? 1.0
+                    material.roughness = roughnessProperty.uniform ?? 1.0 
                     material.ambientOcclusion = ambientOcclusionProperty.uniform ?? 1.0
                     material.emissionColor = emissionProperty.uniform ?? float3(0, 0, 0)
                     material.subsurface = subsurfaceProperty.uniform ?? 0.0
@@ -654,7 +653,7 @@ class ModelIOTools {
                 }
             } else {
                 switch property.type {
-                case .float, .float3:
+                case .float, .float3, .float4:
                     result.uniform = getPropertyValue(property)
                     return result
                 case .string, .URL:
@@ -881,6 +880,11 @@ class ModelIOTools {
             result += "/"
         }
         return nil
+    }
+    
+    //  Get a float4 property from an MDLMaterialProperty
+    private static func getMaterialFloat4Value(_ materialProperty: MDLMaterialProperty) -> float4 {
+        return materialProperty.float4Value
     }
 
     //  Get a float3 property from an MDLMaterialProperty

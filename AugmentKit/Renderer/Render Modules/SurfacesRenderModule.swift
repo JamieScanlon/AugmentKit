@@ -100,6 +100,7 @@ class SurfacesRenderModule: RenderModule {
         }
         
         textureLoader = aTextureLoader
+        geometricEntities.append(contentsOf: theGeometricEntities)
         
         //
         // Create and load our models
@@ -118,15 +119,13 @@ class SurfacesRenderModule: RenderModule {
                 return
             }
             
-            self?.modelAssetsForAnchorsByUUID[generalUUID] = asset
+            self?.generalModelAsset = asset
             
             if numModels == 0 {
                 completion()
             }
             
         }
-        
-        geometricEntities.append(contentsOf: theGeometricEntities)
         
         // Load the per-geometry models
         for geometricEntity in geometricEntities {
@@ -146,6 +145,9 @@ class SurfacesRenderModule: RenderModule {
                     self?.shaderPreferenceForAnchorsByUUID[identifier] = geometricEntity.shaderPreference
                     
                 }
+            } else if let generalModelAsset = generalModelAsset {
+                // One of the entities does not have an identifier so register the general asset
+                modelAssetsForAnchorsByUUID[generalUUID] = generalModelAsset
             }
             
             numModels -= 1
@@ -168,7 +170,7 @@ class SurfacesRenderModule: RenderModule {
         }
         
         // Make sure there is at least one general purpose model
-        guard modelAssetsForAnchorsByUUID[generalUUID] != nil else {
+        guard generalModelAsset != nil else {
             print("Warning (AnchorsRenderModule) - Anchor Model was not found. Aborting the render phase.")
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeModelNotFound, userInfo: nil)
             let newError = AKError.warning(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
@@ -613,6 +615,7 @@ class SurfacesRenderModule: RenderModule {
     private var generalUUID = UUID()
     private var sortedUUIDs = [UUID]()
     private var modelAssetsForAnchorsByUUID = [UUID: MDLAsset]()
+    private var generalModelAsset: MDLAsset?
     private var shaderPreferenceForAnchorsByUUID = [UUID: ShaderPreference]()
     private var surfaceUniformBuffer: MTLBuffer?
     private var materialUniformBuffer: MTLBuffer?

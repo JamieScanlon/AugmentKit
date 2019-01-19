@@ -74,6 +74,13 @@ class CameraPlaneRenderModule: RenderModule {
             return []
         }
         
+        // Check to make sure this geometry should be rendered in this render pass
+        if let geometryFilterFunction = renderPass?.geometryFilterFunction {
+            guard geometryFilterFunction(nil) else {
+                return []
+            }
+        }
+        
         guard let capturedImageVertexTransform = metalLibrary.makeFunction(name: "capturedImageVertexTransform") else {
             print("Serious Error - failed to create the capturedImageVertexTransform function")
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeShaderInitializationFailed, userInfo: nil)

@@ -105,6 +105,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         }
         
         textureLoader = aTextureLoader
+        geometricEntities.append(contentsOf: theGeometricEntities)
         
         //
         // Create and load our models
@@ -130,8 +131,6 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             }
             
         }
-        
-        geometricEntities.append(contentsOf: theGeometricEntities)
         
         // Load the per-geometry models
         for geometricEntity in theGeometricEntities {
@@ -182,7 +181,11 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         
         var drawCallGroups = [DrawCallGroup]()
         
-        for item in modelAssetsForAnchorsByUUID {
+        let filteredGeometryUUIDs = geometricEntities.compactMap({$0.identifier})
+        let filteredModelsByUUID = modelAssetsForAnchorsByUUID.filter { (uuid, asset) in
+            filteredGeometryUUIDs.contains(uuid)
+        }
+        for item in filteredModelsByUUID {
             
             // Check to make sure this geometry should be rendered in this render pass
             if let geometricEntity = geometricEntities.first(where: {$0.identifier == item.key}), let geometryFilterFunction = renderPass?.geometryFilterFunction {

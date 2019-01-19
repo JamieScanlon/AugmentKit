@@ -125,7 +125,7 @@ class RenderPass {
     var isDepthWriteEnabledMergePolicy = MergePolicy.preferInstance
     
     // Allows the render pass to filter out certain geometries for rendering. Return `false` in order to skip rendering for the given `AKGeometricEntity`
-    var geometryFilterFunction: ((AKGeometricEntity) -> Bool)?
+    var geometryFilterFunction: ((AKGeometricEntity?) -> Bool)?
     
     // The following are used to create DrawCall objects
     var cullMode: MTLCullMode = .back

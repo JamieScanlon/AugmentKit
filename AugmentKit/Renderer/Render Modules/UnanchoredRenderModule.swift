@@ -100,6 +100,7 @@ class UnanchoredRenderModule: RenderModule {
         }
         
         textureLoader = aTextureLoader
+        geometricEntities.append(contentsOf: theGeometricEntities)
         
         //
         // Create and load our models
@@ -107,6 +108,7 @@ class UnanchoredRenderModule: RenderModule {
             
         var hasLoadedTrackerAsset = false
         var hasLoadedTargetAsset = false
+        var numModels = theGeometricEntities.count
         
         // TODO: Add ability to load multiple models by identifier
         modelProvider.loadAsset(forObjectType: UserTracker.type, identifier: nil) { [weak self] asset in
@@ -127,7 +129,7 @@ class UnanchoredRenderModule: RenderModule {
             
             // TODO: Figure out a way to load a new model per tracker.
             
-            if hasLoadedTrackerAsset && hasLoadedTargetAsset {
+            if hasLoadedTrackerAsset && hasLoadedTargetAsset && numModels <= 0 {
                 completion()
             }
             
@@ -152,13 +154,37 @@ class UnanchoredRenderModule: RenderModule {
             
             // TODO: Figure out a way to load a new model per target.
             
-            if hasLoadedTrackerAsset && hasLoadedTargetAsset {
+            if hasLoadedTrackerAsset && hasLoadedTargetAsset && numModels <= 0 {
                 completion()
             }
             
         }
         
-        geometricEntities.append(contentsOf: theGeometricEntities)
+        // Load the per-geometry models
+        for geometricEntity in theGeometricEntities {
+            
+            if let identifier = geometricEntity.identifier {
+                modelProvider.loadAsset(forObjectType:  "AnyUnanchored", identifier: identifier) { [weak self] asset in
+                    
+                    guard let asset = asset else {
+                        print("Warning (AnchorsRenderModule) - Failed to get a MDLAsset for type \"AnyAnchor\") with identifier \(identifier) from the modelProvider. Aborting the render phase.")
+                        let newError = AKError.warning(.modelError(.modelNotFound(ModelErrorInfo(type:  "AnyAnchor", identifier: identifier))))
+                        recordNewError(newError)
+                        completion()
+                        return
+                    }
+                    
+                    self?.modelAssetsByUUID[identifier] = asset
+                    self?.shaderPreferenceByUUID[identifier] = geometricEntity.shaderPreference
+                }
+            }
+            
+            numModels -= 1
+            if hasLoadedTrackerAsset && hasLoadedTargetAsset && numModels <= 0 {
+                completion()
+            }
+            
+        }
         
     }
     
@@ -173,8 +199,11 @@ class UnanchoredRenderModule: RenderModule {
         }
         
         var drawCallGroups = [DrawCallGroup]()
-        
-        for item in modelAssetsByUUID {
+        let filteredGeometryUUIDs = geometricEntities.compactMap({$0.identifier})
+        let filteredModelsByUUID = modelAssetsByUUID.filter { (uuid, asset) in
+            filteredGeometryUUIDs.contains(uuid)
+        }
+        for item in filteredModelsByUUID {
             
             // Check to make sure this geometry should be rendered in this render pass
             if let geometricEntity = geometricEntities.first(where: {$0.identifier == item.key}), let geometryFilterFunction = renderPass?.geometryFilterFunction {

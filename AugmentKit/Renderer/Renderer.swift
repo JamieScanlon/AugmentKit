@@ -798,7 +798,7 @@ public class Renderer: NSObject {
         let shadowScale = matrix_identity_float4x4.scale(x: 0.5, y: -0.5, z: 1)
         let shadowTranslate = matrix_identity_float4x4.translate(x: 0.5, y: 0.5, z: 0)
         let shadowTransform = shadowTranslate * shadowScale
-        shadowProperties.shadowMVPTransformMatrix = shadowTransform * environmentProperties.directionalLightMVP
+        shadowProperties.shadowMVPTransformMatrix = shadowTransform
         
         //
         // Encode Cammand Buffer

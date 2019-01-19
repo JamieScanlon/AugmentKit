@@ -92,7 +92,8 @@ vertex SurfaceVertexOutput surfaceGeometryVertexTransform(SurfaceVertex in [[sta
     
     // Shadow Coord
     EnvironmentUniforms environmentUniform = environmentUniforms[iid];
-    out.shadowCoord = (environmentUniform.shadowMVPTransformMatrix * out.position).xyz;
+    float4x4 directionalLightMVP = environmentUniform.directionalLightMVP;
+    out.shadowCoord = (environmentUniform.shadowMVPTransformMatrix * directionalLightMVP * modelMatrix * position).xyz;
     
     out.iid = iid;
     

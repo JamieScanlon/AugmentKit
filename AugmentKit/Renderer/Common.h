@@ -40,5 +40,9 @@
 float sqr(float a);
 vector_float4 srgbToLinear(vector_float4 c);
 vector_float4 linearToSrgba(vector_float4 c);
+float invert(float m);
+matrix_float2x2 invert2(matrix_float2x2 m);
+matrix_float3x3 invert3(matrix_float3x3 m);
+matrix_float4x4 invert4(matrix_float4x4 m);
 
 #endif /* Common_h */

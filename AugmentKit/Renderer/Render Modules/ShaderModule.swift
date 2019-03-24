@@ -31,9 +31,9 @@ import AugmentKitShader
 import Metal
 import MetalKit
 
-// MARK: - RenderModule protocol
+// MARK: - ShaderModule protocol
 
-protocol RenderModule {
+protocol ShaderModule {
     
     //
     // State
@@ -41,19 +41,50 @@ protocol RenderModule {
     
     var moduleIdentifier: String { get }
     var isInitialized: Bool { get }
-    // Lower layer modules are rendered first
+    /// Lower layer modules are executed first. By convention, modules that to not participate directly in rendering have negavive values. Also by convention, the camera plane is layer 0, 1 - 9 and Int.max are reseved for the renderer.
     var renderLayer: Int { get }
-    // An array of shared module identifiers that it this module will rely on in the draw phase.
-    var sharedModuleIdentifiers: [String]? { get }
-    var renderDistance: Double { get set }
     var errors: [AKError] { get set }
     
     //
     // Bootstrap
     //
     
-    // Initialize the buffers that will me managed and updated in this module.
-    func initializeBuffers(withDevice: MTLDevice, maxInFlightBuffers: Int)
+    /// Initialize the buffers that will me managed and updated in this module.
+    func initializeBuffers(withDevice: MTLDevice, maxInFlightBuffers: Int, maxInstances: Int)
+    
+    //
+    // Per Frame Updates
+    //
+    
+    /// The buffer index is the index into the ring on in flight buffers
+    func updateBufferState(withBufferIndex: Int)
+    
+    /// Called when Metal and the GPU has fully finished proccssing the commands we're encoding this frame. This indicates when the dynamic buffers, that we're writing to this frame, will no longer be needed by Metal and the GPU. This gets called per frame.
+    func frameEncodingComplete()
+    
+    //
+    // Util
+    //
+    
+    func recordNewError(_ akError: AKError)
+    
+}
+
+// MARK: - RenderModule protocol
+
+protocol RenderModule: ShaderModule {
+    
+    //
+    // State
+    //
+    
+    var renderDistance: Double { get set }
+    /// An array of shared module identifiers that it this module will rely on in the draw phase.
+    var sharedModuleIdentifiers: [String]? { get }
+    
+    //
+    // Bootstrap
+    //
     
     // Load the data from the Model Provider.
     func loadAssets(forGeometricEntities: [AKGeometricEntity], fromModelProvider: ModelProvider?, textureLoader: MTKTextureLoader, completion: (() -> Void))
@@ -65,35 +96,14 @@ protocol RenderModule {
     // Per Frame Updates
     //
     
-    // The buffer index is the index into the ring on in flight buffers
-    func updateBufferState(withBufferIndex: Int)
-    
-    // Update the buffer data for augmented anchors
-    func updateBuffers(withAugmentedAnchors: [AKAugmentedAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties)
-    
-    // Update the buffer data for real anchors
-    func updateBuffers(withRealAnchors: [AKRealAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties)
-    
-    // Update the buffer data for trackers
-    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties)
-    
-    // Update the buffer data for trackers
-    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties)
+    // Update the buffer data for the geometric entities
+    func updateBuffers(withAllGeometricEntities: [AKGeometricEntity], moduleGeometricEntities: [AKGeometricEntity], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, forRenderPass renderPass: RenderPass)
     
     // Update the render encoder for the draw call. At the end of this method it is expected that
     // drawPrimatives or drawIndexedPrimatives is called.
     func draw(withRenderPass renderPass: RenderPass, sharedModules: [SharedRenderModule]?)
     
-    // Called when Metal and the GPU has fully finished proccssing the commands we're encoding
-    // this frame. This indicates when the dynamic buffers, that we're writing to this frame,
-    // will no longer be needed by Metal and the GPU. This gets called per frame.
-    func frameEncodingComplete()
     
-    //
-    // Util
-    //
-    
-    func recordNewError(_ akError: AKError)
     
 }
 
@@ -432,12 +442,29 @@ struct SphereLineIntersection {
 
 // MARK: - SharedRenderModule protocol
 
-// A shared render module is a render module responsible for setting up and updating
-// shared buffers. Although it does have a draw() method, typically this method does
-// not do anything. Instead, the module that uses this shared module is responsible
-// for encoding the shared buffer and issuing the draw call
+/// A shared render module is a render module responsible for setting up and updating shared buffers. Although it does have a draw() method, typically this method does not do anything. Instead, the module that uses this shared module is responsible for encoding the shared buffer and issuing the draw call
 protocol SharedRenderModule: RenderModule {
     var sharedUniformBuffer: MTLBuffer? { get }
     var sharedUniformBufferOffset: Int { get }
     var sharedUniformBufferAddress: UnsafeMutableRawPointer? { get }
+}
+
+// MARK: - ComputeModule
+
+protocol ComputeModule: ShaderModule {
+    
+    //
+    // Bootstrap
+    //
+    
+    /// After this function is called, The Compute Pass Desciptors, Textures, Buffers, Compute Pipeline State Descriptors should all be set up.
+    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, forComputePass computePass: ComputePass?) -> [ThreadGroup]
+    
+    //
+    // Per Frame Updates
+    //
+    
+    // Update and dispatch the command encoder. At the end of this method it is expected that
+    // drawPrimatives or `dispatchThreads` or dispatchThreadgroups` is called.
+    func dispatch(withComputePass computePass: ComputePass)
 }

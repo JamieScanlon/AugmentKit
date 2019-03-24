@@ -60,7 +60,7 @@ class PathsRenderModule: RenderModule {
     // Indexed by path
     private(set) var anchorIdentifiers = [Int: [UUID]]()
     
-    func initializeBuffers(withDevice aDevice: MTLDevice, maxInFlightBuffers: Int) {
+    func initializeBuffers(withDevice aDevice: MTLDevice, maxInFlightBuffers: Int, maxInstances: Int) {
         
         device = aDevice
         
@@ -162,24 +162,16 @@ class PathsRenderModule: RenderModule {
             return []
         }
         
-        pathMeshGPUData = ModelIOTools.meshGPUData(from: pathSegmentAsset, device: device, textureBundle: textureBundle, vertexDescriptor: RenderUtilities.createStandardVertexDescriptor())
+        let meshGPUData = ModelIOTools.meshGPUData(from: pathSegmentAsset, device: device, textureBundle: textureBundle, vertexDescriptor: RenderUtilities.createStandardVertexDescriptor())
         
-        guard let pathMeshGPUData = pathMeshGPUData else {
-            print("Serious Error - ERROR: No meshGPUData for target found when trying to load the pipeline.")
-            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeIntermediateMeshDataNotFound, userInfo: nil)
-            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-            recordNewError(newError)
-            return []
-        }
-        
-        if pathMeshGPUData.drawData.count > 1 {
+        if meshGPUData.drawData.count > 1 {
             print("WARNING: More than one mesh was found. Currently only one mesh per anchor is supported.")
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeModelNotSupported, userInfo: nil)
             let newError = AKError.warning(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
         }
         
-        let myVertexDescriptor = pathMeshGPUData.vertexDescriptor
+        let myVertexDescriptor = meshGPUData.vertexDescriptor
         
         guard let pathVertexDescriptor = myVertexDescriptor else {
             print("Serious Error - Failed to create a MetalKit vertex descriptor from ModelIO.")
@@ -210,7 +202,7 @@ class PathsRenderModule: RenderModule {
 //            }
 //        }
         
-        for (_, _) in pathMeshGPUData.drawData.enumerated() {
+        for drawData in meshGPUData.drawData {
             
             let pipelineStateDescriptor: MTLRenderPipelineDescriptor = {
                 if let renderPass = renderPass, let aPipelineDescriptor = renderPass.renderPipelineDescriptor(withVertexDescriptor: pathVertexDescriptor, vertexFunction: pathVertexShader, fragmentFunction: pathFragmentShader) {
@@ -230,7 +222,7 @@ class PathsRenderModule: RenderModule {
                     return aPipelineDescriptor
                 }
             }()
-            if let drawCall = renderPass?.drawCall(withRenderPipelineDescriptor: pipelineStateDescriptor, depthStencilDescriptor: pathDepthStateDescriptor) {
+            if let drawCall = renderPass?.drawCall(withRenderPipelineDescriptor: pipelineStateDescriptor, depthStencilDescriptor: pathDepthStateDescriptor, drawData: drawData) {
                 drawCalls.append(drawCall)
             }
             
@@ -261,19 +253,15 @@ class PathsRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withAugmentedAnchors anchors: [AKAugmentedAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
-        // Do Nothing
-    }
-    
-    func updateBuffers(withRealAnchors: [AKRealAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
-        // Do Nothing
-    }
-    
-    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
-        // Do Nothing
-    }
-    
-    func updateBuffers(withPaths paths: [AKPath], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
+    func updateBuffers(withAllGeometricEntities: [AKGeometricEntity], moduleGeometricEntities: [AKGeometricEntity], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, forRenderPass renderPass: RenderPass) {
+        
+        let paths: [AKPath] = moduleGeometricEntities.compactMap({
+            if let anPath = $0 as? AKPath {
+                return anPath
+            } else {
+                return nil
+            }
+        })
         
         // Update the anchor uniform buffer with transforms of the current frame's anchors
         pathSegmentInstanceCount = 0
@@ -321,7 +309,7 @@ class PathsRenderModule: RenderModule {
                 
                 // Ignore all rotation within anchor.worldLocation.transform.
                 // When dealing with paths, the anchors are considered points in space so rotation has no meaning.
-                var modelMatrix = matrix_identity_float4x4.translate(x: anchorPosition.x, y: anchorPosition.y, z: anchorPosition.z)
+                let locationMatrix = matrix_identity_float4x4.translate(x: anchorPosition.x, y: anchorPosition.y, z: anchorPosition.z)
                 
                 // Flip Z axis to convert geometry from right handed to left handed
                 var coordinateSpaceTransform = matrix_identity_float4x4
@@ -362,11 +350,16 @@ class PathsRenderModule: RenderModule {
                 coordinateSpaceTransform = coordinateSpaceTransform.scale(x: 1, y: Float(magDelta), z: 1)
                 
                 // Create the final transform matrix
-                modelMatrix = modelMatrix * coordinateSpaceTransform
+                let modelMatrix = locationMatrix * coordinateSpaceTransform
                 
                 // Paths use the same uniform struct as anchors
                 let pathSegmentIndex = pathSegmentInstanceCount - 1
                 let pathUniforms = pathUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: pathSegmentIndex)
+                pathUniforms?.pointee.hasHeading = 0
+                pathUniforms?.pointee.headingType = 0
+                pathUniforms?.pointee.headingTransform = matrix_identity_float4x4
+                pathUniforms?.pointee.locationTransform = locationMatrix
+                pathUniforms?.pointee.worldTransform =  matrix_identity_float4x4
                 pathUniforms?.pointee.modelMatrix = modelMatrix
                 pathUniforms?.pointee.normalMatrix = modelMatrix.normalMatrix
                 
@@ -453,14 +446,6 @@ class PathsRenderModule: RenderModule {
         // Set render command encoder state
         renderEncoder.setCullMode(.back)
         
-        guard let meshGPUData = pathMeshGPUData else {
-            print("Error: meshGPUData not available a draw time. Aborting")
-            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeIntermediateMeshDataNotAvailable, userInfo: nil)
-            let newError = AKError.recoverableError(.renderPipelineError(.drawAborted(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-            recordNewError(newError)
-            return
-        }
-        
         if let sharedBuffer = sharedModules?.first(where: {$0.moduleIdentifier == SharedBuffersRenderModule.identifier}) {
             
             renderEncoder.pushDebugGroup("Draw Shared Uniforms")
@@ -491,14 +476,18 @@ class PathsRenderModule: RenderModule {
         
         for drawCallGroup in renderPass.drawCallGroups.filter({ $0.moduleIdentifier == moduleIdentifier }) {
             
-            for (index, drawCall) in drawCallGroup.drawCalls.enumerated() {
+            for drawCall in drawCallGroup.drawCalls {
+                
+                guard let drawData = drawCall.drawData else {
+                    continue
+                }
                 
                 drawCall.prepareDrawCall(withRenderPass: renderPass)
                 
                 // Set any buffers fed into our render pipeline
                 renderEncoder.setVertexBuffer(pathUniformBuffer, offset: pathUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
                 
-                var mutableDrawData = meshGPUData.drawData[index]
+                var mutableDrawData = drawData
                 mutableDrawData.instanceCount = pathSegmentInstanceCount
                 
                 // Set the mesh's vertex data buffers and draw
@@ -534,9 +523,6 @@ class PathsRenderModule: RenderModule {
     private var materialUniformBuffer: MTLBuffer?
     private var effectsUniformBuffer: MTLBuffer?
     private var shadowMap: MTLTexture?
-    
-    // MetalKit meshes containing vertex data and index buffer for our geometry
-    private var pathMeshGPUData: MeshGPUData?
     
     // Offset within pathUniformBuffer to set for the current frame
     private var pathUniformBufferOffset: Int = 0

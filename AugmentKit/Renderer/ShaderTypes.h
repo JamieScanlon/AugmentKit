@@ -134,6 +134,13 @@ enum QualityLevel {
     kQualityNumLevels
 };
 
+// MARK: - HeadingType
+
+enum HeadingType {
+    kAbsolute   = 0,
+    kRelative
+};
+
 // MARK: - Uniforms
 
 /// Structure shared between shader and C code that contains general information like camera (eye) transforms
@@ -158,6 +165,12 @@ struct EnvironmentUniforms {
 
 /// Structure shared between shader and C code that contains information pertaining to a single model like the model matrix transform
 struct AnchorInstanceUniforms {
+    int hasHeading;
+    matrix_float4x4 headingTransform;
+    int headingType;
+    
+    matrix_float4x4 locationTransform;
+    matrix_float4x4 worldTransform; // A transform matrix for the anchor model in world space.
     matrix_float4x4 modelMatrix; // A transform matrix for the anchor model in world space.
     matrix_float3x3 normalMatrix;
 };
@@ -222,6 +235,28 @@ struct LightingParameters {
     float   sheenTint;
     float   clearcoat;
     float   clearcoatGloss;
+};
+
+// MARK: Lighting Parameters
+
+/// Calculated on a per-draw basis
+struct PrecalculatedParameters {
+    matrix_float4x4 worldTransform;
+    int hasHeading;
+    matrix_float4x4 headingTransform;
+    int headingType;
+    matrix_float4x4 coordinateSpaceTransform; // calculated using worldTransform and headingTransform
+    matrix_float4x4 locationTransform;
+    
+    matrix_float4x4 modelMatrix; // locationTransform * coordinateSpaceTransform. A transform matrix for the anchor model in world space.
+    matrix_float4x4 scaledModelMatrix; // modelMatrix * scaleMatrix. scaleMatrix is AnchorEffectsUniforms.scale
+    matrix_float3x3 normalMatrix;
+    matrix_float3x3 scaledNormalMatrix; // normalMatrix * scaleMatrix. scaleMatrix is AnchorEffectsUniforms.scale
+    matrix_float4x4 modelViewMatrix; // scaledModelMatrix * viewMatrix
+    matrix_float4x4 modelViewProjectionMatrix; // projectionMatrix * modelViewMatrix
+    vector_float4 jointIndeces;
+    vector_float4 jointWeights;
+    vector_float4 weightedPalette; // jointWeights[n] * palette[jointIndex[n]]
 };
 
 #endif /* ShaderTypes_h */

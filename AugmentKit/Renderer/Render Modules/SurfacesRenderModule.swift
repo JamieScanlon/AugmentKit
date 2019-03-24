@@ -55,7 +55,7 @@ class SurfacesRenderModule: RenderModule {
     // The number of surface instances to render
     private(set) var instanceCount: Int = 0
     
-    func initializeBuffers(withDevice aDevice: MTLDevice, maxInFlightBuffers: Int) {
+    func initializeBuffers(withDevice aDevice: MTLDevice, maxInFlightBuffers: Int, maxInstances: Int) {
         
         device = aDevice
         
@@ -199,9 +199,9 @@ class SurfacesRenderModule: RenderModule {
                 }
             }()
             
-            meshGPUDataForAnchorsByUUID[uuid] = ModelIOTools.meshGPUData(from: mdlAsset, device: device, textureBundle: textureBundle, vertexDescriptor: RenderUtilities.createStandardVertexDescriptor(), frameRate: 60, shaderPreference: shaderPreference)
+            let meshGPUData = ModelIOTools.meshGPUData(from: mdlAsset, device: device, textureBundle: textureBundle, vertexDescriptor: RenderUtilities.createStandardVertexDescriptor(), frameRate: 60, shaderPreference: shaderPreference)
             
-            let drawCallGroup = createPipelineStates(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass)
+            let drawCallGroup = createDrawCallGroup(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass, meshGPUData: meshGPUData)
             drawCallGroup.moduleIdentifier = moduleIdentifier
             
             drawCallGroups.append(drawCallGroup)
@@ -214,7 +214,6 @@ class SurfacesRenderModule: RenderModule {
         // First, loop through all of the ARAnchors and gather the UUIDs as well as the counts for each.
         // Second, layout and update the buffers in the desired order.
         drawCallGroups.sort { $0.uuid.uuidString < $1.uuid.uuidString }
-        sortedUUIDs = drawCallGroups.map { $0.uuid }
         isInitialized = true
         
         return drawCallGroups
@@ -239,11 +238,15 @@ class SurfacesRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withAugmentedAnchors anchors: [AKAugmentedAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
-        // Do Nothing
-    }
-    
-    func updateBuffers(withRealAnchors anchors: [AKRealAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
+    func updateBuffers(withAllGeometricEntities: [AKGeometricEntity], moduleGeometricEntities: [AKGeometricEntity], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, forRenderPass renderPass: RenderPass) {
+        
+        let anchors: [AKRealAnchor] = moduleGeometricEntities.compactMap({
+            if let anAnchor = $0 as? AKRealAnchor {
+                return anAnchor
+            } else {
+                return nil
+            }
+        })
         
         // Update the anchor uniform buffer with transforms of the current frame's anchors
         instanceCount = 0
@@ -305,22 +308,21 @@ class SurfacesRenderModule: RenderModule {
         
         var anchorMeshIndex = 0
         
-        for uuid in sortedUUIDs {
+        for drawCallGroup in renderPass.drawCallGroups {
             
-            let akAnchors = anchorsByUUID[uuid] ?? []
+            let uuid = drawCallGroup.uuid
             
-            for akAnchor in akAnchors {
+            for drawCall in drawCallGroup.drawCalls {
                 
-                guard let arAnchor = akAnchor.arAnchor else {
+                let akAnchors = anchorsByUUID[uuid] ?? []
+                guard let drawData = drawCall.drawData else {
                     continue
                 }
-                
-                // allDrawData contains the meshGPUData for all of the meshes associated with this anchor
-                guard let allDrawData = meshGPUDataForAnchorsByUUID[uuid]?.drawData else {
-                    continue
-                }
-                
-                for drawData in allDrawData {
+                for akAnchor in akAnchors {
+                    
+                    guard let arAnchor = akAnchor.arAnchor else {
+                        continue
+                    }
                     
                     //
                     // Update Geometry
@@ -341,7 +343,7 @@ class SurfacesRenderModule: RenderModule {
                     }()
                     coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
                     
-
+                    
                     
                     var modelMatrix = arAnchor.transform * coordinateSpaceTransform
                     if let plane = arAnchor as? ARPlaneAnchor {
@@ -355,6 +357,11 @@ class SurfacesRenderModule: RenderModule {
                         
                     }
                     let anchorUniforms = surfaceUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: anchorMeshIndex)
+                    anchorUniforms?.pointee.hasHeading = 0
+                    anchorUniforms?.pointee.headingType = 0
+                    anchorUniforms?.pointee.headingTransform = matrix_identity_float4x4
+                    anchorUniforms?.pointee.locationTransform = arAnchor.transform
+                    anchorUniforms?.pointee.worldTransform = worldTransform
                     anchorUniforms?.pointee.modelMatrix = modelMatrix
                     anchorUniforms?.pointee.normalMatrix = modelMatrix.normalMatrix
                     
@@ -484,14 +491,6 @@ class SurfacesRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
-        // Do Nothing
-    }
-    
-    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
-        // Do Nothing
-    }
-    
     func draw(withRenderPass renderPass: RenderPass, sharedModules: [SharedRenderModule]?) {
         
         guard instanceCount > 0 else {
@@ -551,25 +550,21 @@ class SurfacesRenderModule: RenderModule {
             
             let uuid = drawCallGroup.uuid
             
-            guard let meshGPUData = meshGPUDataForAnchorsByUUID[uuid] else {
-                print("Error: Could not find meshGPUData for UUID: \(uuid)")
-                let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeIntermediateMeshDataNotAvailable, userInfo: nil)
-                let newError = AKError.recoverableError(.renderPipelineError(.drawAborted(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-                recordNewError(newError)
-                continue
-            }
-            
             let anchorcount = (anchorsByUUID[uuid] ?? []).count
             
             // Geometry Draw Calls
-            for (index, drawCall) in drawCallGroup.drawCalls.enumerated() {
+            for drawCall in drawCallGroup.drawCalls {
+                
+                guard let drawData = drawCall.drawData else {
+                    continue
+                }
                 
                 drawCall.prepareDrawCall(withRenderPass: renderPass)
                 
                 // Set any buffers fed into our render pipeline
                 renderEncoder.setVertexBuffer(surfaceUniformBuffer, offset: surfaceUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
                 
-                var mutableDrawData = meshGPUData.drawData[index]
+                var mutableDrawData = drawData
                 mutableDrawData.instanceCount = anchorcount
                 
                 // Set the mesh's vertex data buffers and draw
@@ -613,7 +608,6 @@ class SurfacesRenderModule: RenderModule {
     private var textureLoader: MTKTextureLoader?
     private var geometricEntities = [AKGeometricEntity]()
     private var generalUUID = UUID()
-    private var sortedUUIDs = [UUID]()
     private var modelAssetsForAnchorsByUUID = [UUID: MDLAsset]()
     private var generalModelAsset: MDLAsset?
     private var shaderPreferenceForAnchorsByUUID = [UUID: ShaderPreference]()
@@ -624,9 +618,6 @@ class SurfacesRenderModule: RenderModule {
     private var surfacePipelineStates = [MTLRenderPipelineState]() // Store multiple states
     private var environmentData: EnvironmentData?
     private var shadowMap: MTLTexture?
-    
-    // MetalKit meshes containing vertex data and index buffer for our anchor geometry
-    private var meshGPUDataForAnchorsByUUID = [UUID: MeshGPUData]()
     
     // Offset within surfaceUniformBuffer to set for the current frame
     private var surfaceUniformBufferOffset: Int = 0
@@ -658,15 +649,7 @@ class SurfacesRenderModule: RenderModule {
     private var anchorsByUUID = [UUID: [AKRealAnchor]]()
     private var environmentTextureByUUID = [UUID: MTLTexture]()
     
-    private func createPipelineStates(forUUID uuid: UUID, withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, renderPass: RenderPass?) -> DrawCallGroup {
-        
-        guard let meshGPUData = meshGPUDataForAnchorsByUUID[uuid] else {
-            print("Serious Error - ERROR: No meshGPUData found when trying to load the pipeline.")
-            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeIntermediateMeshDataNotFound, userInfo: nil)
-            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-            recordNewError(newError)
-            return DrawCallGroup(drawCalls: [], uuid: uuid)
-        }
+    private func createDrawCallGroup(forUUID uuid: UUID, withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, renderPass: RenderPass?, meshGPUData: MeshGPUData) -> DrawCallGroup {
         
         let myVertexDescriptor: MTLVertexDescriptor? = meshGPUData.vertexDescriptor
         
@@ -748,7 +731,7 @@ class SurfacesRenderModule: RenderModule {
                 }
             }()
             
-            if let drawCall = renderPass?.drawCall(withRenderPipelineDescriptor: pipelineStateDescriptor, depthStencilDescriptor: depthStateDescriptor) {
+            if let drawCall = renderPass?.drawCall(withRenderPipelineDescriptor: pipelineStateDescriptor, depthStencilDescriptor: depthStateDescriptor, drawData: drawData) {
                 drawCalls.append(drawCall)
             }
             

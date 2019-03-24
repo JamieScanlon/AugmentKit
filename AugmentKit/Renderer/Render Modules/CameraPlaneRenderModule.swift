@@ -49,7 +49,7 @@ class CameraPlaneRenderModule: RenderModule {
     var renderDistance: Double = 500
     var errors = [AKError]()
     
-    func initializeBuffers(withDevice aDevice: MTLDevice, maxInFlightBuffers: Int) {
+    func initializeBuffers(withDevice aDevice: MTLDevice, maxInFlightBuffers: Int, maxInstances: Int) {
         
         device = aDevice
         
@@ -129,15 +129,15 @@ class CameraPlaneRenderModule: RenderModule {
         capturedImagePipelineStateDescriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
         capturedImagePipelineStateDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
         
-        do {
-            try capturedImagePipelineState = device.makeRenderPipelineState(descriptor: capturedImagePipelineStateDescriptor)
-        } catch let error {
-            print("Serious Error - Failed to create captured image pipeline state, error \(error)")
-            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeRenderPipelineInitializationFailed, userInfo: nil)
-            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-            recordNewError(newError)
-            return []
-        }
+//        do {
+//            try capturedImagePipelineState = device.makeRenderPipelineState(descriptor: capturedImagePipelineStateDescriptor)
+//        } catch let error {
+//            print("Serious Error - Failed to create captured image pipeline state, error \(error)")
+//            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeRenderPipelineInitializationFailed, userInfo: nil)
+//            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+//            recordNewError(newError)
+//            return []
+//        }
         
         let capturedImageDepthStateDescriptor = MTLDepthStencilDescriptor()
         capturedImageDepthStateDescriptor.depthCompareFunction = .always
@@ -172,7 +172,7 @@ class CameraPlaneRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withAugmentedAnchors anchors: [AKAugmentedAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
+    func updateBuffers(withAllGeometricEntities: [AKGeometricEntity], moduleGeometricEntities: [AKGeometricEntity], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, forRenderPass renderPass: RenderPass) {
         
         // Create two textures (Y and CbCr) from the provided frame's captured image
         let pixelBuffer = cameraProperties.capturedImage
@@ -201,18 +201,6 @@ class CameraPlaneRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withRealAnchors: [AKRealAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
-        // Do Nothing
-    }
-    
-    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
-        // Do Nothing
-    }
-    
-    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
-        // Do Nothing
-    }
-    
     func draw(withRenderPass renderPass: RenderPass, sharedModules: [SharedRenderModule]?) {
         
         guard renderPass.usesCameraOutput else {
@@ -230,7 +218,7 @@ class CameraPlaneRenderModule: RenderModule {
         for drawCallGroup in renderPass.drawCallGroups.filter({ $0.moduleIdentifier == moduleIdentifier }) {
             
             // Geometry Draw Calls
-            for (_, drawCall) in drawCallGroup.drawCalls.enumerated() {
+            for drawCall in drawCallGroup.drawCalls {
                 
                 // Push a debug group allowing us to identify render commands in the GPU Frame Capture tool
                 renderEncoder.pushDebugGroup("Draw Captured Image")
@@ -286,7 +274,7 @@ class CameraPlaneRenderModule: RenderModule {
     
     private var device: MTLDevice?
     private var imagePlaneVertexBuffer: MTLBuffer?
-    private var capturedImagePipelineState: MTLRenderPipelineState?
+//    private var capturedImagePipelineState: MTLRenderPipelineState?
     private var capturedImageTextureCache: CVMetalTextureCache?
     private var capturedImageTextureY: CVMetalTexture?
     private var capturedImageTextureCbCr: CVMetalTexture?

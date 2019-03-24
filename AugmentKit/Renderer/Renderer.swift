@@ -304,6 +304,10 @@ public class Renderer: NSObject {
          Maximim number of in flight render passes
          */
         static let maxBuffersInFlight = 3
+        /**
+         Maximim number of instances that will be rendered
+         */
+        static let maxInstances = 1024
     }
     /**
      State of the renderer
@@ -394,7 +398,9 @@ public class Renderer: NSObject {
         didSet {
             if showGuides {
                 if renderModules.filter({$0 is TrackingPointsRenderModule}).isEmpty {
-                    renderModules.append(TrackingPointsRenderModule())
+                    var updatedRenderModules: [RenderModule] = renderModules
+                    updatedRenderModules.append(TrackingPointsRenderModule())
+                    renderModules = updatedRenderModules.sorted(by: {$0.renderLayer < $1.renderLayer})
                 }
             } else {
                 var newModules: [RenderModule] = []
@@ -753,13 +759,14 @@ public class Renderer: NSObject {
         // Update Headings
         //
         
-        augmentedAnchors.forEach {
-            $0.heading.updateHeading(withPosition: cameraRelativePosition)
+        let allAKAnchors: [AKAnchor] = geometriesForRenderModule.flatMap({$0.value}).compactMap { geometry in
+            if let anAKAnchor = geometry as? AKAnchor {
+                return anAKAnchor
+            } else {
+                return nil
+            }
         }
-        realAnchors.forEach {
-            $0.heading.updateHeading(withPosition: cameraRelativePosition)
-        }
-        paths.forEach {
+        allAKAnchors.forEach {
             $0.heading.updateHeading(withPosition: cameraRelativePosition)
         }
         
@@ -835,45 +842,59 @@ public class Renderer: NSObject {
                 }
             }
             
-            // Update Buffers
-            renderModules.forEach { module in
-                if module.isInitialized {
-                    module.updateBuffers(withAugmentedAnchors: augmentedAnchors, cameraProperties: cameraProperties, environmentProperties: environmentProperties, shadowProperties: shadowProperties)
-                    module.updateBuffers(withRealAnchors: realAnchors, cameraProperties: cameraProperties, environmentProperties: environmentProperties, shadowProperties: shadowProperties)
-                    module.updateBuffers(withTrackers: trackers, targets: gazeTargets, cameraProperties: cameraProperties, environmentProperties: environmentProperties, shadowProperties: shadowProperties)
-                    module.updateBuffers(withPaths: paths, cameraProperties: cameraProperties, environmentProperties: environmentProperties, shadowProperties: shadowProperties)
-                }
-            }
+            
             
             //
             // Setup render passes
             //
             
+            //
             // Shadow Map Pass
-            shadowRenderPass?.prepareRenderCommandEncoder(withCommandBuffer: commandBuffer)
-            if let shadowRenderEncoder = shadowRenderPass?.renderCommandEncoder {
-                drawShadowPass(with: shadowRenderEncoder)
-            } else {
-                print("WARNING: Could not create MTLRenderCommandEncoder for the shadow pass. Aborting.")
+            //
+            
+            if let shadowRenderPass = shadowRenderPass {
+                
+                // Update Buffers
+                updateBuffers(forCameraProperties: cameraProperties, environmentProperties: environmentProperties, shadowProperties: shadowProperties, renderPass: shadowRenderPass)
+                
+                // Draw
+                shadowRenderPass.prepareRenderCommandEncoder(withCommandBuffer: commandBuffer)
+                if let shadowRenderEncoder = shadowRenderPass.renderCommandEncoder {
+                    drawShadowPass(with: shadowRenderEncoder)
+                } else {
+                    print("WARNING: Could not create MTLRenderCommandEncoder for the shadow pass. Aborting.")
+                }
+                
             }
             
-            // Getting the currentRenderPassDescriptor from the RenderDestinationProvider should be called as
-            // close as possible to presenting it with the command buffer. The currentDrawable is
-            // a scarce resource and holding on to it too long may affect performance
-            if let mainRenderPassDescriptor = renderDestination.currentRenderPassDescriptor, let currentDrawable = renderDestination.currentDrawable {
+            //
+            // Main Pass
+            //
+            
+            if let mainRenderPass = mainRenderPass {
+                
+                // Update Buffers
+                updateBuffers(forCameraProperties: cameraProperties, environmentProperties: environmentProperties, shadowProperties: shadowProperties, renderPass: mainRenderPass)
+                
+                // Getting the currentRenderPassDescriptor from the RenderDestinationProvider should be called as
+                // close as possible to presenting it with the command buffer. The currentDrawable is
+                // a scarce resource and holding on to it too long may affect performance
+                if let mainRenderPassDescriptor = renderDestination.currentRenderPassDescriptor, let currentDrawable = renderDestination.currentDrawable {
 
-                mainRenderPass?.renderPassDescriptor = mainRenderPassDescriptor
-                mainRenderPass?.prepareRenderCommandEncoder(withCommandBuffer: commandBuffer)
+                    mainRenderPass.renderPassDescriptor = mainRenderPassDescriptor
+                    mainRenderPass.prepareRenderCommandEncoder(withCommandBuffer: commandBuffer)
 
-                if let renderEncoder = mainRenderPass?.renderCommandEncoder {
-                    drawMainPass(with: renderEncoder)
-                } else {
-                    print("WARNING: Could not create MTLRenderCommandEncoder. Aborting draw pass.")
+                    // Draw
+                    if let renderEncoder = mainRenderPass.renderCommandEncoder {
+                        drawMainPass(with: renderEncoder)
+                    } else {
+                        print("WARNING: Could not create MTLRenderCommandEncoder. Aborting draw pass.")
+                    }
+
+                    // Schedule a present once the framebuffer is complete using the current drawable
+                    commandBuffer.present(currentDrawable)
+
                 }
-
-                // Schedule a present once the framebuffer is complete using the current drawable
-                commandBuffer.present(currentDrawable)
-
             }
             
             // Finalize rendering here & push the command buffer to the GPU
@@ -925,8 +946,6 @@ public class Renderer: NSObject {
             geometriesForRenderModule[AnchorsRenderModule.identifier] = [akAnchor]
         }
         
-        augmentedAnchors.append(akAnchor)
-        
         // Add a new anchor to the session
         session.add(anchor: arAnchor)
         
@@ -964,8 +983,6 @@ public class Renderer: NSObject {
             geometriesForRenderModule[UnanchoredRenderModule.identifier] = [akTracker]
         }
         
-        trackers.append(akTracker)
-        
     }
     
     /**
@@ -996,7 +1013,14 @@ public class Renderer: NSObject {
             
         }
         
-        paths.append(akPath)
+        // Keep track of the path bucketed by the RenderModule
+        if let existingGeometries = geometriesForRenderModule[PathsRenderModule.identifier] {
+            var mutableExistingGeometries = existingGeometries
+            mutableExistingGeometries.append(akPath)
+            geometriesForRenderModule[PathsRenderModule.identifier] = mutableExistingGeometries
+        } else {
+            geometriesForRenderModule[PathsRenderModule.identifier] = [akPath]
+        }
         
     }
     
@@ -1024,8 +1048,6 @@ public class Renderer: NSObject {
             geometriesForRenderModule[UnanchoredRenderModule.identifier] = [gazeTarget]
         }
         
-        gazeTargets.append(gazeTarget)
-        
     }
     
     // MARK: - Removing objects
@@ -1036,12 +1058,6 @@ public class Renderer: NSObject {
         - akAnchor: The anchor to remove
      */
     public func remove(akAnchor: AKAugmentedAnchor) {
-        
-        guard let akAnchorIndex = augmentedAnchors.index(where: {$0.identifier == akAnchor.identifier}) else {
-            return
-        }
-        
-        augmentedAnchors.remove(at: akAnchorIndex)
         
         let anchorType = type(of: akAnchor).type
         modelProvider?.unregisterAsset(forObjectType: anchorType, identifier: akAnchor.identifier)
@@ -1065,12 +1081,6 @@ public class Renderer: NSObject {
      */
     public func remove(akTracker: AKAugmentedTracker) {
         
-        guard let akTrackerIndex = trackers.index(where: {$0.identifier == akTracker.identifier}) else {
-            return
-        }
-        
-        trackers.remove(at: akTrackerIndex)
-        
         let anchorType = type(of: akTracker).type
         modelProvider?.unregisterAsset(forObjectType: anchorType, identifier: akTracker.identifier)
         var existingGeometries = geometriesForRenderModule[UnanchoredRenderModule.identifier]
@@ -1087,12 +1097,6 @@ public class Renderer: NSObject {
      */
     public func remove(akPath: AKPath) {
         
-        guard let akPathIndex = paths.index(where: {$0.identifier == akPath.identifier}) else {
-            return
-        }
-        
-        paths.remove(at: akPathIndex)
-        
         akPath.segmentPoints.forEach { segment in
             if let arAnchor = session.currentFrame?.anchors.first(where: {$0.identifier == segment.identifier}) {
                 session.remove(anchor: arAnchor)
@@ -1101,6 +1105,11 @@ public class Renderer: NSObject {
         
         let anchorType = type(of: akPath).type
         modelProvider?.unregisterAsset(forObjectType: anchorType, identifier: akPath.identifier)
+        var existingGeometries = geometriesForRenderModule[PathsRenderModule.identifier]
+        if let index = existingGeometries?.index(where: {$0.identifier == akPath.identifier}) {
+            existingGeometries?.remove(at: index)
+        }
+        geometriesForRenderModule[PathsRenderModule.identifier] = existingGeometries
         
     }
     
@@ -1110,12 +1119,6 @@ public class Renderer: NSObject {
         - gazeTarget: The gaze target to remove
      */
     public func remove(gazeTarget: GazeTarget) {
-        
-        guard let gazeTargetIndex = gazeTargets.index(where: {$0.identifier == gazeTarget.identifier}) else {
-            return
-        }
-        
-        gazeTargets.remove(at: gazeTargetIndex)
         
         let anchorType = type(of: gazeTarget).type
         modelProvider?.unregisterAsset(forObjectType: anchorType, identifier: gazeTarget.identifier)
@@ -1167,11 +1170,21 @@ public class Renderer: NSObject {
     
     // Keeping track of objects to render
     fileprivate var geometriesForRenderModule = [String: [AKGeometricEntity]]()
-    fileprivate var augmentedAnchors = [AKAugmentedAnchor]()
-    fileprivate var realAnchors = [AKRealAnchor]()
-    fileprivate var trackers = [AKAugmentedTracker]()
-    fileprivate var paths = [AKPath]()
-    fileprivate var gazeTargets = [GazeTarget]()
+    fileprivate var augmentedAnchors: [AKAugmentedAnchor] {
+        return geometriesForRenderModule[AnchorsRenderModule.identifier]?.compactMap({$0 as? AKAugmentedAnchor}) ?? []
+    }
+    fileprivate var realAnchors: [AKRealAnchor] {
+        return geometriesForRenderModule[SurfacesRenderModule.identifier]?.compactMap({$0 as? AKRealAnchor}) ?? []
+    }
+    fileprivate var trackers: [AKAugmentedTracker] {
+        return geometriesForRenderModule[UnanchoredRenderModule.identifier]?.compactMap({$0 as? AKAugmentedTracker}) ?? []
+    }
+    fileprivate var paths: [AKPath] {
+        return geometriesForRenderModule[PathsRenderModule.identifier]?.compactMap({$0 as? AKPath}) ?? []
+    }
+    fileprivate var gazeTargets: [GazeTarget] {
+        return geometriesForRenderModule[UnanchoredRenderModule.identifier]?.compactMap({$0 as? GazeTarget}) ?? []
+    }
     fileprivate var environmentProbeAnchors = [AREnvironmentProbeAnchor]()
     fileprivate var environmentAnchorsWithReatedAnchors = [AREnvironmentProbeAnchor: [UUID]]()
     
@@ -1314,64 +1327,67 @@ public class Renderer: NSObject {
     // initializeModules() must be called
     fileprivate func addModule(forModuelIdentifier moduleIdentifier: String) {
         
+        var updatedRenderModules: [RenderModule] = renderModules
+        
         switch moduleIdentifier {
         case CameraPlaneRenderModule.identifier:
             if cameraRenderModule == nil {
                 let newCameraModule = CameraPlaneRenderModule()
                 cameraRenderModule = newCameraModule
-                renderModules.append(newCameraModule)
+                updatedRenderModules.append(newCameraModule)
                 hasUninitializedModules = true
             }
         case SharedBuffersRenderModule.identifier:
             if sharedBuffersRenderModule == nil {
                 let newSharedModule = SharedBuffersRenderModule()
                 sharedBuffersRenderModule = newSharedModule
-                renderModules.append(newSharedModule)
+                updatedRenderModules.append(newSharedModule)
                 hasUninitializedModules = true
             }
         case SurfacesRenderModule.identifier:
             if surfacesRenderModule == nil {
                 let newSurfacesModule = SurfacesRenderModule()
                 surfacesRenderModule = newSurfacesModule
-                renderModules.append(newSurfacesModule)
+                updatedRenderModules.append(newSurfacesModule)
                 hasUninitializedModules = true
             }
         case AnchorsRenderModule.identifier:
             if anchorsRenderModule == nil {
                 let newAnchorsModule = AnchorsRenderModule()
                 anchorsRenderModule = newAnchorsModule
-                renderModules.append(newAnchorsModule)
+                updatedRenderModules.append(newAnchorsModule)
                 hasUninitializedModules = true
             }
         case UnanchoredRenderModule.identifier:
             if unanchoredRenderModule == nil {
                 let newUnanchoredModule = UnanchoredRenderModule()
                 unanchoredRenderModule = newUnanchoredModule
-                renderModules.append(newUnanchoredModule)
+                updatedRenderModules.append(newUnanchoredModule)
                 hasUninitializedModules = true
             }
         case PathsRenderModule.identifier:
             if pathsRenderModule == nil {
                 let newPathsModule = PathsRenderModule()
                 pathsRenderModule = newPathsModule
-                renderModules.append(newPathsModule)
+                updatedRenderModules.append(newPathsModule)
                 hasUninitializedModules = true
             }
         case TrackingPointsRenderModule.identifier:
             if trackingPointRenderModule == nil {
                 let newSharedModule = TrackingPointsRenderModule()
                 trackingPointRenderModule = newSharedModule
-                renderModules.append(newSharedModule)
+                updatedRenderModules.append(newSharedModule)
                 hasUninitializedModules = true
             }
         default:
             break
         }
+        
+        renderModules = updatedRenderModules.sorted(by: {$0.renderLayer < $1.renderLayer})
     
     }
     
-    // Updates the renderModules array with all of the required modules.
-    // Also updates the sharedModulesForModule map
+    /// Updates the renderModules array with all of the required modules. Also updates the sharedModulesForModule map
     fileprivate func gatherModules() {
         
         var sharedModules: [SharedRenderModule] = []
@@ -1406,8 +1422,7 @@ public class Renderer: NSObject {
             
     }
     
-    // Initializes any uninitialized modules. If a module has already been
-    // initialized, the inittilization functions are _not_ called again.
+    /// Initializes any uninitialized modules. If a module has already been initialized, the initilization functions are _not_ called again. Also calls `loadAssets` on uninitalized modules.
     fileprivate func initializeModules() {
         
         guard hasUninitializedModules else {
@@ -1416,34 +1431,40 @@ public class Renderer: NSObject {
         
         gatherModules()
         
+        let uninitializedCount = renderModules.filter({!$0.isInitialized}).count
+        var loadedCount = 0
+        
         renderModules.forEach { module in
             
             if !module.isInitialized {
                 // Initialize the module
-                module.initializeBuffers(withDevice: device, maxInFlightBuffers: Constants.maxBuffersInFlight)
+                module.initializeBuffers(withDevice: device, maxInFlightBuffers: Constants.maxBuffersInFlight, maxInstances: Constants.maxInstances)
                 
                 // Load the assets
                 let geometricEntities = geometriesForRenderModule[module.moduleIdentifier] ?? []
                 module.loadAssets(forGeometricEntities: geometricEntities, fromModelProvider: modelProvider, textureLoader: textureLoader, completion: { [weak self] in
-                    if let defaultLibrary = self?.defaultLibrary, let renderDestination = self?.renderDestination {
-                        shadowRenderPass?.drawCallGroups.append(contentsOf: module.loadPipeline(withMetalLibrary: defaultLibrary, renderDestination: renderDestination, textureBundle: textureBundle, forRenderPass: shadowRenderPass))
-                        mainRenderPass?.drawCallGroups.append(contentsOf: module.loadPipeline(withMetalLibrary: defaultLibrary, renderDestination: renderDestination, textureBundle: textureBundle, forRenderPass: mainRenderPass))
-                        self?.moduleErrors.append(contentsOf: module.errors)
-                        if let moduleErrors = self?.moduleErrors {
-                            let seriousErrors: [AKError] =  {
-                                return moduleErrors.filter(){
-                                    switch $0 {
-                                    case .seriousError(_):
-                                        return true
-                                    default:
-                                        return false
-                                    }
+                   
+                    loadedCount += 1
+                        
+                    self?.moduleErrors.append(contentsOf: module.errors)
+                    if let moduleErrors = self?.moduleErrors {
+                        let seriousErrors: [AKError] =  {
+                            return moduleErrors.filter(){
+                                switch $0 {
+                                case .seriousError(_):
+                                    return true
+                                default:
+                                    return false
                                 }
-                            }()
-                            if seriousErrors.count > 0 {
-                                NotificationCenter.default.post(name: .abortedDueToErrors, object: self, userInfo: ["errors": seriousErrors])
                             }
+                        }()
+                        if seriousErrors.count > 0 {
+                            NotificationCenter.default.post(name: .abortedDueToErrors, object: self, userInfo: ["errors": seriousErrors])
                         }
+                    }
+                    
+                    if loadedCount == uninitializedCount {
+                        loadPipelines()
                     }
                 })
             }
@@ -1451,6 +1472,34 @@ public class Renderer: NSObject {
         }
         
         hasUninitializedModules = false
+        
+    }
+    
+    fileprivate func loadPipelines() {
+        shadowRenderPass?.drawCallGroups = []
+        mainRenderPass?.drawCallGroups = []
+        
+        guard let defaultLibrary = defaultLibrary else {
+            return
+        }
+        
+        renderModules.forEach { module in
+            shadowRenderPass?.drawCallGroups.append(contentsOf: module.loadPipeline(withMetalLibrary: defaultLibrary, renderDestination: renderDestination, textureBundle: textureBundle, forRenderPass: shadowRenderPass))
+            mainRenderPass?.drawCallGroups.append(contentsOf: module.loadPipeline(withMetalLibrary: defaultLibrary, renderDestination: renderDestination, textureBundle: textureBundle, forRenderPass: mainRenderPass))
+        }
+    }
+    
+    fileprivate func updateBuffers(forCameraProperties cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, renderPass: RenderPass ) {
+        
+        let allGeometricEntities: [AKGeometricEntity] = geometriesForRenderModule.flatMap { (key, value) in
+            return value
+        }
+        // Update Buffers
+        renderModules.forEach { module in
+            if module.isInitialized {
+                module.updateBuffers(withAllGeometricEntities: allGeometricEntities, moduleGeometricEntities: geometriesForRenderModule[module.moduleIdentifier] ?? [], cameraProperties: cameraProperties, environmentProperties: environmentProperties, shadowProperties: shadowProperties, forRenderPass: renderPass)
+            }
+        }
         
     }
     
@@ -1536,7 +1585,13 @@ extension Renderer: ARSessionDelegate {
                     let newRealAnchor = RealSurfaceAnchor(at: WorldLocation(transform: planeAnchor.transform))
                     newRealAnchor.setARAnchor(planeAnchor)
                     newRealAnchor.setIdentifier(planeAnchor.identifier)
-                    realAnchors.append(newRealAnchor)
+                    if let existingGeometries = geometriesForRenderModule[SurfacesRenderModule.identifier] {
+                        var mutableExistingGeometries = existingGeometries
+                        mutableExistingGeometries.append(newRealAnchor)
+                        geometriesForRenderModule[SurfacesRenderModule.identifier] = mutableExistingGeometries
+                    } else {
+                        geometriesForRenderModule[SurfacesRenderModule.identifier] = [newRealAnchor]
+                    }
                 }
                 
                 //

@@ -55,7 +55,7 @@ class UnanchoredRenderModule: RenderModule {
     // The number of target instances to render
     private(set) var targetInstanceCount: Int = 0
     
-    func initializeBuffers(withDevice aDevice: MTLDevice, maxInFlightBuffers: Int) {
+    func initializeBuffers(withDevice aDevice: MTLDevice, maxInFlightBuffers: Int, maxInstances: Int) {
         
         device = aDevice
         
@@ -110,7 +110,7 @@ class UnanchoredRenderModule: RenderModule {
         var hasLoadedTargetAsset = false
         var numModels = theGeometricEntities.count
         
-        // TODO: Add ability to load multiple models by identifier
+        // Default geometry for UserTracker types
         modelProvider.loadAsset(forObjectType: UserTracker.type, identifier: nil) { [weak self] asset in
             
             hasLoadedTrackerAsset = true
@@ -127,15 +127,13 @@ class UnanchoredRenderModule: RenderModule {
             
             self?.modelAssetsByUUID[generalTrackerUUID] = asset
             
-            // TODO: Figure out a way to load a new model per tracker.
-            
             if hasLoadedTrackerAsset && hasLoadedTargetAsset && numModels <= 0 {
                 completion()
             }
             
         }
         
-        // TODO: Add ability to load multiple models by identifier
+        // Default geometry for GazeTarget types
         modelProvider.loadAsset(forObjectType: GazeTarget.type, identifier: nil) { [weak self] asset in
             
             hasLoadedTargetAsset = true
@@ -151,8 +149,6 @@ class UnanchoredRenderModule: RenderModule {
             }
             
             self?.modelAssetsByUUID[generalTargetUUID] = asset
-            
-            // TODO: Figure out a way to load a new model per target.
             
             if hasLoadedTrackerAsset && hasLoadedTargetAsset && numModels <= 0 {
                 completion()
@@ -222,9 +218,9 @@ class UnanchoredRenderModule: RenderModule {
                 }
             }()
             
-            meshGPUDataByUUID[uuid] = ModelIOTools.meshGPUData(from: mdlAsset, device: device, textureBundle: textureBundle, vertexDescriptor: RenderUtilities.createStandardVertexDescriptor(), frameRate: 60, shaderPreference: shaderPreference)
+            let meshGPUData = ModelIOTools.meshGPUData(from: mdlAsset, device: device, textureBundle: textureBundle, vertexDescriptor: RenderUtilities.createStandardVertexDescriptor(), frameRate: 60, shaderPreference: shaderPreference)
             
-            let drawCallGroup = createPipelineStates(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass)
+            let drawCallGroup = createDrawCallGroup(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass, meshGPUData: meshGPUData)
             drawCallGroup.moduleIdentifier = moduleIdentifier
             drawCallGroups.append(drawCallGroup)
             
@@ -236,7 +232,6 @@ class UnanchoredRenderModule: RenderModule {
         // First, loop through all of the ARAnchors and gather the UUIDs as well as the counts for each.
         // Second, layout and update the buffers in the desired order.
         drawCallGroups.sort { $0.uuid.uuidString < $1.uuid.uuidString }
-        sortedUUIDs = drawCallGroups.map { $0.uuid }
         isInitialized = true
         
         return drawCallGroups
@@ -261,21 +256,29 @@ class UnanchoredRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withAugmentedAnchors anchors: [AKAugmentedAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
-        // Do Nothing
-    }
-    
-    func updateBuffers(withRealAnchors: [AKRealAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
-        // Do Nothing
-    }
-    
-    func updateBuffers(withTrackers trackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
+    func updateBuffers(withAllGeometricEntities: [AKGeometricEntity], moduleGeometricEntities: [AKGeometricEntity], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, forRenderPass renderPass: RenderPass) {
+        
+        let trackers: [AKAugmentedTracker] = moduleGeometricEntities.compactMap({
+            if let aTracker = $0 as? AKAugmentedTracker {
+                return aTracker
+            } else {
+                return nil
+            }
+        })
+        
+        let targets: [AKTarget] = moduleGeometricEntities.compactMap({
+            if let aTarget = $0 as? AKTarget {
+                return aTarget
+            } else {
+                return nil
+            }
+        })
         
         // Update the uniform buffer with transforms of the current frame's trackers
         
         trackerInstanceCount = 0
         targetInstanceCount = 0
-        geometriesByUUID = [:]
+        var geometriesByUUID = [UUID: [AKGeometricEntity]]()
         environmentTextureByUUID = [:]
         
         // Set up lighting for the scene using the ambient intensity if provided
@@ -337,36 +340,40 @@ class UnanchoredRenderModule: RenderModule {
             }
         }
         
-        for uuid in sortedUUIDs {
+        for drawCallGroup in renderPass.drawCallGroups {
             
-            if trackerUUIDs.contains(uuid) {
+            let uuid = drawCallGroup.uuid
+            geometryCountByUUID[uuid] = (geometriesByUUID[uuid] ?? []).count
+            
+            for drawCall in drawCallGroup.drawCalls {
                 
-                let akTrackers = geometriesByUUID[uuid] as! [AKTracker]
+                guard let drawData = drawCall.drawData else {
+                    continue
+                }
                 
-                for akTracker in akTrackers {
+                if trackerUUIDs.contains(uuid) {
                     
-                    // allDrawData contains the meshGPUData for all of the meshes associated with this anchor
-                    guard let allDrawData = meshGPUDataByUUID[uuid]?.drawData else {
+                    guard let akTrackers = geometriesByUUID[uuid] as? [AKTracker] else {
                         continue
                     }
                     
-                    // Apply the transform of the target relative to the reference transform
-                    let trackerAbsoluteTransform = akTracker.position.referenceTransform * akTracker.position.transform
-                    
-                    // Ignore anchors that are beyond the renderDistance
-                    let distance = anchorDistance(withTransform: trackerAbsoluteTransform, cameraProperties: cameraProperties)
-                    guard Double(distance) < renderDistance else {
-                        continue
-                    }
-                    
-                    trackerInstanceCount += 1
-                    
-                    if trackerInstanceCount > Constants.maxTrackerInstanceCount {
-                        trackerInstanceCount = Constants.maxTrackerInstanceCount
-                        break
-                    }
-                    
-                    for drawData in allDrawData {
+                    for akTracker in akTrackers {
+                        
+                        // Apply the transform of the target relative to the reference transform
+                        let trackerAbsoluteTransform = akTracker.position.referenceTransform * akTracker.position.transform
+                        
+                        // Ignore anchors that are beyond the renderDistance
+                        let distance = anchorDistance(withTransform: trackerAbsoluteTransform, cameraProperties: cameraProperties)
+                        guard Double(distance) < renderDistance else {
+                            continue
+                        }
+                        
+                        trackerInstanceCount += 1
+                        
+                        if trackerInstanceCount > Constants.maxTrackerInstanceCount {
+                            trackerInstanceCount = Constants.maxTrackerInstanceCount
+                            break
+                        }
                         
                         // Flip Z axis to convert geometry from right handed to left handed
                         var coordinateSpaceTransform = matrix_identity_float4x4
@@ -381,10 +388,15 @@ class UnanchoredRenderModule: RenderModule {
                             }
                         }()
                         coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
-                
+                        
                         let modelMatrix = trackerAbsoluteTransform * coordinateSpaceTransform
                         
                         let trackerUniforms = unanchoredUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: index)
+                        trackerUniforms?.pointee.hasHeading = 0
+                        trackerUniforms?.pointee.headingType = 0
+                        trackerUniforms?.pointee.headingTransform = matrix_identity_float4x4
+                        trackerUniforms?.pointee.locationTransform = trackerAbsoluteTransform
+                        trackerUniforms?.pointee.worldTransform = worldTransform
                         trackerUniforms?.pointee.modelMatrix = modelMatrix
                         trackerUniforms?.pointee.normalMatrix = modelMatrix.normalMatrix
                         
@@ -486,37 +498,30 @@ class UnanchoredRenderModule: RenderModule {
                         
                     }
                     
-                }
-                
-            } else if targetUUIDs.contains(uuid) {
-                
-                let akTargets = geometriesByUUID[uuid] as! [AKTarget]
-                
-                for akTarget in akTargets {
+                } else if targetUUIDs.contains(uuid) {
                     
-                    // allDrawData contains the meshGPUData for all of the meshes associated with this anchor
-                    guard let allDrawData = meshGPUDataByUUID[uuid]?.drawData else {
+                    guard let akTargets = geometriesByUUID[uuid] as? [AKTarget] else {
                         continue
                     }
                     
-                    // Apply the transform of the target relative to the reference transform
-                    let targetAbsoluteTransform = akTarget.position.referenceTransform * akTarget.position.transform
-                    
-                    // Ignore anchors that are beyond the renderDistance
-                    let distance = anchorDistance(withTransform: targetAbsoluteTransform, cameraProperties: cameraProperties)
-                    guard Double(distance) < renderDistance else {
-                        continue
-                    }
-                    
-                    targetInstanceCount += 1
-                    
-                    if targetInstanceCount > Constants.maxTargetInstanceCount {
-                        targetInstanceCount = Constants.maxTargetInstanceCount
-                        break
-                    }
-                    
-                    for drawData in allDrawData {
-                    
+                    for akTarget in akTargets {
+                        
+                        // Apply the transform of the target relative to the reference transform
+                        let targetAbsoluteTransform = akTarget.position.referenceTransform * akTarget.position.transform
+                        
+                        // Ignore anchors that are beyond the renderDistance
+                        let distance = anchorDistance(withTransform: targetAbsoluteTransform, cameraProperties: cameraProperties)
+                        guard Double(distance) < renderDistance else {
+                            continue
+                        }
+                        
+                        targetInstanceCount += 1
+                        
+                        if targetInstanceCount > Constants.maxTargetInstanceCount {
+                            targetInstanceCount = Constants.maxTargetInstanceCount
+                            break
+                        }
+                        
                         // Flip Z axis to convert geometry from right handed to left handed
                         var coordinateSpaceTransform = matrix_identity_float4x4
                         coordinateSpaceTransform.columns.2.z = -1.0
@@ -534,6 +539,11 @@ class UnanchoredRenderModule: RenderModule {
                         let modelMatrix = targetAbsoluteTransform * coordinateSpaceTransform
                         
                         let targetUniforms = unanchoredUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: index)
+                        targetUniforms?.pointee.hasHeading = 0
+                        targetUniforms?.pointee.headingType = 0
+                        targetUniforms?.pointee.headingTransform = matrix_identity_float4x4
+                        targetUniforms?.pointee.locationTransform = targetAbsoluteTransform
+                        targetUniforms?.pointee.worldTransform = worldTransform
                         targetUniforms?.pointee.modelMatrix = modelMatrix
                         targetUniforms?.pointee.normalMatrix = modelMatrix.normalMatrix
                         
@@ -634,22 +644,15 @@ class UnanchoredRenderModule: RenderModule {
                         index += 1
                         
                     }
-                    
                 }
-                
             }
-            
         }
-
+        
         //
         // Update the shadow map
         //
         shadowMap = shadowProperties.shadowMap
         
-    }
-    
-    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
-        // Do Nothing
     }
     
     func draw(withRenderPass renderPass: RenderPass, sharedModules: [SharedRenderModule]?) {
@@ -713,26 +716,21 @@ class UnanchoredRenderModule: RenderModule {
         for drawCallGroup in renderPass.drawCallGroups.filter({ $0.moduleIdentifier == moduleIdentifier }) {
             
             let uuid = drawCallGroup.uuid
-            
-            guard let meshGPUData = meshGPUDataByUUID[uuid] else {
-                print("Error: Could not find meshGPUData for UUID: \(uuid)")
-                let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeIntermediateMeshDataNotAvailable, userInfo: nil)
-                let newError = AKError.recoverableError(.renderPipelineError(.drawAborted(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-                recordNewError(newError)
-                continue
-            }
-            
-            let geometryCount = (geometriesByUUID[uuid] ?? []).count
+            let geometryCount = geometryCountByUUID[uuid] ?? 0
             
             // Geometry Draw Calls
-            for (index, drawCall) in drawCallGroup.drawCalls.enumerated() {
+            for drawCall in drawCallGroup.drawCalls {
+                
+                guard let drawData = drawCall.drawData else {
+                    continue
+                }
                 
                 drawCall.prepareDrawCall(withRenderPass: renderPass)
                 
                 // Set any buffers fed into our render pipeline
                 renderEncoder.setVertexBuffer(unanchoredUniformBuffer, offset: unanchoredUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
                 
-                var mutableDrawData = meshGPUData.drawData[index]
+                var mutableDrawData = drawData
                 mutableDrawData.instanceCount = trackerInstanceCount
                 
                 // Set the mesh's vertex data buffers and draw
@@ -741,8 +739,6 @@ class UnanchoredRenderModule: RenderModule {
                 baseIndex += geometryCount
                 
             }
-            
-//            baseIndex += geometryCount
             
         }
         
@@ -777,13 +773,11 @@ class UnanchoredRenderModule: RenderModule {
     private var geometricEntities = [AKGeometricEntity]()
     private var generalTrackerUUID = UUID()
     private var generalTargetUUID = UUID()
-    private var sortedUUIDs = [UUID]()
     private var modelAssetsByUUID = [UUID: MDLAsset]()
     private var shaderPreferenceByUUID = [UUID: ShaderPreference]()
     private var environmentTextureByUUID = [UUID: MTLTexture]()
-    // MetalKit meshes containing vertex data and index buffer for our anchor geometry
-    private var meshGPUDataByUUID = [UUID: MeshGPUData]()
-    private var geometriesByUUID = [UUID: [AKGeometricEntity]]()
+//    private var geometriesByUUID = [UUID: [AKGeometricEntity]]()
+    private var geometryCountByUUID = [UUID: Int]()
     private var ambientIntensity: Float?
     private var ambientLightColor: vector_float3?
     private var unanchoredUniformBuffer: MTLBuffer?
@@ -823,15 +817,7 @@ class UnanchoredRenderModule: RenderModule {
     // number of frames in the target animation by index
     private var targetAnimationFrameCount = [Int]()
     
-    private func createPipelineStates(forUUID uuid: UUID, withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, renderPass: RenderPass?) -> DrawCallGroup {
-        
-        guard let meshGPUData = meshGPUDataByUUID[uuid] else {
-            print("Serious Error - ERROR: No meshGPUData found when trying to load the pipeline.")
-            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeIntermediateMeshDataNotFound, userInfo: nil)
-            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-            recordNewError(newError)
-            return DrawCallGroup(drawCalls: [], uuid: uuid)
-        }
+    private func createDrawCallGroup(forUUID uuid: UUID, withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, renderPass: RenderPass?, meshGPUData: MeshGPUData) -> DrawCallGroup {
         
         guard let aVertexDescriptor = meshGPUData.vertexDescriptor else {
             print("Serious Error - Failed to create a MetalKit vertex descriptor from ModelIO.")
@@ -912,7 +898,7 @@ class UnanchoredRenderModule: RenderModule {
                 }
             }()
             
-            if let drawCall = renderPass?.drawCall(withRenderPipelineDescriptor: pipelineStateDescriptor, depthStencilDescriptor: unanchoredDepthStateDescriptor) {
+            if let drawCall = renderPass?.drawCall(withRenderPipelineDescriptor: pipelineStateDescriptor, depthStencilDescriptor: unanchoredDepthStateDescriptor, drawData: drawData) {
                 drawCalls.append(drawCall)
             }
             

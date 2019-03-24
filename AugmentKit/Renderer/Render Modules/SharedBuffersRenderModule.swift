@@ -43,7 +43,7 @@ class SharedBuffersRenderModule: SharedRenderModule {
         return SharedBuffersRenderModule.identifier
     }
     var renderLayer: Int {
-        return 1
+        return -1
     }
     var isInitialized: Bool = false
     var sharedModuleIdentifiers: [String]? = nil
@@ -52,7 +52,7 @@ class SharedBuffersRenderModule: SharedRenderModule {
     
     // MARK: - RenderModule
     
-    func initializeBuffers(withDevice device: MTLDevice, maxInFlightBuffers: Int) {
+    func initializeBuffers(withDevice device: MTLDevice, maxInFlightBuffers: Int, maxInstances: Int) {
         
         // Calculate our uniform buffer sizes. We allocate Constants.maxBuffersInFlight instances for uniform
         // storage in a single buffer. This allows us to update uniforms in a ring (i.e. triple
@@ -87,22 +87,10 @@ class SharedBuffersRenderModule: SharedRenderModule {
         sharedUniformBufferAddress = sharedUniformBuffer?.contents().advanced(by: sharedUniformBufferOffset)
     }
     
-    func updateBuffers(withAugmentedAnchors anchors: [AKAugmentedAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
+    func updateBuffers(withAllGeometricEntities: [AKGeometricEntity], moduleGeometricEntities: [AKGeometricEntity], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, forRenderPass renderPass: RenderPass) {
         let uniforms = sharedUniformBufferAddress?.assumingMemoryBound(to: SharedUniforms.self)
         uniforms?.pointee.viewMatrix = cameraProperties.arCamera.viewMatrix(for: cameraProperties.orientation)
         uniforms?.pointee.projectionMatrix = cameraProperties.arCamera.projectionMatrix(for: cameraProperties.orientation, viewportSize: cameraProperties.viewportSize, zNear: 0.001, zFar: CGFloat(renderDistance))
-    }
-    
-    func updateBuffers(withRealAnchors: [AKRealAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
-        // Do Nothing
-    }
-    
-    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
-        // Do Nothing
-    }
-    
-    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
-        // Do Nothing
     }
     
     func draw(withRenderPass renderPass: RenderPass, sharedModules: [SharedRenderModule]?) {

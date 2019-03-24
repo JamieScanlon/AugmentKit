@@ -218,7 +218,7 @@ public final class Archive: Sequence {
     /// - Parameter path: A relative file path identifiying the corresponding `Entry`.
     /// - Returns: An `Entry` with the given `path`. Otherwise, `nil`.
     public subscript(path: String) -> Entry? {
-        return self.filter { $0.path == path }.first
+        return self.first(where: { $0.path == path })
     }
 
     // MARK: - Helpers

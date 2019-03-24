@@ -2,8 +2,27 @@
 //  RenderPass.swift
 //  AugmentKit
 //
-//  Created by Marvin Scanlon on 10/28/18.
-//  Copyright © 2018 TenthLetterMade. All rights reserved.
+//  MIT License
+//
+//  Copyright (c) 2018 JamieScanlon
+//
+//  Permission is hereby granted, free of charge, to any person obtaining a copy
+//  of this software and associated documentation files (the "Software"), to deal
+//  in the Software without restriction, including without limitation the rights
+//  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+//  copies of the Software, and to permit persons to whom the Software is
+//  furnished to do so, subject to the following conditions:
+//
+//  The above copyright notice and this permission notice shall be included in all
+//  copies or substantial portions of the Software.
+//
+//  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+//  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+//  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+//  SOFTWARE.
 //
 
 import Foundation
@@ -16,16 +35,18 @@ struct DrawCall {
     var depthStencilState: MTLDepthStencilState?
     var cullMode: MTLCullMode = .back
     var depthBias: RenderPass.DepthBias?
+    var drawData: DrawData?
     
-    init(renderPipelineState: MTLRenderPipelineState, depthStencilState: MTLDepthStencilState? = nil, cullMode: MTLCullMode = .back, depthBias: RenderPass.DepthBias? = nil, uuid: UUID = UUID()) {
+    init(renderPipelineState: MTLRenderPipelineState, depthStencilState: MTLDepthStencilState? = nil, cullMode: MTLCullMode = .back, depthBias: RenderPass.DepthBias? = nil, drawData: DrawData? = nil, uuid: UUID = UUID()) {
         self.uuid = uuid
         self.renderPipelineState = renderPipelineState
         self.depthStencilState = depthStencilState
         self.cullMode = cullMode
         self.depthBias = depthBias
+        self.drawData = drawData
     }
     
-    init(withDevice device: MTLDevice, renderPipelineDescriptor: MTLRenderPipelineDescriptor, depthStencilDescriptor: MTLDepthStencilDescriptor? = nil, cullMode: MTLCullMode = .back, depthBias: RenderPass.DepthBias? = nil) {
+    init(withDevice device: MTLDevice, renderPipelineDescriptor: MTLRenderPipelineDescriptor, depthStencilDescriptor: MTLDepthStencilDescriptor? = nil, cullMode: MTLCullMode = .back, depthBias: RenderPass.DepthBias? = nil, drawData: DrawData? = nil) {
         
         let myPipelineState: MTLRenderPipelineState = {
             do {
@@ -44,7 +65,7 @@ struct DrawCall {
                 return nil
             }
         }()
-        self.init(renderPipelineState: myPipelineState, depthStencilState: myDepthStencilState, cullMode: cullMode, depthBias: depthBias)
+        self.init(renderPipelineState: myPipelineState, depthStencilState: myDepthStencilState, cullMode: cullMode, depthBias: depthBias, drawData: drawData)
         
     }
     
@@ -208,8 +229,9 @@ class RenderPass {
         return depthStateDescriptor
     }
     
-    func drawCall(withRenderPipelineDescriptor renderPipelineDescriptor: MTLRenderPipelineDescriptor, depthStencilDescriptor: MTLDepthStencilDescriptor) -> DrawCall {
-        return DrawCall(withDevice: device, renderPipelineDescriptor: renderPipelineDescriptor, depthStencilDescriptor: depthStencilDescriptor, cullMode: cullMode, depthBias: depthBias)
+    func drawCall(withRenderPipelineDescriptor renderPipelineDescriptor: MTLRenderPipelineDescriptor, depthStencilDescriptor: MTLDepthStencilDescriptor, drawData: DrawData? = nil) -> DrawCall {
+        let aDrawCall = DrawCall(withDevice: device, renderPipelineDescriptor: renderPipelineDescriptor, depthStencilDescriptor: depthStencilDescriptor, cullMode: cullMode, depthBias: depthBias, drawData: drawData)
+        return aDrawCall
     }
     
 }

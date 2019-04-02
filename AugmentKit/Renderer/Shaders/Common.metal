@@ -97,4 +97,35 @@ float4x4 invert4(float4x4 m) {
                     float4(a11 * b07 - a10 * b09 - a12 * b06, a00 * b09 - a01 * b07 + a02 * b06, a31 * b01 - a30 * b03 - a32 * b00, a20 * b03 - a21 * b01 + a22 * b00)) * det;
 }
 
+//float3 func rgbFromColorTemperature(float colorTemperature) {
+//    
+//    float temp = colorTemperature / 100.0;
+//    
+//    float red = 127.0;
+//    float green = 127.0;
+//    float blue = 127.0;
+//    
+//    if temp <= 66 {
+//        red = 255.0;
+//        green = temp;
+//        green = 99.4708025861 * log(green) - 161.1195681661;
+//        if temp <= 19 {
+//            blue = 0;
+//        } else {
+//            blue = temp - 10.0;
+//            blue = 138.5177312231 * log(blue) - 305.0447927307;
+//        }
+//    } else {
+//        red = temp - 60.0;
+//        red = 329.698727446 * pow(red, -0.1332047592);
+//        green = temp - 60.0;
+//        green = 288.1221695283 * pow(green, -0.0755148492 );
+//        blue = 255.0;
+//    }
+//    
+//    float3 clamped = clamp(float3(red, green, blue), min: 0.0, max: 255.0)
+//    return clamped
+//    
+//}
+
 #endif

@@ -36,6 +36,13 @@ struct DrawCall {
     var cullMode: MTLCullMode = .back
     var depthBias: RenderPass.DepthBias?
     var drawData: DrawData?
+    var usesSkins: Bool {
+        if let myDrawData = drawData {
+            return myDrawData.skins.count > 0
+        } else {
+            return false
+        }
+    }
     
     init(renderPipelineState: MTLRenderPipelineState, depthStencilState: MTLDepthStencilState? = nil, cullMode: MTLCullMode = .back, depthBias: RenderPass.DepthBias? = nil, drawData: DrawData? = nil, uuid: UUID = UUID()) {
         self.uuid = uuid
@@ -91,16 +98,25 @@ struct DrawCall {
 /// An abstraction for a collection of `DrawCall`'s. A `DrawCallGroup` helps organize a sequence of `DrawCall`'s into a logical group. Multiple `DrawCallGroup`'s can then be rendered, in order, in a single pass.
 class DrawCallGroup {
     
+    /// The `uuid` is usually set to match the `identifier` property of the corresponding `AKGeometricEntity`
     var uuid: UUID
     var moduleIdentifier: String?
     var numDrawCalls: Int {
         return drawCalls.count
     }
+    /// The value of this property is set automatically when initializing with an array of draw calls and is `true` if any `DrawCall` uses skins. When this is false the renderer can skip steps for calculating skinned animations resulting in some efficiency gain.
+    var useSkins = false
+    
+    /// The order of `drawCalls` is usually taken directly from the order in which the meshes are parsed from the MDLAsset.
+    /// see: `ModelIOTools.meshGPUData(from asset: MDLAsset, device: MTLDevice, textureBundle: Bundle, vertexDescriptor: MDLVertexDescriptor?, frameRate: Double = 60, shaderPreference: ShaderPreference = .pbr)`
     var drawCalls = [DrawCall]()
     
     init(drawCalls: [DrawCall] = [], uuid: UUID = UUID()) {
         self.uuid = uuid
         self.drawCalls = drawCalls
+        if drawCalls.first(where: {$0.usesSkins}) != nil {
+            self.useSkins = true
+        }
     }
     
 }

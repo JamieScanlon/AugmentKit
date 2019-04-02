@@ -40,7 +40,7 @@ public extension float4x4 {
         - z: The z component of the scale
      - Returns: A new scale transform
      */
-    public static func makeScale(x: Float, y: Float, z: Float) -> float4x4 {
+    static func makeScale(x: Float, y: Float, z: Float) -> float4x4 {
         return unsafeBitCast(GLKMatrix4MakeScale(x, y, z), to: float4x4.self)
     }
     /**
@@ -52,7 +52,7 @@ public extension float4x4 {
         - z: The Z axis component of the rotation
      - Returns: A new rotation transform
      */
-    public static func makeRotate(radians: Float, x: Float, y: Float, z: Float) -> float4x4 {
+    static func makeRotate(radians: Float, x: Float, y: Float, z: Float) -> float4x4 {
         return unsafeBitCast(GLKMatrix4MakeRotation(radians, x, y, z), to: float4x4.self)
     }
     /**
@@ -63,7 +63,7 @@ public extension float4x4 {
         - z: The Z component of the translation
      - Returns: A new translation transform
      */
-    public static func makeTranslation(x: Float, y: Float, z: Float) -> float4x4 {
+    static func makeTranslation(x: Float, y: Float, z: Float) -> float4x4 {
         return unsafeBitCast(GLKMatrix4MakeTranslation(x, y, z), to: float4x4.self)
     }
     /**
@@ -75,7 +75,7 @@ public extension float4x4 {
         - farZ: The far clipping distance. Must be positive and greater than the near distance.
      - Returns: A new perspective projection matrix
      */
-    public static func makePerspective(fovyRadians: Float, aspect: Float, nearZ: Float, farZ: Float) -> float4x4 {
+    static func makePerspective(fovyRadians: Float, aspect: Float, nearZ: Float, farZ: Float) -> float4x4 {
         return unsafeBitCast(GLKMatrix4MakePerspective(fovyRadians, aspect, nearZ, farZ), to: float4x4.self)
     }
     /**
@@ -89,7 +89,7 @@ public extension float4x4 {
         - farZ: The far clipping distance. Must be positive and greater than the near distance.
      - Returns: A projection matrix
      */
-    public static func makeFrustum(left: Float, right: Float, bottom: Float, top: Float, nearZ: Float, farZ: Float) -> float4x4 {
+    static func makeFrustum(left: Float, right: Float, bottom: Float, top: Float, nearZ: Float, farZ: Float) -> float4x4 {
         return unsafeBitCast(GLKMatrix4MakeFrustum(left, right, bottom, top, nearZ, farZ), to: float4x4.self)
     }
     /**
@@ -103,7 +103,7 @@ public extension float4x4 {
         - farZ: The far coordinate of the projection volume in eye coordinates.
      - Returns: A projection matrix
      */
-    public static func makeOrtho(left: Float, right: Float, bottom: Float, top: Float, nearZ: Float, farZ: Float) -> float4x4 {
+    static func makeOrtho(left: Float, right: Float, bottom: Float, top: Float, nearZ: Float, farZ: Float) -> float4x4 {
         return unsafeBitCast(GLKMatrix4MakeOrtho(left, right, bottom, top, nearZ, farZ), to: float4x4.self)
     }
     /**
@@ -120,7 +120,7 @@ public extension float4x4 {
         - upZ: The z coordinate of the camera’s up vector.
      - Returns: A rotation matrix
      */
-    public static func makeLookAt(eyeX: Float, eyeY: Float, eyeZ: Float, centerX: Float, centerY: Float, centerZ: Float, upX: Float, upY: Float, upZ: Float) -> float4x4 {
+    static func makeLookAt(eyeX: Float, eyeY: Float, eyeZ: Float, centerX: Float, centerY: Float, centerZ: Float, upX: Float, upY: Float, upZ: Float) -> float4x4 {
         let quaternion = simd_quatf(vector: float4(0, 0, 0, 1))
         let lookAtQ = quaternion.lookAt(eye: float3(eyeX, eyeY, eyeZ), center: float3(centerX, centerY, centerZ), up: float3(upX, upY, upZ))
         return lookAtQ.toMatrix4()
@@ -132,7 +132,7 @@ public extension float4x4 {
         - from: A 4x4 matrix.
      - Returns: A new `simd_quatf`
      */
-    public static func makeQuaternion(from: float4x4) -> simd_quatf {
+    static func makeQuaternion(from: float4x4) -> simd_quatf {
         return simd_quatf(from)
     }
     /**
@@ -143,7 +143,7 @@ public extension float4x4 {
         - z: The z component of the scale
      - Returns: A new scale transform
      */
-    public func scale(x: Float, y: Float, z: Float) -> float4x4 {
+    func scale(x: Float, y: Float, z: Float) -> float4x4 {
         return self * float4x4.makeScale(x: x, y: y, z: z)
     }
     /**
@@ -155,7 +155,7 @@ public extension float4x4 {
         - z: The Z axis component of the rotation
      - Returns: A new rotation transform
      */
-    public func rotate(radians: Float, x: Float, y: Float, z: Float) -> float4x4 {
+    func rotate(radians: Float, x: Float, y: Float, z: Float) -> float4x4 {
         return self * float4x4.makeRotate(radians: radians, x: x, y: y, z: z)
     }
     /**
@@ -166,30 +166,30 @@ public extension float4x4 {
         - z: The Z component of the translation
      - Returns: A new translation transform
      */
-    public func translate(x: Float, y: Float, z: Float) -> float4x4 {
+    func translate(x: Float, y: Float, z: Float) -> float4x4 {
         return self * float4x4.makeTranslation(x: x, y: y, z: z)
     }
     /**
      Creates a new `simd_quatf`.
      - Returns: A new `simd_quatf`
      */
-    public func quaternion() -> simd_quatf {
+    func quaternion() -> simd_quatf {
         return float4x4.makeQuaternion(from: self)
     }
     /**
      - Returns: `true` if all of the values in the matrix are less than 0.0001
      */
-    public func isZero() -> Bool {
-        if let max = self.columns.0.max(), max > 0.0001 {
+    func isZero() -> Bool {
+        if self.columns.0.x > 0.0001 || self.columns.0.y > 0.0001 || self.columns.0.z > 0.0001 || self.columns.0.w > 0.0001 {
             return false
         }
-        if let max = self.columns.1.max(), max > 0.0001 {
+        if self.columns.1.x > 0.0001 || self.columns.1.y > 0.0001 || self.columns.1.z > 0.0001 || self.columns.1.w > 0.0001 {
             return false
         }
-        if let max = self.columns.2.max(), max > 0.0001 {
+        if self.columns.2.x > 0.0001 || self.columns.2.y > 0.0001 || self.columns.2.z > 0.0001 || self.columns.2.w > 0.0001 {
             return false
         }
-        if let max = self.columns.3.max(), max > 0.0001 {
+        if self.columns.3.x > 0.0001 || self.columns.3.y > 0.0001 || self.columns.3.z > 0.0001 || self.columns.3.w > 0.0001 {
             return false
         }
         return true
@@ -201,7 +201,7 @@ public extension float4x4 {
         - position: The point to look at
      - Returns: A `float4x4` which specifies how this transform should be rotated to look at the point.
      */
-    public func lookAtMatrix(position: float3) -> float4x4 {
+    func lookAtMatrix(position: float3) -> float4x4 {
         return lookAtQuaternion(position: position).toMatrix4()
     }
     /**
@@ -210,14 +210,14 @@ public extension float4x4 {
         - position: The point to look at
      - Returns: A `simd_quatf` which specifies how this transform should be rotated to look at the point.
      */
-    public func lookAtQuaternion(position: float3) -> simd_quatf {
+    func lookAtQuaternion(position: float3) -> simd_quatf {
         let quaternion = float4x4.makeLookAt(eyeX: columns.3.x, eyeY: columns.3.y, eyeZ: columns.3.z, centerX: position.x, centerY: position.y, centerZ: position.z, upX: 0, upY: 1, upZ: 0).quaternion()
         return quaternion
     }
     /**
      A normalized 3x3 matrix
      */
-    public var normalMatrix: float3x3 {
+    var normalMatrix: float3x3 {
         let upperLeft = float3x3(self[0].xyz, self[1].xyz, self[2].xyz)
         return upperLeft.transpose.inverse
     }

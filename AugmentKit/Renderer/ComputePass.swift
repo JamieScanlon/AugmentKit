@@ -82,6 +82,15 @@ class ComputePass {
     var device: MTLDevice
     var name: String?
     var uuid: UUID
+    var threadGroup: ThreadGroup?
+    
+    var usesGeometry = true
+    var usesLighting = false
+    var usesSharedBuffer = true
+    var usesEnvironment = true
+    var usesEffects = true
+    var usesCameraOutput = false
+    var usesShadows = false
     
     init(withDevice device: MTLDevice, uuid: UUID = UUID()) {
         self.device = device

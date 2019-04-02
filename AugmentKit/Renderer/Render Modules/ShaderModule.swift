@@ -442,7 +442,7 @@ struct SphereLineIntersection {
 
 // MARK: - SharedRenderModule protocol
 
-/// A shared render module is a render module responsible for setting up and updating shared buffers. Although it does have a draw() method, typically this method does not do anything. Instead, the module that uses this shared module is responsible for encoding the shared buffer and issuing the draw call
+/// A shared render module is a `RenderModule` responsible for setting up and updating shared buffers. Although it does have a draw() method, typically this method does not do anything. Instead, the module that uses this shared module is responsible for encoding the shared buffer and issuing the draw call
 protocol SharedRenderModule: RenderModule {
     var sharedUniformBuffer: MTLBuffer? { get }
     var sharedUniformBufferOffset: Int { get }
@@ -451,6 +451,7 @@ protocol SharedRenderModule: RenderModule {
 
 // MARK: - ComputeModule
 
+/// A module to perform a compute function
 protocol ComputeModule: ShaderModule {
     
     //
@@ -458,13 +459,60 @@ protocol ComputeModule: ShaderModule {
     //
     
     /// After this function is called, The Compute Pass Desciptors, Textures, Buffers, Compute Pipeline State Descriptors should all be set up.
-    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, forComputePass computePass: ComputePass?) -> [ThreadGroup]
+    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, forComputePass computePass: ComputePass?) -> ThreadGroup?
     
     //
     // Per Frame Updates
     //
     
-    // Update and dispatch the command encoder. At the end of this method it is expected that
-    // drawPrimatives or `dispatchThreads` or dispatchThreadgroups` is called.
-    func dispatch(withComputePass computePass: ComputePass)
+    /// Update and dispatch the command encoder. At the end of this method it is expected that `dispatchThreads` or dispatchThreadgroups` is called.
+    func dispatch(withComputePass computePass: ComputePass, sharedModules: [SharedRenderModule]?)
+}
+
+/// A `ComputePass` that is part of a render pipeline and used to prepare data for subsequent draw calls
+protocol PreRenderComputeModule: ComputeModule {
+    
+    //
+    // Per Frame Updates
+    //
+    
+    /// Update the buffer(s) data from information about the render
+    func prepareToDraw(withAllGeometricEntities: [AKGeometricEntity], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, computePass: ComputePass, renderPass: RenderPass?)
+    
+}
+
+extension PreRenderComputeModule {
+    
+    // MARK: Util
+    
+    func getRGB(from colorTemperature: CGFloat) -> vector_float3 {
+        
+        let temp = Float(colorTemperature) / 100
+        
+        var red: Float = 127
+        var green: Float = 127
+        var blue: Float = 127
+        
+        if temp <= 66 {
+            red = 255
+            green = temp
+            green = 99.4708025861 * log(green) - 161.1195681661
+            if temp <= 19 {
+                blue = 0
+            } else {
+                blue = temp - 10
+                blue = 138.5177312231 * log(blue) - 305.0447927307
+            }
+        } else {
+            red = temp - 60
+            red = 329.698727446 * pow(red, -0.1332047592)
+            green = temp - 60
+            green = 288.1221695283 * pow(green, -0.0755148492 )
+            blue = 255
+        }
+        
+        let clamped = clamp(float3(red, green, blue), min: 0, max: 255)
+        return vector3(clamped.x, clamped.y, clamped.z)
+        
+    }
 }

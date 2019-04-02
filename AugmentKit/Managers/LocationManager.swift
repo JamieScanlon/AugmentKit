@@ -32,19 +32,19 @@ public extension Notification.Name {
     /**
      A Notification issued when the location delegate has detected a location change
      */
-    public static let locationDelegateUpdateLocationNotification = Notification.Name("com.tenthlettermade.augmentKit.notificaiton.LocationDelegateUpdateLocation")
+    static let locationDelegateUpdateLocationNotification = Notification.Name("com.tenthlettermade.augmentKit.notificaiton.LocationDelegateUpdateLocation")
     /**
      A Notification issued when the location delegate has entered a region
      */
-    public static let locationDelegateNearObjectNotification = Notification.Name("com.tenthlettermade.notificaiton.augmentKit.LocationDelegateNearObjectNotification")
+    static let locationDelegateNearObjectNotification = Notification.Name("com.tenthlettermade.notificaiton.augmentKit.LocationDelegateNearObjectNotification")
     /**
      A Notification issued when the location delegate has a more accuate location available
      */
-    public static let locationDelegateMoreReliableARLocationNotification = Notification.Name("com.tenthlettermade.augmentKit.notificaiton.LocationDelegateMoreReliableARLocation")
+    static let locationDelegateMoreReliableARLocationNotification = Notification.Name("com.tenthlettermade.augmentKit.notificaiton.LocationDelegateMoreReliableARLocation")
     /**
      A Notification issued when the location delegate has a more accuate heading available
      */
-    public static let locationDelegateMoreReliableARHeadingNotification = Notification.Name("com.tenthlettermade.augmentKit.notificaiton.LocationDelegateMoreReliableARHeading")
+    static let locationDelegateMoreReliableARHeadingNotification = Notification.Name("com.tenthlettermade.augmentKit.notificaiton.LocationDelegateMoreReliableARHeading")
 }
 
 // MARK: - LocationManager
@@ -128,7 +128,7 @@ public extension LocationManager {
     /**
      Starts location services
      */
-    public func startLocationService() {
+    func startLocationService() {
         
         if locationServicesEnabled() {
             setServiceAvailable(false)
@@ -153,7 +153,7 @@ public extension LocationManager {
     /**
      Stops location services
      */
-    public func stopLocationService() {
+    func stopLocationService() {
         
         clLocationManager.stopUpdatingLocation()
         clLocationManager.stopMonitoringSignificantLocationChanges()
@@ -163,19 +163,19 @@ public extension LocationManager {
     /**
      - Returns: `true` if location services are available
      */
-    public func isLocationServiceAvailable() -> Bool {
+    func isLocationServiceAvailable() -> Bool {
         return serviceAvailable
     }
     /**
      - Returns: `true` if location services are started
      */
-    public func isServiceStarted() -> Bool {
+    func isServiceStarted() -> Bool {
         return serviceStarted
     }
     /**
      - Returns: `true` if location services have been authorized
      */
-    public func hasGivenAutorization() -> Bool {
+    func hasGivenAutorization() -> Bool {
         return  (authorizationStatus() == .authorizedAlways || authorizationStatus() == .authorizedWhenInUse)
     }
     
@@ -191,19 +191,19 @@ public extension LocationManager {
     /**
      Request Always On authoirization with the system
      */
-    public func requestAlwaysAuthorization() {
+    func requestAlwaysAuthorization() {
         clLocationManager.requestAlwaysAuthorization()
     }
     /**
      Request When In Use authoirization with the system
      */
-    public func requestInUseAuthorization() {
+    func requestInUseAuthorization() {
         clLocationManager.requestWhenInUseAuthorization()
     }
     /**
      - Returns: The most recent recorded location
      */
-    public func currentLocation() -> CLLocation? {
+    func currentLocation() -> CLLocation? {
         
         guard isLocationServiceAvailable() else {
             return nil

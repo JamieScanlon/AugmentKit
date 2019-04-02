@@ -757,9 +757,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     private func updatePuppetAnimation(from drawData: DrawData, frameNumber: UInt, frameRate: Double = 60) {
         
         let capacity = Constants.alignedPaletteSize * Constants.maxPaletteSize
-        
         let boundPaletteData = paletteBufferAddress?.bindMemory(to: matrix_float4x4.self, capacity: capacity)
-        
         let paletteData = UnsafeMutableBufferPointer<matrix_float4x4>(start: boundPaletteData, count: Constants.maxPaletteSize)
         
         var jointPaletteOffset = 0

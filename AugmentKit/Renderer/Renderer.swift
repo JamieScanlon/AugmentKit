@@ -38,15 +38,15 @@ public extension Notification.Name {
     /**
      A Notification issued when the render's state has changed
      */
-    public static let rendererStateChanged = Notification.Name("com.tenthlettermade.augmentKit.notificaiton.rendererStateChanged")
+    static let rendererStateChanged = Notification.Name("com.tenthlettermade.augmentKit.notificaiton.rendererStateChanged")
     /**
      A Notification issued when the renderer has detected the first surface
      */
-    public static let surfaceDetectionStateChanged = Notification.Name("com.tenthlettermade.augmentKit.notificaiton.surfaceDetectionStateChanged")
+    static let surfaceDetectionStateChanged = Notification.Name("com.tenthlettermade.augmentKit.notificaiton.surfaceDetectionStateChanged")
     /**
      A Notification issued when the renderer has aborted due to errors.
      */
-    public static let abortedDueToErrors = Notification.Name("com.tenthlettermade.augmentKit.notificaiton.abortedDueToErrors")
+    static let abortedDueToErrors = Notification.Name("com.tenthlettermade.augmentKit.notificaiton.abortedDueToErrors")
 }
 
 // MARK: - RenderDestinationProvider
@@ -1062,7 +1062,7 @@ public class Renderer: NSObject {
         let anchorType = type(of: akAnchor).type
         modelProvider?.unregisterAsset(forObjectType: anchorType, identifier: akAnchor.identifier)
         var existingGeometries = geometriesForRenderModule[AnchorsRenderModule.identifier]
-        if let index = existingGeometries?.index(where: {$0.identifier == akAnchor.identifier}) {
+        if let index = existingGeometries?.firstIndex(where: {$0.identifier == akAnchor.identifier}) {
             existingGeometries?.remove(at: index)
         }
         geometriesForRenderModule[AnchorsRenderModule.identifier] = existingGeometries
@@ -1084,7 +1084,7 @@ public class Renderer: NSObject {
         let anchorType = type(of: akTracker).type
         modelProvider?.unregisterAsset(forObjectType: anchorType, identifier: akTracker.identifier)
         var existingGeometries = geometriesForRenderModule[UnanchoredRenderModule.identifier]
-        if let index = existingGeometries?.index(where: {$0.identifier == akTracker.identifier}) {
+        if let index = existingGeometries?.firstIndex(where: {$0.identifier == akTracker.identifier}) {
             existingGeometries?.remove(at: index)
         }
         geometriesForRenderModule[UnanchoredRenderModule.identifier] = existingGeometries
@@ -1106,7 +1106,7 @@ public class Renderer: NSObject {
         let anchorType = type(of: akPath).type
         modelProvider?.unregisterAsset(forObjectType: anchorType, identifier: akPath.identifier)
         var existingGeometries = geometriesForRenderModule[PathsRenderModule.identifier]
-        if let index = existingGeometries?.index(where: {$0.identifier == akPath.identifier}) {
+        if let index = existingGeometries?.firstIndex(where: {$0.identifier == akPath.identifier}) {
             existingGeometries?.remove(at: index)
         }
         geometriesForRenderModule[PathsRenderModule.identifier] = existingGeometries
@@ -1123,7 +1123,7 @@ public class Renderer: NSObject {
         let anchorType = type(of: gazeTarget).type
         modelProvider?.unregisterAsset(forObjectType: anchorType, identifier: gazeTarget.identifier)
         var existingGeometries = geometriesForRenderModule[UnanchoredRenderModule.identifier]
-        if let index = existingGeometries?.index(where: {$0.identifier == gazeTarget.identifier}) {
+        if let index = existingGeometries?.firstIndex(where: {$0.identifier == gazeTarget.identifier}) {
             existingGeometries?.remove(at: index)
         }
         geometriesForRenderModule[UnanchoredRenderModule.identifier] = existingGeometries

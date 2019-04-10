@@ -115,5 +115,33 @@ public class PathAnchor: AKPath {
         worldLocation.transform = arAnchor.transform
     }
     
+    /**
+     This methods calculates the position, scale, and rotation of each path segment anchor so that it connects to the next and previous anchors.
+     - Parameters:
+        - withRenderSphere: An `AKSphere`. If provided, the calculated segment transforms will fall within the sphere provided
+     */
+    public func updateSegmentTransforms(withRenderSphere renderSphere: AKSphere? = nil) {
+        
+        var lastAnchor: AKAugmentedAnchor?
+        for anchor in segmentPoints {
+            
+            guard let myLastAnchor = lastAnchor else {
+                lastAnchor = anchor
+                continue
+            }
+            
+            let line = AKLine(point0: double3(Double(myLastAnchor.worldLocation.transform.columns.3.x), Double(myLastAnchor.worldLocation.transform.columns.3.y), Double(myLastAnchor.worldLocation.transform.columns.3.z)), point1: double3(Double(anchor.worldLocation.transform.columns.3.x), Double(anchor.worldLocation.transform.columns.3.y), Double(anchor.worldLocation.transform.columns.3.z)))
+            let recalculatedLine: AKLine = {
+                if let renderSphere = renderSphere {
+                    let intersection = renderSphere.intersection(with: line)
+                    return intersection.line
+                } else {
+                    return line
+                }
+            }()
+            anchor.updateSegmentTransform(withLine: recalculatedLine)
+        }
+    }
+    
 }
 

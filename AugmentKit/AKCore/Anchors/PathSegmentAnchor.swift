@@ -73,6 +73,19 @@ public class PathSegmentAnchor: AKPathSegmentAnchor {
      */
     public var arAnchor: ARAnchor?
     /**
+     A transform, in the coodinate space of the AR world, which is used to transform the path segment geometry such that it connects with the previous segment to form a line.
+     */
+    public fileprivate(set) var segmentTransform: matrix_float4x4
+    
+    /**
+     Sets a new `segmentTransform` value
+     - Parameters:
+     - _: A `matrix_float4x4`
+     */
+    public func setSegmentTransform(_ newTransform: matrix_float4x4) {
+        segmentTransform = newTransform
+    }
+    /**
      Initialize an object with an array of `AKWorldLocation`s
      - Parameters:
         - at: The location of the anchor
@@ -84,6 +97,7 @@ public class PathSegmentAnchor: AKPathSegmentAnchor {
         self.worldLocation = location
         self.identifier = identifier
         self.effects = effects
+        self.segmentTransform = location.transform
     }
     /**
      Set the identifier for this instance

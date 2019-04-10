@@ -38,4 +38,10 @@ public protocol AKPath: AKAugmentedAnchor {
      An array of `AKPathSegmentAnchor` that represent the starting and ending points for the line segments. A path must have at least two `AKPathSegmentAnchor` in the `segmentPoints` array. All segments in a path are connected such that the ending point of one segment is the starting point for the next. Therefor an array of three `AKPathSegmentAnchor` instances represents a path with two line segments
      */
     var segmentPoints: [AKPathSegmentAnchor] { get }
+    /**
+     This methods calculates the position, scale, and rotation of each path segment anchor so that it connects to the next and previous anchors.
+     - Parameters:
+     - withRenderSphere: An `AKSphere`. If provided, the calculated segment transforms will fall within the sphere provided
+     */
+    func updateSegmentTransforms(withRenderSphere: AKSphere?)
 }

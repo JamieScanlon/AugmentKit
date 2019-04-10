@@ -291,7 +291,7 @@ class PrecalculationModule: PreRenderComputeModule {
                     // Flip Z axis to convert geometry from right handed to left handed
                     var coordinateSpaceTransform = matrix_identity_float4x4
                     coordinateSpaceTransform.columns.2.z = -1.0
-                    coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
+                    coordinateSpaceTransform = coordinateSpaceTransform * worldTransform
                     
                     if let akAnchor = geometricEntity as? AKAnchor {
                         

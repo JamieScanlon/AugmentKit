@@ -266,31 +266,35 @@ class PathsRenderModule: RenderModule {
         // Update the anchor uniform buffer with transforms of the current frame's anchors
         pathSegmentInstanceCount = 0
         anchorIdentifiers = [:]
+        let renderSphere = AKSphere(center: AKVector(cameraProperties.position), radius: renderDistance)
         
         for path in paths {
             
-            var lastAnchor: AKAugmentedAnchor?
+//            var lastAnchor: AKAugmentedAnchor?
             var uuids = [UUID]()
+            path.updateSegmentTransforms(withRenderSphere: renderSphere)
             
             for anchor in path.segmentPoints {
                 
-                guard let myLastAnchor = lastAnchor else {
-                    lastAnchor = anchor
-                    continue
-                }
+                // FIME: Remove most of this. The worldTransform is pre-caculated by updateSegmentTransforms
                 
-                //
-                // Update the Instance uniform
-                //
-                
-                // Clip the paths to the render sphere
-                let p0 = float3(myLastAnchor.worldLocation.transform.columns.3.x, myLastAnchor.worldLocation.transform.columns.3.y, myLastAnchor.worldLocation.transform.columns.3.z)
-                let p1 = float3(anchor.worldLocation.transform.columns.3.x, anchor.worldLocation.transform.columns.3.y, anchor.worldLocation.transform.columns.3.z)
-                let sphereIntersection = renderShpereIntersectionOfPath(withPoint0: p0, point1: p1, cameraProperties: cameraProperties)
-                guard sphereIntersection.isInside else {
-                    lastAnchor = anchor
-                    continue
-                }
+//                guard let myLastAnchor = lastAnchor else {
+//                    lastAnchor = anchor
+//                    continue
+//                }
+//
+//                //
+//                // Update the Instance uniform
+//                //
+//
+//                // Clip the paths to the render sphere
+//                let p0 = float3(myLastAnchor.worldLocation.transform.columns.3.x, myLastAnchor.worldLocation.transform.columns.3.y, myLastAnchor.worldLocation.transform.columns.3.z)
+//                let p1 = float3(anchor.worldLocation.transform.columns.3.x, anchor.worldLocation.transform.columns.3.y, anchor.worldLocation.transform.columns.3.z)
+//                let sphereIntersection = renderShpereIntersectionOfPath(withPoint0: p0, point1: p1, cameraProperties: cameraProperties)
+//                guard sphereIntersection.isInside else {
+//                    lastAnchor = anchor
+//                    continue
+//                }
                 
                 pathSegmentInstanceCount += 1
                 
@@ -303,51 +307,61 @@ class PathsRenderModule: RenderModule {
                     uuids.append(identifier)
                 }
                 
-                let lastAnchorPosition = sphereIntersection.point0
-                let anchorPosition = sphereIntersection.point1
+//                let lastAnchorPosition = sphereIntersection.point0
+//                let anchorPosition = sphereIntersection.point1
+//
+//
+//                // Ignore all rotation within anchor.worldLocation.transform.
+//                // When dealing with paths, the anchors are considered points in space so rotation has no meaning.
+//                let locationMatrix = matrix_identity_float4x4.translate(x: anchorPosition.x, y: anchorPosition.y, z: anchorPosition.z)
                 
+                //
+                // Calculate world transform
+                //
                 
-                // Ignore all rotation within anchor.worldLocation.transform.
-                // When dealing with paths, the anchors are considered points in space so rotation has no meaning.
-                let locationMatrix = matrix_identity_float4x4.translate(x: anchorPosition.x, y: anchorPosition.y, z: anchorPosition.z)
+                let locationMatrix = anchor.worldLocation.transform
+                let worldTransform = anchor.segmentTransform
+                
+//                var worldTransform = matrix_identity_float4x4
+//
+//                // Rotate and scale worldTransform so that it is oriented from
+//                // myLastAnchor to anchor
+//
+//                // Do all calculations with doubles and convert them to floats a the end.
+//                // This reduces floating point rounding errors especially when calculating
+//                // andgles of rotation
+//
+//                let finalPosition = double3(0, 0, 0)
+//                let initialPosition = double3(Double(lastAnchorPosition.x - anchorPosition.x), Double(lastAnchorPosition.y - anchorPosition.y), Double(lastAnchorPosition.z - anchorPosition.z))
+//
+//                // The following was taken from: http://www.thjsmith.com/40/cylinder-between-two-points-opengl-c
+//                // Default cylinder direction (up)
+//                let defaultLineDirection = double3(0,1,0)
+//                // Get diff between two points you want cylinder along
+//                let delta = (finalPosition - initialPosition)
+//                // Get CROSS product (the axis of rotation)
+//                let t = cross(defaultLineDirection , normalize(delta))
+//
+//                // Get the magnitude of the vector
+//                let magDelta = length(delta)
+//                // Get angle (radians)
+//                let angle = acos(dot(defaultLineDirection, delta) / magDelta)
+//
+//                // The cylinder created by MDLMesh extends from (0, -0.5, 0) to (0, 0.5, 0). Translate it so that it is
+//                // midway between the two points
+//                let middle = -delta / 2
+//                worldTransform = worldTransform.translate(x: Float(middle.x), y: Float(middle.y), z: Float(-middle.z))
+//                if angle == Double.pi {
+//                    worldTransform = worldTransform.rotate(radians: Float(angle), x: 0, y: 0, z: 1)
+//                } else if Float(angle) > 0 {
+//                    worldTransform = worldTransform.rotate(radians: Float(-angle), x: Float(t.x), y: Float(t.y), z: Float(-t.z))
+//                }
+//                worldTransform = worldTransform.scale(x: 1, y: Float(magDelta), z: 1)
                 
                 // Flip Z axis to convert geometry from right handed to left handed
                 var coordinateSpaceTransform = matrix_identity_float4x4
                 coordinateSpaceTransform.columns.2.z = -1.0
-                
-                // Rotate and scale coordinateSpaceTransform so that it is oriented from
-                // myLastAnchor to anchor
-                
-                // Do all calculations with doubles and convert them to floats a the end.
-                // This reduces floating point rounding errors especially when calculating
-                // andgles of rotation
-                
-                let finalPosition = double3(0, 0, 0)
-                let initialPosition = double3(Double(lastAnchorPosition.x - anchorPosition.x), Double(lastAnchorPosition.y - anchorPosition.y), Double(lastAnchorPosition.z - anchorPosition.z))
-                
-                // The following was taken from: http://www.thjsmith.com/40/cylinder-between-two-points-opengl-c
-                // Default cylinder direction (up)
-                let defaultLineDirection = double3(0,1,0)
-                // Get diff between two points you want cylinder along
-                let delta = (finalPosition - initialPosition)
-                // Get CROSS product (the axis of rotation)
-                let t = cross(defaultLineDirection , normalize(delta))
-                
-                // Get the magnitude of the vector
-                let magDelta = length(delta)
-                // Get angle (radians)
-                let angle = acos(dot(defaultLineDirection, delta) / magDelta)
-                
-                // The cylinder created by MDLMesh extends from (0, -0.5, 0) to (0, 0.5, 0). Translate it so that it is
-                // midway between the two points
-                let middle = -delta / 2
-                coordinateSpaceTransform = coordinateSpaceTransform.translate(x: Float(middle.x), y: Float(middle.y), z: Float(-middle.z))
-                if angle == Double.pi {
-                    coordinateSpaceTransform = coordinateSpaceTransform.rotate(radians: Float(angle), x: 0, y: 0, z: 1)
-                } else if Float(angle) > 0 {
-                    coordinateSpaceTransform = coordinateSpaceTransform.rotate(radians: Float(-angle), x: Float(t.x), y: Float(t.y), z: Float(-t.z))
-                }
-                coordinateSpaceTransform = coordinateSpaceTransform.scale(x: 1, y: Float(magDelta), z: 1)
+                coordinateSpaceTransform = coordinateSpaceTransform * worldTransform
                 
                 // Create the final transform matrix
                 let modelMatrix = locationMatrix * coordinateSpaceTransform
@@ -359,7 +373,7 @@ class PathsRenderModule: RenderModule {
                 pathUniforms?.pointee.headingType = 0
                 pathUniforms?.pointee.headingTransform = matrix_identity_float4x4
                 pathUniforms?.pointee.locationTransform = locationMatrix
-                pathUniforms?.pointee.worldTransform =  matrix_identity_float4x4
+                pathUniforms?.pointee.worldTransform =  worldTransform
                 pathUniforms?.pointee.modelMatrix = modelMatrix
                 pathUniforms?.pointee.normalMatrix = modelMatrix.normalMatrix
                 
@@ -413,7 +427,7 @@ class PathsRenderModule: RenderModule {
                     effectsUniforms?.pointee.scale = matrix_identity_float4x4
                 }
                 
-                lastAnchor = anchor
+//                lastAnchor = anchor
                 
             }
             

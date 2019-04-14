@@ -927,7 +927,7 @@ public class Renderer: NSObject {
     public func add(akAnchor: AKAugmentedAnchor) {
         
         let arAnchor = ARAnchor(transform: akAnchor.worldLocation.transform)
-        akAnchor.setIdentifier(arAnchor.identifier)
+        akAnchor.identifier = arAnchor.identifier
         
         let anchorType = type(of: akAnchor).type
         
@@ -963,9 +963,9 @@ public class Renderer: NSObject {
         if let userTracker = akTracker as? UserTracker {
             // If a UserTracker instance was passed in, use that directly instead of the
             // internal type
-            userTracker.setIdentifier(identifier)
+            userTracker.identifier = identifier
         } else {
-            akTracker.setIdentifier(identifier)
+            akTracker.identifier = identifier
         }
         
         let anchorType = type(of: akTracker).type
@@ -992,14 +992,13 @@ public class Renderer: NSObject {
      */
     public func add(akPath: AKPath) {
         
-        let identifier = UUID()
-    
-        akPath.setIdentifier(identifier)
-        
         let anchorType = type(of: akPath).type
         
         // Resgister the AKModel with the model provider.
-        modelProvider?.registerAsset(akPath.asset, forObjectType: anchorType, identifier: akPath.identifier)
+        akPath.geometries.forEach { [weak self] geometry in
+            self?.modelProvider?.registerAsset(geometry.asset, forObjectType: anchorType, identifier: akPath.identifier)
+        }
+        
         
         // Update the segment anchors by adding the ARAnchor identifier which will allow us
         // to trace back the ARAnchors to the path they belong to.
@@ -1009,17 +1008,17 @@ public class Renderer: NSObject {
             let arAnchor = ARAnchor(transform: $0.worldLocation.transform)
             session.add(anchor: arAnchor)
             
-            $0.setIdentifier(arAnchor.identifier)
+            $0.identifier = arAnchor.identifier
             
         }
         
         // Keep track of the path bucketed by the RenderModule
         if let existingGeometries = geometriesForRenderModule[PathsRenderModule.identifier] {
             var mutableExistingGeometries = existingGeometries
-            mutableExistingGeometries.append(akPath)
+            mutableExistingGeometries.append(contentsOf: akPath.geometries)
             geometriesForRenderModule[PathsRenderModule.identifier] = mutableExistingGeometries
         } else {
-            geometriesForRenderModule[PathsRenderModule.identifier] = [akPath]
+            geometriesForRenderModule[PathsRenderModule.identifier] = akPath.geometries
         }
         
     }
@@ -1584,7 +1583,7 @@ extension Renderer: ARSessionDelegate {
                 } else {
                     let newRealAnchor = RealSurfaceAnchor(at: WorldLocation(transform: planeAnchor.transform))
                     newRealAnchor.setARAnchor(planeAnchor)
-                    newRealAnchor.setIdentifier(planeAnchor.identifier)
+                    newRealAnchor.identifier = planeAnchor.identifier
                     if let existingGeometries = geometriesForRenderModule[SurfacesRenderModule.identifier] {
                         var mutableExistingGeometries = existingGeometries
                         mutableExistingGeometries.append(newRealAnchor)
@@ -1821,10 +1820,6 @@ fileprivate class InterpolatingAugmentedAnchor: AKAugmentedAnchor {
         lastLocaion = worldLocation
         worldLocation = newWorldLocation
         calculateNextPosition()
-    }
-    
-    public func setIdentifier(_ identifier: UUID) {
-        self.identifier = identifier
     }
     
     func setARAnchor(_ arAnchor: ARAnchor) {

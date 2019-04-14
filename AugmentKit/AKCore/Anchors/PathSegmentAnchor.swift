@@ -100,14 +100,6 @@ public class PathSegmentAnchor: AKPathSegmentAnchor {
         self.segmentTransform = location.transform
     }
     /**
-     Set the identifier for this instance
-     - Parameters:
-        - _: A UUID
-     */
-    public func setIdentifier(_ identifier: UUID) {
-        self.identifier = identifier
-    }
-    /**
      Sets a new `arAnchor`
      - Parameters:
         - _: An `ARAnchor`

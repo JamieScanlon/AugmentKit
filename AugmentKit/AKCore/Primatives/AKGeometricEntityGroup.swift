@@ -1,10 +1,10 @@
 //
-//  AKTracker.swift
+//  AKGeometricEntityGroup.swift
 //  AugmentKit
 //
 //  MIT License
 //
-//  Copyright (c) 2018 JamieScanlon
+//  Copyright (c) 2019 JamieScanlon
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -27,21 +27,15 @@
 
 import Foundation
 
-
-// MARK: - AKTracker
+// MARK: - AKGeometricEntityGroup
 
 /**
- An `AKTracker` represents an object that can be rendered into the `AKWorld`. It's position is relative to another object and therefore tracks the other opject and is not fixed. The `AKTracker` protocol has two sub protocols, `AKAugmentedTracker` and `AKRealTracker` that represent augmented objects (objects that don't exist in the real world) and real objects, objects that exist both in the augmented work and the real world.
- 
- An `AKTracker` is a `AKGeometricEntity`. The object's geometry is defiened by the `model` property. The object's position is not fixed in world space but is relative.
+ An `AKGeometricEntityGroup` defines a group of `AKGeometricEntity` objects.
  */
-public protocol AKTracker: class, AKGeometricEntity {
+public protocol AKGeometricEntityGroup: AKEntity {
     /**
-     A unique, per-instance identifier. Redefine the `identifier property to require a setter.
+     A unique, per-instance identifier
      */
-    var identifier: UUID? { get set }
-    /**
-     The position of the tracker. The position is relative to the objects this tracks.
-     */
-    var position: AKRelativePosition { get set }
+    var geometries: [AKGeometricEntity] { get }
 }
+

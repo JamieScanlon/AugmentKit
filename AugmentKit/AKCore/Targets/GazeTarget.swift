@@ -79,13 +79,4 @@ public class GazeTarget: AKTarget {
         self.position = myPosition
         self.vectorDirection = AKVector(x: 0, y: 0, z: -1)
     }
-    /**
-     Set the identifier for this instance
-     - Parameters:
-        - _: A UUID
-     */
-    public func setIdentifier(_ identifier: UUID) {
-        self.identifier = identifier
-    }
-    
 }

@@ -40,6 +40,10 @@ import simd
  */
 public protocol AKTarget: class, AKGeometricEntity {
     /**
+     A unique, per-instance identifier. Redefine the `identifier property to require a setter.
+     */
+    var identifier: UUID? { get set }
+    /**
      A direction vector relative to it's position and can be a unit vector
      */
     var vectorDirection: AKVector { get }
@@ -47,10 +51,4 @@ public protocol AKTarget: class, AKGeometricEntity {
      A relative position
      */
     var position: AKRelativePosition { get }
-    /**
-     Set the identifier for this instance
-     - Parameters:
-        - _: A UUID
-     */
-    func setIdentifier(_ identifier: UUID)
 }

@@ -104,13 +104,4 @@ public class UserTracker: AKAugmentedUserTracker {
     public func userPosition() -> AKRelativePosition? {
         return position.parentPosition
     }
-    /**
-     Set the identifier for this instance
-     - Parameters:
-        - _: A UUID
-     */
-    public func setIdentifier(_ identifier: UUID) {
-        self.identifier = identifier
-    }
-    
 }

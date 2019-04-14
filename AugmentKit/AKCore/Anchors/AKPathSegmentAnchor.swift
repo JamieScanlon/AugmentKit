@@ -33,7 +33,7 @@ import simd
  */
 public protocol AKPathSegmentAnchor: AKAugmentedAnchor {
     /**
-     An array of `AKEffect` objects that are applied by the renderer
+     An array of `AKEffect` objects that are applied by the renderer. Overrides the definition in `AKGeometricEntity` to require a setter
      */
     var effects: [AnyEffect<Any>]? { get set }
     

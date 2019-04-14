@@ -78,6 +78,8 @@
 		961D705D21FCCB00006DF951 /* ComputePass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 961D705C21FCCB00006DF951 /* ComputePass.swift */; };
 		963B72A42257AA4C007E95C2 /* AKSphere.swift in Sources */ = {isa = PBXBuildFile; fileRef = 963B72A32257AA4C007E95C2 /* AKSphere.swift */; };
 		963B72A62257ABD6007E95C2 /* AKLine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 963B72A52257ABD6007E95C2 /* AKLine.swift */; };
+		963B72A822639AD8007E95C2 /* AKEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 963B72A722639AD8007E95C2 /* AKEntity.swift */; };
+		963B72AA22639C3E007E95C2 /* AKGeometricEntityGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 963B72A922639C3E007E95C2 /* AKGeometricEntityGroup.swift */; };
 		964EF2A721C5C51C00967FD6 /* SurfaceShader.metal in Sources */ = {isa = PBXBuildFile; fileRef = 964EF2A621C5C51C00967FD6 /* SurfaceShader.metal */; };
 		965A0B1521F4D57A009D4E7F /* PrecalculationModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 965A0B1421F4D57A009D4E7F /* PrecalculationModule.swift */; };
 		965F894F2186BD5E00D1B195 /* RenderPass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 965F894E2186BD5E00D1B195 /* RenderPass.swift */; };
@@ -174,6 +176,8 @@
 		961D705C21FCCB00006DF951 /* ComputePass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComputePass.swift; sourceTree = "<group>"; };
 		963B72A32257AA4C007E95C2 /* AKSphere.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKSphere.swift; sourceTree = "<group>"; };
 		963B72A52257ABD6007E95C2 /* AKLine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKLine.swift; sourceTree = "<group>"; };
+		963B72A722639AD8007E95C2 /* AKEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKEntity.swift; sourceTree = "<group>"; };
+		963B72A922639C3E007E95C2 /* AKGeometricEntityGroup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKGeometricEntityGroup.swift; sourceTree = "<group>"; };
 		964EF2A621C5C51C00967FD6 /* SurfaceShader.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = SurfaceShader.metal; sourceTree = "<group>"; };
 		965A0B1421F4D57A009D4E7F /* PrecalculationModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrecalculationModule.swift; sourceTree = "<group>"; };
 		965F894E2186BD5E00D1B195 /* RenderPass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RenderPass.swift; sourceTree = "<group>"; };
@@ -401,9 +405,11 @@
 		7DAD06C320716CDB00B62B61 /* Primatives */ = {
 			isa = PBXGroup;
 			children = (
+				963B72A722639AD8007E95C2 /* AKEntity.swift */,
+				7DAD06BF207150B300B62B61 /* AKGeometricEntity.swift */,
+				963B72A922639C3E007E95C2 /* AKGeometricEntityGroup.swift */,
 				7D8A0A7F2013D058006CAAAD /* AKRelativePosiiton.swift */,
 				7D8A0A812013D143006CAAAD /* AKHeading.swift */,
-				7DAD06BF207150B300B62B61 /* AKGeometricEntity.swift */,
 				7DAD06C420716D5600B62B61 /* AKVector.swift */,
 				7D345B06208B83CA00C2D5D0 /* AKWorldLocation.swift */,
 				7D345B08208B844600C2D5D0 /* AKWorldDistance.swift */,
@@ -555,6 +561,7 @@
 				7D1FC692213C5EA7006CB649 /* AKWorldMap.swift in Sources */,
 				7D6E6B6E1F8F1CDB00EFC667 /* LocalStoreManager.swift in Sources */,
 				7D8A0A802013D058006CAAAD /* AKRelativePosiiton.swift in Sources */,
+				963B72AA22639C3E007E95C2 /* AKGeometricEntityGroup.swift in Sources */,
 				964EF2A721C5C51C00967FD6 /* SurfaceShader.metal in Sources */,
 				7D6979FE21287FBF000106DF /* PathSegmentAnchor.swift in Sources */,
 				7D48011D20FDA7C000E4B082 /* Data+Serialization.swift in Sources */,
@@ -567,6 +574,7 @@
 				7D6E6B631F8F1CBC00EFC667 /* AKAnchor.swift in Sources */,
 				7D9B13AA20A7519F006C2B63 /* SHA256.swift in Sources */,
 				9614CC15216A5CC500427C6D /* AKRealTracker.swift in Sources */,
+				963B72A822639AD8007E95C2 /* AKEntity.swift in Sources */,
 				7D48011820FDA7C000E4B082 /* Archive.swift in Sources */,
 				7DAA7253211D395900AA11AF /* Common.metal in Sources */,
 				7D6E6B661F8F1CBC00EFC667 /* AKUtility.swift in Sources */,

@@ -312,6 +312,8 @@ extension MDLMaterialProperty {
             myDescription += "Value: \(float4Value)"
         case .matrix44:
             myDescription += "Value: \(matrix4x4)"
+        @unknown default:
+            fatalError("Unhandled MDLMaterialProperty type: \(type)")
         }
         return myDescription
     }
@@ -379,6 +381,8 @@ extension MDLMaterialSemantic: CustomDebugStringConvertible, CustomStringConvert
             myDescription += "ambientOcclusionScale"
         case .userDefined:
             myDescription += "userDefined"
+        @unknown default:
+            fatalError("Unhandled MDLMaterialSemantic: \(self)")
         }
         return myDescription
     }

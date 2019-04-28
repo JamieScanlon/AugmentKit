@@ -303,11 +303,11 @@ public class Renderer: NSObject {
         /**
          Maximim number of in flight render passes
          */
-        static let maxBuffersInFlight = 3
+        static let maxInFlightFrames = 3
         /**
          Maximim number of instances that will be rendered
          */
-        static let maxInstances = 1024
+        static let maxInstances = 2048
     }
     /**
      State of the renderer
@@ -811,7 +811,7 @@ public class Renderer: NSObject {
         // Encode Cammand Buffer
         //
         
-        // Wait to ensure only kMaxBuffersInFlight are getting proccessed by any stage in the Metal
+        // Wait to ensure only `maxInFlightFrames` are getting proccessed by any stage in the Metal
         // pipeline (App, Metal, Drivers, GPU, etc)
         let _ = inFlightSemaphore.wait(timeout: DispatchTime.distantFuture)
         
@@ -833,7 +833,7 @@ public class Renderer: NSObject {
                 }
             }
             
-            uniformBufferIndex = (uniformBufferIndex + 1) % Constants.maxBuffersInFlight
+            uniformBufferIndex = (uniformBufferIndex + 1) % Constants.maxInFlightFrames
             
             // Update Buffer States
             renderModules.forEach { module in
@@ -841,12 +841,33 @@ public class Renderer: NSObject {
                     module.updateBufferState(withBufferIndex: uniformBufferIndex)
                 }
             }
-            
-            
+            computeModules.forEach { module in
+                if module.isInitialized {
+                    module.updateBufferState(withBufferIndex: uniformBufferIndex)
+                }
+            }
             
             //
             // Setup render passes
             //
+            
+            //
+            // Precalculation Pass
+            //
+            if let precalculationPass = precalculationPass {
+                
+                // Update Buffers
+                prepareToDraw(forCameraProperties: cameraProperties, environmentProperties: environmentProperties, shadowProperties: shadowProperties, renderPass: mainRenderPass)
+                
+                // Draw
+                precalculationPass.prepareRenderCommandEncoder(withCommandBuffer: commandBuffer)
+                if let myComputeCommandEncoder = precalculationPass.computeCommandEncoder {
+                    dispatchComputePass(with: myComputeCommandEncoder)
+                } else {
+                    print("WARNING: Could not create MTLRenderCommandEncoder for the shadow pass. Aborting.")
+                }
+                
+            }
             
             //
             // Shadow Map Pass
@@ -1133,15 +1154,15 @@ public class Renderer: NSObject {
     
     fileprivate var hasUninitializedModules = false
     fileprivate var renderDestination: RenderDestinationProvider
-    fileprivate let inFlightSemaphore = DispatchSemaphore(value: Constants.maxBuffersInFlight)
-    // Used to determine _uniformBufferStride each frame.
-    // This is the current frame number modulo kMaxBuffersInFlight
+    fileprivate let inFlightSemaphore = DispatchSemaphore(value: Constants.maxInFlightFrames)
+    // This is the current frame number modulo `maxInFlightFrames`
     fileprivate var uniformBufferIndex: Int = 0
     fileprivate var worldInitiationTime: Double = 0
     fileprivate var lastFrameTime: Double = 0
     
     // Modules
     fileprivate var renderModules: [RenderModule] = [CameraPlaneRenderModule()]
+    fileprivate var computeModules = [ComputeModule]()
     fileprivate var sharedModulesForModule = [String: [SharedRenderModule]]()
     fileprivate var cameraRenderModule: CameraPlaneRenderModule?
     fileprivate var sharedBuffersRenderModule: SharedBuffersRenderModule?
@@ -1159,6 +1180,10 @@ public class Renderer: NSObject {
     fileprivate let textureLoader: MTKTextureLoader
     fileprivate var defaultLibrary: MTLLibrary?
     fileprivate var commandQueue: MTLCommandQueue?
+    
+    // Precalculation Pass
+    fileprivate var precalculationPass: ComputePass?
+    fileprivate var precalculationBuffer: MTLBuffer?
     
     // Main Pass
     fileprivate var mainRenderPass: RenderPass?
@@ -1243,6 +1268,26 @@ public class Renderer: NSObject {
         }()
         
         commandQueue = device.makeCommandQueue()
+        
+        //
+        // Setup Precalculation Pass
+        //
+        
+        precalculationPass = ComputePass(withDevice: device)
+        precalculationPass?.name = "Precalculation Pass"
+        precalculationPass?.usesGeometry = true
+        precalculationPass?.usesLighting = false
+        precalculationPass?.usesSharedBuffer = true
+        precalculationPass?.usesEnvironment = true
+        precalculationPass?.usesEffects = true
+        precalculationPass?.usesCameraOutput = false
+        precalculationPass?.usesShadows = false
+        
+        let preComputeModule = PrecalculationModule()
+        var mutableComputeModules = computeModules
+        mutableComputeModules.append(preComputeModule)
+        computeModules = mutableComputeModules
+        hasUninitializedModules = true
         
         //
         // Setup Shadow Pass
@@ -1418,6 +1463,12 @@ public class Renderer: NSObject {
                 sharedModulesForModule[module.moduleIdentifier] = foundSharedModules
             }
         }
+        computeModules.forEach { module in
+            if let sharedModuleIdentifiers = module.sharedModuleIdentifiers, sharedModuleIdentifiers.count > 0 {
+                let foundSharedModules = sharedModules.filter({sharedModuleIdentifiers.contains($0.moduleIdentifier)})
+                sharedModulesForModule[module.moduleIdentifier] = foundSharedModules
+            }
+        }
             
     }
     
@@ -1430,14 +1481,14 @@ public class Renderer: NSObject {
         
         gatherModules()
         
-        let uninitializedCount = renderModules.filter({!$0.isInitialized}).count
+        let uninitializedCount = renderModules.filter({!$0.isInitialized}).count + computeModules.filter({!$0.isInitialized}).count
         var loadedCount = 0
         
         renderModules.forEach { module in
             
             if !module.isInitialized {
                 // Initialize the module
-                module.initializeBuffers(withDevice: device, maxInFlightBuffers: Constants.maxBuffersInFlight, maxInstances: Constants.maxInstances)
+                module.initializeBuffers(withDevice: device, maxInFlightFrames: Constants.maxInFlightFrames, maxInstances: Constants.maxInstances)
                 
                 // Load the assets
                 let geometricEntities = geometriesForRenderModule[module.moduleIdentifier] ?? []
@@ -1470,6 +1521,17 @@ public class Renderer: NSObject {
             
         }
         
+        computeModules.forEach { module in
+            if !module.isInitialized {
+                // Initialize the module
+                module.initializeBuffers(withDevice: device, maxInFlightFrames: Constants.maxInFlightFrames, maxInstances: Constants.maxInstances)
+                loadedCount += 1
+                if loadedCount == uninitializedCount {
+                    loadPipelines()
+                }
+            }
+        }
+        
         hasUninitializedModules = false
         
     }
@@ -1486,6 +1548,24 @@ public class Renderer: NSObject {
             shadowRenderPass?.drawCallGroups.append(contentsOf: module.loadPipeline(withMetalLibrary: defaultLibrary, renderDestination: renderDestination, textureBundle: textureBundle, forRenderPass: shadowRenderPass))
             mainRenderPass?.drawCallGroups.append(contentsOf: module.loadPipeline(withMetalLibrary: defaultLibrary, renderDestination: renderDestination, textureBundle: textureBundle, forRenderPass: mainRenderPass))
         }
+        computeModules.forEach { module in
+            if let precalculationModule = module as? PrecalculationModule {
+                precalculationPass?.threadGroup = precalculationModule.loadPipeline(withMetalLibrary: defaultLibrary, renderDestination: renderDestination, textureBundle: textureBundle, forComputePass: precalculationPass)
+            }
+        }
+    }
+    
+    fileprivate func prepareToDraw(forCameraProperties cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, renderPass: RenderPass?) {
+        
+        let allGeometricEntities: [AKGeometricEntity] = geometriesForRenderModule.flatMap { (key, value) in
+            return value
+        }
+        // Update Buffers
+        computeModules.forEach { module in
+            if let preRenderComputeModule = module as? PreRenderComputeModule, let precalculationPass = precalculationPass, preRenderComputeModule.isInitialized {
+                preRenderComputeModule.prepareToDraw(withAllGeometricEntities: allGeometricEntities, cameraProperties: cameraProperties, environmentProperties: environmentProperties, shadowProperties: shadowProperties, computePass: precalculationPass, renderPass: renderPass)
+            }
+        }
     }
     
     fileprivate func updateBuffers(forCameraProperties cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, renderPass: RenderPass ) {
@@ -1499,7 +1579,6 @@ public class Renderer: NSObject {
                 module.updateBuffers(withAllGeometricEntities: allGeometricEntities, moduleGeometricEntities: geometriesForRenderModule[module.moduleIdentifier] ?? [], cameraProperties: cameraProperties, environmentProperties: environmentProperties, shadowProperties: shadowProperties, forRenderPass: renderPass)
             }
         }
-        
     }
     
     // MARK: Shared Modules
@@ -1549,6 +1628,19 @@ public class Renderer: NSObject {
         // We're done encoding commands
         commandEncoder.endEncoding()
         
+    }
+    
+    /// Draw to the depth texture from the directional lights point of view to generate the shadow map
+    func dispatchComputePass(with commandEncoder: MTLComputeCommandEncoder) {
+        
+        // Dispatch
+        computeModules.forEach { module in
+            if let precalculationModule = module as? PrecalculationModule, let precalculationPass = precalculationPass, precalculationModule.isInitialized {
+                precalculationModule.dispatch(withComputePass: precalculationPass, sharedModules: sharedModulesForModule[precalculationModule.moduleIdentifier])
+            }
+        }
+        
+        commandEncoder.endEncoding()
     }
     
 }

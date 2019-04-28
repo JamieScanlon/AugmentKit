@@ -21,9 +21,19 @@ kernel void precalculationComputeShader(constant SharedUniforms &sharedUniforms 
                                         constant AnchorInstanceUniforms *anchorInstanceUniforms [[ buffer(kBufferIndexAnchorInstanceUniforms) ]],
                                         constant AnchorEffectsUniforms *anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]],
                                         constant EnvironmentUniforms *environmentUniforms [[ buffer(kBufferIndexEnvironmentUniforms) ]],
-                                        ushort tid [[thread_position_in_grid]]) {
+                                        device PrecalculatedParameters *out [[ buffer(kBufferIndexPrecalculationOutputBuffer) ]],
+                                        uint2 gid [[thread_position_in_grid]],
+                                        uint2 tid [[thread_position_in_threadgroup]],
+                                        uint2 size [[threads_per_grid]]
+                                        ){
     // thread_position_in_threadgroup
     // thread_index_in_threadgroup
+    
+    uint w = size.x;
+    uint index = gid.y * w + gid.x;
+    
+    int hasGeometry = anchorInstanceUniforms[index].hasGeometry;
+    int hasHeading = anchorInstanceUniforms[index].hasHeading;
 
     float4x4 coordinateSpaceTransform = float4x4(float4(1.0, 0, 0, 0),
                                                  float4(0, 1.0, 0, 0),
@@ -31,29 +41,30 @@ kernel void precalculationComputeShader(constant SharedUniforms &sharedUniforms 
                                                  float4(0, 0, 0, 1.0));
 
     // Apply the world transform (as defined in the imported model) if applicable
-    float4x4 worldTransform = anchorInstanceUniforms[tid].worldTransform;
+    float4x4 worldTransform = anchorInstanceUniforms[index].worldTransform;
     coordinateSpaceTransform = coordinateSpaceTransform * worldTransform;
 
     // Update Heading
-    float4x4 headingTransform = anchorInstanceUniforms[tid].headingTransform;
-    float headingType = float(anchorInstanceUniforms[tid].headingType);
+    float4x4 headingTransform = anchorInstanceUniforms[index].headingTransform;
+    float headingType = float(anchorInstanceUniforms[index].headingType);
     coordinateSpaceTransform = headingTransform * float4x4(float4(coordinateSpaceTransform[0][0], headingType * coordinateSpaceTransform[0][1], headingType * coordinateSpaceTransform[0][2], headingType * coordinateSpaceTransform[0][3]),
                                         float4(headingType * coordinateSpaceTransform[1][0], coordinateSpaceTransform[1][1], headingType * coordinateSpaceTransform[1][2], headingType * coordinateSpaceTransform[1][3]),
                                         float4(headingType * coordinateSpaceTransform[2][0], headingType * coordinateSpaceTransform[2][1], coordinateSpaceTransform[2][2], headingType * coordinateSpaceTransform[2][3]),
                                         float4(coordinateSpaceTransform[3][0], coordinateSpaceTransform[3][1], coordinateSpaceTransform[3][2], 1)
                                         );
 
-    float4x4 modelMatrix = anchorInstanceUniforms[tid].locationTransform * coordinateSpaceTransform;
+    float4x4 modelMatrix = anchorInstanceUniforms[index].locationTransform * coordinateSpaceTransform;
 
     // Scaled geomentry effects
-    float4x4 scale4Matrix = anchorEffectsUniforms[tid].scale;
-    float3x3 scale3Matrix = float3x3(scale4Matrix[0][0], scale4Matrix[0][1], scale4Matrix[0][2], scale4Matrix[1][0], scale4Matrix[1][1], scale4Matrix[1][2], scale4Matrix[2][0], scale4Matrix[2][1], scale4Matrix[2][2]);
+    float4x4 scale4Matrix = anchorEffectsUniforms[index].scale;
+    float3x3 scale3Matrix = convert3(scale4Matrix);
 
     // Get the anchor model's orientation in world space
-//    float4x4 modelMatrix = anchorInstanceUniforms[tid].modelMatrix;
-//    float3x3 normalMatrix = anchorInstanceUniforms[tid].normalMatrix;
+//    float4x4 modelMatrix = anchorInstanceUniforms[index].modelMatrix;
+//    float3x3 normalMatrix = anchorInstanceUniforms[index].normalMatrix;
     
-    float3x3 upperLeft = float3x3(modelMatrix[0].xyz, modelMatrix[1].xyz, modelMatrix[2].xyz);
+    // When converting a 4x4 to a 3x3, position data is discarded
+    float3x3 upperLeft = convert3(modelMatrix);
     float3x3 normalMatrix = invert3(transpose(upperLeft));
     
     float4x4 scaledModelMatrix = modelMatrix * scale4Matrix;
@@ -62,12 +73,28 @@ kernel void precalculationComputeShader(constant SharedUniforms &sharedUniforms 
     // Transform the model's orientation from world space to camera space.
     float4x4 modelViewMatrix = sharedUniforms.viewMatrix * scaledModelMatrix;
 
-//    ushort4 jointIndex = in.jointIndices + paletteStartIndex + tid * paletteSize;
+//    ushort4 jointIndex = in.jointIndices + paletteStartIndex + index * paletteSize;
 //    float4 jointWeights = in.jointWeights;
 //
 //    float4 weightedPalette = jointWeights[0] * palette[jointIndex[0]] +
 //    jointWeights[1] * palette[jointIndex[1]] +
 //    jointWeights[2] * palette[jointIndex[2]] +
 //    jointWeights[3] * palette[jointIndex[3]];
+    
+    out[index].hasGeometry = hasGeometry;
+    out[index].worldTransform = worldTransform;
+    out[index].hasHeading = hasHeading;
+    out[index].headingTransform = headingTransform;
+    out[index].headingType = int(headingType);
+    out[index].coordinateSpaceTransform = coordinateSpaceTransform;
+//    out[index].locationTransform = locationTransform;
+    out[index].modelMatrix = modelMatrix;
+    out[index].scaledModelMatrix = scaledModelMatrix;
+    out[index].modelViewMatrix = modelViewMatrix;
+//    out[index].modelViewProjectionMatrix = modelViewProjectionMatrix;
+//    out[index].jointIndeces = jointIndeces;
+//    out[index].jointWeights = jointWeights;
+//    out[index].weightedPalette = weightedPalette;
+    
     
 }

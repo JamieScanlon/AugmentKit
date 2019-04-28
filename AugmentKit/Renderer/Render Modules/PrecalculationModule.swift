@@ -42,22 +42,32 @@ class PrecalculationModule: PreRenderComputeModule {
     
     var errors = [AKError]()
     var renderDistance: Double = 500
+    var sharedModuleIdentifiers: [String]? = [SharedBuffersRenderModule.identifier]
     
-    func initializeBuffers(withDevice device: MTLDevice, maxInFlightBuffers: Int, maxInstances: Int) {
+    fileprivate(set) var argumentOutputBuffer: MTLBuffer?
+    
+    func initializeBuffers(withDevice device: MTLDevice, maxInFlightFrames: Int, maxInstances: Int) {
+        
+        instanceCount = maxInstances
+        
+        alignedGeometryInstanceUniformsSize = ((MemoryLayout<AnchorInstanceUniforms>.stride * instanceCount) & ~0xFF) + 0x100
+        alignedEffectsUniformSize = ((MemoryLayout<AnchorEffectsUniforms>.stride * instanceCount) & ~0xFF) + 0x100
+        alignedEnvironmentUniformSize = ((MemoryLayout<EnvironmentUniforms>.stride * instanceCount) & ~0xFF) + 0x100
         
         // Output buffer
-        argumentOutputBuffer = device.makeBuffer(length: MemoryLayout<PrecalculatedParameters>.stride * maxInstances, options: .storageModePrivate)
+        argumentOutputBufferSize = MemoryLayout<PrecalculatedParameters>.stride * instanceCount
+        argumentOutputBuffer = device.makeBuffer(length: argumentOutputBufferSize * maxInFlightFrames, options: .storageModePrivate)
         
-        // Calculate our uniform buffer sizes. We allocate Constants.maxBuffersInFlight instances for uniform
+        // Calculate our uniform buffer sizes. We allocate `maxInFlightFrames` instances for uniform
         // storage in a single buffer. This allows us to update uniforms in a ring (i.e. triple
         // buffer the uniforms) so that the GPU reads from one slot in the ring wil the CPU writes
         // to another. Geometry uniforms should be specified with a max instance count for instancing.
         // Also uniform storage must be aligned (to 256 bytes) to meet the requirements to be an
         // argument in the constant address space of our shading functions.
-        let geometryUniformBufferSize = Constants.alignedGeometryInstanceUniformsSize * maxInFlightBuffers
-        let paletteBufferSize = Constants.alignedPaletteSize * Constants.maxPaletteCount * maxInFlightBuffers
-        let effectsUniformBufferSize = Constants.alignedEffectsUniformSize * maxInFlightBuffers
-        let environmentUniformBufferSize = Constants.alignedEnvironmentUniformSize * maxInFlightBuffers
+        let geometryUniformBufferSize = alignedGeometryInstanceUniformsSize * maxInFlightFrames
+        let paletteBufferSize = Constants.alignedPaletteSize * Constants.maxPaletteCount * maxInFlightFrames
+        let effectsUniformBufferSize = alignedEffectsUniformSize * maxInFlightFrames
+        let environmentUniformBufferSize = alignedEnvironmentUniformSize * maxInFlightFrames
         
         // Create and allocate our uniform buffer objects. Indicate shared storage so that both the
         // CPU can access the buffer
@@ -85,19 +95,24 @@ class PrecalculationModule: PreRenderComputeModule {
             return nil
         }
         
-        guard let threadGroup = computePass?.threadGroup(withComputeFunction: precalculationFunction) else {
+        // If all of the instances are layed out in a square, how big is that square.
+        let gridSize = Int(Double(instanceCount).squareRoot())
+        
+        guard let threadGroup = computePass?.threadGroup(withComputeFunction: precalculationFunction, size: (width: gridSize, height: gridSize, depth: 1)) else {
             return nil
         }
       
+        isInitialized = true
         return threadGroup
     }
     
     func updateBufferState(withBufferIndex bufferIndex: Int) {
         
-        geometryUniformBufferOffset = Constants.alignedGeometryInstanceUniformsSize * bufferIndex
+        geometryUniformBufferOffset = alignedGeometryInstanceUniformsSize * bufferIndex
         paletteBufferOffset = Constants.alignedPaletteSize * Constants.maxPaletteCount * bufferIndex
-        effectsUniformBufferOffset = Constants.alignedEffectsUniformSize * bufferIndex
-        environmentUniformBufferOffset = Constants.alignedEnvironmentUniformSize * bufferIndex
+        effectsUniformBufferOffset = alignedEffectsUniformSize * bufferIndex
+        environmentUniformBufferOffset = alignedEnvironmentUniformSize * bufferIndex
+        outputBufferOffset = argumentOutputBufferSize * bufferIndex
         
         geometryUniformBufferAddress = geometryUniformBuffer?.contents().advanced(by: geometryUniformBufferOffset)
         paletteBufferAddress = paletteBuffer?.contents().advanced(by: paletteBufferOffset)
@@ -249,23 +264,20 @@ class PrecalculationModule: PreRenderComputeModule {
                 var drawCallIndex = 0
                 
                 // Palette Uniform Setup
-                let capacity = Constants.alignedPaletteSize * Constants.maxPaletteCount * Constants.maxGeometryInstanceCount
+                let capacity = Constants.alignedPaletteSize * Constants.maxPaletteCount * instanceCount
                 let boundPaletteData = paletteBufferAddress?.bindMemory(to: matrix_float4x4.self, capacity: capacity)
                 let paletteData = UnsafeMutableBufferPointer<matrix_float4x4>(start: boundPaletteData, count: Constants.maxPaletteCount)
                 var jointPaletteOffset = 0
                 
                 for drawCall in drawCallGroup.drawCalls {
                     
-                    guard let drawData = drawCall.drawData, drawCallIndex <= Constants.maxGeometryInstanceCount else {
+                    guard let geometryUniform = geometryUniforms?.advanced(by: drawCallGroupOffset + drawCallIndex) else {
                         drawCallIndex += 1
                         continue
                     }
                     
-                    //
-                    // Geometry Uniform Setup
-                    //
-                    
-                    guard let geometryUniform = geometryUniforms?.advanced(by: drawCallGroupOffset + drawCallIndex) else {
+                    guard let drawData = drawCall.drawData, drawCallIndex <= instanceCount else {
+                        geometryUniform.pointee.hasGeometry = 0
                         drawCallIndex += 1
                         continue
                     }
@@ -298,6 +310,7 @@ class PrecalculationModule: PreRenderComputeModule {
                         // Ignore anchors that are beyond the renderDistance
                         let distance = anchorDistance(withTransform: akAnchor.worldLocation.transform, cameraProperties: cameraProperties)
                         guard Double(distance) < renderDistance else {
+                            geometryUniform.pointee.hasGeometry = 0
                             drawCallIndex += 1
                             continue
                         }
@@ -334,6 +347,7 @@ class PrecalculationModule: PreRenderComputeModule {
                         let distance = anchorDistance(withTransform: targetAbsoluteTransform, cameraProperties: cameraProperties)
                         guard Double(distance) < renderDistance else {
                             drawCallIndex += 1
+                            geometryUniform.pointee.hasGeometry = 0
                             continue
                         }
                         
@@ -352,6 +366,7 @@ class PrecalculationModule: PreRenderComputeModule {
                         let distance = anchorDistance(withTransform: trackerAbsoluteTransform, cameraProperties: cameraProperties)
                         guard Double(distance) < renderDistance else {
                             drawCallIndex += 1
+                            geometryUniform.pointee.hasGeometry = 0
                             continue
                         }
                         
@@ -363,6 +378,7 @@ class PrecalculationModule: PreRenderComputeModule {
                         
                     }
                     
+                    geometryUniform.pointee.hasGeometry = 1
                     geometryUniform.pointee.hasHeading = hasHeading ? 1 : 0
                     geometryUniform.pointee.headingType = headingType == .absolute ? 0 : 1
                     geometryUniform.pointee.headingTransform = headingTransform
@@ -457,7 +473,15 @@ class PrecalculationModule: PreRenderComputeModule {
             computeEncoder.popDebugGroup()
         }
         
-        computeEncoder.dispatchThreadgroups(MTLSize(width: threadGroup.numThreads, height: threadGroup.numThreads, depth: 1), threadsPerThreadgroup: MTLSize(width: threadGroup.threadsPerGroup, height: threadGroup.threadsPerGroup, depth: 1))
+        // Output Buffer
+        computeEncoder.pushDebugGroup("Output Buffer")
+        computeEncoder.setBuffer(argumentOutputBuffer, offset: outputBufferOffset, index: Int(kBufferIndexPrecalculationOutputBuffer.rawValue))
+        computeEncoder.popDebugGroup()
+        
+        threadGroup.prepareThreadGroup(withComputePass: computePass)
+        
+        // Requires the device supports non-uniform threadgroup sizes
+        computeEncoder.dispatchThreads(MTLSize(width: threadGroup.size.width, height: threadGroup.size.height, depth: threadGroup.size.depth), threadsPerThreadgroup: MTLSize(width: threadGroup.threadsPerGroup.width, height: threadGroup.threadsPerGroup.height, depth: 1))
         
         computeEncoder.popDebugGroup()
         
@@ -474,19 +498,23 @@ class PrecalculationModule: PreRenderComputeModule {
     // MARK: - Private
     
     fileprivate enum Constants {
-        static let maxGeometryInstanceCount = 2048 // This number should be adjusted based on performance headroom
         static let maxPaletteCount = 100
-        static let alignedGeometryInstanceUniformsSize = ((MemoryLayout<AnchorInstanceUniforms>.stride * Constants.maxGeometryInstanceCount) & ~0xFF) + 0x100
-        static let alignedPaletteSize = (MemoryLayout<matrix_float4x4>.stride & ~0xFF) + 0x100
-        static let alignedEffectsUniformSize = ((MemoryLayout<AnchorEffectsUniforms>.stride * Constants.maxGeometryInstanceCount) & ~0xFF) + 0x100
-        static let alignedEnvironmentUniformSize = ((MemoryLayout<EnvironmentUniforms>.stride * Constants.maxGeometryInstanceCount) & ~0xFF) + 0x100
+        static let alignedPaletteSize = ((MemoryLayout<matrix_float4x4>.stride * maxPaletteCount) & ~0xFF) + 0x100
     }
+    
+    fileprivate var instanceCount: Int = 0
+    
+    fileprivate var alignedGeometryInstanceUniformsSize: Int = 0
+    fileprivate var alignedEffectsUniformSize: Int = 0
+    fileprivate var alignedEnvironmentUniformSize: Int = 0
     
     fileprivate var geometryUniformBuffer: MTLBuffer?
     fileprivate var paletteBuffer: MTLBuffer?
     fileprivate var effectsUniformBuffer: MTLBuffer?
     fileprivate var environmentUniformBuffer: MTLBuffer?
-    fileprivate var argumentOutputBuffer: MTLBuffer?
+    
+    fileprivate var argumentOutputBufferSize: Int = 0
+    
     // Offset within geometryUniformBuffer to set for the current frame
     fileprivate var geometryUniformBufferOffset: Int = 0
     // Offset within paletteBuffer to set for the current frame
@@ -495,6 +523,8 @@ class PrecalculationModule: PreRenderComputeModule {
     fileprivate var effectsUniformBufferOffset: Int = 0
     // Offset within environmentUniformBuffer to set for the current frame
     fileprivate var environmentUniformBufferOffset: Int = 0
+    // Offset within argumentOutputBuffer to set for the current frame
+    fileprivate var outputBufferOffset = 0
     // Addresses to write geometry uniforms to each frame
     fileprivate var geometryUniformBufferAddress: UnsafeMutableRawPointer?
     // Addresses to write palette to each frame

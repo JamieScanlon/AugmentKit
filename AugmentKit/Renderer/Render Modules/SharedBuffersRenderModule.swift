@@ -52,15 +52,15 @@ class SharedBuffersRenderModule: SharedRenderModule {
     
     // MARK: - RenderModule
     
-    func initializeBuffers(withDevice device: MTLDevice, maxInFlightBuffers: Int, maxInstances: Int) {
+    func initializeBuffers(withDevice device: MTLDevice, maxInFlightFrames: Int, maxInstances: Int) {
         
-        // Calculate our uniform buffer sizes. We allocate Constants.maxBuffersInFlight instances for uniform
+        // Calculate our uniform buffer sizes. We allocate `maxInFlightFrames` instances for uniform
         // storage in a single buffer. This allows us to update uniforms in a ring (i.e. triple
         // buffer the uniforms) so that the GPU reads from one slot in the ring wil the CPU writes
         // to another. Anchor uniforms should be specified with a max instance count for instancing.
         // Also uniform storage must be aligned (to 256 bytes) to meet the requirements to be an
         // argument in the constant address space of our shading functions.
-        let sharedUniformBufferSize = Constants.alignedSharedUniformsSize * maxInFlightBuffers
+        let sharedUniformBufferSize = Constants.alignedSharedUniformsSize * maxInFlightFrames
         
         // Create and allocate our uniform buffer objects. Indicate shared storage so that both the
         // CPU can access the buffer

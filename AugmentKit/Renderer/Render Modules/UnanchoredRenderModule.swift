@@ -55,20 +55,20 @@ class UnanchoredRenderModule: RenderModule {
     // The number of target instances to render
     private(set) var targetInstanceCount: Int = 0
     
-    func initializeBuffers(withDevice aDevice: MTLDevice, maxInFlightBuffers: Int, maxInstances: Int) {
+    func initializeBuffers(withDevice aDevice: MTLDevice, maxInFlightFrames: Int, maxInstances: Int) {
         
         device = aDevice
         
-        // Calculate our uniform buffer sizes. We allocate Constants.maxBuffersInFlight instances for uniform
+        // Calculate our uniform buffer sizes. We allocate `maxInFlightFrames` instances for uniform
         // storage in a single buffer. This allows us to update uniforms in a ring (i.e. triple
         // buffer the uniforms) so that the GPU reads from one slot in the ring wil the CPU writes
         // to another. Uniforms should be specified with a max instance count for instancing.
         // Also uniform storage must be aligned (to 256 bytes) to meet the requirements to be an
         // argument in the constant address space of our shading functions.
-        let unanchoredUniformBufferSize = Constants.alignedInstanceUniformsSize * maxInFlightBuffers
-        let materialUniformBufferSize = RenderModuleConstants.alignedMaterialSize * maxInFlightBuffers
-        let effectsUniformBufferSize = Constants.alignedEffectsUniformSize * maxInFlightBuffers
-        let environmentUniformBufferSize = Constants.alignedEnvironmentUniformSize * maxInFlightBuffers
+        let unanchoredUniformBufferSize = Constants.alignedInstanceUniformsSize * maxInFlightFrames
+        let materialUniformBufferSize = RenderModuleConstants.alignedMaterialSize * maxInFlightFrames
+        let effectsUniformBufferSize = Constants.alignedEffectsUniformSize * maxInFlightFrames
+        let environmentUniformBufferSize = Constants.alignedEnvironmentUniformSize * maxInFlightFrames
         
         // Create and allocate our uniform buffer objects. Indicate shared storage so that both the
         // CPU can access the buffer
@@ -392,6 +392,7 @@ class UnanchoredRenderModule: RenderModule {
                         let modelMatrix = trackerAbsoluteTransform * coordinateSpaceTransform
                         
                         let trackerUniforms = unanchoredUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: index)
+                        trackerUniforms?.pointee.hasGeometry = 1
                         trackerUniforms?.pointee.hasHeading = 0
                         trackerUniforms?.pointee.headingType = 0
                         trackerUniforms?.pointee.headingTransform = matrix_identity_float4x4
@@ -539,6 +540,7 @@ class UnanchoredRenderModule: RenderModule {
                         let modelMatrix = targetAbsoluteTransform * coordinateSpaceTransform
                         
                         let targetUniforms = unanchoredUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: index)
+                        targetUniforms?.pointee.hasGeometry = 1
                         targetUniforms?.pointee.hasHeading = 0
                         targetUniforms?.pointee.headingType = 0
                         targetUniforms?.pointee.headingTransform = matrix_identity_float4x4

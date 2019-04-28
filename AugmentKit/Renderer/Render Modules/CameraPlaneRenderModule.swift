@@ -49,7 +49,7 @@ class CameraPlaneRenderModule: RenderModule {
     var renderDistance: Double = 500
     var errors = [AKError]()
     
-    func initializeBuffers(withDevice aDevice: MTLDevice, maxInFlightBuffers: Int, maxInstances: Int) {
+    func initializeBuffers(withDevice aDevice: MTLDevice, maxInFlightFrames: Int, maxInstances: Int) {
         
         device = aDevice
         

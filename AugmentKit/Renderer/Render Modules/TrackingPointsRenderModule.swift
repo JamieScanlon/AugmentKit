@@ -53,17 +53,17 @@ class TrackingPointsRenderModule: RenderModule {
     // The number of tracking points to render
     private(set) var trackingPointCount: Int = 0
 
-    func initializeBuffers(withDevice aDevice: MTLDevice, maxInFlightBuffers: Int, maxInstances: Int) {
+    func initializeBuffers(withDevice aDevice: MTLDevice, maxInFlightFrames: Int, maxInstances: Int) {
         
         device = aDevice
         
-        // Calculate our uniform buffer sizes. We allocate Constants.maxBuffersInFlight instances for uniform
+        // Calculate our uniform buffer sizes. We allocate `maxInFlightFrames` instances for uniform
         // storage in a single buffer. This allows us to update uniforms in a ring (i.e. triple
         // buffer the uniforms) so that the GPU reads from one slot in the ring wil the CPU writes
         // to another. Anchor uniforms should be specified with a max instance count for instancing.
         // Also uniform storage must be aligned (to 256 bytes) to meet the requirements to be an
         // argument in the constant address space of our shading functions.
-        let trackingPointDataBufferSize = Constants.alignedTrackingPointDataSize * maxInFlightBuffers
+        let trackingPointDataBufferSize = Constants.alignedTrackingPointDataSize * maxInFlightFrames
         trackingPointDataBuffer = device?.makeBuffer(length: trackingPointDataBufferSize, options: .storageModeShared)
         trackingPointDataBuffer?.label = "TrackingPointDataBuffer"
         

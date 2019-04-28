@@ -48,6 +48,7 @@ enum BufferIndices {
     kBufferIndexMeshPaletteSize,
     kBufferIndexAnchorEffectsUniforms,
     kBufferIndexEnvironmentUniforms,
+    kBufferIndexPrecalculationOutputBuffer,
 };
 
 /**
@@ -165,6 +166,7 @@ struct EnvironmentUniforms {
 
 /// Structure shared between shader and C code that contains information pertaining to a single model like the model matrix transform
 struct AnchorInstanceUniforms {
+    int hasGeometry;
     int hasHeading;
     matrix_float4x4 headingTransform;
     int headingType;
@@ -241,6 +243,7 @@ struct LightingParameters {
 
 /// Calculated on a per-draw basis
 struct PrecalculatedParameters {
+    int hasGeometry;
     matrix_float4x4 worldTransform;
     int hasHeading;
     matrix_float4x4 headingTransform;

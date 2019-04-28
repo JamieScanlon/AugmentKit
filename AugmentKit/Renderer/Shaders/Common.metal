@@ -70,6 +70,19 @@ float3x3 invert3(float3x3 m) {
                     float3(b21, (-a21 * a00 + a01 * a20), (a11 * a00 - a01 * a10))) * det;
 }
 
+float3x3 convert3(float4x4 m) {
+    float a00 = m[0][0];
+    float a01 = m[0][1];
+    float a02 = m[0][2];
+    float a10 = m[1][0];
+    float a11 = m[1][1];
+    float a12 = m[1][2];
+    float a20 = m[2][0];
+    float a21 = m[2][1];
+    float a22 = m[2][2];
+    return float3x3(float3(a00, a01, a02), float3(a10, a11, a12), float3(a20, a21, a22));
+}
+
 float4x4 invert4(float4x4 m) {
     float a00 = m[0][0], a01 = m[0][1], a02 = m[0][2], a03 = m[0][3];
     float a10 = m[1][0], a11 = m[1][1], a12 = m[1][2], a13 = m[1][3];

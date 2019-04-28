@@ -52,7 +52,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     // The number of anchor instances to render
     private(set) var anchorInstanceCount: Int = 0
     
-    func initializeBuffers(withDevice aDevice: MTLDevice, maxInFlightBuffers: Int, maxInstances: Int) {
+    func initializeBuffers(withDevice aDevice: MTLDevice, maxInFlightFrames: Int, maxInstances: Int) {
         
         guard device == nil else {
             return
@@ -60,17 +60,17 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         
         device = aDevice
         
-        // Calculate our uniform buffer sizes. We allocate Constants.maxBuffersInFlight instances for uniform
+        // Calculate our uniform buffer sizes. We allocate `maxInFlightFrames` instances for uniform
         // storage in a single buffer. This allows us to update uniforms in a ring (i.e. triple
         // buffer the uniforms) so that the GPU reads from one slot in the ring wil the CPU writes
         // to another. Anchor uniforms should be specified with a max instance count for instancing.
         // Also uniform storage must be aligned (to 256 bytes) to meet the requirements to be an
         // argument in the constant address space of our shading functions.
-        let anchorUniformBufferSize = Constants.alignedAnchorInstanceUniformsSize * maxInFlightBuffers
-        let materialUniformBufferSize = RenderModuleConstants.alignedMaterialSize * maxInFlightBuffers
-        let paletteBufferSize = Constants.alignedPaletteSize * Constants.maxPaletteSize * maxInFlightBuffers
-        let effectsUniformBufferSize = Constants.alignedEffectsUniformSize * maxInFlightBuffers
-        let environmentUniformBufferSize = Constants.alignedEnvironmentUniformSize * maxInFlightBuffers
+        let anchorUniformBufferSize = Constants.alignedAnchorInstanceUniformsSize * maxInFlightFrames
+        let materialUniformBufferSize = RenderModuleConstants.alignedMaterialSize * maxInFlightFrames
+        let paletteBufferSize = Constants.alignedPaletteSize * Constants.maxPaletteSize * maxInFlightFrames
+        let effectsUniformBufferSize = Constants.alignedEffectsUniformSize * maxInFlightFrames
+        let environmentUniformBufferSize = Constants.alignedEnvironmentUniformSize * maxInFlightFrames
         
         // Create and allocate our uniform buffer objects. Indicate shared storage so that both the
         // CPU can access the buffer
@@ -366,6 +366,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                     
                     let modelMatrix = akAnchor.worldLocation.transform * coordinateSpaceTransform
                     let anchorUniforms = anchorUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: anchorMeshIndex)
+                    anchorUniforms?.pointee.hasGeometry = 1
                     anchorUniforms?.pointee.hasHeading = 1
                     anchorUniforms?.pointee.headingType = akAnchor.heading.type == .absolute ? 0 : 1
                     anchorUniforms?.pointee.headingTransform = headingTransform

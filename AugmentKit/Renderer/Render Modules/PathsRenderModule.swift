@@ -60,19 +60,19 @@ class PathsRenderModule: RenderModule {
     // Indexed by path
     private(set) var anchorIdentifiers = [Int: [UUID]]()
     
-    func initializeBuffers(withDevice aDevice: MTLDevice, maxInFlightBuffers: Int, maxInstances: Int) {
+    func initializeBuffers(withDevice aDevice: MTLDevice, maxInFlightFrames: Int, maxInstances: Int) {
         
         device = aDevice
         
-        // Calculate our uniform buffer sizes. We allocate Constants.maxBuffersInFlight instances for uniform
+        // Calculate our uniform buffer sizes. We allocate `maxInFlightFrames` instances for uniform
         // storage in a single buffer. This allows us to update uniforms in a ring (i.e. triple
         // buffer the uniforms) so that the GPU reads from one slot in the ring wil the CPU writes
         // to another. Path uniforms should be specified with a max instance count for instancing.
         // Also uniform storage must be aligned (to 256 bytes) to meet the requirements to be an
         // argument in the constant address space of our shading functions.
-        let pathUniformBufferSize = Constants.alignedPathSegmentInstanceUniformsSize * maxInFlightBuffers
-        let materialUniformBufferSize = RenderModuleConstants.alignedMaterialSize * maxInFlightBuffers
-        let effectsUniformBufferSize = Constants.alignedEffectsUniformSize * maxInFlightBuffers
+        let pathUniformBufferSize = Constants.alignedPathSegmentInstanceUniformsSize * maxInFlightFrames
+        let materialUniformBufferSize = RenderModuleConstants.alignedMaterialSize * maxInFlightFrames
+        let effectsUniformBufferSize = Constants.alignedEffectsUniformSize * maxInFlightFrames
         
         // Create and allocate our uniform buffer objects. Indicate shared storage so that both the
         // CPU can access the buffer
@@ -369,6 +369,7 @@ class PathsRenderModule: RenderModule {
                 // Paths use the same uniform struct as anchors
                 let pathSegmentIndex = pathSegmentInstanceCount - 1
                 let pathUniforms = pathUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: pathSegmentIndex)
+                pathUniforms?.pointee.hasGeometry = 1
                 pathUniforms?.pointee.hasHeading = 0
                 pathUniforms?.pointee.headingType = 0
                 pathUniforms?.pointee.headingTransform = matrix_identity_float4x4

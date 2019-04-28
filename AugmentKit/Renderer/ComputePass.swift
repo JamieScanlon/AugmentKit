@@ -29,21 +29,26 @@ import Foundation
 
 // MARK: - ThreadGroup
 
-/// Represents a group of threads (kernel function calls) to be executed in parallel. Threads are organized into ThreadGroups that are executed together and can share a common block of memory.
+/// Represents a group of threads (kernel function calls) to be executed in parallel.
 struct ThreadGroup {
 
     /// this value must be at least as big as the number of threads in this group. This value need to be the same for all `ThreadGroup`'s executed in this pass. This value also can't exceed `maxTotalThreadsPerThreadgroup`
-    var threadsPerGroup: Int = 1
-    var numThreads: Int = 0
+    var threadsPerGroup: (width: Int, height: Int)
+    var size: (width: Int, height: Int, depth: Int)
     var uuid: UUID
     var computePipelineState: MTLComputePipelineState
     
-    init(computePipelineState: MTLComputePipelineState, uuid: UUID = UUID()) {
+    /// See: https://developer.apple.com/documentation/metal/calculating_threadgroup_and_grid_sizes
+    init(computePipelineState: MTLComputePipelineState, uuid: UUID = UUID(), size: (width: Int, height: Int, depth: Int) = (width: 16, height: 16, depth: 1)) {
         self.computePipelineState = computePipelineState
+        self.size = size
+        let w = computePipelineState.threadExecutionWidth
+        let h = computePipelineState.maxTotalThreadsPerThreadgroup / w
+        self.threadsPerGroup = (width: w, height: h)
         self.uuid = uuid
     }
     
-    init(withDevice device: MTLDevice, computePipelineDescriptor: MTLComputePipelineDescriptor) {
+    init(withDevice device: MTLDevice, computePipelineDescriptor: MTLComputePipelineDescriptor, size: (width: Int, height: Int, depth: Int) = (width: 16, height: 16, depth: 1)) {
         
         let myPipelineState: MTLComputePipelineState = {
             do {
@@ -55,7 +60,7 @@ struct ThreadGroup {
                 fatalError()
             }
         }()
-        self.init(computePipelineState: myPipelineState)
+        self.init(computePipelineState: myPipelineState, size: size)
         
     }
     
@@ -119,11 +124,11 @@ class ComputePass {
         return ThreadGroup(withDevice: device, computePipelineDescriptor: computePipelineDescriptor)
     }
     
-    func threadGroup(withComputeFunction computeFunction: MTLFunction? = nil) -> ThreadGroup? {
+    func threadGroup(withComputeFunction computeFunction: MTLFunction? = nil, size: (width: Int, height: Int, depth: Int) = (width: 16, height: 16, depth: 1)) -> ThreadGroup? {
         guard let computePipelineDescriptor = computePipelineDescriptor(withComputeFunction: computeFunction) else {
             return nil
         }
-        return ThreadGroup(withDevice: device, computePipelineDescriptor: computePipelineDescriptor)
+        return ThreadGroup(withDevice: device, computePipelineDescriptor: computePipelineDescriptor, size: size)
     }
     
 }

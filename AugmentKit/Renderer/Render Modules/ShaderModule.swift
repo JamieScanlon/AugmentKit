@@ -44,13 +44,19 @@ protocol ShaderModule {
     /// Lower layer modules are executed first. By convention, modules that to not participate directly in rendering have negavive values. Also by convention, the camera plane is layer 0, 1 - 9 and Int.max are reseved for the renderer.
     var renderLayer: Int { get }
     var errors: [AKError] { get set }
+    /// An array of shared module identifiers that it this module will rely on in the draw phase.
+    var sharedModuleIdentifiers: [String]? { get }
     
     //
     // Bootstrap
     //
     
     /// Initialize the buffers that will me managed and updated in this module.
-    func initializeBuffers(withDevice: MTLDevice, maxInFlightBuffers: Int, maxInstances: Int)
+    /// - parameters:
+    ///   - withDevice: An `MTLDevice`.
+    ///   - maxInFlightFrames: The number of in flight render frames.
+    ///   - maxInstances: The maximum number of model instances. Must be a power of 2.
+    func initializeBuffers(withDevice: MTLDevice, maxInFlightFrames: Int, maxInstances: Int)
     
     //
     // Per Frame Updates
@@ -79,8 +85,7 @@ protocol RenderModule: ShaderModule {
     //
     
     var renderDistance: Double { get set }
-    /// An array of shared module identifiers that it this module will rely on in the draw phase.
-    var sharedModuleIdentifiers: [String]? { get }
+    
     
     //
     // Bootstrap

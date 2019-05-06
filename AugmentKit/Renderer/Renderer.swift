@@ -276,6 +276,48 @@ public struct ShadowProperties {
     var shadowMVPTransformMatrix: float4x4 = matrix_identity_float4x4
 }
 
+// MARK: - ShadowProperties
+/**
+ An object that stores information about the environment
+ */
+public struct ArgumentBufferProperties {
+    /**
+     Argument Buffer For the vertex shader
+     */
+    var vertexArgumentBuffer: MTLBuffer?
+    /**
+     Argument Buffer For the fragment shader
+     */
+    var fragmentArgumentBuffer: MTLBuffer?
+    /**
+     The size of a single frames worth of argemt data. Since the `vertexArgumentBuffer` contains data for multiple frames, this allows us to calculate the offset into the buffer for a single frame.
+     */
+    var vertexArgumentBufferSize: Int = 0
+    /**
+     The size of a single frames worth of argemt data. Since the `vertexArgumentBuffer` contains data for multiple frames, this allows us to calculate the offset into the buffer for a single frame.
+     */
+    var fragmentArgumentBufferSize: Int = 0
+    
+    /**
+     Calculates the offset into the `vertexArgumentBuffer` for a specific frame
+     - parameters:
+        - forFrame: The frame number modulus the number of frames in flight
+     - returns: The offset into `vertexArgumentBuffer` for the given frame.
+     */
+    func vertexArgumentBufferOffset(forFrame frame: Int) -> Int {
+        return vertexArgumentBufferSize * frame
+    }
+    /**
+     Calculates the offset into the `fragmentArgumentBuffer` for a specific frame
+     - parameters:
+        - forFrame: The frame number modulus the number of frames in flight
+     - returns: The offset into `fragmentArgumentBuffer` for the given frame.
+     */
+    func fragmentArgumentBufferOffset(forFrame frame: Int) -> Int {
+        return fragmentArgumentBufferSize * frame
+    }
+}
+
 // MARK: - Renderer
 /**
  AumentKit's main Metal based render.
@@ -808,6 +850,11 @@ public class Renderer: NSObject {
         shadowProperties.shadowMVPTransformMatrix = shadowTransform
         
         //
+        // Shadow Properties
+        //
+        let argumentBufferProperties = ArgumentBufferProperties(vertexArgumentBuffer: vertexArgumentBuffer, fragmentArgumentBuffer: fragmentArgumentBuffer, vertexArgumentBufferSize: vertexArgumentBufferSize, fragmentArgumentBufferSize: fragmentArgumentBufferSize)
+        
+        //
         // Encode Cammand Buffer
         //
         
@@ -876,7 +923,7 @@ public class Renderer: NSObject {
             if let shadowRenderPass = shadowRenderPass {
                 
                 // Update Buffers
-                updateBuffers(forCameraProperties: cameraProperties, environmentProperties: environmentProperties, shadowProperties: shadowProperties, renderPass: shadowRenderPass)
+                updateBuffers(forCameraProperties: cameraProperties, environmentProperties: environmentProperties, shadowProperties: shadowProperties, argumentBufferProperties: argumentBufferProperties, renderPass: shadowRenderPass)
                 
                 // Draw
                 shadowRenderPass.prepareRenderCommandEncoder(withCommandBuffer: commandBuffer)
@@ -895,7 +942,7 @@ public class Renderer: NSObject {
             if let mainRenderPass = mainRenderPass {
                 
                 // Update Buffers
-                updateBuffers(forCameraProperties: cameraProperties, environmentProperties: environmentProperties, shadowProperties: shadowProperties, renderPass: mainRenderPass)
+                updateBuffers(forCameraProperties: cameraProperties, environmentProperties: environmentProperties, shadowProperties: shadowProperties, argumentBufferProperties: argumentBufferProperties, renderPass: mainRenderPass)
                 
                 // Getting the currentRenderPassDescriptor from the RenderDestinationProvider should be called as
                 // close as possible to presenting it with the command buffer. The currentDrawable is
@@ -1183,7 +1230,10 @@ public class Renderer: NSObject {
     
     // Precalculation Pass
     fileprivate var precalculationPass: ComputePass?
-    fileprivate var precalculationBuffer: MTLBuffer?
+    fileprivate var vertexArgumentBuffer: MTLBuffer?
+    fileprivate var fragmentArgumentBuffer: MTLBuffer?
+    fileprivate var vertexArgumentBufferSize: Int = 0
+    fileprivate var fragmentArgumentBufferSize: Int = 0
     
     // Main Pass
     fileprivate var mainRenderPass: RenderPass?
@@ -1551,6 +1601,8 @@ public class Renderer: NSObject {
         computeModules.forEach { module in
             if let precalculationModule = module as? PrecalculationModule {
                 precalculationPass?.threadGroup = precalculationModule.loadPipeline(withMetalLibrary: defaultLibrary, renderDestination: renderDestination, textureBundle: textureBundle, forComputePass: precalculationPass)
+                vertexArgumentBuffer = precalculationModule.argumentOutputBuffer
+                vertexArgumentBufferSize = precalculationModule.argumentOutputBufferSize
             }
         }
     }
@@ -1568,7 +1620,7 @@ public class Renderer: NSObject {
         }
     }
     
-    fileprivate func updateBuffers(forCameraProperties cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, renderPass: RenderPass ) {
+    fileprivate func updateBuffers(forCameraProperties cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, argumentBufferProperties: ArgumentBufferProperties, renderPass: RenderPass ) {
         
         let allGeometricEntities: [AKGeometricEntity] = geometriesForRenderModule.flatMap { (key, value) in
             return value
@@ -1576,7 +1628,7 @@ public class Renderer: NSObject {
         // Update Buffers
         renderModules.forEach { module in
             if module.isInitialized {
-                module.updateBuffers(withAllGeometricEntities: allGeometricEntities, moduleGeometricEntities: geometriesForRenderModule[module.moduleIdentifier] ?? [], cameraProperties: cameraProperties, environmentProperties: environmentProperties, shadowProperties: shadowProperties, forRenderPass: renderPass)
+                module.updateBuffers(withAllGeometricEntities: allGeometricEntities, moduleGeometricEntities: geometriesForRenderModule[module.moduleIdentifier] ?? [], cameraProperties: cameraProperties, environmentProperties: environmentProperties, shadowProperties: shadowProperties, argumentBufferProperties: argumentBufferProperties, forRenderPass: renderPass)
             }
         }
     }
@@ -1629,6 +1681,8 @@ public class Renderer: NSObject {
         commandEncoder.endEncoding()
         
     }
+    
+    // MARK: Precomute pass
     
     /// Draw to the depth texture from the directional lights point of view to generate the shadow map
     func dispatchComputePass(with commandEncoder: MTLComputeCommandEncoder) {

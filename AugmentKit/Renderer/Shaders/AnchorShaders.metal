@@ -333,7 +333,6 @@ float4 illuminate(LightingParameters parameters) {
 }
 
 LightingParameters calculateParameters(ColorInOut in,
-                                       constant SharedUniforms & sharedUniforms,
                                        constant MaterialUniforms & materialUniforms,
                                        constant EnvironmentUniforms *environmentUniforms,
                                        texture2d<float> baseColorMap [[ function_constant(has_base_color_map) ]],
@@ -427,26 +426,35 @@ vertex ColorInOut anchorGeometryVertexTransform(Vertex in [[stage_in]],
                                                 constant AnchorInstanceUniforms *anchorInstanceUniforms [[ buffer(kBufferIndexAnchorInstanceUniforms) ]],
                                                 constant AnchorEffectsUniforms *anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]],
                                                 constant EnvironmentUniforms *environmentUniforms [[ buffer(kBufferIndexEnvironmentUniforms) ]],
+                                                device PrecalculatedParameters *arguments [[ buffer(kBufferIndexPrecalculationOutputBuffer) ]],
+                                                constant int &drawCallIndex [[ buffer(kBufferIndexDrawCallIndex) ]],
+                                                constant int &drawCallGroupIndex [[ buffer(kBufferIndexDrawCallGroupIndex) ]],
                                                 uint vid [[vertex_id]],
                                                 ushort iid [[instance_id]]) {
     ColorInOut out;
     
     // Make position a float4 to perform 4x4 matrix math on it
     float4 position = float4(in.position, 1.0);
+    int argumentBufferIndex = drawCallIndex;
     
     // Get the anchor model's orientation in world space
-    float4x4 modelMatrix = anchorInstanceUniforms[iid].modelMatrix;
-    float3x3 normalMatrix = anchorInstanceUniforms[iid].normalMatrix;
+//    float4x4 modelMatrix = anchorInstanceUniforms[iid].modelMatrix;
+//    float3x3 normalMatrix = anchorInstanceUniforms[iid].normalMatrix;
     
     // Apply effects that affect geometry
-    float4x4 scaleMatrix = anchorEffectsUniforms[iid].scale;
-    modelMatrix = modelMatrix * scaleMatrix;
+//    float4x4 scaleMatrix = anchorEffectsUniforms[iid].scale;
+//    modelMatrix = modelMatrix * scaleMatrix;
     
     // Transform the model's orientation from world space to camera space.
-    float4x4 modelViewMatrix = sharedUniforms.viewMatrix * modelMatrix;
+//    float4x4 modelViewMatrix = sharedUniforms.viewMatrix * modelMatrix;
+    
+    float3x3 normalMatrix = arguments[argumentBufferIndex].scaledNormalMatrix;
+    float4x4 modelViewMatrix = arguments[argumentBufferIndex].modelViewMatrix;
+    float4x4 modelViewProjectionMatrix = arguments[argumentBufferIndex].modelViewProjectionMatrix;
     
     // Calculate the position of our vertex in clip space and output for clipping and rasterization
-    out.position = sharedUniforms.projectionMatrix * modelViewMatrix * position;
+//    out.position = sharedUniforms.projectionMatrix * modelViewMatrix * position;
+    out.position = modelViewProjectionMatrix * position;
     
     // Calculate the positon of our vertex in eye space
     out.eyePosition = float3((modelViewMatrix * position).xyz);
@@ -475,12 +483,15 @@ vertex ColorInOut anchorGeometryVertexTransform(Vertex in [[stage_in]],
 // MARK: Anchor vertex function with skinning
 vertex ColorInOut anchorGeometryVertexTransformSkinned(Vertex in [[stage_in]],
                                                        constant SharedUniforms &sharedUniforms [[ buffer(kBufferIndexSharedUniforms) ]],
-                                                       constant float4x4 *palette [[buffer(kBufferIndexMeshPalettes)]],
-                                                       constant int &paletteStartIndex [[buffer(kBufferIndexMeshPaletteIndex)]],
-                                                       constant int &paletteSize [[buffer(kBufferIndexMeshPaletteSize)]],
+                                                       constant float4x4 *palette [[ buffer(kBufferIndexMeshPalettes) ]],
+                                                       constant int &paletteStartIndex [[ buffer(kBufferIndexMeshPaletteIndex) ]],
+                                                       constant int &paletteSize [[ buffer(kBufferIndexMeshPaletteSize) ]],
                                                        constant AnchorInstanceUniforms *anchorInstanceUniforms [[ buffer(kBufferIndexAnchorInstanceUniforms) ]],
                                                        constant AnchorEffectsUniforms *anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]],
                                                        constant EnvironmentUniforms *environmentUniforms [[ buffer(kBufferIndexEnvironmentUniforms) ]],
+                                                       device PrecalculatedParameters *arguments [[ buffer(kBufferIndexPrecalculationOutputBuffer) ]],
+                                                       constant int &drawCallIndex [[ buffer(kBufferIndexDrawCallIndex) ]],
+                                                       constant int &drawCallGroupIndex [[ buffer(kBufferIndexDrawCallGroupIndex) ]],
                                                        uint vid [[vertex_id]],
                                                        ushort iid [[instance_id]]) {
     
@@ -488,18 +499,19 @@ vertex ColorInOut anchorGeometryVertexTransformSkinned(Vertex in [[stage_in]],
     
     // Make position a float4 to perform 4x4 matrix math on it
     float4 position = float4(in.position, 1.0f);
+    int argumentBufferIndex = drawCallIndex;
     
     // Get the anchor model's orientation in world space
-    float4x4 modelMatrix = anchorInstanceUniforms[iid].modelMatrix;
-    float3x3 normalMatrix = anchorInstanceUniforms[iid].normalMatrix;
+//    float4x4 modelMatrix = anchorInstanceUniforms[iid].modelMatrix;
+//    float3x3 normalMatrix = anchorInstanceUniforms[iid].normalMatrix;
     
     // Apply effects that affect geometry
-    float4x4 scaleMatrix = anchorEffectsUniforms[iid].scale;
-    scaleMatrix[3][3] = 1;
-    modelMatrix = modelMatrix * scaleMatrix;
+//    float4x4 scaleMatrix = anchorEffectsUniforms[iid].scale;
+//    scaleMatrix[3][3] = 1;
+//    modelMatrix = modelMatrix * scaleMatrix;
     
     // Transform the model's orientation from world space to camera space.
-    float4x4 modelViewMatrix = sharedUniforms.viewMatrix * modelMatrix;
+//    float4x4 modelViewMatrix = sharedUniforms.viewMatrix * modelMatrix;
     
     ushort4 jointIndex = in.jointIndices + paletteStartIndex + iid * paletteSize;
     float4 weights = in.jointWeights;
@@ -522,7 +534,14 @@ vertex ColorInOut anchorGeometryVertexTransformSkinned(Vertex in [[stage_in]],
         weights[3] * (palette[jointIndex[3]] * modelTangent);
     
     // Calculate the position of our vertex in clip space and output for clipping and rasterization
-    out.position = sharedUniforms.projectionMatrix * modelViewMatrix * skinnedPosition;
+//    out.position = sharedUniforms.projectionMatrix * modelViewMatrix * skinnedPosition;
+    
+
+    float3x3 normalMatrix = arguments[argumentBufferIndex].scaledNormalMatrix;
+    float4x4 modelViewMatrix = arguments[argumentBufferIndex].modelViewMatrix;
+    float4x4 modelViewProjectionMatrix = arguments[argumentBufferIndex].modelViewProjectionMatrix;
+    
+    out.position = modelViewProjectionMatrix * skinnedPosition;
     
     // Calculate the positon of our vertex in eye space
     out.eyePosition = float3((modelViewMatrix * skinnedPosition).xyz);
@@ -551,7 +570,6 @@ vertex ColorInOut anchorGeometryVertexTransformSkinned(Vertex in [[stage_in]],
 // MARK: Anchor fragment function with materials
 
 fragment float4 anchorGeometryFragmentLighting(ColorInOut in [[stage_in]],
-                                               constant SharedUniforms &sharedUniforms [[ buffer(kBufferIndexSharedUniforms) ]],
                                                constant MaterialUniforms &materialUniforms [[ buffer(kBufferIndexMaterialUniforms) ]],
                                                constant EnvironmentUniforms *environmentUniforms [[ buffer(kBufferIndexEnvironmentUniforms) ]],
                                                constant AnchorEffectsUniforms *anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]],
@@ -577,7 +595,6 @@ fragment float4 anchorGeometryFragmentLighting(ColorInOut in [[stage_in]],
     ushort iid = in.iid;
     
     LightingParameters parameters = calculateParameters(in,
-                                                        sharedUniforms,
                                                         materialUniforms,
                                                         environmentUniforms,
                                                         baseColorMap,

@@ -224,7 +224,9 @@ class SurfacesRenderModule: RenderModule {
     // Per Frame Updates
     //
     
-    func updateBufferState(withBufferIndex bufferIndex: Int) {
+    func updateBufferState(withBufferIndex theBufferIndex: Int) {
+        
+        bufferIndex = theBufferIndex
         
         surfaceUniformBufferOffset = Constants.alignedSurfaceInstanceUniformsSize * bufferIndex
         materialUniformBufferOffset = RenderModuleConstants.alignedMaterialSize * bufferIndex
@@ -238,7 +240,9 @@ class SurfacesRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withAllGeometricEntities: [AKGeometricEntity], moduleGeometricEntities: [AKGeometricEntity], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, forRenderPass renderPass: RenderPass) {
+    func updateBuffers(withAllGeometricEntities: [AKGeometricEntity], moduleGeometricEntities: [AKGeometricEntity], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, argumentBufferProperties theArgumentBufferProperties: ArgumentBufferProperties, forRenderPass renderPass: RenderPass) {
+        
+        argumentBufferProperties = theArgumentBufferProperties
         
         let anchors: [AKRealAnchor] = moduleGeometricEntities.compactMap({
             if let anAnchor = $0 as? AKRealAnchor {
@@ -505,6 +509,12 @@ class SurfacesRenderModule: RenderModule {
         // Push a debug group allowing us to identify render commands in the GPU Frame Capture tool
         renderEncoder.pushDebugGroup("Draw Surfaces")
         
+        if let argumentBufferProperties = argumentBufferProperties, let vertexArgumentBuffer = argumentBufferProperties.vertexArgumentBuffer {
+            renderEncoder.pushDebugGroup("Argument Buffer")
+            renderEncoder.setVertexBuffer(vertexArgumentBuffer, offset: argumentBufferProperties.vertexArgumentBufferOffset(forFrame: bufferIndex), index: Int(kBufferIndexPrecalculationOutputBuffer.rawValue))
+            renderEncoder.popDebugGroup()
+        }
+        
         if let sharedBuffer = sharedModules?.first(where: {$0.moduleIdentifier == SharedBuffersRenderModule.identifier}), renderPass.usesSharedBuffer {
             
             renderEncoder.pushDebugGroup("Draw Shared Uniforms")
@@ -545,22 +555,40 @@ class SurfacesRenderModule: RenderModule {
             
         }
         
+        var drawCallGroupIndex: Int32 = 0
+        var drawCallIndex: Int32 = 0
         var baseIndex = 0
         
-        for drawCallGroup in renderPass.drawCallGroups.filter({ $0.moduleIdentifier == moduleIdentifier }) {
+        for drawCallGroup in renderPass.drawCallGroups {
+            
+            guard drawCallGroup.moduleIdentifier == moduleIdentifier else {
+                drawCallIndex += Int32(drawCallGroup.drawCalls.count)
+                drawCallGroupIndex += 1
+                continue
+            }
             
             let uuid = drawCallGroup.uuid
             
+            // TODO: remove. I think this should always be 1. Even if draw call groups share geometries, we should only be incrementing the base index once per draw call. The whole idea of sharing geometries is probably misguided anyway
             let anchorcount = (anchorsByUUID[uuid] ?? []).count
+//            if anchorcount > 1 {
+//                print("There are \(anchorcount) geometries sharing this one UUID. This is something to refactor.")
+//            }
             
             // Geometry Draw Calls
             for drawCall in drawCallGroup.drawCalls {
                 
                 guard let drawData = drawCall.drawData else {
+                    drawCallIndex += 1
                     continue
                 }
                 
                 drawCall.prepareDrawCall(withRenderPass: renderPass)
+                
+                // Set the offset index of the draw call into the argument buffer
+                renderEncoder.setVertexBytes(&drawCallIndex, length: MemoryLayout<Int32>.size, index: Int(kBufferIndexDrawCallIndex.rawValue))
+                // Set the offset index of the draw call group into the argument buffer
+                renderEncoder.setVertexBytes(&drawCallGroupIndex, length: MemoryLayout<Int32>.size, index: Int(kBufferIndexDrawCallGroupIndex.rawValue))
                 
                 // Set any buffers fed into our render pipeline
                 renderEncoder.setVertexBuffer(surfaceUniformBuffer, offset: surfaceUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
@@ -572,10 +600,11 @@ class SurfacesRenderModule: RenderModule {
                 draw(withDrawData: mutableDrawData, with: renderEncoder, baseIndex: baseIndex)
                 
                 baseIndex += anchorcount
+                drawCallIndex += 1
                 
             }
             
-            //            baseIndex += anchorcount
+            drawCallGroupIndex += 1
             
         }
         
@@ -605,6 +634,7 @@ class SurfacesRenderModule: RenderModule {
         static let alignedEnvironmentUniformSize = ((MemoryLayout<EnvironmentUniforms>.stride * Constants.maxSurfaceInstanceCount) & ~0xFF) + 0x100
     }
     
+    private var bufferIndex: Int = 0
     private var device: MTLDevice?
     private var textureLoader: MTKTextureLoader?
     private var geometricEntities = [AKGeometricEntity]()
@@ -619,6 +649,7 @@ class SurfacesRenderModule: RenderModule {
     private var surfacePipelineStates = [MTLRenderPipelineState]() // Store multiple states
     private var environmentData: EnvironmentData?
     private var shadowMap: MTLTexture?
+    private var argumentBufferProperties: ArgumentBufferProperties?
     
     // Offset within surfaceUniformBuffer to set for the current frame
     private var surfaceUniformBufferOffset: Int = 0
@@ -652,6 +683,14 @@ class SurfacesRenderModule: RenderModule {
     
     private func createDrawCallGroup(forUUID uuid: UUID, withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, renderPass: RenderPass?, meshGPUData: MeshGPUData) -> DrawCallGroup {
         
+        guard let renderPass = renderPass else {
+            print("Warning - Skipping all draw calls because the render pass is nil.")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeRenderPassNotFound, userInfo: nil)
+            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
+            return DrawCallGroup(drawCalls: [], uuid: uuid)
+        }
+        
         let myVertexDescriptor: MTLVertexDescriptor? = meshGPUData.vertexDescriptor
         
         guard let aVertexDescriptor = myVertexDescriptor else {
@@ -668,73 +707,19 @@ class SurfacesRenderModule: RenderModule {
         var drawCalls = [DrawCall]()
         for drawData in meshGPUData.drawData {
             
-            let funcConstants = RenderUtilities.getFuncConstants(forDrawData: drawData)
-            
-            let fragFunc: MTLFunction = {
-                do {
-                    let fragmentShaderName: String = {
-                        if shaderPreference == .simple {
-                            return "surfaceFragmentLightingSimple"
-                        } else {
-                            // TODO: Support more complex lighting
-                            return "surfaceFragmentLightingSimple"
-                        }
-                    }()
-                    return try metalLibrary.makeFunction(name: fragmentShaderName, constantValues: funcConstants)
-                } catch let error {
-                    print("Failed to create fragment function for pipeline state descriptor, error \(error)")
-                    let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: error))))
-                    recordNewError(newError)
-                    fatalError()
-                }
-            }()
-            
-            let vertFunc: MTLFunction = {
-                do {
-                    let vertexName = "surfaceGeometryVertexTransform"
-                    return try metalLibrary.makeFunction(name: vertexName, constantValues: funcConstants)
-                } catch let error {
-                    print("Failed to create vertex function for pipeline state descriptor, error \(error)")
-                    let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: error))))
-                    recordNewError(newError)
-                    fatalError()
-                }
-            }()
-            
-            let pipelineStateDescriptor: MTLRenderPipelineDescriptor = {
-                if let renderPass = renderPass, let aPipelineDescriptor = renderPass.renderPipelineDescriptor(withVertexDescriptor: aVertexDescriptor, vertexFunction: vertFunc, fragmentFunction: fragFunc) {
-                    return aPipelineDescriptor
+            let fragmentShaderName: String = {
+                if shaderPreference == .simple {
+                    return "surfaceFragmentLightingSimple"
                 } else {
-                    let aPipelineDescriptor = MTLRenderPipelineDescriptor()
-                    aPipelineDescriptor.vertexDescriptor = aVertexDescriptor
-                    aPipelineDescriptor.vertexFunction = vertFunc
-                    aPipelineDescriptor.fragmentFunction = fragFunc
-                    aPipelineDescriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
-                    aPipelineDescriptor.colorAttachments[0].isBlendingEnabled = true
-                    aPipelineDescriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
-                    aPipelineDescriptor.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
-                    aPipelineDescriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-                    aPipelineDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-                    aPipelineDescriptor.sampleCount = renderDestination.sampleCount
-                    return aPipelineDescriptor
+                    // TODO: Support more complex lighting
+                    return "surfaceFragmentLightingSimple"
                 }
             }()
             
-            let depthStateDescriptor: MTLDepthStencilDescriptor = {
-                if let renderPass = renderPass {
-                    let aDepthStateDescriptor = renderPass.depthStencilDescriptor(withDepthComareFunction: .less, isDepthWriteEnabled: true)
-                    return aDepthStateDescriptor
-                } else {
-                    let aDepthStateDescriptor = MTLDepthStencilDescriptor()
-                    aDepthStateDescriptor.depthCompareFunction = .less
-                    aDepthStateDescriptor.isDepthWriteEnabled = true
-                    return aDepthStateDescriptor
-                }
-            }()
+            let vertexShaderName = "surfaceGeometryVertexTransform"
             
-            if let drawCall = renderPass?.drawCall(withRenderPipelineDescriptor: pipelineStateDescriptor, depthStencilDescriptor: depthStateDescriptor, drawData: drawData) {
-                drawCalls.append(drawCall)
-            }
+            let drawCall = DrawCall(metalLibrary: metalLibrary, renderPass: renderPass, vertexFunctionName: vertexShaderName, fragmentFunctionName: fragmentShaderName, vertexDescriptor: aVertexDescriptor, drawData: drawData)
+            drawCalls.append(drawCall)
             
         }
         

@@ -242,7 +242,9 @@ class UnanchoredRenderModule: RenderModule {
     // Per Frame Updates
     //
     
-    func updateBufferState(withBufferIndex bufferIndex: Int) {
+    func updateBufferState(withBufferIndex theBufferIndex: Int) {
+        
+        bufferIndex = theBufferIndex
         
         unanchoredUniformBufferOffset = Constants.alignedInstanceUniformsSize * bufferIndex
         materialUniformBufferOffset = RenderModuleConstants.alignedMaterialSize * bufferIndex
@@ -256,7 +258,9 @@ class UnanchoredRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withAllGeometricEntities: [AKGeometricEntity], moduleGeometricEntities: [AKGeometricEntity], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, forRenderPass renderPass: RenderPass) {
+    func updateBuffers(withAllGeometricEntities: [AKGeometricEntity], moduleGeometricEntities: [AKGeometricEntity], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, argumentBufferProperties theArgumentBufferProperties: ArgumentBufferProperties, forRenderPass renderPass: RenderPass) {
+        
+        argumentBufferProperties = theArgumentBufferProperties
         
         let trackers: [AKAugmentedTracker] = moduleGeometricEntities.compactMap({
             if let aTracker = $0 as? AKAugmentedTracker {
@@ -673,6 +677,12 @@ class UnanchoredRenderModule: RenderModule {
         // Set render command encoder state
         renderEncoder.setCullMode(.back)
         
+        if let argumentBufferProperties = argumentBufferProperties, let vertexArgumentBuffer = argumentBufferProperties.vertexArgumentBuffer {
+            renderEncoder.pushDebugGroup("Argument Buffer")
+            renderEncoder.setVertexBuffer(vertexArgumentBuffer, offset: argumentBufferProperties.vertexArgumentBufferOffset(forFrame: bufferIndex), index: Int(kBufferIndexPrecalculationOutputBuffer.rawValue))
+            renderEncoder.popDebugGroup()
+        }
+        
         if let sharedBuffer = sharedModules?.first(where: {$0.moduleIdentifier == SharedBuffersRenderModule.identifier}), renderPass.usesSharedBuffer  {
             
             renderEncoder.pushDebugGroup("Draw Shared Uniforms")
@@ -713,21 +723,36 @@ class UnanchoredRenderModule: RenderModule {
             
         }
         
+        var drawCallGroupIndex: Int32 = 0
+        var drawCallIndex: Int32 = 0
         var baseIndex = 0
             
-        for drawCallGroup in renderPass.drawCallGroups.filter({ $0.moduleIdentifier == moduleIdentifier }) {
+        for drawCallGroup in renderPass.drawCallGroups {
+            
+            guard drawCallGroup.moduleIdentifier == moduleIdentifier else {
+                drawCallIndex += Int32(drawCallGroup.drawCalls.count)
+                drawCallGroupIndex += 1
+                continue
+            }
             
             let uuid = drawCallGroup.uuid
+            // TODO: remove. I think this should always be 1. Even if draw call groups share geometries, we should only be incrementing the base index once per draw call. The whole idea of sharing geometries is probably misguided anyway
             let geometryCount = geometryCountByUUID[uuid] ?? 0
             
             // Geometry Draw Calls
             for drawCall in drawCallGroup.drawCalls {
                 
                 guard let drawData = drawCall.drawData else {
+                    drawCallIndex += 1
                     continue
                 }
                 
                 drawCall.prepareDrawCall(withRenderPass: renderPass)
+                
+                // Set the offset index of the draw call into the argument buffer
+                renderEncoder.setVertexBytes(&drawCallIndex, length: MemoryLayout<Int32>.size, index: Int(kBufferIndexDrawCallIndex.rawValue))
+                // Set the offset index of the draw call group into the argument buffer
+                renderEncoder.setVertexBytes(&drawCallGroupIndex, length: MemoryLayout<Int32>.size, index: Int(kBufferIndexDrawCallGroupIndex.rawValue))
                 
                 // Set any buffers fed into our render pipeline
                 renderEncoder.setVertexBuffer(unanchoredUniformBuffer, offset: unanchoredUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
@@ -739,8 +764,11 @@ class UnanchoredRenderModule: RenderModule {
                 draw(withDrawData: mutableDrawData, with: renderEncoder, baseIndex: baseIndex)
                 
                 baseIndex += geometryCount
+                drawCallIndex += 1
                 
             }
+            
+            drawCallGroupIndex += 1
             
         }
         
@@ -770,6 +798,7 @@ class UnanchoredRenderModule: RenderModule {
         static let alignedEnvironmentUniformSize = ((MemoryLayout<EnvironmentUniforms>.stride * (Constants.maxTrackerInstanceCount + Constants.maxTargetInstanceCount)) & ~0xFF) + 0x100
     }
     
+    private var bufferIndex: Int = 0
     private var device: MTLDevice?
     private var textureLoader: MTKTextureLoader?
     private var geometricEntities = [AKGeometricEntity]()
@@ -788,6 +817,7 @@ class UnanchoredRenderModule: RenderModule {
     private var environmentUniformBuffer: MTLBuffer?
     private var environmentData: EnvironmentData?
     private var shadowMap: MTLTexture?
+    private var argumentBufferProperties: ArgumentBufferProperties?
     
     // Offset within unanchoredUniformBuffer to set for the current frame
     private var unanchoredUniformBufferOffset: Int = 0
@@ -821,6 +851,14 @@ class UnanchoredRenderModule: RenderModule {
     
     private func createDrawCallGroup(forUUID uuid: UUID, withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, renderPass: RenderPass?, meshGPUData: MeshGPUData) -> DrawCallGroup {
         
+        guard let renderPass = renderPass else {
+            print("Warning - Skipping all draw calls because the render pass is nil.")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeRenderPassNotFound, userInfo: nil)
+            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
+            return DrawCallGroup(drawCalls: [], uuid: uuid)
+        }
+        
         guard let aVertexDescriptor = meshGPUData.vertexDescriptor else {
             print("Serious Error - Failed to create a MetalKit vertex descriptor from ModelIO.")
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeInvalidMeshData, userInfo: nil)
@@ -834,75 +872,23 @@ class UnanchoredRenderModule: RenderModule {
         var drawCalls = [DrawCall]()
         for drawData in meshGPUData.drawData {
             
-            let funcConstants = RenderUtilities.getFuncConstants(forDrawData: drawData)
-            
-            let fragFunc: MTLFunction = {
-                do {
-                    let fragmentShaderName: String = {
-                        if shaderPreference == .simple {
-                            return "anchorGeometryFragmentLightingSimple"
-                        } else {
-                            return "anchorGeometryFragmentLighting"
-                        }
-                    }()
-                    return try metalLibrary.makeFunction(name: fragmentShaderName, constantValues: funcConstants)
-                } catch let error {
-                    print("Failed to create fragment function for pipeline state descriptor, error \(error)")
-                    let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: error))))
-                    recordNewError(newError)
-                    fatalError()
-                }
-            }()
-            
-            let vertFunc: MTLFunction = {
-                do {
-                    // Specify which shader to use based on if the model has skinned puppet suppot
-                    let vertexName = drawData.isSkinned ? "anchorGeometryVertexTransformSkinned" : "anchorGeometryVertexTransform"
-                    return try metalLibrary.makeFunction(name: vertexName, constantValues: funcConstants)
-                } catch let error {
-                    print("Failed to create vertex function for pipeline state descriptor, error \(error)")
-                    let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: error))))
-                    recordNewError(newError)
-                    fatalError()
-                }
-            }()
-            
-            let pipelineStateDescriptor: MTLRenderPipelineDescriptor = {
-                
-                if let renderPass = renderPass, let aPipelineDescriptor = renderPass.renderPipelineDescriptor(withVertexDescriptor: aVertexDescriptor, vertexFunction: vertFunc, fragmentFunction: fragFunc) {
-                    return aPipelineDescriptor
+            let fragmentShaderName: String = {
+                if shaderPreference == .simple {
+                    return "anchorGeometryFragmentLightingSimple"
                 } else {
-                    let aPipelineDescriptor = MTLRenderPipelineDescriptor()
-                    aPipelineDescriptor.vertexDescriptor = aVertexDescriptor
-                    aPipelineDescriptor.vertexFunction = vertFunc
-                    aPipelineDescriptor.fragmentFunction = fragFunc
-                    aPipelineDescriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
-                    aPipelineDescriptor.colorAttachments[0].isBlendingEnabled = true
-                    aPipelineDescriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
-                    aPipelineDescriptor.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
-                    aPipelineDescriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-                    aPipelineDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-                    aPipelineDescriptor.sampleCount = renderDestination.sampleCount
-                    return aPipelineDescriptor
+                    return "anchorGeometryFragmentLighting"
                 }
-                
             }()
-            
-            let unanchoredDepthStateDescriptor: MTLDepthStencilDescriptor = {
-                if let renderPass = renderPass {
-                    let aDepthStateDescriptor = renderPass.depthStencilDescriptor(withDepthComareFunction: .less, isDepthWriteEnabled: true)
-                    return aDepthStateDescriptor
+            let vertexShaderName: String = {
+                if drawData.isSkinned {
+                    return "anchorGeometryVertexTransformSkinned"
                 } else {
-                    let aDepthStateDescriptor = MTLDepthStencilDescriptor()
-                    aDepthStateDescriptor.depthCompareFunction = .less
-                    aDepthStateDescriptor.isDepthWriteEnabled = true
-                    return aDepthStateDescriptor
+                    return "anchorGeometryVertexTransform"
                 }
             }()
             
-            if let drawCall = renderPass?.drawCall(withRenderPipelineDescriptor: pipelineStateDescriptor, depthStencilDescriptor: unanchoredDepthStateDescriptor, drawData: drawData) {
-                drawCalls.append(drawCall)
-            }
+            let drawCall = DrawCall(metalLibrary: metalLibrary, renderPass: renderPass, vertexFunctionName: vertexShaderName, fragmentFunctionName: fragmentShaderName, vertexDescriptor: aVertexDescriptor, drawData: drawData)
+            drawCalls.append(drawCall)
             
         }
         

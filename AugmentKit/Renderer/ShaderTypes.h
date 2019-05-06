@@ -49,6 +49,8 @@ enum BufferIndices {
     kBufferIndexAnchorEffectsUniforms,
     kBufferIndexEnvironmentUniforms,
     kBufferIndexPrecalculationOutputBuffer,
+    kBufferIndexDrawCallIndex, // The index into the draw call. Used for the precalcualted arguments buffer
+    kBufferIndexDrawCallGroupIndex, // The index into the draw call group. Used for the environment and effects buffers
 };
 
 /**
@@ -70,6 +72,7 @@ enum VertexAttributes {
     //kVertexAttributeShadingBasisU,
     //kVertexAttributeShadingBasisV,
     //kVertexAttributeSubdivisionStencil,
+    kVertexArguments, 
 };
 
 /// Texture index values shared between shader and C code to ensure Metal shader texture indices match indices of Metal API texture set calls
@@ -116,6 +119,13 @@ enum FunctionConstantIndices {
     kFunctionConstantClearcoatMapIndex,
     kFunctionConstantClearcoatGlossMapIndex,
     kNumFunctionConstantIndices
+};
+
+enum ArgumentBufferIndices {
+//    kArgumentBufferTextureIndex = 0,
+//    kArgumentBufferSamplerIndex,
+    kArgumentBufferPrecalculationBufferIndex,
+//    kArgumentBufferConstantIndex,
 };
 
 // MARK: - AR/VR goggle support for left and right eyes.
@@ -239,7 +249,7 @@ struct LightingParameters {
     float   clearcoatGloss;
 };
 
-// MARK: Lighting Parameters
+// MARK: Precalculated Parameters
 
 /// Calculated on a per-draw basis
 struct PrecalculatedParameters {
@@ -260,6 +270,23 @@ struct PrecalculatedParameters {
     vector_float4 jointIndeces;
     vector_float4 jointWeights;
     vector_float4 weightedPalette; // jointWeights[n] * palette[jointIndex[n]]
+    matrix_float4x4 shadowMVPTransformMatrix;
 };
+
+// MARK: Argument Buffers
+
+typedef struct VertexShaderArguments {
+//    texture2d<half> exampleTexture  [[ id(AAPLArgumentBufferIDExampleTexture)  ]];
+//    sampler         exampleSampler  [[ id(AAPLArgumentBufferIDExampleSampler)  ]];
+//    device PrecalculatedParameters *precalculationBuffer [[ id(kArgumentBufferPrecalculationBufferIndex) ]];
+//    uint32_t        exampleConstant [[ id(AAPLArgumentBufferIDExampleConstant) ]];
+} VertexShaderArguments;
+
+typedef struct FragmentShaderArguments {
+//    texture2d<half> exampleTexture  [[ id(AAPLArgumentBufferIDExampleTexture)  ]];
+//    sampler         exampleSampler  [[ id(AAPLArgumentBufferIDExampleSampler)  ]];
+//    device float   *exampleBuffer   [[ id(AAPLArgumentBufferIDExampleBuffer)   ]];
+//    uint32_t        exampleConstant [[ id(AAPLArgumentBufferIDExampleConstant) ]];
+} FragmentShaderArguments;
 
 #endif /* ShaderTypes_h */

@@ -158,7 +158,7 @@ class TrackingPointsRenderModule: RenderModule {
     
     // Update the buffer data
     
-    func updateBuffers(withAllGeometricEntities: [AKGeometricEntity], moduleGeometricEntities: [AKGeometricEntity], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, forRenderPass renderPass: RenderPass) {
+    func updateBuffers(withAllGeometricEntities: [AKGeometricEntity], moduleGeometricEntities: [AKGeometricEntity], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, argumentBufferProperties: ArgumentBufferProperties, forRenderPass renderPass: RenderPass) {
         
         trackingPointCount = 0
         
@@ -204,10 +204,14 @@ class TrackingPointsRenderModule: RenderModule {
             return
         }
         
-        for drawCallGroup in renderPass.drawCallGroups.filter({ $0.moduleIdentifier == moduleIdentifier }) {
+        for drawCallGroup in renderPass.drawCallGroups {
+            
+            guard drawCallGroup.moduleIdentifier == moduleIdentifier else {
+                continue
+            }
             
             // Geometry Draw Calls
-            for (_, drawCall) in drawCallGroup.drawCalls.enumerated() {
+            for drawCall in drawCallGroup.drawCalls {
         
                 // Push a debug group allowing us to identify render commands in the GPU Frame Capture tool
                 renderEncoder.pushDebugGroup("Draw Tracking Points")

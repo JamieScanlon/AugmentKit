@@ -130,25 +130,17 @@ class PathsRenderModule: RenderModule {
     
     func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, forRenderPass renderPass: RenderPass? = nil) -> [DrawCallGroup] {
         
+        guard let renderPass = renderPass else {
+            print("Warning - Skipping all draw calls because the render pass is nil.")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeRenderPassNotFound, userInfo: nil)
+            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
+            return []
+        }
+        
         guard let device = device else {
             print("Serious Error - device not found")
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeDeviceNotFound, userInfo: nil)
-            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-            recordNewError(newError)
-            return []
-        }
-        
-        guard let pathVertexShader = metalLibrary.makeFunction(name: "pathVertexShader") else {
-            print("Serious Error - failed to create the pathVertexShader function")
-            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeShaderInitializationFailed, userInfo: nil)
-            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-            recordNewError(newError)
-            return []
-        }
-        
-        guard let pathFragmentShader = metalLibrary.makeFunction(name: "pathFragmentShader") else {
-            print("Serious Error - failed to create the pathFragmentShader function")
-            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeShaderInitializationFailed, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
             return []
@@ -183,18 +175,6 @@ class PathsRenderModule: RenderModule {
         
         var drawCalls = [DrawCall]()
         
-        let pathDepthStateDescriptor: MTLDepthStencilDescriptor = {
-            if let renderPass = renderPass {
-                let aDepthStateDescriptor = renderPass.depthStencilDescriptor(withDepthComareFunction: .less, isDepthWriteEnabled: true)
-                return aDepthStateDescriptor
-            } else {
-                let aDepthStateDescriptor = MTLDepthStencilDescriptor()
-                aDepthStateDescriptor.depthCompareFunction = .less
-                aDepthStateDescriptor.isDepthWriteEnabled = true
-                return aDepthStateDescriptor
-            }
-        }()
-        
         // Check to make sure this geometry should be rendered in this render pass
 //        if let geometricEntity = geometricEntities.first(where: {$0.identifier == item.key}), let geometryFilterFunction = renderPass?.geometryFilterFunction {
 //            guard geometryFilterFunction(geometricEntity) else {
@@ -203,29 +183,8 @@ class PathsRenderModule: RenderModule {
 //        }
         
         for drawData in meshGPUData.drawData {
-            
-            let pipelineStateDescriptor: MTLRenderPipelineDescriptor = {
-                if let renderPass = renderPass, let aPipelineDescriptor = renderPass.renderPipelineDescriptor(withVertexDescriptor: pathVertexDescriptor, vertexFunction: pathVertexShader, fragmentFunction: pathFragmentShader) {
-                    return aPipelineDescriptor
-                } else {
-                    let aPipelineDescriptor = MTLRenderPipelineDescriptor()
-                    aPipelineDescriptor.vertexDescriptor = pathVertexDescriptor
-                    aPipelineDescriptor.vertexFunction = pathVertexShader
-                    aPipelineDescriptor.fragmentFunction = pathFragmentShader
-                    aPipelineDescriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
-                    aPipelineDescriptor.colorAttachments[0].isBlendingEnabled = true
-                    aPipelineDescriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
-                    aPipelineDescriptor.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
-                    aPipelineDescriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-                    aPipelineDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-                    aPipelineDescriptor.sampleCount = renderDestination.sampleCount
-                    return aPipelineDescriptor
-                }
-            }()
-            if let drawCall = renderPass?.drawCall(withRenderPipelineDescriptor: pipelineStateDescriptor, depthStencilDescriptor: pathDepthStateDescriptor, drawData: drawData) {
-                drawCalls.append(drawCall)
-            }
-            
+            let drawCall = DrawCall(metalLibrary: metalLibrary, renderPass: renderPass, vertexFunctionName: "pathVertexShader", fragmentFunctionName: "pathFragmentShader", vertexDescriptor: pathVertexDescriptor, drawData: drawData)
+            drawCalls.append(drawCall)
         }
         
         let drawCallGroup = DrawCallGroup(drawCalls: drawCalls)
@@ -241,7 +200,9 @@ class PathsRenderModule: RenderModule {
     // Per Frame Updates
     //
     
-    func updateBufferState(withBufferIndex bufferIndex: Int) {
+    func updateBufferState(withBufferIndex theBufferIndex: Int) {
+        
+        bufferIndex = theBufferIndex
         
         pathUniformBufferOffset = Constants.alignedPathSegmentInstanceUniformsSize * bufferIndex
         materialUniformBufferOffset = RenderModuleConstants.alignedMaterialSize * bufferIndex
@@ -253,7 +214,9 @@ class PathsRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withAllGeometricEntities: [AKGeometricEntity], moduleGeometricEntities: [AKGeometricEntity], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, forRenderPass renderPass: RenderPass) {
+    func updateBuffers(withAllGeometricEntities: [AKGeometricEntity], moduleGeometricEntities: [AKGeometricEntity], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, argumentBufferProperties theArgumentBufferProperties: ArgumentBufferProperties, forRenderPass renderPass: RenderPass) {
+        
+        argumentBufferProperties = theArgumentBufferProperties
         
         let paths: [AKPath] = moduleGeometricEntities.compactMap({
             if let anPath = $0 as? AKPath {
@@ -461,6 +424,12 @@ class PathsRenderModule: RenderModule {
         // Set render command encoder state
         renderEncoder.setCullMode(.back)
         
+        if let argumentBufferProperties = argumentBufferProperties, let vertexArgumentBuffer = argumentBufferProperties.vertexArgumentBuffer {
+            renderEncoder.pushDebugGroup("Argument Buffer")
+            renderEncoder.setVertexBuffer(vertexArgumentBuffer, offset: argumentBufferProperties.vertexArgumentBufferOffset(forFrame: bufferIndex), index: Int(kBufferIndexPrecalculationOutputBuffer.rawValue))
+            renderEncoder.popDebugGroup()
+        }
+        
         if let sharedBuffer = sharedModules?.first(where: {$0.moduleIdentifier == SharedBuffersRenderModule.identifier}) {
             
             renderEncoder.pushDebugGroup("Draw Shared Uniforms")
@@ -489,15 +458,30 @@ class PathsRenderModule: RenderModule {
             
         }
         
-        for drawCallGroup in renderPass.drawCallGroups.filter({ $0.moduleIdentifier == moduleIdentifier }) {
+        var drawCallGroupIndex: Int32 = 0
+        var drawCallIndex: Int32 = 0
+        
+        for drawCallGroup in renderPass.drawCallGroups {
+            
+            guard drawCallGroup.moduleIdentifier == moduleIdentifier else {
+                drawCallIndex += Int32(drawCallGroup.drawCalls.count)
+                drawCallGroupIndex += 1
+                continue
+            }
             
             for drawCall in drawCallGroup.drawCalls {
                 
                 guard let drawData = drawCall.drawData else {
+                    drawCallIndex += 1
                     continue
                 }
                 
                 drawCall.prepareDrawCall(withRenderPass: renderPass)
+                
+                // Set the offset index of the draw call into the argument buffer
+                renderEncoder.setVertexBytes(&drawCallIndex, length: MemoryLayout<Int32>.size, index: Int(kBufferIndexDrawCallIndex.rawValue))
+                // Set the offset index of the draw call group into the argument buffer
+                renderEncoder.setVertexBytes(&drawCallGroupIndex, length: MemoryLayout<Int32>.size, index: Int(kBufferIndexDrawCallGroupIndex.rawValue))
                 
                 // Set any buffers fed into our render pipeline
                 renderEncoder.setVertexBuffer(pathUniformBuffer, offset: pathUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
@@ -509,6 +493,8 @@ class PathsRenderModule: RenderModule {
                 draw(withDrawData: mutableDrawData, with: renderEncoder)
                 
             }
+            
+            drawCallGroupIndex += 1
             
         }
         
@@ -530,6 +516,7 @@ class PathsRenderModule: RenderModule {
     
     // MARK: - Private
     
+    private var bufferIndex: Int = 0
     private var device: MTLDevice?
     private var textureLoader: MTKTextureLoader?
     private var geometricEntities = [AKGeometricEntity]()
@@ -538,6 +525,7 @@ class PathsRenderModule: RenderModule {
     private var materialUniformBuffer: MTLBuffer?
     private var effectsUniformBuffer: MTLBuffer?
     private var shadowMap: MTLTexture?
+    private var argumentBufferProperties: ArgumentBufferProperties?
     
     // Offset within pathUniformBuffer to set for the current frame
     private var pathUniformBufferOffset: Int = 0

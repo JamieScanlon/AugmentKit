@@ -29,6 +29,8 @@ import Foundation
 import simd
 import ModelIO
 
+// MARK: - UserPosition
+
 /**
  A relative position that is relative to the users current position
  */
@@ -41,6 +43,8 @@ class UserPosition: AKRelativePosition {
     }
 }
 
+// MARK: - AKAugmentedUserTracker
+
 /**
  An augmented tracker object that follows the users position.
  */
@@ -51,6 +55,8 @@ protocol AKAugmentedUserTracker: AKAugmentedTracker {
      */
     func userPosition() -> AKRelativePosition?
 }
+
+// MARK: - UserTracker
 
 /**
  An implementation of `AKAugmentedUserTracker`
@@ -104,4 +110,18 @@ public class UserTracker: AKAugmentedUserTracker {
     public func userPosition() -> AKRelativePosition? {
         return position.parentPosition
     }
+}
+
+extension UserTracker: CustomStringConvertible, CustomDebugStringConvertible {
+    
+    /// :nodoc:
+    public var description: String {
+        return debugDescription
+    }
+    /// :nodoc:
+    public var debugDescription: String {
+        let myDescription = "<UserTracker: \(Unmanaged.passUnretained(self).toOpaque())> type: \(UserTracker.type), identifier: \(identifier?.debugDescription ?? "None"), position: \(position), asset: \(asset), effects: \(effects.debugDescription), shaderPreference: \(shaderPreference), generatesShadows: \(generatesShadows)"
+        return myDescription
+    }
+    
 }

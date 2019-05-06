@@ -44,6 +44,9 @@ vertex ShadowOutput shadowVertexShader( ShadowVertex in [[stage_in]],
                                        constant AnchorInstanceUniforms *anchorInstanceUniforms [[ buffer(kBufferIndexAnchorInstanceUniforms) ]],
                                        constant AnchorEffectsUniforms *anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]],
                                        constant EnvironmentUniforms *environmentUniforms [[ buffer(kBufferIndexEnvironmentUniforms) ]],
+                                       device PrecalculatedParameters *arguments [[ buffer(kBufferIndexPrecalculationOutputBuffer) ]],
+                                       constant int &drawCallIndex [[ buffer(kBufferIndexDrawCallIndex) ]],
+                                       constant int &drawCallGroupIndex [[ buffer(kBufferIndexDrawCallGroupIndex) ]],
                                        uint vid [[ vertex_id ]],
                                        ushort iid [[instance_id]]
                                        ){
@@ -52,13 +55,16 @@ vertex ShadowOutput shadowVertexShader( ShadowVertex in [[stage_in]],
     
     // Make position a float4 to perform 4x4 matrix math on it
     float4 position = float4(in.position, 1.0);
+    int argumentBufferIndex = drawCallIndex;
     
     // Get the anchor model's orientation in world space
-    float4x4 modelMatrix = anchorInstanceUniforms[iid].modelMatrix;
+//    float4x4 modelMatrix = anchorInstanceUniforms[iid].modelMatrix;
     
     // Apply effects that affect geometry
-    float4x4 scaleMatrix = anchorEffectsUniforms[iid].scale;
-    modelMatrix = modelMatrix * scaleMatrix;
+//    float4x4 scaleMatrix = anchorEffectsUniforms[iid].scale;
+//    modelMatrix = modelMatrix * scaleMatrix;
+    
+    float4x4 modelMatrix = arguments[argumentBufferIndex].scaledModelMatrix;
     
     EnvironmentUniforms uniforms = environmentUniforms[iid];
     float4x4 directionalLightMVP = uniforms.directionalLightMVP;

@@ -20,7 +20,7 @@ kernel void precalculationComputeShader(constant SharedUniforms &sharedUniforms 
                                         constant int &paletteSize [[buffer(kBufferIndexMeshPaletteSize)]],
                                         constant AnchorInstanceUniforms *anchorInstanceUniforms [[ buffer(kBufferIndexAnchorInstanceUniforms) ]],
                                         constant AnchorEffectsUniforms *anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]],
-                                        constant EnvironmentUniforms *environmentUniforms [[ buffer(kBufferIndexEnvironmentUniforms) ]],
+                                        constant EnvironmentUniforms &environmentUniforms [[ buffer(kBufferIndexEnvironmentUniforms) ]],
                                         device PrecalculatedParameters *out [[ buffer(kBufferIndexPrecalculationOutputBuffer) ]],
                                         uint2 gid [[thread_position_in_grid]],
                                         uint2 tid [[thread_position_in_threadgroup]],
@@ -53,15 +53,12 @@ kernel void precalculationComputeShader(constant SharedUniforms &sharedUniforms 
                                         float4(coordinateSpaceTransform[3][0], coordinateSpaceTransform[3][1], coordinateSpaceTransform[3][2], 1)
                                         );
 
-    float4x4 modelMatrix = anchorInstanceUniforms[index].locationTransform * coordinateSpaceTransform;
+    float4x4 locationTransform = anchorInstanceUniforms[index].locationTransform;
+    float4x4 modelMatrix = locationTransform * coordinateSpaceTransform;
 
     // Scaled geomentry effects
     float4x4 scale4Matrix = anchorEffectsUniforms[index].scale;
     float3x3 scale3Matrix = convert3(scale4Matrix);
-
-    // Get the anchor model's orientation in world space
-//    float4x4 modelMatrix = anchorInstanceUniforms[index].modelMatrix;
-//    float3x3 normalMatrix = anchorInstanceUniforms[index].normalMatrix;
     
     // When converting a 4x4 to a 3x3, position data is discarded
     float3x3 upperLeft = convert3(modelMatrix);
@@ -72,8 +69,9 @@ kernel void precalculationComputeShader(constant SharedUniforms &sharedUniforms 
 
     // Transform the model's orientation from world space to camera space.
     float4x4 modelViewMatrix = sharedUniforms.viewMatrix * scaledModelMatrix;
+    float4x4 modelViewProjectionMatrix = sharedUniforms.projectionMatrix * modelViewMatrix;
 
-//    ushort4 jointIndex = in.jointIndices + paletteStartIndex + index * paletteSize;
+//    float4 jointIndex = in.jointIndices + paletteStartIndex + index * paletteSize;
 //    float4 jointWeights = in.jointWeights;
 //
 //    float4 weightedPalette = jointWeights[0] * palette[jointIndex[0]] +
@@ -81,20 +79,25 @@ kernel void precalculationComputeShader(constant SharedUniforms &sharedUniforms 
 //    jointWeights[2] * palette[jointIndex[2]] +
 //    jointWeights[3] * palette[jointIndex[3]];
     
+    float4x4 shadowMVPTransformMatrix = environmentUniforms.shadowMVPTransformMatrix;
+    
     out[index].hasGeometry = hasGeometry;
     out[index].worldTransform = worldTransform;
     out[index].hasHeading = hasHeading;
     out[index].headingTransform = headingTransform;
     out[index].headingType = int(headingType);
     out[index].coordinateSpaceTransform = coordinateSpaceTransform;
-//    out[index].locationTransform = locationTransform;
+    out[index].locationTransform = locationTransform;
     out[index].modelMatrix = modelMatrix;
     out[index].scaledModelMatrix = scaledModelMatrix;
+    out[index].normalMatrix = normalMatrix;
+    out[index].scaledNormalMatrix = scaledNormalMatrix;
     out[index].modelViewMatrix = modelViewMatrix;
-//    out[index].modelViewProjectionMatrix = modelViewProjectionMatrix;
+    out[index].modelViewProjectionMatrix = modelViewProjectionMatrix;
 //    out[index].jointIndeces = jointIndeces;
 //    out[index].jointWeights = jointWeights;
 //    out[index].weightedPalette = weightedPalette;
+    out[index].shadowMVPTransformMatrix = shadowMVPTransformMatrix;
     
     
 }

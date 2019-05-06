@@ -58,26 +58,36 @@ vertex SurfaceVertexOutput surfaceGeometryVertexTransform(SurfaceVertex in [[sta
                                                 constant AnchorInstanceUniforms *anchorInstanceUniforms [[ buffer(kBufferIndexAnchorInstanceUniforms) ]],
                                                 constant AnchorEffectsUniforms *anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]],
                                                 constant EnvironmentUniforms *environmentUniforms [[ buffer(kBufferIndexEnvironmentUniforms) ]],
+                                                device PrecalculatedParameters *arguments [[ buffer(kBufferIndexPrecalculationOutputBuffer) ]],
+                                                constant int &drawCallIndex [[ buffer(kBufferIndexDrawCallIndex) ]],
+                                                constant int &drawCallGroupIndex [[ buffer(kBufferIndexDrawCallGroupIndex) ]],
                                                 uint vid [[vertex_id]],
                                                 ushort iid [[instance_id]]) {
     SurfaceVertexOutput out;
     
     // Make position a float4 to perform 4x4 matrix math on it
     float4 position = float4(in.position, 1.0);
+    int argumentBufferIndex = drawCallIndex;
     
     // Get the anchor model's orientation in world space
-    float4x4 modelMatrix = anchorInstanceUniforms[iid].modelMatrix;
-    float3x3 normalMatrix = anchorInstanceUniforms[iid].normalMatrix;
+//    float4x4 modelMatrix = anchorInstanceUniforms[iid].modelMatrix;
+//    float3x3 normalMatrix = anchorInstanceUniforms[iid].normalMatrix;
     
     // Apply effects that affect geometry
-    float4x4 scaleMatrix = anchorEffectsUniforms[iid].scale;
-    modelMatrix = modelMatrix * scaleMatrix;
+//    float4x4 scaleMatrix = anchorEffectsUniforms[iid].scale;
+//    modelMatrix = modelMatrix * scaleMatrix;
     
     // Transform the model's orientation from world space to camera space.
-    float4x4 modelViewMatrix = sharedUniforms.viewMatrix * modelMatrix;
+//    float4x4 modelViewMatrix = sharedUniforms.viewMatrix * modelMatrix;
     
     // Calculate the position of our vertex in clip space and output for clipping and rasterization
-    out.position = sharedUniforms.projectionMatrix * modelViewMatrix * position;
+//    out.position = sharedUniforms.projectionMatrix * modelViewMatrix * position;
+    
+    float3x3 normalMatrix = arguments[argumentBufferIndex].scaledNormalMatrix;
+    float4x4 modelMatrix = arguments[argumentBufferIndex].scaledModelMatrix;
+    float4x4 modelViewProjectionMatrix = arguments[argumentBufferIndex].modelViewProjectionMatrix;
+    
+    out.position = modelViewProjectionMatrix * position;
     
     // Rotate our normals to world coordinates
     out.normal = normalMatrix * in.normal;

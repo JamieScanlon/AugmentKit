@@ -45,6 +45,7 @@ class PrecalculationModule: PreRenderComputeModule {
     var sharedModuleIdentifiers: [String]? = [SharedBuffersRenderModule.identifier]
     
     fileprivate(set) var argumentOutputBuffer: MTLBuffer?
+    fileprivate(set) var argumentOutputBufferSize: Int = 0
     
     func initializeBuffers(withDevice device: MTLDevice, maxInFlightFrames: Int, maxInstances: Int) {
         
@@ -513,7 +514,7 @@ class PrecalculationModule: PreRenderComputeModule {
     fileprivate var effectsUniformBuffer: MTLBuffer?
     fileprivate var environmentUniformBuffer: MTLBuffer?
     
-    fileprivate var argumentOutputBufferSize: Int = 0
+    
     
     // Offset within geometryUniformBuffer to set for the current frame
     fileprivate var geometryUniformBufferOffset: Int = 0

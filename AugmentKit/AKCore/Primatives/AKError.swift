@@ -71,6 +71,10 @@ public let AKErrorCodeModelNotSupported = 130
  Error code for a missing model provider.
  */
 public let AKErrorCodeModelProviderNotFound = 131
+/**
+ Error code for a missing render pass.
+ */
+public let AKErrorCodeRenderPassNotFound = 131
 
 /**
  `AKError`'s are describe according to severity.

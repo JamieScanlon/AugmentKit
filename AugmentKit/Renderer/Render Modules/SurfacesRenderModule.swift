@@ -183,13 +183,6 @@ class SurfacesRenderModule: RenderModule {
                 continue
             }
             
-            // Check to make sure this geometry should be rendered in this render pass
-//            if let geometricEntity = geometricEntities.first(where: {$0.identifier == item.key}), let geometryFilterFunction = renderPass?.geometryFilterFunction {
-//                guard geometryFilterFunction(geometricEntity) else {
-//                    continue
-//                }
-//            }
-            
             let uuid = item.key
             let mdlAsset = item.value
             let shaderPreference: ShaderPreference = {
@@ -482,7 +475,6 @@ class SurfacesRenderModule: RenderModule {
             if let environmentTexture = environmentData?.environmentTexture, environmentData?.hasEnvironmentMap == true {
                 renderEncoder.setFragmentTexture(environmentTexture, index: Int(kTextureIndexEnvironmentMap.rawValue))
             }
-            renderEncoder.setVertexBuffer(environmentUniformBuffer, offset: environmentUniformBufferOffset, index: Int(kBufferIndexEnvironmentUniforms.rawValue))
             renderEncoder.setFragmentBuffer(environmentUniformBuffer, offset: environmentUniformBufferOffset, index: Int(kBufferIndexEnvironmentUniforms.rawValue))
             renderEncoder.popDebugGroup()
             
@@ -491,7 +483,6 @@ class SurfacesRenderModule: RenderModule {
         if let effectsBuffer = effectsUniformBuffer, renderPass.usesEffects {
             
             renderEncoder.pushDebugGroup("Draw Effects Uniforms")
-            renderEncoder.setVertexBuffer(effectsBuffer, offset: effectsUniformBufferOffset, index: Int(kBufferIndexAnchorEffectsUniforms.rawValue))
             renderEncoder.setFragmentBuffer(effectsBuffer, offset: effectsUniformBufferOffset, index: Int(kBufferIndexAnchorEffectsUniforms.rawValue))
             renderEncoder.popDebugGroup()
             

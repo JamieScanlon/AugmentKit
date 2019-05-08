@@ -65,16 +65,12 @@ class UnanchoredRenderModule: RenderModule {
         // to another. Uniforms should be specified with a max instance count for instancing.
         // Also uniform storage must be aligned (to 256 bytes) to meet the requirements to be an
         // argument in the constant address space of our shading functions.
-//        let unanchoredUniformBufferSize = Constants.alignedInstanceUniformsSize * maxInFlightFrames
         let materialUniformBufferSize = RenderModuleConstants.alignedMaterialSize * maxInFlightFrames
         let effectsUniformBufferSize = Constants.alignedEffectsUniformSize * maxInFlightFrames
         let environmentUniformBufferSize = Constants.alignedEnvironmentUniformSize * maxInFlightFrames
         
         // Create and allocate our uniform buffer objects. Indicate shared storage so that both the
         // CPU can access the buffer
-//        unanchoredUniformBuffer = device?.makeBuffer(length: unanchoredUniformBufferSize, options: .storageModeShared)
-//        unanchoredUniformBuffer?.label = "UnanchoredUniformBuffer"
-        
         materialUniformBuffer = device?.makeBuffer(length: materialUniformBufferSize, options: .storageModeShared)
         materialUniformBuffer?.label = "MaterialUniformBuffer"
         
@@ -205,13 +201,6 @@ class UnanchoredRenderModule: RenderModule {
                 continue
             }
             
-            // Check to make sure this geometry should be rendered in this render pass
-//            if let geometricEntity = geometricEntities.first(where: {$0.identifier == item.key}), let geometryFilterFunction = renderPass?.geometryFilterFunction {
-//                guard geometryFilterFunction(geometricEntity) else {
-//                    continue
-//                }
-//            }
-            
             let uuid = item.key
             let mdlAsset = item.value
             let shaderPreference: ShaderPreference = {
@@ -250,12 +239,10 @@ class UnanchoredRenderModule: RenderModule {
         
         bufferIndex = theBufferIndex
         
-//        unanchoredUniformBufferOffset = Constants.alignedInstanceUniformsSize * bufferIndex
         materialUniformBufferOffset = RenderModuleConstants.alignedMaterialSize * bufferIndex
         effectsUniformBufferOffset = Constants.alignedEffectsUniformSize * bufferIndex
         environmentUniformBufferOffset = Constants.alignedEnvironmentUniformSize * bufferIndex
         
-        unanchoredUniformBufferAddress = unanchoredUniformBuffer?.contents().advanced(by: unanchoredUniformBufferOffset)
         materialUniformBufferAddress = materialUniformBuffer?.contents().advanced(by: materialUniformBufferOffset)
         effectsUniformBufferAddress = effectsUniformBuffer?.contents().advanced(by: effectsUniformBufferOffset)
         environmentUniformBufferAddress = environmentUniformBuffer?.contents().advanced(by: environmentUniformBufferOffset)
@@ -383,32 +370,6 @@ class UnanchoredRenderModule: RenderModule {
                             break
                         }
                         
-                        // Flip Z axis to convert geometry from right handed to left handed
-                        var coordinateSpaceTransform = matrix_identity_float4x4
-                        coordinateSpaceTransform.columns.2.z = -1.0
-                        
-                        let worldTransform: matrix_float4x4 = {
-                            if drawData.worldTransformAnimations.count > 0 {
-                                let index = Int(cameraProperties.currentFrame % UInt(drawData.worldTransformAnimations.count))
-                                return drawData.worldTransformAnimations[index]
-                            } else {
-                                return drawData.worldTransform
-                            }
-                        }()
-                        coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
-                        
-                        let modelMatrix = trackerAbsoluteTransform * coordinateSpaceTransform
-                        
-//                        let trackerUniforms = unanchoredUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: index)
-//                        trackerUniforms?.pointee.hasGeometry = 1
-//                        trackerUniforms?.pointee.hasHeading = 0
-//                        trackerUniforms?.pointee.headingType = 0
-//                        trackerUniforms?.pointee.headingTransform = matrix_identity_float4x4
-//                        trackerUniforms?.pointee.locationTransform = trackerAbsoluteTransform
-//                        trackerUniforms?.pointee.worldTransform = worldTransform
-//                        trackerUniforms?.pointee.modelMatrix = modelMatrix
-//                        trackerUniforms?.pointee.normalMatrix = modelMatrix.normalMatrix
-                        
                         //
                         // Update Environment
                         //
@@ -530,32 +491,6 @@ class UnanchoredRenderModule: RenderModule {
                             targetInstanceCount = Constants.maxTargetInstanceCount
                             break
                         }
-                        
-                        // Flip Z axis to convert geometry from right handed to left handed
-                        var coordinateSpaceTransform = matrix_identity_float4x4
-                        coordinateSpaceTransform.columns.2.z = -1.0
-                        
-                        let worldTransform: matrix_float4x4 = {
-                            if drawData.worldTransformAnimations.count > 0 {
-                                let index = Int(cameraProperties.currentFrame % UInt(drawData.worldTransformAnimations.count))
-                                return drawData.worldTransformAnimations[index]
-                            } else {
-                                return drawData.worldTransform
-                            }
-                        }()
-                        coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
-                        
-                        let modelMatrix = targetAbsoluteTransform * coordinateSpaceTransform
-                        
-//                        let targetUniforms = unanchoredUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: index)
-//                        targetUniforms?.pointee.hasGeometry = 1
-//                        targetUniforms?.pointee.hasHeading = 0
-//                        targetUniforms?.pointee.headingType = 0
-//                        targetUniforms?.pointee.headingTransform = matrix_identity_float4x4
-//                        targetUniforms?.pointee.locationTransform = targetAbsoluteTransform
-//                        targetUniforms?.pointee.worldTransform = worldTransform
-//                        targetUniforms?.pointee.modelMatrix = modelMatrix
-//                        targetUniforms?.pointee.normalMatrix = modelMatrix.normalMatrix
                         
                         //
                         // Update Environment
@@ -693,7 +628,6 @@ class UnanchoredRenderModule: RenderModule {
             if let environmentTexture = environmentData?.environmentTexture, environmentData?.hasEnvironmentMap == true {
                 renderEncoder.setFragmentTexture(environmentTexture, index: Int(kTextureIndexEnvironmentMap.rawValue))
             }
-            renderEncoder.setVertexBuffer(environmentUniformBuffer, offset: environmentUniformBufferOffset, index: Int(kBufferIndexEnvironmentUniforms.rawValue))
             renderEncoder.setFragmentBuffer(environmentUniformBuffer, offset: environmentUniformBufferOffset, index: Int(kBufferIndexEnvironmentUniforms.rawValue))
             renderEncoder.popDebugGroup()
             
@@ -702,7 +636,6 @@ class UnanchoredRenderModule: RenderModule {
         if let effectsBuffer = effectsUniformBuffer, renderPass.usesEffects {
             
             renderEncoder.pushDebugGroup("Draw Effects Uniforms")
-            renderEncoder.setVertexBuffer(effectsBuffer, offset: effectsUniformBufferOffset, index: Int(kBufferIndexAnchorEffectsUniforms.rawValue))
             renderEncoder.setFragmentBuffer(effectsBuffer, offset: effectsUniformBufferOffset, index: Int(kBufferIndexAnchorEffectsUniforms.rawValue))
             renderEncoder.popDebugGroup()
             
@@ -756,9 +689,6 @@ class UnanchoredRenderModule: RenderModule {
                 // Set the offset index of the draw call group into the argument buffer
                 renderEncoder.setVertexBytes(&drawCallGroupIndex, length: MemoryLayout<Int32>.size, index: Int(kBufferIndexDrawCallGroupIndex.rawValue))
                 
-                // Set any buffers fed into our render pipeline
-//                renderEncoder.setVertexBuffer(unanchoredUniformBuffer, offset: unanchoredUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
-                
                 var mutableDrawData = drawData
                 mutableDrawData.instanceCount = trackerInstanceCount
                 
@@ -795,7 +725,6 @@ class UnanchoredRenderModule: RenderModule {
     private enum Constants {
         static let maxTrackerInstanceCount = 64
         static let maxTargetInstanceCount = 64
-//        static let alignedInstanceUniformsSize = ((MemoryLayout<AnchorInstanceUniforms>.stride * (Constants.maxTrackerInstanceCount + Constants.maxTargetInstanceCount)) & ~0xFF) + 0x100
         static let alignedEffectsUniformSize = ((MemoryLayout<AnchorEffectsUniforms>.stride * (Constants.maxTrackerInstanceCount + Constants.maxTargetInstanceCount)) & ~0xFF) + 0x100
         static let alignedEnvironmentUniformSize = ((MemoryLayout<EnvironmentUniforms>.stride * (Constants.maxTrackerInstanceCount + Constants.maxTargetInstanceCount)) & ~0xFF) + 0x100
     }
@@ -809,7 +738,6 @@ class UnanchoredRenderModule: RenderModule {
     private var modelAssetsByUUID = [UUID: MDLAsset]()
     private var shaderPreferenceByUUID = [UUID: ShaderPreference]()
     private var environmentTextureByUUID = [UUID: MTLTexture]()
-//    private var geometriesByUUID = [UUID: [AKGeometricEntity]]()
     private var geometryCountByUUID = [UUID: Int]()
     private var ambientIntensity: Float?
     private var ambientLightColor: vector_float3?
@@ -821,9 +749,6 @@ class UnanchoredRenderModule: RenderModule {
     private var shadowMap: MTLTexture?
     private var argumentBufferProperties: ArgumentBufferProperties?
     
-    // Offset within unanchoredUniformBuffer to set for the current frame
-    private var unanchoredUniformBufferOffset: Int = 0
-    
     // Offset within materialUniformBuffer to set for the current frame
     private var materialUniformBufferOffset: Int = 0
     
@@ -832,9 +757,6 @@ class UnanchoredRenderModule: RenderModule {
     
     // Offset within environmentUniformBuffer to set for the current frame
     private var environmentUniformBufferOffset: Int = 0
-    
-    // Addresses to write uniforms to each frame
-    private var unanchoredUniformBufferAddress: UnsafeMutableRawPointer?
     
     // Addresses to write material uniforms to each frame
     private var materialUniformBufferAddress: UnsafeMutableRawPointer?

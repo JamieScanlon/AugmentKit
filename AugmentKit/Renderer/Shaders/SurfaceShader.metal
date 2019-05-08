@@ -54,8 +54,6 @@ struct SurfaceVertexOutput {
 
 // MARK: Vertex function
 vertex SurfaceVertexOutput surfaceGeometryVertexTransform(SurfaceVertex in [[stage_in]],
-                                                constant AnchorEffectsUniforms *anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]],
-                                                constant EnvironmentUniforms *environmentUniforms [[ buffer(kBufferIndexEnvironmentUniforms) ]],
                                                 device PrecalculatedParameters *arguments [[ buffer(kBufferIndexPrecalculationOutputBuffer) ]],
                                                 constant int &drawCallIndex [[ buffer(kBufferIndexDrawCallIndex) ]],
                                                 constant int &drawCallGroupIndex [[ buffer(kBufferIndexDrawCallGroupIndex) ]],
@@ -85,9 +83,8 @@ vertex SurfaceVertexOutput surfaceGeometryVertexTransform(SurfaceVertex in [[sta
     }
     
     // Shadow Coord
-    EnvironmentUniforms environmentUniform = environmentUniforms[iid];
-    float4x4 directionalLightMVP = environmentUniform.directionalLightMVP;
-    out.shadowCoord = (environmentUniform.shadowMVPTransformMatrix * directionalLightMVP * modelMatrix * position).xyz;
+    float4x4 directionalLightMVP = arguments[argumentBufferIndex].directionalLightMVP;
+    out.shadowCoord = (arguments[argumentBufferIndex].shadowMVPTransformMatrix * directionalLightMVP * modelMatrix * position).xyz;
     
     out.iid = iid;
     

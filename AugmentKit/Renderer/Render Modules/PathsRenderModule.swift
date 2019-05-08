@@ -70,14 +70,14 @@ class PathsRenderModule: RenderModule {
         // to another. Path uniforms should be specified with a max instance count for instancing.
         // Also uniform storage must be aligned (to 256 bytes) to meet the requirements to be an
         // argument in the constant address space of our shading functions.
-        let pathUniformBufferSize = Constants.alignedPathSegmentInstanceUniformsSize * maxInFlightFrames
+//        let pathUniformBufferSize = Constants.alignedPathSegmentInstanceUniformsSize * maxInFlightFrames
         let materialUniformBufferSize = RenderModuleConstants.alignedMaterialSize * maxInFlightFrames
         let effectsUniformBufferSize = Constants.alignedEffectsUniformSize * maxInFlightFrames
         
         // Create and allocate our uniform buffer objects. Indicate shared storage so that both the
         // CPU can access the buffer
-        pathUniformBuffer = device?.makeBuffer(length: pathUniformBufferSize, options: .storageModeShared)
-        pathUniformBuffer?.label = "PathUniformBuffer"
+//        pathUniformBuffer = device?.makeBuffer(length: pathUniformBufferSize, options: .storageModeShared)
+//        pathUniformBuffer?.label = "PathUniformBuffer"
         
         materialUniformBuffer = device?.makeBuffer(length: materialUniformBufferSize, options: .storageModeShared)
         materialUniformBuffer?.label = "MaterialUniformBuffer"
@@ -204,11 +204,11 @@ class PathsRenderModule: RenderModule {
         
         bufferIndex = theBufferIndex
         
-        pathUniformBufferOffset = Constants.alignedPathSegmentInstanceUniformsSize * bufferIndex
+//        pathUniformBufferOffset = Constants.alignedPathSegmentInstanceUniformsSize * bufferIndex
         materialUniformBufferOffset = RenderModuleConstants.alignedMaterialSize * bufferIndex
         effectsUniformBufferOffset = Constants.alignedEffectsUniformSize * bufferIndex
         
-        pathUniformBufferAddress = pathUniformBuffer?.contents().advanced(by: pathUniformBufferOffset)
+//        pathUniformBufferAddress = pathUniformBuffer?.contents().advanced(by: pathUniformBufferOffset)
         materialUniformBufferAddress = materialUniformBuffer?.contents().advanced(by: materialUniformBufferOffset)
         effectsUniformBufferAddress = effectsUniformBuffer?.contents().advanced(by: effectsUniformBufferOffset)
         
@@ -282,8 +282,8 @@ class PathsRenderModule: RenderModule {
                 // Calculate world transform
                 //
                 
-                let locationMatrix = anchor.worldLocation.transform
-                let worldTransform = anchor.segmentTransform
+//                let locationMatrix = anchor.worldLocation.transform
+//                let worldTransform = anchor.segmentTransform
                 
 //                var worldTransform = matrix_identity_float4x4
 //
@@ -321,25 +321,25 @@ class PathsRenderModule: RenderModule {
 //                }
 //                worldTransform = worldTransform.scale(x: 1, y: Float(magDelta), z: 1)
                 
-                // Flip Z axis to convert geometry from right handed to left handed
-                var coordinateSpaceTransform = matrix_identity_float4x4
-                coordinateSpaceTransform.columns.2.z = -1.0
-                coordinateSpaceTransform = coordinateSpaceTransform * worldTransform
-                
-                // Create the final transform matrix
-                let modelMatrix = locationMatrix * coordinateSpaceTransform
-                
-                // Paths use the same uniform struct as anchors
+//                // Flip Z axis to convert geometry from right handed to left handed
+//                var coordinateSpaceTransform = matrix_identity_float4x4
+//                coordinateSpaceTransform.columns.2.z = -1.0
+//                coordinateSpaceTransform = coordinateSpaceTransform * worldTransform
+//
+//                // Create the final transform matrix
+//                let modelMatrix = locationMatrix * coordinateSpaceTransform
+//
+//                // Paths use the same uniform struct as anchors
                 let pathSegmentIndex = pathSegmentInstanceCount - 1
-                let pathUniforms = pathUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: pathSegmentIndex)
-                pathUniforms?.pointee.hasGeometry = 1
-                pathUniforms?.pointee.hasHeading = 0
-                pathUniforms?.pointee.headingType = 0
-                pathUniforms?.pointee.headingTransform = matrix_identity_float4x4
-                pathUniforms?.pointee.locationTransform = locationMatrix
-                pathUniforms?.pointee.worldTransform =  worldTransform
-                pathUniforms?.pointee.modelMatrix = modelMatrix
-                pathUniforms?.pointee.normalMatrix = modelMatrix.normalMatrix
+//                let pathUniforms = pathUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: pathSegmentIndex)
+//                pathUniforms?.pointee.hasGeometry = 1
+//                pathUniforms?.pointee.hasHeading = 0
+//                pathUniforms?.pointee.headingType = 0
+//                pathUniforms?.pointee.headingTransform = matrix_identity_float4x4
+//                pathUniforms?.pointee.locationTransform = locationMatrix
+//                pathUniforms?.pointee.worldTransform =  worldTransform
+//                pathUniforms?.pointee.modelMatrix = modelMatrix
+//                pathUniforms?.pointee.normalMatrix = modelMatrix.normalMatrix
                 
                 //
                 // Update Effects uniform
@@ -433,7 +433,7 @@ class PathsRenderModule: RenderModule {
         if let effectsBuffer = effectsUniformBuffer {
             
             renderEncoder.pushDebugGroup("Draw Effects Uniforms")
-            renderEncoder.setVertexBuffer(effectsBuffer, offset: effectsUniformBufferOffset, index: Int(kBufferIndexAnchorEffectsUniforms.rawValue))
+//            renderEncoder.setVertexBuffer(effectsBuffer, offset: effectsUniformBufferOffset, index: Int(kBufferIndexAnchorEffectsUniforms.rawValue))
             renderEncoder.setFragmentBuffer(effectsBuffer, offset: effectsUniformBufferOffset, index: Int(kBufferIndexAnchorEffectsUniforms.rawValue))
             renderEncoder.popDebugGroup()
             
@@ -482,7 +482,7 @@ class PathsRenderModule: RenderModule {
                 renderEncoder.setVertexBytes(&drawCallGroupIndex, length: MemoryLayout<Int32>.size, index: Int(kBufferIndexDrawCallGroupIndex.rawValue))
                 
                 // Set any buffers fed into our render pipeline
-                renderEncoder.setVertexBuffer(pathUniformBuffer, offset: pathUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
+//                renderEncoder.setVertexBuffer(pathUniformBuffer, offset: pathUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
                 
                 var mutableDrawData = drawData
                 mutableDrawData.instanceCount = pathSegmentInstanceCount
@@ -519,14 +519,14 @@ class PathsRenderModule: RenderModule {
     private var textureLoader: MTKTextureLoader?
     private var geometricEntities = [AKGeometricEntity]()
     private var pathSegmentAsset: MDLAsset?
-    private var pathUniformBuffer: MTLBuffer?
+//    private var pathUniformBuffer: MTLBuffer?
     private var materialUniformBuffer: MTLBuffer?
     private var effectsUniformBuffer: MTLBuffer?
     private var shadowMap: MTLTexture?
     private var argumentBufferProperties: ArgumentBufferProperties?
     
     // Offset within pathUniformBuffer to set for the current frame
-    private var pathUniformBufferOffset: Int = 0
+//    private var pathUniformBufferOffset: Int = 0
     
     // Offset within materialUniformBuffer to set for the current frame
     private var materialUniformBufferOffset: Int = 0
@@ -535,7 +535,7 @@ class PathsRenderModule: RenderModule {
     private var effectsUniformBufferOffset: Int = 0
     
     // Addresses to write path uniforms to each frame
-    private var pathUniformBufferAddress: UnsafeMutableRawPointer?
+//    private var pathUniformBufferAddress: UnsafeMutableRawPointer?
     
     // Addresses to write material uniforms to each frame
     private var materialUniformBufferAddress: UnsafeMutableRawPointer?

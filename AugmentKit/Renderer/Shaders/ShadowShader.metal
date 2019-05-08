@@ -40,7 +40,6 @@ struct ShadowOutput {
 };
 
 vertex ShadowOutput shadowVertexShader( ShadowVertex in [[stage_in]],
-                                       constant EnvironmentUniforms *environmentUniforms [[ buffer(kBufferIndexEnvironmentUniforms) ]],
                                        device PrecalculatedParameters *arguments [[ buffer(kBufferIndexPrecalculationOutputBuffer) ]],
                                        constant int &drawCallIndex [[ buffer(kBufferIndexDrawCallIndex) ]],
                                        constant int &drawCallGroupIndex [[ buffer(kBufferIndexDrawCallGroupIndex) ]],
@@ -56,8 +55,7 @@ vertex ShadowOutput shadowVertexShader( ShadowVertex in [[stage_in]],
     
     float4x4 modelMatrix = arguments[argumentBufferIndex].scaledModelMatrix;
     
-    EnvironmentUniforms uniforms = environmentUniforms[iid];
-    float4x4 directionalLightMVP = uniforms.directionalLightMVP;
+    float4x4 directionalLightMVP = arguments[argumentBufferIndex].directionalLightMVP;
     
     // Calculate the position of our vertex in clip space and output for clipping and rasterization
     position =  directionalLightMVP * modelMatrix * position;

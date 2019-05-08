@@ -66,7 +66,6 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         // to another. Anchor uniforms should be specified with a max instance count for instancing.
         // Also uniform storage must be aligned (to 256 bytes) to meet the requirements to be an
         // argument in the constant address space of our shading functions.
-        let anchorUniformBufferSize = Constants.alignedAnchorInstanceUniformsSize * maxInFlightFrames
         let materialUniformBufferSize = RenderModuleConstants.alignedMaterialSize * maxInFlightFrames
         let paletteBufferSize = Constants.alignedPaletteSize * Constants.maxPaletteSize * maxInFlightFrames
         let effectsUniformBufferSize = Constants.alignedEffectsUniformSize * maxInFlightFrames
@@ -74,9 +73,6 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         
         // Create and allocate our uniform buffer objects. Indicate shared storage so that both the
         // CPU can access the buffer
-        anchorUniformBuffer = device?.makeBuffer(length: anchorUniformBufferSize, options: .storageModeShared)
-        anchorUniformBuffer?.label = "AnchorUniformBuffer"
-        
         materialUniformBuffer = device?.makeBuffer(length: materialUniformBufferSize, options: .storageModeShared)
         materialUniformBuffer?.label = "MaterialUniformBuffer"
         
@@ -192,11 +188,8 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         // Create a draw call group for every model asset. Each model asset may have multiple instances.
         for item in filteredModelsByUUID {
             
-            // Check to make sure this geometry should be rendered in this render pass by calling the `geometryFilterFunction` function on the geometric enitiy and see if it passes the test.
-            if let geometricEntity = geometricEntities.first(where: {$0.identifier == item.key}), let geometryFilterFunction = renderPass?.geometryFilterFunction {
-                guard geometryFilterFunction(geometricEntity) else {
-                    continue
-                }
+            guard let geometricEntity = geometricEntities.first(where: {$0.identifier == item.key}) else {
+                continue
             }
             
             let uuid = item.key
@@ -213,7 +206,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             let meshGPUData = ModelIOTools.meshGPUData(from: mdlAsset, device: device, textureBundle: textureBundle, vertexDescriptor: RenderUtilities.createStandardVertexDescriptor(), frameRate: 60, shaderPreference: shaderPreference)
             
             // Create a draw call group that contins all of the individual draw calls for this model
-            let drawCallGroup = createDrawCallGroup(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass, meshGPUData: meshGPUData)
+            let drawCallGroup = createDrawCallGroup(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass, meshGPUData: meshGPUData, geometricEntity: geometricEntity)
             drawCallGroup.moduleIdentifier = moduleIdentifier
             
             drawCallGroups.append(drawCallGroup)
@@ -235,13 +228,12 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     func updateBufferState(withBufferIndex theBufferIndex: Int) {
         
         bufferIndex = theBufferIndex
-        anchorUniformBufferOffset = Constants.alignedAnchorInstanceUniformsSize * bufferIndex
+        
         materialUniformBufferOffset = RenderModuleConstants.alignedMaterialSize * bufferIndex
         paletteBufferOffset = Constants.alignedPaletteSize * Constants.maxPaletteSize * bufferIndex
         effectsUniformBufferOffset = Constants.alignedEffectsUniformSize * bufferIndex
         environmentUniformBufferOffset = Constants.alignedEnvironmentUniformSize * bufferIndex
         
-        anchorUniformBufferAddress = anchorUniformBuffer?.contents().advanced(by: anchorUniformBufferOffset)
         materialUniformBufferAddress = materialUniformBuffer?.contents().advanced(by: materialUniformBufferOffset)
         paletteBufferAddress = paletteBuffer?.contents().advanced(by: paletteBufferOffset)
         effectsUniformBufferAddress = effectsUniformBuffer?.contents().advanced(by: effectsUniformBufferOffset)
@@ -334,47 +326,6 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                 }
                 
                 for akAnchor in akAnchors {
-                    
-                    // Flip Z axis to convert geometry from right handed to left handed
-                    var coordinateSpaceTransform = matrix_identity_float4x4
-                    coordinateSpaceTransform.columns.2.z = -1.0
-                    
-                    // Apply the world transform (as defined in the imported model) if applicable
-                    let worldTransform: matrix_float4x4 = {
-                        if drawData.worldTransformAnimations.count > 0 {
-                            let index = Int(cameraProperties.currentFrame % UInt(drawData.worldTransformAnimations.count))
-                            return drawData.worldTransformAnimations[index]
-                        } else {
-                            return drawData.worldTransform
-                        }
-                    }()
-                    coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
-                    
-                    // Update Heading
-                    let headingTransform = akAnchor.heading.offsetRotation.quaternion.toMatrix4()
-                    
-                    if akAnchor.heading.type == .absolute {
-                        let newTransform = headingTransform * float4x4(
-                            float4(coordinateSpaceTransform.columns.0.x, 0, 0, 0),
-                            float4(0, coordinateSpaceTransform.columns.1.y, 0, 0),
-                            float4(0, 0, coordinateSpaceTransform.columns.2.z, 0),
-                            float4(coordinateSpaceTransform.columns.3.x, coordinateSpaceTransform.columns.3.y, coordinateSpaceTransform.columns.3.z, 1)
-                        )
-                        coordinateSpaceTransform = newTransform
-                    } else if akAnchor.heading.type == .relative {
-                        coordinateSpaceTransform = coordinateSpaceTransform * headingTransform
-                    }
-                    
-                    let modelMatrix = akAnchor.worldLocation.transform * coordinateSpaceTransform
-                    let anchorUniforms = anchorUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: anchorMeshIndex)
-                    anchorUniforms?.pointee.hasGeometry = 1
-                    anchorUniforms?.pointee.hasHeading = 1
-                    anchorUniforms?.pointee.headingType = akAnchor.heading.type == .absolute ? 0 : 1
-                    anchorUniforms?.pointee.headingTransform = headingTransform
-                    anchorUniforms?.pointee.locationTransform = akAnchor.worldLocation.transform;
-                    anchorUniforms?.pointee.worldTransform = worldTransform
-                    anchorUniforms?.pointee.modelMatrix = modelMatrix
-                    anchorUniforms?.pointee.normalMatrix = modelMatrix.normalMatrix
                     
                     //
                     // Update puppet animation
@@ -519,24 +470,12 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             renderEncoder.popDebugGroup()
         }
         
-        if let sharedBuffer = sharedModules?.first(where: {$0.moduleIdentifier == SharedBuffersRenderModule.identifier}), renderPass.usesSharedBuffer {
-            
-            renderEncoder.pushDebugGroup("Draw Shared Uniforms")
-            
-            renderEncoder.setVertexBuffer(sharedBuffer.sharedUniformBuffer, offset: sharedBuffer.sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
-            renderEncoder.setFragmentBuffer(sharedBuffer.sharedUniformBuffer, offset: sharedBuffer.sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
-            
-            renderEncoder.popDebugGroup()
-            
-        }
-        
         if let environmentUniformBuffer = environmentUniformBuffer, renderPass.usesEnvironment {
             
             renderEncoder.pushDebugGroup("Draw Environment Uniforms")
             if let environmentTexture = environmentData?.environmentTexture, environmentData?.hasEnvironmentMap == true {
                 renderEncoder.setFragmentTexture(environmentTexture, index: Int(kTextureIndexEnvironmentMap.rawValue))
             }
-            renderEncoder.setVertexBuffer(environmentUniformBuffer, offset: environmentUniformBufferOffset, index: Int(kBufferIndexEnvironmentUniforms.rawValue))
             renderEncoder.setFragmentBuffer(environmentUniformBuffer, offset: environmentUniformBufferOffset, index: Int(kBufferIndexEnvironmentUniforms.rawValue))
             renderEncoder.popDebugGroup()
             
@@ -545,7 +484,6 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         if let effectsBuffer = effectsUniformBuffer, renderPass.usesEffects {
             
             renderEncoder.pushDebugGroup("Draw Effects Uniforms")
-            renderEncoder.setVertexBuffer(effectsBuffer, offset: effectsUniformBufferOffset, index: Int(kBufferIndexAnchorEffectsUniforms.rawValue))
             renderEncoder.setFragmentBuffer(effectsBuffer, offset: effectsUniformBufferOffset, index: Int(kBufferIndexAnchorEffectsUniforms.rawValue))
             renderEncoder.popDebugGroup()
             
@@ -569,6 +507,15 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                 drawCallIndex += Int32(drawCallGroup.drawCalls.count)
                 drawCallGroupIndex += 1
                 continue
+            }
+            
+            // Use the render pass filter function to skip draw call groups on an individual basis
+            if let filterFunction = renderPass.drawCallGroupFilterFunction {
+                guard filterFunction(drawCallGroup) else {
+                    drawCallIndex += Int32(drawCallGroup.drawCalls.count)
+                    drawCallGroupIndex += 1
+                    continue
+                }
             }
             
             let uuid = drawCallGroup.uuid
@@ -595,7 +542,6 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                 renderEncoder.setVertexBytes(&drawCallGroupIndex, length: MemoryLayout<Int32>.size, index: Int(kBufferIndexDrawCallGroupIndex.rawValue))
                 
                 // Set any buffers fed into our render pipeline
-                renderEncoder.setVertexBuffer(anchorUniformBuffer, offset: anchorUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
                 renderEncoder.setVertexBuffer(paletteBuffer, offset: paletteBufferOffset, index: Int(kBufferIndexMeshPalettes.rawValue))
                 
                 var mutableDrawData = drawData
@@ -634,7 +580,6 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     private enum Constants {
         static let maxAnchorInstanceCount = 256
         static let maxPaletteSize = 100
-        static let alignedAnchorInstanceUniformsSize = ((MemoryLayout<AnchorInstanceUniforms>.stride * Constants.maxAnchorInstanceCount) & ~0xFF) + 0x100
         static let alignedPaletteSize = (MemoryLayout<matrix_float4x4>.stride & ~0xFF) + 0x100
         static let alignedEffectsUniformSize = ((MemoryLayout<AnchorEffectsUniforms>.stride * Constants.maxAnchorInstanceCount) & ~0xFF) + 0x100
         static let alignedEnvironmentUniformSize = ((MemoryLayout<EnvironmentUniforms>.stride * Constants.maxAnchorInstanceCount) & ~0xFF) + 0x100
@@ -647,7 +592,6 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     private var generalUUID = UUID()
     private var modelAssetsByUUID = [UUID: MDLAsset]()
     private var shaderPreferenceByUUID = [UUID: ShaderPreference]()
-    private var anchorUniformBuffer: MTLBuffer?
     private var materialUniformBuffer: MTLBuffer?
     private var paletteBuffer: MTLBuffer?
     private var effectsUniformBuffer: MTLBuffer?
@@ -655,9 +599,6 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     private var environmentData: EnvironmentData?
     private var shadowMap: MTLTexture?
     private var argumentBufferProperties: ArgumentBufferProperties?
-    
-    // Offset within anchorUniformBuffer to set for the current frame
-    private var anchorUniformBufferOffset: Int = 0
     
     // Offset within materialUniformBuffer to set for the current frame
     private var materialUniformBufferOffset: Int = 0
@@ -670,9 +611,6 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     
     // Offset within environmentUniformBuffer to set for the current frame
     private var environmentUniformBufferOffset: Int = 0
-    
-    // Addresses to write anchor uniforms to each frame
-    private var anchorUniformBufferAddress: UnsafeMutableRawPointer?
     
     // Addresses to write anchor uniforms to each frame
     private var materialUniformBufferAddress: UnsafeMutableRawPointer?
@@ -692,7 +630,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     private var anchorCountByUUID = [UUID: Int]()
     private var environmentTextureByUUID = [UUID: MTLTexture]()
     
-    private func createDrawCallGroup(forUUID uuid: UUID, withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, renderPass: RenderPass?, meshGPUData: MeshGPUData) -> DrawCallGroup {
+    private func createDrawCallGroup(forUUID uuid: UUID, withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, renderPass: RenderPass?, meshGPUData: MeshGPUData, geometricEntity: AKGeometricEntity) -> DrawCallGroup {
         
         guard let renderPass = renderPass else {
             print("Warning - Skipping all draw calls because the render pass is nil.")
@@ -738,7 +676,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             
         }
         
-        let drawCallGroup = DrawCallGroup(drawCalls: drawCalls, uuid: uuid)
+        let drawCallGroup = DrawCallGroup(drawCalls: drawCalls, uuid: uuid, generatesShadows: geometricEntity.generatesShadows)
         return drawCallGroup
         
     }

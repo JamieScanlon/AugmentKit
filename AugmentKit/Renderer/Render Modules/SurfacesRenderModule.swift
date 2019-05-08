@@ -65,15 +65,12 @@ class SurfacesRenderModule: RenderModule {
         // to another. Surface uniforms should be specified with a max instance count for instancing.
         // Also uniform storage must be aligned (to 256 bytes) to meet the requirements to be an
         // argument in the constant address space of our shading functions.
-        let surfaceUniformBufferSize = Constants.alignedSurfaceInstanceUniformsSize * maxInFlightFrames
         let materialUniformBufferSize = RenderModuleConstants.alignedMaterialSize * maxInFlightFrames
         let effectsUniformBufferSize = Constants.alignedEffectsUniformSize * maxInFlightFrames
         let environmentUniformBufferSize = Constants.alignedEnvironmentUniformSize * maxInFlightFrames
         
         // Create and allocate our uniform buffer objects. Indicate shared storage so that both the
         // CPU can access the buffer
-        surfaceUniformBuffer = device?.makeBuffer(length: surfaceUniformBufferSize, options: .storageModeShared)
-        surfaceUniformBuffer?.label = "SurfaceUniformBuffer"
         
         materialUniformBuffer = device?.makeBuffer(length: materialUniformBufferSize, options: .storageModeShared)
         materialUniformBuffer?.label = "MaterialUniformBuffer"
@@ -182,12 +179,16 @@ class SurfacesRenderModule: RenderModule {
         
         for item in modelAssetsForAnchorsByUUID {
             
-            // Check to make sure this geometry should be rendered in this render pass
-            if let geometricEntity = geometricEntities.first(where: {$0.identifier == item.key}), let geometryFilterFunction = renderPass?.geometryFilterFunction {
-                guard geometryFilterFunction(geometricEntity) else {
-                    continue
-                }
+            guard let geometricEntity = geometricEntities.first(where: {$0.identifier == item.key}) else {
+                continue
             }
+            
+            // Check to make sure this geometry should be rendered in this render pass
+//            if let geometricEntity = geometricEntities.first(where: {$0.identifier == item.key}), let geometryFilterFunction = renderPass?.geometryFilterFunction {
+//                guard geometryFilterFunction(geometricEntity) else {
+//                    continue
+//                }
+//            }
             
             let uuid = item.key
             let mdlAsset = item.value
@@ -201,7 +202,7 @@ class SurfacesRenderModule: RenderModule {
             
             let meshGPUData = ModelIOTools.meshGPUData(from: mdlAsset, device: device, textureBundle: textureBundle, vertexDescriptor: RenderUtilities.createStandardVertexDescriptor(), frameRate: 60, shaderPreference: shaderPreference)
             
-            let drawCallGroup = createDrawCallGroup(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass, meshGPUData: meshGPUData)
+            let drawCallGroup = createDrawCallGroup(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass, meshGPUData: meshGPUData, geometricEntity: geometricEntity)
             drawCallGroup.moduleIdentifier = moduleIdentifier
             
             drawCallGroups.append(drawCallGroup)
@@ -228,12 +229,10 @@ class SurfacesRenderModule: RenderModule {
         
         bufferIndex = theBufferIndex
         
-        surfaceUniformBufferOffset = Constants.alignedSurfaceInstanceUniformsSize * bufferIndex
         materialUniformBufferOffset = RenderModuleConstants.alignedMaterialSize * bufferIndex
         effectsUniformBufferOffset = Constants.alignedEffectsUniformSize * bufferIndex
         environmentUniformBufferOffset = Constants.alignedEnvironmentUniformSize * bufferIndex
         
-        surfaceUniformBufferAddress = surfaceUniformBuffer?.contents().advanced(by: surfaceUniformBufferOffset)
         materialUniformBufferAddress = materialUniformBuffer?.contents().advanced(by: materialUniformBufferOffset)
         effectsUniformBufferAddress = effectsUniformBuffer?.contents().advanced(by: effectsUniformBufferOffset)
         environmentUniformBufferAddress = environmentUniformBuffer?.contents().advanced(by: environmentUniformBufferOffset)
@@ -316,59 +315,15 @@ class SurfacesRenderModule: RenderModule {
             
             let uuid = drawCallGroup.uuid
             
-            for drawCall in drawCallGroup.drawCalls {
+            drawCallGroup.drawCalls.forEach { _ in
                 
                 let akAnchors = anchorsByUUID[uuid] ?? []
-                guard let drawData = drawCall.drawData else {
-                    continue
-                }
+                
                 for akAnchor in akAnchors {
                     
                     guard let arAnchor = akAnchor.arAnchor else {
                         continue
                     }
-                    
-                    //
-                    // Update Geometry
-                    //
-                    
-                    // Flip Z axis to convert geometry from right handed to left handed
-                    var coordinateSpaceTransform = matrix_identity_float4x4
-                    coordinateSpaceTransform.columns.2.z = -1.0
-                    
-                    // Apply the world transform (as defined in the imported model) if applicable
-                    let worldTransform: matrix_float4x4 = {
-                        if drawData.worldTransformAnimations.count > 0 {
-                            let index = Int(cameraProperties.currentFrame % UInt(drawData.worldTransformAnimations.count))
-                            return drawData.worldTransformAnimations[index]
-                        } else {
-                            return drawData.worldTransform
-                        }
-                    }()
-                    coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
-                    
-                    
-                    
-                    var modelMatrix = arAnchor.transform * coordinateSpaceTransform
-                    if let plane = arAnchor as? ARPlaneAnchor {
-                        if plane.alignment == .horizontal {
-                            // Do Nothing
-                        } else {
-                            modelMatrix = modelMatrix.rotate(radians: Float.pi, x: 1, y: 0, z: 0)
-                        }
-                        modelMatrix = modelMatrix.scale(x: plane.extent.x, y: plane.extent.y, z: plane.extent.z)
-                        modelMatrix = modelMatrix.translate(x: -plane.center.x/2.0, y: -plane.center.y/2.0, z: -plane.center.z/2.0)
-                        
-                    }
-                    let anchorUniforms = surfaceUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: anchorMeshIndex)
-                    anchorUniforms?.pointee.hasGeometry = 1
-                    anchorUniforms?.pointee.hasHeading = 0
-                    anchorUniforms?.pointee.headingType = 0
-                    anchorUniforms?.pointee.headingTransform = matrix_identity_float4x4
-                    anchorUniforms?.pointee.locationTransform = arAnchor.transform
-                    anchorUniforms?.pointee.worldTransform = worldTransform
-                    anchorUniforms?.pointee.modelMatrix = modelMatrix
-                    anchorUniforms?.pointee.normalMatrix = modelMatrix.normalMatrix
                     
                     let uuid: UUID = {
                         if modelAssetsForAnchorsByUUID[uuid] != nil {
@@ -377,6 +332,12 @@ class SurfacesRenderModule: RenderModule {
                             return generalUUID
                         }
                     }()
+                    
+                    //
+                    // Update Geometry
+                    //
+                    
+                    
                     
                     //
                     // Update Environment
@@ -515,17 +476,6 @@ class SurfacesRenderModule: RenderModule {
             renderEncoder.popDebugGroup()
         }
         
-        if let sharedBuffer = sharedModules?.first(where: {$0.moduleIdentifier == SharedBuffersRenderModule.identifier}), renderPass.usesSharedBuffer {
-            
-            renderEncoder.pushDebugGroup("Draw Shared Uniforms")
-            
-            renderEncoder.setVertexBuffer(sharedBuffer.sharedUniformBuffer, offset: sharedBuffer.sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
-            renderEncoder.setFragmentBuffer(sharedBuffer.sharedUniformBuffer, offset: sharedBuffer.sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
-            
-            renderEncoder.popDebugGroup()
-            
-        }
-        
         if let environmentUniformBuffer = environmentUniformBuffer, renderPass.usesEnvironment {
             
             renderEncoder.pushDebugGroup("Draw Environment Uniforms")
@@ -567,6 +517,15 @@ class SurfacesRenderModule: RenderModule {
                 continue
             }
             
+            // Use the render pass filter function to skip draw call groups on an individual basis
+            if let filterFunction = renderPass.drawCallGroupFilterFunction {
+                guard filterFunction(drawCallGroup) else {
+                    drawCallIndex += Int32(drawCallGroup.drawCalls.count)
+                    drawCallGroupIndex += 1
+                    continue
+                }
+            }
+            
             let uuid = drawCallGroup.uuid
             
             // TODO: remove. I think this should always be 1. Even if draw call groups share geometries, we should only be incrementing the base index once per draw call. The whole idea of sharing geometries is probably misguided anyway
@@ -589,9 +548,6 @@ class SurfacesRenderModule: RenderModule {
                 renderEncoder.setVertexBytes(&drawCallIndex, length: MemoryLayout<Int32>.size, index: Int(kBufferIndexDrawCallIndex.rawValue))
                 // Set the offset index of the draw call group into the argument buffer
                 renderEncoder.setVertexBytes(&drawCallGroupIndex, length: MemoryLayout<Int32>.size, index: Int(kBufferIndexDrawCallGroupIndex.rawValue))
-                
-                // Set any buffers fed into our render pipeline
-                renderEncoder.setVertexBuffer(surfaceUniformBuffer, offset: surfaceUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
                 
                 var mutableDrawData = drawData
                 mutableDrawData.instanceCount = anchorcount
@@ -628,8 +584,6 @@ class SurfacesRenderModule: RenderModule {
     
     private enum Constants {
         static let maxSurfaceInstanceCount = 64
-        // Surfaces use the same uniform struct as anchors
-        static let alignedSurfaceInstanceUniformsSize = ((MemoryLayout<AnchorInstanceUniforms>.stride * Constants.maxSurfaceInstanceCount) & ~0xFF) + 0x100
         static let alignedEffectsUniformSize = ((MemoryLayout<AnchorEffectsUniforms>.stride * Constants.maxSurfaceInstanceCount) & ~0xFF) + 0x100
         static let alignedEnvironmentUniformSize = ((MemoryLayout<EnvironmentUniforms>.stride * Constants.maxSurfaceInstanceCount) & ~0xFF) + 0x100
     }
@@ -642,17 +596,12 @@ class SurfacesRenderModule: RenderModule {
     private var modelAssetsForAnchorsByUUID = [UUID: MDLAsset]()
     private var generalModelAsset: MDLAsset?
     private var shaderPreferenceForAnchorsByUUID = [UUID: ShaderPreference]()
-    private var surfaceUniformBuffer: MTLBuffer?
     private var materialUniformBuffer: MTLBuffer?
     private var effectsUniformBuffer: MTLBuffer?
     private var environmentUniformBuffer: MTLBuffer?
-    private var surfacePipelineStates = [MTLRenderPipelineState]() // Store multiple states
     private var environmentData: EnvironmentData?
     private var shadowMap: MTLTexture?
     private var argumentBufferProperties: ArgumentBufferProperties?
-    
-    // Offset within surfaceUniformBuffer to set for the current frame
-    private var surfaceUniformBufferOffset: Int = 0
     
     // Offset within materialUniformBuffer to set for the current frame
     private var materialUniformBufferOffset: Int = 0
@@ -664,9 +613,6 @@ class SurfacesRenderModule: RenderModule {
     private var environmentUniformBufferOffset: Int = 0
     
     // Addresses to write surface uniforms to each frame
-    private var surfaceUniformBufferAddress: UnsafeMutableRawPointer?
-    
-    // Addresses to write surface uniforms to each frame
     private var materialUniformBufferAddress: UnsafeMutableRawPointer?
     
     // Addresses to write effects uniforms to each frame
@@ -675,13 +621,10 @@ class SurfacesRenderModule: RenderModule {
     // Addresses to write environment uniforms to each frame
     private var environmentUniformBufferAddress: UnsafeMutableRawPointer?
     
-    // number of frames in the surface animation by surface index
-    private var surfaceAnimationFrameCount = [Int]()
-    
     private var anchorsByUUID = [UUID: [AKRealAnchor]]()
     private var environmentTextureByUUID = [UUID: MTLTexture]()
     
-    private func createDrawCallGroup(forUUID uuid: UUID, withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, renderPass: RenderPass?, meshGPUData: MeshGPUData) -> DrawCallGroup {
+    private func createDrawCallGroup(forUUID uuid: UUID, withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, renderPass: RenderPass?, meshGPUData: MeshGPUData, geometricEntity: AKGeometricEntity) -> DrawCallGroup {
         
         guard let renderPass = renderPass else {
             print("Warning - Skipping all draw calls because the render pass is nil.")
@@ -723,7 +666,7 @@ class SurfacesRenderModule: RenderModule {
             
         }
         
-        let drawCallGroup = DrawCallGroup(drawCalls: drawCalls, uuid: uuid)
+        let drawCallGroup = DrawCallGroup(drawCalls: drawCalls, uuid: uuid, generatesShadows: geometricEntity.generatesShadows)
         return drawCallGroup
         
     }

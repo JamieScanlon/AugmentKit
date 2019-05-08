@@ -15,9 +15,6 @@ using namespace metal;
 #import "../Common.h"
 
 kernel void precalculationComputeShader(constant SharedUniforms &sharedUniforms [[ buffer(kBufferIndexSharedUniforms) ]],
-                                        constant float4x4 *palette [[buffer(kBufferIndexMeshPalettes)]],
-                                        constant int &paletteStartIndex [[buffer(kBufferIndexMeshPaletteIndex)]],
-                                        constant int &paletteSize [[buffer(kBufferIndexMeshPaletteSize)]],
                                         constant AnchorInstanceUniforms *anchorInstanceUniforms [[ buffer(kBufferIndexAnchorInstanceUniforms) ]],
                                         constant AnchorEffectsUniforms *anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]],
                                         constant EnvironmentUniforms &environmentUniforms [[ buffer(kBufferIndexEnvironmentUniforms) ]],
@@ -26,11 +23,11 @@ kernel void precalculationComputeShader(constant SharedUniforms &sharedUniforms 
                                         uint2 tid [[thread_position_in_threadgroup]],
                                         uint2 size [[threads_per_grid]]
                                         ){
-    // thread_position_in_threadgroup
-    // thread_index_in_threadgroup
     
     uint w = size.x;
     uint index = gid.y * w + gid.x;
+    
+    // TODO: Add check for render distance
     
     int hasGeometry = anchorInstanceUniforms[index].hasGeometry;
     int hasHeading = anchorInstanceUniforms[index].hasHeading;
@@ -70,16 +67,9 @@ kernel void precalculationComputeShader(constant SharedUniforms &sharedUniforms 
     // Transform the model's orientation from world space to camera space.
     float4x4 modelViewMatrix = sharedUniforms.viewMatrix * scaledModelMatrix;
     float4x4 modelViewProjectionMatrix = sharedUniforms.projectionMatrix * modelViewMatrix;
-
-//    float4 jointIndex = in.jointIndices + paletteStartIndex + index * paletteSize;
-//    float4 jointWeights = in.jointWeights;
-//
-//    float4 weightedPalette = jointWeights[0] * palette[jointIndex[0]] +
-//    jointWeights[1] * palette[jointIndex[1]] +
-//    jointWeights[2] * palette[jointIndex[2]] +
-//    jointWeights[3] * palette[jointIndex[3]];
     
     float4x4 shadowMVPTransformMatrix = environmentUniforms.shadowMVPTransformMatrix;
+    float4x4 directionalLightMVP = environmentUniforms.directionalLightMVP;
     
     out[index].hasGeometry = hasGeometry;
     out[index].worldTransform = worldTransform;
@@ -94,10 +84,6 @@ kernel void precalculationComputeShader(constant SharedUniforms &sharedUniforms 
     out[index].scaledNormalMatrix = scaledNormalMatrix;
     out[index].modelViewMatrix = modelViewMatrix;
     out[index].modelViewProjectionMatrix = modelViewProjectionMatrix;
-//    out[index].jointIndeces = jointIndeces;
-//    out[index].jointWeights = jointWeights;
-//    out[index].weightedPalette = weightedPalette;
     out[index].shadowMVPTransformMatrix = shadowMVPTransformMatrix;
-    
-    
+    out[index].directionalLightMVP = directionalLightMVP;
 }

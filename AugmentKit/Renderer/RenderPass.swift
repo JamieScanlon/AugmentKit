@@ -183,14 +183,17 @@ class DrawCallGroup {
     }
     /// The value of this property is set automatically when initializing with an array of draw calls and is `true` if any `DrawCall` uses skins. When this is false the renderer can skip steps for calculating skinned animations resulting in some efficiency gain.
     var useSkins = false
+    /// If `false` the renderer will not generate a shadow for this `DrawCallGroup`
+    var generatesShadows: Bool
     
     /// The order of `drawCalls` is usually taken directly from the order in which the meshes are parsed from the MDLAsset.
     /// see: `ModelIOTools.meshGPUData(from asset: MDLAsset, device: MTLDevice, textureBundle: Bundle, vertexDescriptor: MDLVertexDescriptor?, frameRate: Double = 60, shaderPreference: ShaderPreference = .pbr)`
     var drawCalls = [DrawCall]()
     
-    init(drawCalls: [DrawCall] = [], uuid: UUID = UUID()) {
+    init(drawCalls: [DrawCall] = [], uuid: UUID = UUID(), generatesShadows: Bool = true) {
         self.uuid = uuid
         self.drawCalls = drawCalls
+        self.generatesShadows = generatesShadows
         if drawCalls.first(where: {$0.usesSkins}) != nil {
             self.useSkins = true
         }
@@ -253,8 +256,8 @@ class RenderPass {
     var isDepthWriteEnabled = true
     var isDepthWriteEnabledMergePolicy = MergePolicy.preferInstance
     
-    // Allows the render pass to filter out certain geometries for rendering. Return `false` in order to skip rendering for the given `AKGeometricEntity`
-    var geometryFilterFunction: ((AKGeometricEntity?) -> Bool)?
+    // Allows the render pass to filter out certain draw call groups for rendering. Return `false` in order to skip rendering for the given `DrawCallGroup`
+    var drawCallGroupFilterFunction: ((DrawCallGroup?) -> Bool)?
     
     // The following are used to create DrawCall objects
     var cullMode: MTLCullMode = .back

@@ -40,9 +40,6 @@ struct ShadowOutput {
 };
 
 vertex ShadowOutput shadowVertexShader( ShadowVertex in [[stage_in]],
-                                       constant SharedUniforms &sharedUniforms [[ buffer(kBufferIndexSharedUniforms) ]],
-                                       constant AnchorInstanceUniforms *anchorInstanceUniforms [[ buffer(kBufferIndexAnchorInstanceUniforms) ]],
-                                       constant AnchorEffectsUniforms *anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]],
                                        constant EnvironmentUniforms *environmentUniforms [[ buffer(kBufferIndexEnvironmentUniforms) ]],
                                        device PrecalculatedParameters *arguments [[ buffer(kBufferIndexPrecalculationOutputBuffer) ]],
                                        constant int &drawCallIndex [[ buffer(kBufferIndexDrawCallIndex) ]],
@@ -57,13 +54,6 @@ vertex ShadowOutput shadowVertexShader( ShadowVertex in [[stage_in]],
     float4 position = float4(in.position, 1.0);
     int argumentBufferIndex = drawCallIndex;
     
-    // Get the anchor model's orientation in world space
-//    float4x4 modelMatrix = anchorInstanceUniforms[iid].modelMatrix;
-    
-    // Apply effects that affect geometry
-//    float4x4 scaleMatrix = anchorEffectsUniforms[iid].scale;
-//    modelMatrix = modelMatrix * scaleMatrix;
-    
     float4x4 modelMatrix = arguments[argumentBufferIndex].scaledModelMatrix;
     
     EnvironmentUniforms uniforms = environmentUniforms[iid];
@@ -73,7 +63,6 @@ vertex ShadowOutput shadowVertexShader( ShadowVertex in [[stage_in]],
     position =  directionalLightMVP * modelMatrix * position;
     
     out.position = position;
-//    out.position = float4(position.x, position.y, -0.01, 1.0);
     
     return out;
 }

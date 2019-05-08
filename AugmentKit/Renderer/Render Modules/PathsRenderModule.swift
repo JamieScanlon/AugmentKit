@@ -187,7 +187,7 @@ class PathsRenderModule: RenderModule {
             drawCalls.append(drawCall)
         }
         
-        let drawCallGroup = DrawCallGroup(drawCalls: drawCalls)
+        let drawCallGroup = DrawCallGroup(drawCalls: drawCalls, generatesShadows: false)
         drawCallGroup.moduleIdentifier = moduleIdentifier
         
         isInitialized = true
@@ -430,17 +430,6 @@ class PathsRenderModule: RenderModule {
             renderEncoder.popDebugGroup()
         }
         
-        if let sharedBuffer = sharedModules?.first(where: {$0.moduleIdentifier == SharedBuffersRenderModule.identifier}) {
-            
-            renderEncoder.pushDebugGroup("Draw Shared Uniforms")
-            
-            renderEncoder.setVertexBuffer(sharedBuffer.sharedUniformBuffer, offset: sharedBuffer.sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
-            renderEncoder.setFragmentBuffer(sharedBuffer.sharedUniformBuffer, offset: sharedBuffer.sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
-            
-            renderEncoder.popDebugGroup()
-            
-        }
-        
         if let effectsBuffer = effectsUniformBuffer {
             
             renderEncoder.pushDebugGroup("Draw Effects Uniforms")
@@ -467,6 +456,15 @@ class PathsRenderModule: RenderModule {
                 drawCallIndex += Int32(drawCallGroup.drawCalls.count)
                 drawCallGroupIndex += 1
                 continue
+            }
+            
+            // Use the render pass filter function to skip draw call groups on an individual basis
+            if let filterFunction = renderPass.drawCallGroupFilterFunction {
+                guard filterFunction(drawCallGroup) else {
+                    drawCallIndex += Int32(drawCallGroup.drawCalls.count)
+                    drawCallGroupIndex += 1
+                    continue
+                }
             }
             
             for drawCall in drawCallGroup.drawCalls {

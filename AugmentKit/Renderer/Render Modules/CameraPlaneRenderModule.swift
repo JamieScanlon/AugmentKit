@@ -75,11 +75,11 @@ class CameraPlaneRenderModule: RenderModule {
         }
         
         // Check to make sure this geometry should be rendered in this render pass
-        if let geometryFilterFunction = renderPass?.geometryFilterFunction {
-            guard geometryFilterFunction(nil) else {
-                return []
-            }
-        }
+//        if let geometryFilterFunction = renderPass?.geometryFilterFunction {
+//            guard geometryFilterFunction(nil) else {
+//                return []
+//            }
+//        }
         
         guard let capturedImageVertexTransform = metalLibrary.makeFunction(name: "capturedImageVertexTransform") else {
             print("Serious Error - failed to create the capturedImageVertexTransform function")
@@ -149,7 +149,7 @@ class CameraPlaneRenderModule: RenderModule {
         capturedImageTextureCache = textureCache
         
         let drawCall = DrawCall(withDevice: device, renderPipelineDescriptor: capturedImagePipelineStateDescriptor, depthStencilDescriptor: capturedImageDepthStateDescriptor, cullMode: .none)
-        let drawCallGroup = DrawCallGroup(drawCalls: [drawCall])
+        let drawCallGroup = DrawCallGroup(drawCalls: [drawCall], generatesShadows: false)
         drawCallGroup.moduleIdentifier = moduleIdentifier
         
         isInitialized = true

@@ -267,10 +267,8 @@ struct PrecalculatedParameters {
     matrix_float3x3 scaledNormalMatrix; // normalMatrix * scaleMatrix. scaleMatrix is AnchorEffectsUniforms.scale
     matrix_float4x4 modelViewMatrix; // scaledModelMatrix * viewMatrix
     matrix_float4x4 modelViewProjectionMatrix; // projectionMatrix * modelViewMatrix
-    vector_float4 jointIndeces;
-    vector_float4 jointWeights;
-    vector_float4 weightedPalette; // jointWeights[n] * palette[jointIndex[n]]
     matrix_float4x4 shadowMVPTransformMatrix;
+    matrix_float4x4 directionalLightMVP;
 };
 
 // MARK: Argument Buffers

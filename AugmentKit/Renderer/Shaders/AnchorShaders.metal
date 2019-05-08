@@ -422,10 +422,6 @@ LightingParameters calculateParameters(ColorInOut in,
 
 // MARK: Anchor vertex function
 vertex ColorInOut anchorGeometryVertexTransform(Vertex in [[stage_in]],
-                                                constant SharedUniforms &sharedUniforms [[ buffer(kBufferIndexSharedUniforms) ]],
-                                                constant AnchorInstanceUniforms *anchorInstanceUniforms [[ buffer(kBufferIndexAnchorInstanceUniforms) ]],
-                                                constant AnchorEffectsUniforms *anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]],
-                                                constant EnvironmentUniforms *environmentUniforms [[ buffer(kBufferIndexEnvironmentUniforms) ]],
                                                 device PrecalculatedParameters *arguments [[ buffer(kBufferIndexPrecalculationOutputBuffer) ]],
                                                 constant int &drawCallIndex [[ buffer(kBufferIndexDrawCallIndex) ]],
                                                 constant int &drawCallGroupIndex [[ buffer(kBufferIndexDrawCallGroupIndex) ]],
@@ -437,23 +433,11 @@ vertex ColorInOut anchorGeometryVertexTransform(Vertex in [[stage_in]],
     float4 position = float4(in.position, 1.0);
     int argumentBufferIndex = drawCallIndex;
     
-    // Get the anchor model's orientation in world space
-//    float4x4 modelMatrix = anchorInstanceUniforms[iid].modelMatrix;
-//    float3x3 normalMatrix = anchorInstanceUniforms[iid].normalMatrix;
-    
-    // Apply effects that affect geometry
-//    float4x4 scaleMatrix = anchorEffectsUniforms[iid].scale;
-//    modelMatrix = modelMatrix * scaleMatrix;
-    
-    // Transform the model's orientation from world space to camera space.
-//    float4x4 modelViewMatrix = sharedUniforms.viewMatrix * modelMatrix;
-    
     float3x3 normalMatrix = arguments[argumentBufferIndex].scaledNormalMatrix;
     float4x4 modelViewMatrix = arguments[argumentBufferIndex].modelViewMatrix;
     float4x4 modelViewProjectionMatrix = arguments[argumentBufferIndex].modelViewProjectionMatrix;
     
     // Calculate the position of our vertex in clip space and output for clipping and rasterization
-//    out.position = sharedUniforms.projectionMatrix * modelViewMatrix * position;
     out.position = modelViewProjectionMatrix * position;
     
     // Calculate the positon of our vertex in eye space
@@ -472,8 +456,7 @@ vertex ColorInOut anchorGeometryVertexTransform(Vertex in [[stage_in]],
     }
     
     // Shadow Coord
-    EnvironmentUniforms environmentUniform = environmentUniforms[iid];
-    out.shadowCoord = (environmentUniform.shadowMVPTransformMatrix * out.position).xyz;
+    out.shadowCoord = (arguments[argumentBufferIndex].shadowMVPTransformMatrix * out.position).xyz;
     
     out.iid = iid;
     
@@ -482,13 +465,9 @@ vertex ColorInOut anchorGeometryVertexTransform(Vertex in [[stage_in]],
 
 // MARK: Anchor vertex function with skinning
 vertex ColorInOut anchorGeometryVertexTransformSkinned(Vertex in [[stage_in]],
-                                                       constant SharedUniforms &sharedUniforms [[ buffer(kBufferIndexSharedUniforms) ]],
                                                        constant float4x4 *palette [[ buffer(kBufferIndexMeshPalettes) ]],
                                                        constant int &paletteStartIndex [[ buffer(kBufferIndexMeshPaletteIndex) ]],
                                                        constant int &paletteSize [[ buffer(kBufferIndexMeshPaletteSize) ]],
-                                                       constant AnchorInstanceUniforms *anchorInstanceUniforms [[ buffer(kBufferIndexAnchorInstanceUniforms) ]],
-                                                       constant AnchorEffectsUniforms *anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]],
-                                                       constant EnvironmentUniforms *environmentUniforms [[ buffer(kBufferIndexEnvironmentUniforms) ]],
                                                        device PrecalculatedParameters *arguments [[ buffer(kBufferIndexPrecalculationOutputBuffer) ]],
                                                        constant int &drawCallIndex [[ buffer(kBufferIndexDrawCallIndex) ]],
                                                        constant int &drawCallGroupIndex [[ buffer(kBufferIndexDrawCallGroupIndex) ]],
@@ -500,18 +479,6 @@ vertex ColorInOut anchorGeometryVertexTransformSkinned(Vertex in [[stage_in]],
     // Make position a float4 to perform 4x4 matrix math on it
     float4 position = float4(in.position, 1.0f);
     int argumentBufferIndex = drawCallIndex;
-    
-    // Get the anchor model's orientation in world space
-//    float4x4 modelMatrix = anchorInstanceUniforms[iid].modelMatrix;
-//    float3x3 normalMatrix = anchorInstanceUniforms[iid].normalMatrix;
-    
-    // Apply effects that affect geometry
-//    float4x4 scaleMatrix = anchorEffectsUniforms[iid].scale;
-//    scaleMatrix[3][3] = 1;
-//    modelMatrix = modelMatrix * scaleMatrix;
-    
-    // Transform the model's orientation from world space to camera space.
-//    float4x4 modelViewMatrix = sharedUniforms.viewMatrix * modelMatrix;
     
     ushort4 jointIndex = in.jointIndices + paletteStartIndex + iid * paletteSize;
     float4 weights = in.jointWeights;
@@ -533,14 +500,12 @@ vertex ColorInOut anchorGeometryVertexTransformSkinned(Vertex in [[stage_in]],
         weights[2] * (palette[jointIndex[2]] * modelTangent) +
         weights[3] * (palette[jointIndex[3]] * modelTangent);
     
-    // Calculate the position of our vertex in clip space and output for clipping and rasterization
-//    out.position = sharedUniforms.projectionMatrix * modelViewMatrix * skinnedPosition;
-    
 
     float3x3 normalMatrix = arguments[argumentBufferIndex].scaledNormalMatrix;
     float4x4 modelViewMatrix = arguments[argumentBufferIndex].modelViewMatrix;
     float4x4 modelViewProjectionMatrix = arguments[argumentBufferIndex].modelViewProjectionMatrix;
     
+    // Calculate the position of our vertex in clip space and output for clipping and rasterization
     out.position = modelViewProjectionMatrix * skinnedPosition;
     
     // Calculate the positon of our vertex in eye space
@@ -558,8 +523,7 @@ vertex ColorInOut anchorGeometryVertexTransformSkinned(Vertex in [[stage_in]],
     }
     
     // Shadow Coord
-    EnvironmentUniforms environmentUniform = environmentUniforms[iid];
-    out.shadowCoord = (environmentUniform.shadowMVPTransformMatrix * out.position).xyz;
+    out.shadowCoord = (arguments[argumentBufferIndex].shadowMVPTransformMatrix * out.position).xyz;
     
     out.iid = iid;
     
@@ -642,7 +606,6 @@ fragment float4 anchorGeometryFragmentLighting(ColorInOut in [[stage_in]],
 // MARK: Anchor fragment shader that uses the base color only
 
 fragment float4 anchorGeometryFragmentLightingSimple(ColorInOut in [[stage_in]],
-                                               constant SharedUniforms &sharedUniforms [[ buffer(kBufferIndexSharedUniforms) ]],
                                                constant MaterialUniforms &materialUniforms [[ buffer(kBufferIndexMaterialUniforms) ]],
                                                constant EnvironmentUniforms *environmentUniforms [[ buffer(kBufferIndexEnvironmentUniforms) ]],
                                                constant AnchorEffectsUniforms *anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]],

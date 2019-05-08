@@ -65,15 +65,15 @@ class UnanchoredRenderModule: RenderModule {
         // to another. Uniforms should be specified with a max instance count for instancing.
         // Also uniform storage must be aligned (to 256 bytes) to meet the requirements to be an
         // argument in the constant address space of our shading functions.
-        let unanchoredUniformBufferSize = Constants.alignedInstanceUniformsSize * maxInFlightFrames
+//        let unanchoredUniformBufferSize = Constants.alignedInstanceUniformsSize * maxInFlightFrames
         let materialUniformBufferSize = RenderModuleConstants.alignedMaterialSize * maxInFlightFrames
         let effectsUniformBufferSize = Constants.alignedEffectsUniformSize * maxInFlightFrames
         let environmentUniformBufferSize = Constants.alignedEnvironmentUniformSize * maxInFlightFrames
         
         // Create and allocate our uniform buffer objects. Indicate shared storage so that both the
         // CPU can access the buffer
-        unanchoredUniformBuffer = device?.makeBuffer(length: unanchoredUniformBufferSize, options: .storageModeShared)
-        unanchoredUniformBuffer?.label = "UnanchoredUniformBuffer"
+//        unanchoredUniformBuffer = device?.makeBuffer(length: unanchoredUniformBufferSize, options: .storageModeShared)
+//        unanchoredUniformBuffer?.label = "UnanchoredUniformBuffer"
         
         materialUniformBuffer = device?.makeBuffer(length: materialUniformBufferSize, options: .storageModeShared)
         materialUniformBuffer?.label = "MaterialUniformBuffer"
@@ -201,12 +201,16 @@ class UnanchoredRenderModule: RenderModule {
         }
         for item in filteredModelsByUUID {
             
-            // Check to make sure this geometry should be rendered in this render pass
-            if let geometricEntity = geometricEntities.first(where: {$0.identifier == item.key}), let geometryFilterFunction = renderPass?.geometryFilterFunction {
-                guard geometryFilterFunction(geometricEntity) else {
-                    continue
-                }
+            guard let geometricEntity = geometricEntities.first(where: {$0.identifier == item.key}) else {
+                continue
             }
+            
+            // Check to make sure this geometry should be rendered in this render pass
+//            if let geometricEntity = geometricEntities.first(where: {$0.identifier == item.key}), let geometryFilterFunction = renderPass?.geometryFilterFunction {
+//                guard geometryFilterFunction(geometricEntity) else {
+//                    continue
+//                }
+//            }
             
             let uuid = item.key
             let mdlAsset = item.value
@@ -220,7 +224,7 @@ class UnanchoredRenderModule: RenderModule {
             
             let meshGPUData = ModelIOTools.meshGPUData(from: mdlAsset, device: device, textureBundle: textureBundle, vertexDescriptor: RenderUtilities.createStandardVertexDescriptor(), frameRate: 60, shaderPreference: shaderPreference)
             
-            let drawCallGroup = createDrawCallGroup(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass, meshGPUData: meshGPUData)
+            let drawCallGroup = createDrawCallGroup(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass, meshGPUData: meshGPUData, geometricEntity: geometricEntity)
             drawCallGroup.moduleIdentifier = moduleIdentifier
             drawCallGroups.append(drawCallGroup)
             
@@ -246,7 +250,7 @@ class UnanchoredRenderModule: RenderModule {
         
         bufferIndex = theBufferIndex
         
-        unanchoredUniformBufferOffset = Constants.alignedInstanceUniformsSize * bufferIndex
+//        unanchoredUniformBufferOffset = Constants.alignedInstanceUniformsSize * bufferIndex
         materialUniformBufferOffset = RenderModuleConstants.alignedMaterialSize * bufferIndex
         effectsUniformBufferOffset = Constants.alignedEffectsUniformSize * bufferIndex
         environmentUniformBufferOffset = Constants.alignedEnvironmentUniformSize * bufferIndex
@@ -395,15 +399,15 @@ class UnanchoredRenderModule: RenderModule {
                         
                         let modelMatrix = trackerAbsoluteTransform * coordinateSpaceTransform
                         
-                        let trackerUniforms = unanchoredUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: index)
-                        trackerUniforms?.pointee.hasGeometry = 1
-                        trackerUniforms?.pointee.hasHeading = 0
-                        trackerUniforms?.pointee.headingType = 0
-                        trackerUniforms?.pointee.headingTransform = matrix_identity_float4x4
-                        trackerUniforms?.pointee.locationTransform = trackerAbsoluteTransform
-                        trackerUniforms?.pointee.worldTransform = worldTransform
-                        trackerUniforms?.pointee.modelMatrix = modelMatrix
-                        trackerUniforms?.pointee.normalMatrix = modelMatrix.normalMatrix
+//                        let trackerUniforms = unanchoredUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: index)
+//                        trackerUniforms?.pointee.hasGeometry = 1
+//                        trackerUniforms?.pointee.hasHeading = 0
+//                        trackerUniforms?.pointee.headingType = 0
+//                        trackerUniforms?.pointee.headingTransform = matrix_identity_float4x4
+//                        trackerUniforms?.pointee.locationTransform = trackerAbsoluteTransform
+//                        trackerUniforms?.pointee.worldTransform = worldTransform
+//                        trackerUniforms?.pointee.modelMatrix = modelMatrix
+//                        trackerUniforms?.pointee.normalMatrix = modelMatrix.normalMatrix
                         
                         //
                         // Update Environment
@@ -543,15 +547,15 @@ class UnanchoredRenderModule: RenderModule {
                         
                         let modelMatrix = targetAbsoluteTransform * coordinateSpaceTransform
                         
-                        let targetUniforms = unanchoredUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: index)
-                        targetUniforms?.pointee.hasGeometry = 1
-                        targetUniforms?.pointee.hasHeading = 0
-                        targetUniforms?.pointee.headingType = 0
-                        targetUniforms?.pointee.headingTransform = matrix_identity_float4x4
-                        targetUniforms?.pointee.locationTransform = targetAbsoluteTransform
-                        targetUniforms?.pointee.worldTransform = worldTransform
-                        targetUniforms?.pointee.modelMatrix = modelMatrix
-                        targetUniforms?.pointee.normalMatrix = modelMatrix.normalMatrix
+//                        let targetUniforms = unanchoredUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: index)
+//                        targetUniforms?.pointee.hasGeometry = 1
+//                        targetUniforms?.pointee.hasHeading = 0
+//                        targetUniforms?.pointee.headingType = 0
+//                        targetUniforms?.pointee.headingTransform = matrix_identity_float4x4
+//                        targetUniforms?.pointee.locationTransform = targetAbsoluteTransform
+//                        targetUniforms?.pointee.worldTransform = worldTransform
+//                        targetUniforms?.pointee.modelMatrix = modelMatrix
+//                        targetUniforms?.pointee.normalMatrix = modelMatrix.normalMatrix
                         
                         //
                         // Update Environment
@@ -683,17 +687,6 @@ class UnanchoredRenderModule: RenderModule {
             renderEncoder.popDebugGroup()
         }
         
-        if let sharedBuffer = sharedModules?.first(where: {$0.moduleIdentifier == SharedBuffersRenderModule.identifier}), renderPass.usesSharedBuffer  {
-            
-            renderEncoder.pushDebugGroup("Draw Shared Uniforms")
-            
-            renderEncoder.setVertexBuffer(sharedBuffer.sharedUniformBuffer, offset: sharedBuffer.sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
-            renderEncoder.setFragmentBuffer(sharedBuffer.sharedUniformBuffer, offset: sharedBuffer.sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
-            
-            renderEncoder.popDebugGroup()
-            
-        }
-        
         if let environmentUniformBuffer = environmentUniformBuffer, renderPass.usesEnvironment  {
             
             renderEncoder.pushDebugGroup("Draw Environment Uniforms")
@@ -735,6 +728,15 @@ class UnanchoredRenderModule: RenderModule {
                 continue
             }
             
+            // Use the render pass filter function to skip draw call groups on an individual basis
+            if let filterFunction = renderPass.drawCallGroupFilterFunction {
+                guard filterFunction(drawCallGroup) else {
+                    drawCallIndex += Int32(drawCallGroup.drawCalls.count)
+                    drawCallGroupIndex += 1
+                    continue
+                }
+            }
+            
             let uuid = drawCallGroup.uuid
             // TODO: remove. I think this should always be 1. Even if draw call groups share geometries, we should only be incrementing the base index once per draw call. The whole idea of sharing geometries is probably misguided anyway
             let geometryCount = geometryCountByUUID[uuid] ?? 0
@@ -755,7 +757,7 @@ class UnanchoredRenderModule: RenderModule {
                 renderEncoder.setVertexBytes(&drawCallGroupIndex, length: MemoryLayout<Int32>.size, index: Int(kBufferIndexDrawCallGroupIndex.rawValue))
                 
                 // Set any buffers fed into our render pipeline
-                renderEncoder.setVertexBuffer(unanchoredUniformBuffer, offset: unanchoredUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
+//                renderEncoder.setVertexBuffer(unanchoredUniformBuffer, offset: unanchoredUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
                 
                 var mutableDrawData = drawData
                 mutableDrawData.instanceCount = trackerInstanceCount
@@ -793,7 +795,7 @@ class UnanchoredRenderModule: RenderModule {
     private enum Constants {
         static let maxTrackerInstanceCount = 64
         static let maxTargetInstanceCount = 64
-        static let alignedInstanceUniformsSize = ((MemoryLayout<AnchorInstanceUniforms>.stride * (Constants.maxTrackerInstanceCount + Constants.maxTargetInstanceCount)) & ~0xFF) + 0x100
+//        static let alignedInstanceUniformsSize = ((MemoryLayout<AnchorInstanceUniforms>.stride * (Constants.maxTrackerInstanceCount + Constants.maxTargetInstanceCount)) & ~0xFF) + 0x100
         static let alignedEffectsUniformSize = ((MemoryLayout<AnchorEffectsUniforms>.stride * (Constants.maxTrackerInstanceCount + Constants.maxTargetInstanceCount)) & ~0xFF) + 0x100
         static let alignedEnvironmentUniformSize = ((MemoryLayout<EnvironmentUniforms>.stride * (Constants.maxTrackerInstanceCount + Constants.maxTargetInstanceCount)) & ~0xFF) + 0x100
     }
@@ -849,7 +851,7 @@ class UnanchoredRenderModule: RenderModule {
     // number of frames in the target animation by index
     private var targetAnimationFrameCount = [Int]()
     
-    private func createDrawCallGroup(forUUID uuid: UUID, withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, renderPass: RenderPass?, meshGPUData: MeshGPUData) -> DrawCallGroup {
+    private func createDrawCallGroup(forUUID uuid: UUID, withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, renderPass: RenderPass?, meshGPUData: MeshGPUData, geometricEntity: AKGeometricEntity) -> DrawCallGroup {
         
         guard let renderPass = renderPass else {
             print("Warning - Skipping all draw calls because the render pass is nil.")
@@ -892,7 +894,7 @@ class UnanchoredRenderModule: RenderModule {
             
         }
         
-        let drawCallGroup = DrawCallGroup(drawCalls: drawCalls, uuid: uuid)
+        let drawCallGroup = DrawCallGroup(drawCalls: drawCalls, uuid: uuid, generatesShadows: geometricEntity.generatesShadows)
         return drawCallGroup
         
     }

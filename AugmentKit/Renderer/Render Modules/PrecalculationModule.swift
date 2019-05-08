@@ -136,146 +136,134 @@ class PrecalculationModule: PreRenderComputeModule {
             
             let uuid = drawCallGroup.uuid
             let geometricEntity = allGeometricEntities.first(where: {$0.identifier == uuid})
+            var drawCallIndex = 0
             
-            //
-            // Environment Uniform Setup
-            //
-            
-            if let environmentUniform = environmentUniforms?.advanced(by: drawCallGroupIndex), computePass.usesEnvironment {
+            for drawCall in drawCallGroup.drawCalls {
                 
-                // see if this geometry is associated with an environment anchor. An environment anchor applies to a regino of space which may contain serveral anchors.
-                let environmentProperty = environmentProperties.environmentAnchorsWithReatedAnchors.first(where: {
-                    $0.value.contains(uuid)
-                })
-                // Get the environment texture if available
-                let environmentTexture: MTLTexture? = {
-                    if let environmentProbeAnchor = environmentProperty?.key, let aTexture = environmentProbeAnchor.environmentTexture {
-                        return aTexture
-                    } else {
-                        return nil
-                    }
-                }()
-                let environmentData: EnvironmentData = {
-                    var myEnvironmentData = EnvironmentData()
-                    if let texture = environmentTexture {
-                        myEnvironmentData.environmentTexture = texture
-                        myEnvironmentData.hasEnvironmentMap = true
+                //
+                // Environment Uniform Setup
+                //
+                
+                if let environmentUniform = environmentUniforms?.advanced(by: drawCallGroupOffset + drawCallIndex), computePass.usesEnvironment {
+                    
+                    // see if this geometry is associated with an environment anchor. An environment anchor applies to a regino of space which may contain serveral anchors.
+                    let environmentProperty = environmentProperties.environmentAnchorsWithReatedAnchors.first(where: {
+                        $0.value.contains(uuid)
+                    })
+                    // Get the environment texture if available
+                    let environmentTexture: MTLTexture? = {
+                        if let environmentProbeAnchor = environmentProperty?.key, let aTexture = environmentProbeAnchor.environmentTexture {
+                            return aTexture
+                        } else {
+                            return nil
+                        }
+                    }()
+                    let environmentData: EnvironmentData = {
+                        var myEnvironmentData = EnvironmentData()
+                        if let texture = environmentTexture {
+                            myEnvironmentData.environmentTexture = texture
+                            myEnvironmentData.hasEnvironmentMap = true
+                            return myEnvironmentData
+                        } else {
+                            myEnvironmentData.hasEnvironmentMap = false
+                        }
                         return myEnvironmentData
+                    }()
+                    // Set up lighting for the scene using the ambient intensity if provided
+                    let ambientIntensity: Float = {
+                        if let lightEstimate = environmentProperties.lightEstimate {
+                            return Float(lightEstimate.ambientIntensity) / 1000.0
+                        } else {
+                            return 1
+                        }
+                    }()
+                    let ambientLightColor: vector_float3 = {
+                        if let lightEstimate = environmentProperties.lightEstimate {
+                            // FIXME: Remove
+                            return getRGB(from: lightEstimate.ambientColorTemperature)
+                        } else {
+                            return vector3(0.5, 0.5, 0.5)
+                        }
+                    }()
+                    
+                    environmentUniform.pointee.ambientLightColor = ambientLightColor// * ambientIntensity
+                    
+                    var directionalLightDirection : vector_float3 = environmentProperties.directionalLightDirection
+                    directionalLightDirection = simd_normalize(directionalLightDirection)
+                    environmentUniform.pointee.directionalLightDirection = directionalLightDirection
+                    
+                    let directionalLightColor: vector_float3 = vector3(0.6, 0.6, 0.6)
+                    environmentUniform.pointee.directionalLightColor = directionalLightColor * ambientIntensity
+                    
+                    environmentUniform.pointee.directionalLightMVP = environmentProperties.directionalLightMVP
+                    environmentUniform.pointee.shadowMVPTransformMatrix = shadowProperties.shadowMVPTransformMatrix
+                    
+                    if environmentData.hasEnvironmentMap == true {
+                        environmentUniform.pointee.hasEnvironmentMap = 1
                     } else {
-                        myEnvironmentData.hasEnvironmentMap = false
+                        environmentUniform.pointee.hasEnvironmentMap = 0
                     }
-                    return myEnvironmentData
-                }()
-                // Set up lighting for the scene using the ambient intensity if provided
-                let ambientIntensity: Float = {
-                    if let lightEstimate = environmentProperties.lightEstimate {
-                        return Float(lightEstimate.ambientIntensity) / 1000.0
-                    } else {
-                        return 1
-                    }
-                }()
-                let ambientLightColor: vector_float3 = {
-                    if let lightEstimate = environmentProperties.lightEstimate {
-                        // FIXME: Remove
-                        return getRGB(from: lightEstimate.ambientColorTemperature)
-                    } else {
-                        return vector3(0.5, 0.5, 0.5)
-                    }
-                }()
-                
-                environmentUniform.pointee.ambientLightColor = ambientLightColor// * ambientIntensity
-                
-                var directionalLightDirection : vector_float3 = environmentProperties.directionalLightDirection
-                directionalLightDirection = simd_normalize(directionalLightDirection)
-                environmentUniform.pointee.directionalLightDirection = directionalLightDirection
-                
-                let directionalLightColor: vector_float3 = vector3(0.6, 0.6, 0.6)
-                environmentUniform.pointee.directionalLightColor = directionalLightColor * ambientIntensity
-                
-                environmentUniform.pointee.directionalLightMVP = environmentProperties.directionalLightMVP
-                environmentUniform.pointee.shadowMVPTransformMatrix = shadowProperties.shadowMVPTransformMatrix
-                
-                if environmentData.hasEnvironmentMap == true {
-                    environmentUniform.pointee.hasEnvironmentMap = 1
-                } else {
-                    environmentUniform.pointee.hasEnvironmentMap = 0
+                    
                 }
                 
-            }
-            
-            //
-            // Effects Uniform Setup
-            //
-            
-            if let effectsUniform = effectsUniforms?.advanced(by: drawCallGroupIndex), computePass.usesEnvironment {
+                //
+                // Effects Uniform Setup
+                //
                 
-                var hasSetAlpha = false
-                var hasSetGlow = false
-                var hasSetTint = false
-                var hasSetScale = false
-                if let effects = geometricEntity?.effects {
-                    let currentTime: TimeInterval = Double(cameraProperties.currentFrame) / cameraProperties.frameRate
-                    for effect in effects {
-                        switch effect.effectType {
-                        case .alpha:
-                            if let value = effect.value(forTime: currentTime) as? Float {
-                                effectsUniform.pointee.alpha = value
-                                hasSetAlpha = true
-                            }
-                        case .glow:
-                            if let value = effect.value(forTime: currentTime) as? Float {
-                                effectsUniform.pointee.glow = value
-                                hasSetGlow = true
-                            }
-                        case .tint:
-                            if let value = effect.value(forTime: currentTime) as? float3 {
-                                effectsUniform.pointee.tint = value
-                                hasSetTint = true
-                            }
-                        case .scale:
-                            if let value = effect.value(forTime: currentTime) as? Float {
-                                let scaleMatrix = matrix_identity_float4x4
-                                effectsUniform.pointee.scale = scaleMatrix.scale(x: value, y: value, z: value)
-                                hasSetScale = true
+                if let effectsUniform = effectsUniforms?.advanced(by: drawCallGroupOffset + drawCallIndex), computePass.usesEnvironment {
+                    
+                    var hasSetAlpha = false
+                    var hasSetGlow = false
+                    var hasSetTint = false
+                    var hasSetScale = false
+                    if let effects = geometricEntity?.effects {
+                        let currentTime: TimeInterval = Double(cameraProperties.currentFrame) / cameraProperties.frameRate
+                        for effect in effects {
+                            switch effect.effectType {
+                            case .alpha:
+                                if let value = effect.value(forTime: currentTime) as? Float {
+                                    effectsUniform.pointee.alpha = value
+                                    hasSetAlpha = true
+                                }
+                            case .glow:
+                                if let value = effect.value(forTime: currentTime) as? Float {
+                                    effectsUniform.pointee.glow = value
+                                    hasSetGlow = true
+                                }
+                            case .tint:
+                                if let value = effect.value(forTime: currentTime) as? float3 {
+                                    effectsUniform.pointee.tint = value
+                                    hasSetTint = true
+                                }
+                            case .scale:
+                                if let value = effect.value(forTime: currentTime) as? Float {
+                                    let scaleMatrix = matrix_identity_float4x4
+                                    effectsUniform.pointee.scale = scaleMatrix.scale(x: value, y: value, z: value)
+                                    hasSetScale = true
+                                }
                             }
                         }
                     }
-                }
-                if !hasSetAlpha {
-                    effectsUniform.pointee.alpha = 1
-                }
-                if !hasSetGlow {
-                    effectsUniform.pointee.glow = 0
-                }
-                if !hasSetTint {
-                    effectsUniform.pointee.tint = float3(1,1,1)
-                }
-                if !hasSetScale {
-                    effectsUniform.pointee.scale = matrix_identity_float4x4
-                }
-                
-            }
-            
-            //
-            // Geometry Uniform Setup
-            //
-            
-            if computePass.usesGeometry {
-                
-                var drawCallIndex = 0
-                
-                // Palette Uniform Setup
-                let capacity = Constants.alignedPaletteSize * Constants.maxPaletteCount * instanceCount
-                let boundPaletteData = paletteBufferAddress?.bindMemory(to: matrix_float4x4.self, capacity: capacity)
-                let paletteData = UnsafeMutableBufferPointer<matrix_float4x4>(start: boundPaletteData, count: Constants.maxPaletteCount)
-                var jointPaletteOffset = 0
-                
-                for drawCall in drawCallGroup.drawCalls {
-                    
-                    guard let geometryUniform = geometryUniforms?.advanced(by: drawCallGroupOffset + drawCallIndex) else {
-                        drawCallIndex += 1
-                        continue
+                    if !hasSetAlpha {
+                        effectsUniform.pointee.alpha = 1
                     }
+                    if !hasSetGlow {
+                        effectsUniform.pointee.glow = 0
+                    }
+                    if !hasSetTint {
+                        effectsUniform.pointee.tint = float3(1,1,1)
+                    }
+                    if !hasSetScale {
+                        effectsUniform.pointee.scale = matrix_identity_float4x4
+                    }
+                    
+                }
+            
+                //
+                // Geometry Uniform Setup
+                //
+                
+                if let geometryUniform = geometryUniforms?.advanced(by: drawCallGroupOffset + drawCallIndex), computePass.usesGeometry {
                     
                     guard let drawData = drawCall.drawData, drawCallIndex <= instanceCount else {
                         geometryUniform.pointee.hasGeometry = 0
@@ -308,6 +296,7 @@ class PrecalculationModule: PreRenderComputeModule {
                     
                     if let akAnchor = geometricEntity as? AKAnchor {
                         
+                        // TODO: Move this logic to shader
                         // Ignore anchors that are beyond the renderDistance
                         let distance = anchorDistance(withTransform: akAnchor.worldLocation.transform, cameraProperties: cameraProperties)
                         guard Double(distance) < renderDistance else {
@@ -344,6 +333,7 @@ class PrecalculationModule: PreRenderComputeModule {
                         // Apply the transform of the target relative to the reference transform
                         let targetAbsoluteTransform = akTarget.position.referenceTransform * akTarget.position.transform
                         
+                        // TODO: Move this logic to shader
                         // Ignore anchors that are beyond the renderDistance
                         let distance = anchorDistance(withTransform: targetAbsoluteTransform, cameraProperties: cameraProperties)
                         guard Double(distance) < renderDistance else {
@@ -363,6 +353,7 @@ class PrecalculationModule: PreRenderComputeModule {
                         // Apply the transform of the target relative to the reference transform
                         let trackerAbsoluteTransform = akTracker.position.referenceTransform * akTracker.position.transform
                         
+                        // TODO: Move this logic to shader
                         // Ignore anchors that are beyond the renderDistance
                         let distance = anchorDistance(withTransform: trackerAbsoluteTransform, cameraProperties: cameraProperties)
                         guard Double(distance) < renderDistance else {
@@ -387,39 +378,10 @@ class PrecalculationModule: PreRenderComputeModule {
                     geometryUniform.pointee.locationTransform = locationTransform
                     geometryUniform.pointee.modelMatrix = modelMatrix
                     geometryUniform.pointee.normalMatrix = normalMatrix
-                    
-                    //
-                    // Palette Uniform Setup
-                    //
-                    
-                    if drawCallGroup.useSkins {
-                        
-                        var skinIndex = 0
-                        for skin in drawData.skins {
-                            
-                            guard skinIndex <= Constants.maxPaletteCount else {
-                                break
-                            }
-                            
-                            if let animationIndex = skin.animationIndex {
-                                let curAnimation = drawData.skeletonAnimations[animationIndex]
-                                // FIXME: Remove
-                                let worldPose = evaluateAnimation(curAnimation, at: (Double(cameraProperties.currentFrame) * 1.0 / cameraProperties.frameRate))
-                                let matrixPalette = evaluateMatrixPalette(worldPose, skin)
-                                
-                                for k in 0..<matrixPalette.count {
-                                    paletteData[k + jointPaletteOffset + drawCallGroupOffset] = matrixPalette[k]
-                                }
-                                
-                                skinIndex += 1
-                                jointPaletteOffset += matrixPalette.count
-                            }
-                        }
-                    }
-                    
-                    drawCallIndex += 1
-                    
                 }
+                
+                drawCallIndex += 1
+                
             }
             
             drawCallGroupOffset += drawCallGroup.drawCalls.count
@@ -534,83 +496,6 @@ class PrecalculationModule: PreRenderComputeModule {
     fileprivate var effectsUniformBufferAddress: UnsafeMutableRawPointer?
     // Addresses to write environment uniforms to each frame
     fileprivate var environmentUniformBufferAddress: UnsafeMutableRawPointer?
-    
-    // FIXME: Remove - put in compute shader
-    // Evaluate the skeleton animation at a particular time
-    fileprivate func evaluateAnimation(_ animation: AnimatedSkeleton, at time: Double) -> [matrix_float4x4] {
-        let keyframeIndex = lowerBoundKeyframeIndex(animation.keyTimes, key: time)!
-        let parentIndices = animation.parentIndices
-        let animJointCount = animation.jointCount
-        
-        // get the joints at the specified range
-        let startIndex = keyframeIndex * animJointCount
-        let endIndex = startIndex + animJointCount
-        
-        // get the translations and rotations using the start and endindex
-        let poseTranslations = [float3](animation.translations[startIndex..<endIndex])
-        let poseRotations = [simd_quatf](animation.rotations[startIndex..<endIndex])
-        
-        var worldPose = [matrix_float4x4]()
-        worldPose.reserveCapacity(parentIndices.count)
-        
-        // using the parent indices create the worldspace transformations and store
-        for index in 0..<parentIndices.count {
-            let parentIndex = parentIndices[index]
-            
-            var localMatrix = simd_matrix4x4(poseRotations[index])
-            let translation = poseTranslations[index]
-            localMatrix.columns.3 = simd_float4(translation.x, translation.y, translation.z, 1.0)
-            if let index = parentIndex {
-                worldPose.append(simd_mul(worldPose[index], localMatrix))
-            } else {
-                worldPose.append(localMatrix)
-            }
-        }
-        
-        return worldPose
-    }
-    
-    // FIXME: Remove - put in compute shader
-    //  Using the the skinData and a skeleton's pose in world space, compute the matrix palette
-    fileprivate func evaluateMatrixPalette(_ worldPose: [matrix_float4x4], _ skinData: SkinData) -> [matrix_float4x4] {
-        let paletteCount = skinData.inverseBindTransforms.count
-        let inverseBindTransforms = skinData.inverseBindTransforms
-        
-        var palette = [matrix_float4x4]()
-        palette.reserveCapacity(paletteCount)
-        // using the joint map create the palette for the skeleton
-        for index in 0..<skinData.skinToSkeletonMap.count {
-            palette.append(simd_mul(worldPose[skinData.skinToSkeletonMap[index]], inverseBindTransforms[index]))
-        }
-        
-        return palette
-    }
-    
-    // FIXME: Remove - put in compute shader
-    //  Find the largest index of time stamp <= key
-    fileprivate func lowerBoundKeyframeIndex(_ lhs: [Double], key: Double) -> Int? {
-        if lhs.isEmpty {
-            return nil
-        }
-        
-        if key < lhs.first! { return 0 }
-        if key > lhs.last! { return lhs.count - 1 }
-        
-        var range = 0..<lhs.count
-        
-        while range.endIndex - range.startIndex > 1 {
-            let midIndex = range.startIndex + (range.endIndex - range.startIndex) / 2
-            
-            if lhs[midIndex] == key {
-                return midIndex
-            } else if lhs[midIndex] < key {
-                range = midIndex..<range.endIndex
-            } else {
-                range = range.startIndex..<midIndex
-            }
-        }
-        return range.startIndex
-    }
     
     // FIXME: Remove - put in compute shader
     fileprivate func anchorDistance(withTransform transform: matrix_float4x4, cameraProperties: CameraProperties?) -> Float {

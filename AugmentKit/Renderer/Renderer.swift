@@ -1383,8 +1383,8 @@ public class Renderer: NSObject {
         shadowRenderPipelineDescriptor.vertexFunction = shadowVertexFunction
         shadowRenderPipelineDescriptor.depthAttachmentPixelFormat = .depth32Float
         shadowRenderPass?.templateRenderPipelineDescriptor = shadowRenderPipelineDescriptor
-        shadowRenderPass?.geometryFilterFunction = { geometry in
-            return geometry?.generatesShadows == true
+        shadowRenderPass?.drawCallGroupFilterFunction = { drawCallGroup in
+            return drawCallGroup?.generatesShadows == true
         }
         
         //

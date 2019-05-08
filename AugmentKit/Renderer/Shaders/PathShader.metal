@@ -45,9 +45,6 @@ struct PathFragmentInOut {
 };
 
 vertex PathFragmentInOut pathVertexShader(PathVertexIn in [[stage_in]],
-                                          constant SharedUniforms &sharedUniforms [[ buffer(kBufferIndexSharedUniforms) ]],
-                                          constant AnchorInstanceUniforms *anchorInstanceUniforms [[ buffer(kBufferIndexAnchorInstanceUniforms) ]],
-                                          constant AnchorEffectsUniforms *anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]],
                                           constant EnvironmentUniforms *environmentUniforms [[ buffer(kBufferIndexEnvironmentUniforms) ]],
                                           device PrecalculatedParameters *arguments [[ buffer(kBufferIndexPrecalculationOutputBuffer) ]],
                                           constant int &drawCallIndex [[ buffer(kBufferIndexDrawCallIndex) ]],
@@ -61,19 +58,6 @@ vertex PathFragmentInOut pathVertexShader(PathVertexIn in [[stage_in]],
     // Make position a float4 to perform 4x4 matrix math on it
     float4 position = in.position;
     int argumentBufferIndex = drawCallIndex;
-    
-    // Get the anchor model's orientation in world space
-//    float4x4 modelMatrix = anchorInstanceUniforms[iid].modelMatrix;
-    
-    // Apply effects that affect geometry
-//    float4x4 scaleMatrix = anchorEffectsUniforms[iid].scale;
-//    modelMatrix = modelMatrix * scaleMatrix;
-    
-    // Transform the model's orientation from world space to camera space.
-//    float4x4 modelViewMatrix = sharedUniforms.viewMatrix * modelMatrix;
-    
-    // Calculate the position of our vertex in clip space and output for clipping and rasterization
-//    out.position = sharedUniforms.projectionMatrix * modelViewMatrix * position;
     
     float4x4 modelViewProjectionMatrix = arguments[argumentBufferIndex].modelViewProjectionMatrix;
     

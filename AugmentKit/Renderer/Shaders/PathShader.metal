@@ -45,7 +45,7 @@ struct PathFragmentInOut {
 };
 
 vertex PathFragmentInOut pathVertexShader(PathVertexIn in [[stage_in]],
-                                          constant EnvironmentUniforms *environmentUniforms [[ buffer(kBufferIndexEnvironmentUniforms) ]],
+//                                          constant EnvironmentUniforms *environmentUniforms [[ buffer(kBufferIndexEnvironmentUniforms) ]],
                                           device PrecalculatedParameters *arguments [[ buffer(kBufferIndexPrecalculationOutputBuffer) ]],
                                           constant int &drawCallIndex [[ buffer(kBufferIndexDrawCallIndex) ]],
                                           constant int &drawCallGroupIndex [[ buffer(kBufferIndexDrawCallGroupIndex) ]],
@@ -66,8 +66,8 @@ vertex PathFragmentInOut pathVertexShader(PathVertexIn in [[stage_in]],
     out.iid = iid;
     
     // Shadow Coord
-    EnvironmentUniforms environmentUniform = environmentUniforms[iid];
-    out.shadowCoord = (environmentUniform.shadowMVPTransformMatrix * out.position).xyz;
+//    EnvironmentUniforms environmentUniform = environmentUniforms[iid];
+    out.shadowCoord = (arguments[argumentBufferIndex].shadowMVPTransformMatrix * out.position).xyz;
 
     
     return out;

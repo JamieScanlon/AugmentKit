@@ -241,9 +241,9 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         
     }
     
-    func updateBuffers(withAllGeometricEntities: [AKGeometricEntity], moduleGeometricEntities: [AKGeometricEntity], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, argumentBufferProperties: ArgumentBufferProperties, forRenderPass renderPass: RenderPass) {
+    func updateBuffers(withModuleEntities moduleEntities: [AKEntity], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, argumentBufferProperties: ArgumentBufferProperties, forRenderPass renderPass: RenderPass) {
         
-        let anchors: [AKAugmentedAnchor] = moduleGeometricEntities.compactMap({
+        let anchors: [AKAugmentedAnchor] = moduleEntities.compactMap({
             if let anAnchor = $0 as? AKAugmentedAnchor {
                 return anAnchor
             } else {

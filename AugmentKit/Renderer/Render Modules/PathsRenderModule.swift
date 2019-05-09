@@ -214,11 +214,11 @@ class PathsRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withAllGeometricEntities: [AKGeometricEntity], moduleGeometricEntities: [AKGeometricEntity], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, argumentBufferProperties theArgumentBufferProperties: ArgumentBufferProperties, forRenderPass renderPass: RenderPass) {
+    func updateBuffers(withModuleEntities moduleEntities: [AKEntity], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, argumentBufferProperties theArgumentBufferProperties: ArgumentBufferProperties, forRenderPass renderPass: RenderPass) {
         
         argumentBufferProperties = theArgumentBufferProperties
         
-        let paths: [AKPath] = moduleGeometricEntities.compactMap({
+        let paths: [AKPath] = moduleEntities.compactMap({
             if let anPath = $0 as? AKPath {
                 return anPath
             } else {

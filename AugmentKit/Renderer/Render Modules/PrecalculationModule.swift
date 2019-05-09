@@ -122,7 +122,7 @@ class PrecalculationModule: PreRenderComputeModule {
         
     }
     
-    func prepareToDraw(withAllGeometricEntities allGeometricEntities: [AKGeometricEntity], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, computePass: ComputePass, renderPass: RenderPass?) {
+    func prepareToDraw(withAllEntities allEntities: [AKEntity], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, computePass: ComputePass, renderPass: RenderPass?) {
         
         var drawCallGroupOffset = 0
         var drawCallGroupIndex = 0
@@ -131,6 +131,23 @@ class PrecalculationModule: PreRenderComputeModule {
         let environmentUniforms = environmentUniformBufferAddress?.assumingMemoryBound(to: EnvironmentUniforms.self)
         let effectsUniforms = effectsUniformBufferAddress?.assumingMemoryBound(to: AnchorEffectsUniforms.self)
         
+        // Get all of the AKGeometricEntity's
+        var allGeometricEntities: [AKGeometricEntity] = allEntities.compactMap({
+            if let geoEntity = $0 as? AKGeometricEntity {
+                return geoEntity
+            } else {
+                return nil
+            }
+        })
+        let allGeometricEntityGroups: [AKGeometricEntityGroup] = allEntities.compactMap({
+            if let geoEntity = $0 as? AKGeometricEntityGroup {
+                return geoEntity
+            } else {
+                return nil
+            }
+        })
+        let groupGeometries = allGeometricEntityGroups.flatMap({$0.geometries})
+        allGeometricEntities.append(contentsOf: groupGeometries)
         
         renderPass?.drawCallGroups.forEach { drawCallGroup in
             

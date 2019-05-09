@@ -102,7 +102,7 @@ protocol RenderModule: ShaderModule {
     //
     
     // Update the buffer data for the geometric entities
-    func updateBuffers(withAllGeometricEntities: [AKGeometricEntity], moduleGeometricEntities: [AKGeometricEntity], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, argumentBufferProperties: ArgumentBufferProperties, forRenderPass renderPass: RenderPass)
+    func updateBuffers(withModuleEntities: [AKEntity], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, argumentBufferProperties: ArgumentBufferProperties, forRenderPass renderPass: RenderPass)
     
     // Update the render encoder for the draw call. At the end of this method it is expected that
     // drawPrimatives or drawIndexedPrimatives is called.
@@ -483,7 +483,7 @@ protocol PreRenderComputeModule: ComputeModule {
     //
     
     /// Update the buffer(s) data from information about the render
-    func prepareToDraw(withAllGeometricEntities: [AKGeometricEntity], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, computePass: ComputePass, renderPass: RenderPass?)
+    func prepareToDraw(withAllEntities: [AKEntity], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, computePass: ComputePass, renderPass: RenderPass?)
     
 }
 

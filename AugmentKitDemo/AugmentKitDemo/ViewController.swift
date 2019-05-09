@@ -141,20 +141,20 @@ class ViewController: UIViewController {
         
         // Example:
         // Create a square path
-        //        guard let location1 = world.worldLocationFromCurrentLocation(withMetersEast: 1, metersUp: 0, metersSouth: 0) else {
-        //            return
-        //        }
-        //
-        //        guard let location2 = world.worldLocationFromCurrentLocation(withMetersEast: 1, metersUp: 1, metersSouth: 0) else {
-        //            return
-        //        }
-        //
-        //        guard let location3 = world.worldLocationFromCurrentLocation(withMetersEast: 0, metersUp: 1, metersSouth: 0) else {
-        //            return
-        //        }
-        //
-        //        let path = PathAnchor(withWorldLocaitons: [currentWorldLocation, location1, location2, location3, currentWorldLocation])
-        //        world.add(akPath: path)
+                guard let location1 = world.worldLocationFromCurrentLocation(withMetersEast: 1, metersUp: 0, metersSouth: 0) else {
+                    return
+                }
+        
+                guard let location2 = world.worldLocationFromCurrentLocation(withMetersEast: 1, metersUp: 1, metersSouth: 0) else {
+                    return
+                }
+        
+                guard let location3 = world.worldLocationFromCurrentLocation(withMetersEast: 0, metersUp: 1, metersSouth: 0) else {
+                    return
+                }
+        
+                let path = PathAnchor(withWorldLocaitons: [currentWorldLocation, location1, location2, location3, currentWorldLocation])
+                world.add(akPath: path)
         
         
         // Example:

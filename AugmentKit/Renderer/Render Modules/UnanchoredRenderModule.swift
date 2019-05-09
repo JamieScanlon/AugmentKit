@@ -249,11 +249,11 @@ class UnanchoredRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withAllGeometricEntities: [AKGeometricEntity], moduleGeometricEntities: [AKGeometricEntity], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, argumentBufferProperties theArgumentBufferProperties: ArgumentBufferProperties, forRenderPass renderPass: RenderPass) {
+    func updateBuffers(withModuleEntities moduleEntities: [AKEntity], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, argumentBufferProperties theArgumentBufferProperties: ArgumentBufferProperties, forRenderPass renderPass: RenderPass) {
         
         argumentBufferProperties = theArgumentBufferProperties
         
-        let trackers: [AKAugmentedTracker] = moduleGeometricEntities.compactMap({
+        let trackers: [AKAugmentedTracker] = moduleEntities.compactMap({
             if let aTracker = $0 as? AKAugmentedTracker {
                 return aTracker
             } else {
@@ -261,7 +261,7 @@ class UnanchoredRenderModule: RenderModule {
             }
         })
         
-        let targets: [AKTarget] = moduleGeometricEntities.compactMap({
+        let targets: [AKTarget] = moduleEntities.compactMap({
             if let aTarget = $0 as? AKTarget {
                 return aTarget
             } else {

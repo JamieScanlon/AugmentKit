@@ -232,11 +232,11 @@ class SurfacesRenderModule: RenderModule {
         
     }
     
-    func updateBuffers(withAllGeometricEntities: [AKGeometricEntity], moduleGeometricEntities: [AKGeometricEntity], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, argumentBufferProperties theArgumentBufferProperties: ArgumentBufferProperties, forRenderPass renderPass: RenderPass) {
+    func updateBuffers(withModuleEntities moduleEntities: [AKEntity], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, argumentBufferProperties theArgumentBufferProperties: ArgumentBufferProperties, forRenderPass renderPass: RenderPass) {
         
         argumentBufferProperties = theArgumentBufferProperties
         
-        let anchors: [AKRealAnchor] = moduleGeometricEntities.compactMap({
+        let anchors: [AKRealAnchor] = moduleEntities.compactMap({
             if let anAnchor = $0 as? AKRealAnchor {
                 return anAnchor
             } else {

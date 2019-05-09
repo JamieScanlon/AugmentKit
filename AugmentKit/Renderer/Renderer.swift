@@ -703,34 +703,34 @@ public class Renderer: NSObject {
             realAnchors.forEach { anAnchor in
                 // Keep track of the anchor bucketed by the RenderModule
                 // This will be used to load individual models per anchor.
-                if let existingGeometries = geometriesForRenderModule[SurfacesRenderModule.identifier] {
+                if let existingGeometries = entitiesForRenderModule[SurfacesRenderModule.identifier] {
                     var mutableExistingGeometries = existingGeometries
                     mutableExistingGeometries.append(anAnchor)
-                    geometriesForRenderModule[SurfacesRenderModule.identifier] = mutableExistingGeometries
+                    entitiesForRenderModule[SurfacesRenderModule.identifier] = mutableExistingGeometries
                     anchorsRenderModule?.isInitialized = false
                     hasUninitializedModules = true
                 } else {
-                    geometriesForRenderModule[SurfacesRenderModule.identifier] = [anAnchor]
+                    entitiesForRenderModule[SurfacesRenderModule.identifier] = [anAnchor]
                 }
             }
             
             addModule(forModuelIdentifier: SurfacesRenderModule.identifier)
             
-        } else if surfacesRenderModule != nil && (geometriesForRenderModule[SurfacesRenderModule.identifier]?.count ?? 0) != realAnchors.count {
+        } else if surfacesRenderModule != nil && (entitiesForRenderModule[SurfacesRenderModule.identifier]?.count ?? 0) != realAnchors.count {
             
             // Update the geometries as they get added or removed
-            geometriesForRenderModule[SurfacesRenderModule.identifier] = []
+            entitiesForRenderModule[SurfacesRenderModule.identifier] = []
             realAnchors.forEach { anAnchor in
                 // Keep track of the anchor bucketed by the RenderModule
                 // This will be used to load individual models per anchor.
-                if let existingGeometries = geometriesForRenderModule[SurfacesRenderModule.identifier] {
+                if let existingGeometries = entitiesForRenderModule[SurfacesRenderModule.identifier] {
                     var mutableExistingGeometries = existingGeometries
                     mutableExistingGeometries.append(anAnchor)
-                    geometriesForRenderModule[SurfacesRenderModule.identifier] = mutableExistingGeometries
+                    entitiesForRenderModule[SurfacesRenderModule.identifier] = mutableExistingGeometries
                     anchorsRenderModule?.isInitialized = false
                     hasUninitializedModules = true
                 } else {
-                    geometriesForRenderModule[SurfacesRenderModule.identifier] = [anAnchor]
+                    entitiesForRenderModule[SurfacesRenderModule.identifier] = [anAnchor]
                 }
             }
             
@@ -801,7 +801,7 @@ public class Renderer: NSObject {
         // Update Headings
         //
         
-        let allAKAnchors: [AKAnchor] = geometriesForRenderModule.flatMap({$0.value}).compactMap { geometry in
+        let allAKAnchors: [AKAnchor] = entitiesForRenderModule.flatMap({$0.value}).compactMap { geometry in
             if let anAKAnchor = geometry as? AKAnchor {
                 return anAKAnchor
             } else {
@@ -1004,14 +1004,14 @@ public class Renderer: NSObject {
         
         // Keep track of the anchor bucketed by the RenderModule
         // This will be used to load individual models per anchor.
-        if let existingGeometries = geometriesForRenderModule[AnchorsRenderModule.identifier] {
+        if let existingGeometries = entitiesForRenderModule[AnchorsRenderModule.identifier] {
             var mutableExistingGeometries = existingGeometries
             mutableExistingGeometries.append(akAnchor)
-            geometriesForRenderModule[AnchorsRenderModule.identifier] = mutableExistingGeometries
+            entitiesForRenderModule[AnchorsRenderModule.identifier] = mutableExistingGeometries
             anchorsRenderModule?.isInitialized = false
             hasUninitializedModules = true
         } else {
-            geometriesForRenderModule[AnchorsRenderModule.identifier] = [akAnchor]
+            entitiesForRenderModule[AnchorsRenderModule.identifier] = [akAnchor]
         }
         
         // Add a new anchor to the session
@@ -1043,12 +1043,12 @@ public class Renderer: NSObject {
         
         // Keep track of the tracker bucketed by the RenderModule
         // This will be used to load individual models per anchor.
-        if let existingGeometries = geometriesForRenderModule[UnanchoredRenderModule.identifier] {
+        if let existingGeometries = entitiesForRenderModule[UnanchoredRenderModule.identifier] {
             var mutableExistingGeometries = existingGeometries
             mutableExistingGeometries.append(akTracker)
-            geometriesForRenderModule[UnanchoredRenderModule.identifier] = mutableExistingGeometries
+            entitiesForRenderModule[UnanchoredRenderModule.identifier] = mutableExistingGeometries
         } else {
-            geometriesForRenderModule[UnanchoredRenderModule.identifier] = [akTracker]
+            entitiesForRenderModule[UnanchoredRenderModule.identifier] = [akTracker]
         }
         
     }
@@ -1081,13 +1081,15 @@ public class Renderer: NSObject {
         }
         
         // Keep track of the path bucketed by the RenderModule
-        if let existingGeometries = geometriesForRenderModule[PathsRenderModule.identifier] {
+        if let existingGeometries = entitiesForRenderModule[PathsRenderModule.identifier] {
             var mutableExistingGeometries = existingGeometries
             mutableExistingGeometries.append(contentsOf: akPath.geometries)
-            geometriesForRenderModule[PathsRenderModule.identifier] = mutableExistingGeometries
+            entitiesForRenderModule[PathsRenderModule.identifier] = mutableExistingGeometries
         } else {
-            geometriesForRenderModule[PathsRenderModule.identifier] = akPath.geometries
+            entitiesForRenderModule[PathsRenderModule.identifier] = akPath.geometries
         }
+        
+        paths.append(akPath)
         
     }
     
@@ -1107,12 +1109,12 @@ public class Renderer: NSObject {
         
         // Keep track of the tracker bucketed by the RenderModule
         // This will be used to load individual models per anchor.
-        if let existingGeometries = geometriesForRenderModule[UnanchoredRenderModule.identifier] {
+        if let existingGeometries = entitiesForRenderModule[UnanchoredRenderModule.identifier] {
             var mutableExistingGeometries = existingGeometries
             mutableExistingGeometries.append(gazeTarget)
-            geometriesForRenderModule[UnanchoredRenderModule.identifier] = mutableExistingGeometries
+            entitiesForRenderModule[UnanchoredRenderModule.identifier] = mutableExistingGeometries
         } else {
-            geometriesForRenderModule[UnanchoredRenderModule.identifier] = [gazeTarget]
+            entitiesForRenderModule[UnanchoredRenderModule.identifier] = [gazeTarget]
         }
         
     }
@@ -1128,11 +1130,11 @@ public class Renderer: NSObject {
         
         let anchorType = type(of: akAnchor).type
         modelProvider?.unregisterAsset(forObjectType: anchorType, identifier: akAnchor.identifier)
-        var existingGeometries = geometriesForRenderModule[AnchorsRenderModule.identifier]
+        var existingGeometries = entitiesForRenderModule[AnchorsRenderModule.identifier]
         if let index = existingGeometries?.firstIndex(where: {$0.identifier == akAnchor.identifier}) {
             existingGeometries?.remove(at: index)
         }
-        geometriesForRenderModule[AnchorsRenderModule.identifier] = existingGeometries
+        entitiesForRenderModule[AnchorsRenderModule.identifier] = existingGeometries
         
         guard let arAnchor = session.currentFrame?.anchors.first(where: {$0.identifier == akAnchor.identifier}) else {
             return
@@ -1150,11 +1152,11 @@ public class Renderer: NSObject {
         
         let anchorType = type(of: akTracker).type
         modelProvider?.unregisterAsset(forObjectType: anchorType, identifier: akTracker.identifier)
-        var existingGeometries = geometriesForRenderModule[UnanchoredRenderModule.identifier]
+        var existingGeometries = entitiesForRenderModule[UnanchoredRenderModule.identifier]
         if let index = existingGeometries?.firstIndex(where: {$0.identifier == akTracker.identifier}) {
             existingGeometries?.remove(at: index)
         }
-        geometriesForRenderModule[UnanchoredRenderModule.identifier] = existingGeometries
+        entitiesForRenderModule[UnanchoredRenderModule.identifier] = existingGeometries
         
     }
     /**
@@ -1172,11 +1174,11 @@ public class Renderer: NSObject {
         
         let anchorType = type(of: akPath).type
         modelProvider?.unregisterAsset(forObjectType: anchorType, identifier: akPath.identifier)
-        var existingGeometries = geometriesForRenderModule[PathsRenderModule.identifier]
+        var existingGeometries = entitiesForRenderModule[PathsRenderModule.identifier]
         if let index = existingGeometries?.firstIndex(where: {$0.identifier == akPath.identifier}) {
             existingGeometries?.remove(at: index)
         }
-        geometriesForRenderModule[PathsRenderModule.identifier] = existingGeometries
+        entitiesForRenderModule[PathsRenderModule.identifier] = existingGeometries
         
     }
     
@@ -1189,11 +1191,11 @@ public class Renderer: NSObject {
         
         let anchorType = type(of: gazeTarget).type
         modelProvider?.unregisterAsset(forObjectType: anchorType, identifier: gazeTarget.identifier)
-        var existingGeometries = geometriesForRenderModule[UnanchoredRenderModule.identifier]
+        var existingGeometries = entitiesForRenderModule[UnanchoredRenderModule.identifier]
         if let index = existingGeometries?.firstIndex(where: {$0.identifier == gazeTarget.identifier}) {
             existingGeometries?.remove(at: index)
         }
-        geometriesForRenderModule[UnanchoredRenderModule.identifier] = existingGeometries
+        entitiesForRenderModule[UnanchoredRenderModule.identifier] = existingGeometries
         
     }
     
@@ -1243,21 +1245,19 @@ public class Renderer: NSObject {
     fileprivate var shadowRenderPass: RenderPass?
     
     // Keeping track of objects to render
-    fileprivate var geometriesForRenderModule = [String: [AKGeometricEntity]]()
+    fileprivate var entitiesForRenderModule = [String: [AKEntity]]()
     fileprivate var augmentedAnchors: [AKAugmentedAnchor] {
-        return geometriesForRenderModule[AnchorsRenderModule.identifier]?.compactMap({$0 as? AKAugmentedAnchor}) ?? []
+        return entitiesForRenderModule[AnchorsRenderModule.identifier]?.compactMap({$0 as? AKAugmentedAnchor}) ?? []
     }
     fileprivate var realAnchors: [AKRealAnchor] {
-        return geometriesForRenderModule[SurfacesRenderModule.identifier]?.compactMap({$0 as? AKRealAnchor}) ?? []
+        return entitiesForRenderModule[SurfacesRenderModule.identifier]?.compactMap({$0 as? AKRealAnchor}) ?? []
     }
     fileprivate var trackers: [AKAugmentedTracker] {
-        return geometriesForRenderModule[UnanchoredRenderModule.identifier]?.compactMap({$0 as? AKAugmentedTracker}) ?? []
+        return entitiesForRenderModule[UnanchoredRenderModule.identifier]?.compactMap({$0 as? AKAugmentedTracker}) ?? []
     }
-    fileprivate var paths: [AKPath] {
-        return geometriesForRenderModule[PathsRenderModule.identifier]?.compactMap({$0 as? AKPath}) ?? []
-    }
+    fileprivate var paths = [AKPath]()
     fileprivate var gazeTargets: [GazeTarget] {
-        return geometriesForRenderModule[UnanchoredRenderModule.identifier]?.compactMap({$0 as? GazeTarget}) ?? []
+        return entitiesForRenderModule[UnanchoredRenderModule.identifier]?.compactMap({$0 as? GazeTarget}) ?? []
     }
     fileprivate var environmentProbeAnchors = [AREnvironmentProbeAnchor]()
     fileprivate var environmentAnchorsWithReatedAnchors = [AREnvironmentProbeAnchor: [UUID]]()
@@ -1540,8 +1540,25 @@ public class Renderer: NSObject {
                 // Initialize the module
                 module.initializeBuffers(withDevice: device, maxInFlightFrames: Constants.maxInFlightFrames, maxInstances: Constants.maxInstances)
                 
+                // Get all of the AKGeometricEntity's associated with this module
+                var geometricEntities: [AKGeometricEntity] = (entitiesForRenderModule[module.moduleIdentifier] ?? []).compactMap({
+                    if let geoEntity = $0 as? AKGeometricEntity {
+                        return geoEntity
+                    } else {
+                        return nil
+                    }
+                })
+                let geometricEntityGroups: [AKGeometricEntityGroup] = (entitiesForRenderModule[module.moduleIdentifier] ?? []).compactMap({
+                    if let geoEntity = $0 as? AKGeometricEntityGroup {
+                        return geoEntity
+                    } else {
+                        return nil
+                    }
+                })
+                let groupGeometries = geometricEntityGroups.flatMap({$0.geometries})
+                geometricEntities.append(contentsOf: groupGeometries)
+                
                 // Load the assets
-                let geometricEntities = geometriesForRenderModule[module.moduleIdentifier] ?? []
                 module.loadAssets(forGeometricEntities: geometricEntities, fromModelProvider: modelProvider, textureLoader: textureLoader, completion: { [weak self] in
                    
                     loadedCount += 1
@@ -1609,26 +1626,26 @@ public class Renderer: NSObject {
     
     fileprivate func prepareToDraw(forCameraProperties cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, renderPass: RenderPass?) {
         
-        let allGeometricEntities: [AKGeometricEntity] = geometriesForRenderModule.flatMap { (key, value) in
+        let allEntities: [AKEntity] = entitiesForRenderModule.flatMap { (key, value) in
             return value
         }
         // Update Buffers
         computeModules.forEach { module in
             if let preRenderComputeModule = module as? PreRenderComputeModule, let precalculationPass = precalculationPass, preRenderComputeModule.isInitialized {
-                preRenderComputeModule.prepareToDraw(withAllGeometricEntities: allGeometricEntities, cameraProperties: cameraProperties, environmentProperties: environmentProperties, shadowProperties: shadowProperties, computePass: precalculationPass, renderPass: renderPass)
+                preRenderComputeModule.prepareToDraw(withAllEntities: allEntities, cameraProperties: cameraProperties, environmentProperties: environmentProperties, shadowProperties: shadowProperties, computePass: precalculationPass, renderPass: renderPass)
             }
         }
     }
     
     fileprivate func updateBuffers(forCameraProperties cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, argumentBufferProperties: ArgumentBufferProperties, renderPass: RenderPass ) {
         
-        let allGeometricEntities: [AKGeometricEntity] = geometriesForRenderModule.flatMap { (key, value) in
+        let allEntities: [AKEntity] = entitiesForRenderModule.flatMap { (key, value) in
             return value
         }
         // Update Buffers
         renderModules.forEach { module in
             if module.isInitialized {
-                module.updateBuffers(withAllGeometricEntities: allGeometricEntities, moduleGeometricEntities: geometriesForRenderModule[module.moduleIdentifier] ?? [], cameraProperties: cameraProperties, environmentProperties: environmentProperties, shadowProperties: shadowProperties, argumentBufferProperties: argumentBufferProperties, forRenderPass: renderPass)
+                module.updateBuffers(withModuleEntities: entitiesForRenderModule[module.moduleIdentifier] ?? [], cameraProperties: cameraProperties, environmentProperties: environmentProperties, shadowProperties: shadowProperties, argumentBufferProperties: argumentBufferProperties, forRenderPass: renderPass)
             }
         }
     }
@@ -1730,12 +1747,12 @@ extension Renderer: ARSessionDelegate {
                     let newRealAnchor = RealSurfaceAnchor(at: WorldLocation(transform: planeAnchor.transform))
                     newRealAnchor.setARAnchor(planeAnchor)
                     newRealAnchor.identifier = planeAnchor.identifier
-                    if let existingGeometries = geometriesForRenderModule[SurfacesRenderModule.identifier] {
+                    if let existingGeometries = entitiesForRenderModule[SurfacesRenderModule.identifier] {
                         var mutableExistingGeometries = existingGeometries
                         mutableExistingGeometries.append(newRealAnchor)
-                        geometriesForRenderModule[SurfacesRenderModule.identifier] = mutableExistingGeometries
+                        entitiesForRenderModule[SurfacesRenderModule.identifier] = mutableExistingGeometries
                     } else {
-                        geometriesForRenderModule[SurfacesRenderModule.identifier] = [newRealAnchor]
+                        entitiesForRenderModule[SurfacesRenderModule.identifier] = [newRealAnchor]
                     }
                 }
                 

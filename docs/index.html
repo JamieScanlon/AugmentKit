@@ -164,6 +164,9 @@
                 <a href="Global Variables.html#/s:10AugmentKit32AKErrorCodeModelProviderNotFoundSivp">AKErrorCodeModelProviderNotFound</a>
               </li>
               <li class="nav-group-task">
+                <a href="Global Variables.html#/s:10AugmentKit29AKErrorCodeRenderPassNotFoundSivp">AKErrorCodeRenderPassNotFound</a>
+              </li>
+              <li class="nav-group-task">
                 <a href="Global Variables.html#/s:10AugmentKit45AKErrorCodeRenderPipelineInitializationFailedSivp">AKErrorCodeRenderPipelineInitializationFailed</a>
               </li>
               <li class="nav-group-task">
@@ -225,6 +228,9 @@
             <a href="Extensions.html">Extensions</a>
             <ul class="nav-group-tasks">
               <li class="nav-group-task">
+                <a href="Extensions/CocoaError.html">CocoaError</a>
+              </li>
+              <li class="nav-group-task">
                 <a href="Extensions/Data.html">Data</a>
               </li>
               <li class="nav-group-task">
@@ -243,13 +249,22 @@
                 <a href="Extensions/Notification/Name.html">– Name</a>
               </li>
               <li class="nav-group-task">
+                <a href="Extensions/double4.html">double4</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="Extensions/double4x4.html">double4x4</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="Extensions/float3.html">float3</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="Extensions/float4.html">float4</a>
+              </li>
+              <li class="nav-group-task">
                 <a href="Extensions/float4x4.html">float4x4</a>
               </li>
               <li class="nav-group-task">
-                <a href="Extensions/simd_float3.html">simd_float3</a>
-              </li>
-              <li class="nav-group-task">
-                <a href="Extensions/simd_float4.html">simd_float4</a>
+                <a href="Extensions/simd_quatd.html">simd_quatd</a>
               </li>
               <li class="nav-group-task">
                 <a href="Extensions/simd_quatf.html">simd_quatf</a>
@@ -275,7 +290,13 @@
                 <a href="Protocols/AKEffect.html">AKEffect</a>
               </li>
               <li class="nav-group-task">
+                <a href="Protocols/AKEntity.html">AKEntity</a>
+              </li>
+              <li class="nav-group-task">
                 <a href="Protocols/AKGeometricEntity.html">AKGeometricEntity</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="Protocols/AKGeometricEntityGroup.html">AKGeometricEntityGroup</a>
               </li>
               <li class="nav-group-task">
                 <a href="Protocols/AKHeading.html">AKHeading</a>
@@ -334,6 +355,15 @@
             <a href="Structs.html">Structures</a>
             <ul class="nav-group-tasks">
               <li class="nav-group-task">
+                <a href="Structs/AKLine.html">AKLine</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="Structs/AKSphere.html">AKSphere</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="Structs/AKSphereLineIntersection.html">AKSphereLineIntersection</a>
+              </li>
+              <li class="nav-group-task">
                 <a href="Structs/AKVector.html">AKVector</a>
               </li>
               <li class="nav-group-task">
@@ -362,6 +392,9 @@
               </li>
               <li class="nav-group-task">
                 <a href="Structs.html#/s:10AugmentKit16AnimatedSkeletonV">AnimatedSkeleton</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="Structs.html#/s:10AugmentKit24ArgumentBufferPropertiesV">ArgumentBufferProperties</a>
               </li>
               <li class="nav-group-task">
                 <a href="Structs.html#/s:10AugmentKit14AssetErrorInfoV">AssetErrorInfo</a>
@@ -430,6 +463,9 @@
                 <a href="Structs/RenderStats.html">RenderStats</a>
               </li>
               <li class="nav-group-task">
+                <a href="Structs.html#/s:10AugmentKit16ShadowPropertiesV">ShadowProperties</a>
+              </li>
+              <li class="nav-group-task">
                 <a href="Structs.html#/s:10AugmentKit8SkinDataV">SkinData</a>
               </li>
               <li class="nav-group-task">
@@ -477,6 +513,8 @@
 <p><img src="media/AugmentKit-Sample-2.gif" alt=""></p>
 <h5 id='tracking-anchors' class='heading'>Tracking anchors</h5>
 <h5 id='paths' class='heading'>Paths</h5>
+
+<p><img src="media/AugmentKit-Sample-3.gif" alt=""></p>
 <h5 id='uiview-anchors' class='heading'>UIView anchors</h5>
 <h5 id='custom-pbr-render-engine' class='heading'>Custom PBR render engine</h5>
 
@@ -565,7 +603,7 @@
     <span class="k">return</span>
 <span class="p">}</span>
 
-<span class="k">let</span> <span class="nv">path</span> <span class="o">=</span> <span class="kt">PathAnchor</span><span class="p">(</span><span class="nv">withWorldLocaitons</span><span class="p">:</span> <span class="p">[</span><span class="n">location1</span><span class="p">,</span> <span class="n">location2</span><span class="p">,</span> <span class="n">location3</span><span class="p">,</span> <span class="n">location4</span><span class="p">,</span> <span class="n">location5</span><span class="p">,</span> <span class="n">location6</span><span class="p">,</span> <span class="n">location7</span><span class="p">,</span> <span class="n">location8</span><span class="p">,</span> <span class="n">location9</span><span class="p">,</span> <span class="n">location1</span><span class="p">])</span>
+<span class="k">let</span> <span class="nv">path</span> <span class="o">=</span> <span class="kt">PathAnchor</span><span class="p">(</span><span class="nv">withWorldLocaitons</span><span class="p">:</span> <span class="p">[</span><span class="n">location1</span><span class="p">,</span> <span class="n">location2</span><span class="p">,</span> <span class="n">location3</span><span class="p">,</span> <span class="n">location4</span><span class="p">,</span> <span class="n">location5</span><span class="p">,</span> <span class="n">location6</span><span class="p">,</span> <span class="n">location7</span><span class="p">,</span> <span class="n">location8</span><span class="p">,</span> <span class="n">location9</span><span class="p">,</span> <span class="n">location1</span><span class="p">],</span> <span class="nv">color</span><span class="p">:</span> <span class="o">.</span><span class="n">red</span><span class="p">)</span>
 <span class="n">world</span><span class="o">.</span><span class="nf">add</span><span class="p">(</span><span class="nv">akPath</span><span class="p">:</span> <span class="n">path</span><span class="p">)</span>
 </code></pre>
 <h4 id='rendering-a-uiview-in-the-ar-world' class='heading'>Rendering a UIView in the AR world</h4>
@@ -677,9 +715,9 @@ s'durned innarestin'...
 <li>[ ] Animated AugmentedUIViewSurface</li>
 <li>[ ] Improve jerky movements with smoothing</li>
 <li>[ ] Surface culling</li>
-<li>[ ] Offload many per-frame calculations to GPU Kernel function</li>
+<li>[x] Offload many per-frame calculations to GPU Kernel function</li>
 <li>[ ] Improve render engine</li>
-<li>[ ] Add support for shadow maps</li>
+<li>[x] Add support for shadow maps</li>
 </ul>
 <h4 id='em-stretch-goals-em' class='heading'><em>Stretch Goals</em></h4>
 
@@ -697,7 +735,7 @@ s'durned innarestin'...
           </section>
         </section>
         <section id="footer">
-          <p>&copy; 2018 <a class="link" href="" target="_blank" rel="external"></a>. All rights reserved. (Last updated: 2018-10-07)</p>
+          <p>&copy; 2019 <a class="link" href="" target="_blank" rel="external"></a>. All rights reserved. (Last updated: 2019-05-14)</p>
           <p>Generated by <a class="link" href="https://github.com/realm/jazzy" target="_blank" rel="external">jazzy ♪♫ v0.9.3</a>, a <a class="link" href="https://realm.io" target="_blank" rel="external">Realm</a> project.</p>
         </section>
       </article>

@@ -165,6 +165,9 @@
                 <a href="../Global Variables.html#/s:10AugmentKit32AKErrorCodeModelProviderNotFoundSivp">AKErrorCodeModelProviderNotFound</a>
               </li>
               <li class="nav-group-task">
+                <a href="../Global Variables.html#/s:10AugmentKit29AKErrorCodeRenderPassNotFoundSivp">AKErrorCodeRenderPassNotFound</a>
+              </li>
+              <li class="nav-group-task">
                 <a href="../Global Variables.html#/s:10AugmentKit45AKErrorCodeRenderPipelineInitializationFailedSivp">AKErrorCodeRenderPipelineInitializationFailed</a>
               </li>
               <li class="nav-group-task">
@@ -226,6 +229,9 @@
             <a href="../Extensions.html">Extensions</a>
             <ul class="nav-group-tasks">
               <li class="nav-group-task">
+                <a href="../Extensions/CocoaError.html">CocoaError</a>
+              </li>
+              <li class="nav-group-task">
                 <a href="../Extensions/Data.html">Data</a>
               </li>
               <li class="nav-group-task">
@@ -244,13 +250,22 @@
                 <a href="../Extensions/Notification/Name.html">– Name</a>
               </li>
               <li class="nav-group-task">
+                <a href="../Extensions/double4.html">double4</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Extensions/double4x4.html">double4x4</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Extensions/float3.html">float3</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Extensions/float4.html">float4</a>
+              </li>
+              <li class="nav-group-task">
                 <a href="../Extensions/float4x4.html">float4x4</a>
               </li>
               <li class="nav-group-task">
-                <a href="../Extensions/simd_float3.html">simd_float3</a>
-              </li>
-              <li class="nav-group-task">
-                <a href="../Extensions/simd_float4.html">simd_float4</a>
+                <a href="../Extensions/simd_quatd.html">simd_quatd</a>
               </li>
               <li class="nav-group-task">
                 <a href="../Extensions/simd_quatf.html">simd_quatf</a>
@@ -276,7 +291,13 @@
                 <a href="../Protocols/AKEffect.html">AKEffect</a>
               </li>
               <li class="nav-group-task">
+                <a href="../Protocols/AKEntity.html">AKEntity</a>
+              </li>
+              <li class="nav-group-task">
                 <a href="../Protocols/AKGeometricEntity.html">AKGeometricEntity</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Protocols/AKGeometricEntityGroup.html">AKGeometricEntityGroup</a>
               </li>
               <li class="nav-group-task">
                 <a href="../Protocols/AKHeading.html">AKHeading</a>
@@ -335,6 +356,15 @@
             <a href="../Structs.html">Structures</a>
             <ul class="nav-group-tasks">
               <li class="nav-group-task">
+                <a href="../Structs/AKLine.html">AKLine</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/AKSphere.html">AKSphere</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/AKSphereLineIntersection.html">AKSphereLineIntersection</a>
+              </li>
+              <li class="nav-group-task">
                 <a href="../Structs/AKVector.html">AKVector</a>
               </li>
               <li class="nav-group-task">
@@ -363,6 +393,9 @@
               </li>
               <li class="nav-group-task">
                 <a href="../Structs.html#/s:10AugmentKit16AnimatedSkeletonV">AnimatedSkeleton</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs.html#/s:10AugmentKit24ArgumentBufferPropertiesV">ArgumentBufferProperties</a>
               </li>
               <li class="nav-group-task">
                 <a href="../Structs.html#/s:10AugmentKit14AssetErrorInfoV">AssetErrorInfo</a>
@@ -431,6 +464,9 @@
                 <a href="../Structs/RenderStats.html">RenderStats</a>
               </li>
               <li class="nav-group-task">
+                <a href="../Structs.html#/s:10AugmentKit16ShadowPropertiesV">ShadowProperties</a>
+              </li>
+              <li class="nav-group-task">
                 <a href="../Structs.html#/s:10AugmentKit8SkinDataV">SkinData</a>
               </li>
               <li class="nav-group-task">
@@ -486,7 +522,7 @@
                     <section class="section">
                       <div class="pointer"></div>
                       <div class="abstract">
-                        <p>An array of <code><a href="../Protocols/AKEffect.html">AKEffect</a></code> objects that are applied by the renderer</p>
+                        <p>An array of <code><a href="../Protocols/AKEffect.html">AKEffect</a></code> objects that are applied by the renderer. Overrides the definition in <code><a href="../Protocols/AKGeometricEntity.html">AKGeometricEntity</a></code> to require a setter</p>
 
                       </div>
                       <div class="declaration">
@@ -500,12 +536,123 @@
                     </section>
                   </div>
                 </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit19AKPathSegmentAnchorP16segmentTransformSo13simd_float4x4avp"></a>
+                    <a name="//apple_ref/swift/Property/segmentTransform" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit19AKPathSegmentAnchorP16segmentTransformSo13simd_float4x4avp">segmentTransform</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>A transform, in the coodinate space of the AR world, which is used to transform the path segment geometry such that it connects with the previous segment to form a line. While <code>worldLocation.transform</code> represents a location (no scaling or roataional component) of the terminating point of the segment, <code>segmentTransform</code> represents a location midpoint between the terminating point for this segment and the terminating point for the previous segment. It also includes a rotatinal and scale component that rotates the segment so that it starts at the previous anchos termination point and ends at this anchors termination point. If there is only one <code>AKPathSegmentAnchor</code> in an <code><a href="../Protocols/AKPath.html">AKPath</a></code>, this property is undefined.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">var</span> <span class="nv">segmentTransform</span><span class="p">:</span> <span class="n">matrix_float4x4</span> <span class="p">{</span> <span class="k">get</span> <span class="p">}</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit19AKPathSegmentAnchorP03setD9TransformyySo13simd_float4x4aF"></a>
+                    <a name="//apple_ref/swift/Method/setSegmentTransform(_:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit19AKPathSegmentAnchorP03setD9TransformyySo13simd_float4x4aF">setSegmentTransform(_:)</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Sets a new <code><a href="../Protocols/AKPathSegmentAnchor.html#/s:10AugmentKit19AKPathSegmentAnchorP16segmentTransformSo13simd_float4x4avp">segmentTransform</a></code> value</p>
+
+<ul>
+<li>_: A <code>matrix_float4x4</code></li>
+</ul>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">func</span> <span class="nf">setSegmentTransform</span><span class="p">(</span><span class="n">_</span> <span class="nv">newTransform</span><span class="p">:</span> <span class="n">matrix_float4x4</span><span class="p">)</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+              </ul>
+            </div>
+            <div class="task-group">
+              <ul>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit19AKPathSegmentAnchorPAAE06updateD9Transform8withLineyAA6AKLineV_tF"></a>
+                    <a name="//apple_ref/swift/Method/updateSegmentTransform(withLine:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit19AKPathSegmentAnchorPAAE06updateD9Transform8withLineyAA6AKLineV_tF">updateSegmentTransform(withLine:)</a>
+                    </code>
+                      <span class="declaration-note">
+                        Extension method
+                      </span>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>This methods recalculates the position, scale, and rotation of a path segment anchor so that it connects the two points in the line. For the <code><a href="../Structs/AKLine.html">AKLine</a></code> object, <code>point0</code> represents the position of the previous <code>AKPathSegmentAnchor</code> and <code>point1</code> represents the position of this anchor.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">func</span> <span class="nf">updateSegmentTransform</span><span class="p">(</span><span class="n">withLine</span> <span class="nv">line</span><span class="p">:</span> <span class="kt"><a href="../Structs/AKLine.html">AKLine</a></span><span class="p">)</span></code></pre>
+
+                        </div>
+                      </div>
+                      <div>
+                        <h4>Parameters</h4>
+                        <table class="graybox">
+                          <tbody>
+                            <tr>
+                              <td>
+                                <code>
+                                <em>withLine</em>
+                                </code>
+                              </td>
+                              <td>
+                                <div>
+                                  <p>An <code><a href="../Structs/AKLine.html">AKLine</a></code> obhect. The <code>point0</code> property represents the position of the previous <code>AKPathSegmentAnchor</code> and the <code>point1</code> property represents the position of this anchor.</p>
+                                </div>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
+                  </div>
+                </li>
               </ul>
             </div>
           </section>
         </section>
         <section id="footer">
-          <p>&copy; 2018 <a class="link" href="" target="_blank" rel="external"></a>. All rights reserved. (Last updated: 2018-10-07)</p>
+          <p>&copy; 2019 <a class="link" href="" target="_blank" rel="external"></a>. All rights reserved. (Last updated: 2019-05-14)</p>
           <p>Generated by <a class="link" href="https://github.com/realm/jazzy" target="_blank" rel="external">jazzy ♪♫ v0.9.3</a>, a <a class="link" href="https://realm.io" target="_blank" rel="external">Realm</a> project.</p>
         </section>
       </article>

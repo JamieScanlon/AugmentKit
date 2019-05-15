@@ -133,7 +133,7 @@ guard let location9 = world.worldLocation(withLatitude: 37.3330, longitude: -122
     return
 }
 
-let path = PathAnchor(withWorldLocaitons: [location1, location2, location3, location4, location5, location6, location7, location8, location9, location1])
+let path = PathAnchor(withWorldLocaitons: [location1, location2, location3, location4, location5, location6, location7, location8, location9, location1], color: .red)
 world.add(akPath: path)
 ```
 
@@ -225,7 +225,7 @@ This project has completed all of the base pre-release functionality. There are 
 
 ### Features
 
-* Written in Swift 4, ARKit 2, and Metal 2
+* Written in Swift 5, ARKit 2, and Metal 2
 
 ### Requirements
 
@@ -258,9 +258,9 @@ This project has completed all of the base pre-release functionality. There are 
 - [ ] Animated AugmentedUIViewSurface
 - [ ] Improve jerky movements with smoothing
 - [ ] Surface culling
-- [ ] Offload many per-frame calculations to GPU Kernel function
+- [x] Offload many per-frame calculations to GPU Kernel function
 - [ ] Improve render engine
-- [ ] Add support for shadow maps
+- [x] Add support for shadow maps
 
 #### _Stretch Goals_
 

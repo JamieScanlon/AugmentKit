@@ -120,6 +120,27 @@
       "warning": "undocumented"
     },
     {
+      "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/AKWorld.swift",
+      "line": 429,
+      "symbol": "AKWorld.deinit",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/Anchors/AKPath.swift",
+      "line": null,
+      "symbol": "AKPath",
+      "symbol_kind": "source.lang.swift.decl.extension",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/Anchors/AKPath.swift",
+      "line": 33,
+      "symbol": "AKPath",
+      "symbol_kind": "source.lang.swift.decl.protocol",
+      "warning": "undocumented"
+    },
+    {
       "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/Primatives/AKAnimatable.swift",
       "line": 36,
       "symbol": "AKAnimatable.Value",
@@ -155,6 +176,13 @@
       "warning": "undocumented"
     },
     {
+      "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/Utility/GeometryUtilities.swift",
+      "line": 508,
+      "symbol": "double4.toFloat()",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
       "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/AKCore/Utility/SHA256.swift",
       "line": 45,
       "symbol": "SHA256.init(_:)",
@@ -177,7 +205,7 @@
     },
     {
       "file": "/Users/marvinscanlon/Documents/AugmentKit/AugmentKit/Renderer/Renderer.swift",
-      "line": 407,
+      "line": 489,
       "symbol": "Renderer.currentFrameNumber",
       "symbol_kind": "source.lang.swift.decl.var.instance",
       "warning": "undocumented"
@@ -187,6 +215,13 @@
       "line": null,
       "symbol": "Archive.EndOfCentralDirectoryRecord",
       "symbol_kind": "source.lang.swift.decl.extension",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/marvinscanlon/Documents/AugmentKit/Libraries/ZIPFoundation/Archive.swift",
+      "line": 175,
+      "symbol": "Archive.deinit",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
       "warning": "undocumented"
     },
     {

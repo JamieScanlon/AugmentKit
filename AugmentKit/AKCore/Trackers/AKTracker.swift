@@ -37,14 +37,11 @@ import Foundation
  */
 public protocol AKTracker: class, AKGeometricEntity {
     /**
+     A unique, per-instance identifier. Redefine the `identifier property to require a setter.
+     */
+    var identifier: UUID? { get set }
+    /**
      The position of the tracker. The position is relative to the objects this tracks.
      */
     var position: AKRelativePosition { get set }
-    /**
-     Set the identifier for this instance
-     - Parameters:
-        - _: A UUID
-     */
-    func setIdentifier(_ identifier: UUID)
-    
 }

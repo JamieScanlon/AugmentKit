@@ -137,7 +137,7 @@ extension NSCoder {
     
     /// :nodoc:
     func encodeMatrixFloat4x4(_ value: matrix_float4x4, forKey key: String) {
-        let array: [Float] = value.columns.0.map({$0}) + value.columns.1.map({$0}) + value.columns.2.map({$0}) + value.columns.3.map({$0})
+        let array: [Float] = [value.columns.0.x, value.columns.0.y, value.columns.0.z, value.columns.0.w, value.columns.1.x, value.columns.1.y, value.columns.1.z, value.columns.1.w, value.columns.2.x, value.columns.2.y, value.columns.2.z, value.columns.2.w, value.columns.3.x, value.columns.3.y, value.columns.3.z, value.columns.3.w]
         encode(array, forKey: key)
     }
 }

@@ -721,7 +721,7 @@ class ModelIOTools {
     private static func mapJoints<A: JointPathRemappable, B: JointPathRemappable>(from src: A, to dst: B) -> [Int] {
         let dstJointPaths = dst.jointPaths
         return src.jointPaths.compactMap { srcJointPath in
-            if let index = dstJointPaths.index(of: srcJointPath) {
+            if let index = dstJointPaths.firstIndex(of: srcJointPath) {
                 return index
             }
             print("Warning! animated joint \(srcJointPath) does not exist in skeleton")
@@ -854,7 +854,7 @@ class ModelIOTools {
         }
 
         if let mesh = findFirstMesh(instance) {
-            return masterMeshes.index(of: mesh)
+            return masterMeshes.firstIndex(of: mesh)
         }
 
         return nil

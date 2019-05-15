@@ -44,20 +44,56 @@ public struct AKVector: Equatable {
      The Z component
      */
     public var z: Double = 0
+    
+    /**
+     Initialize with `x`, `y`, and `z` components
+     */
+    public init(x: Double, y: Double, z: Double) {
+        self.x = x
+        self.y = y
+        self.z = z
+    }
+    
+    /**
+     Initialize with a `SIMD3<Float>` object
+     */
+    public init(_ float3: float3) {
+        self.x = Double(float3.x)
+        self.y = Double(float3.y)
+        self.z = Double(float3.z)
+    }
+    
+    /**
+     Initialize with a `SIMD3<Double>` object
+     */
+    public init(_ double3: double3) {
+        self.x = double3.x
+        self.y = double3.y
+        self.z = double3.z
+    }
+    
     /**
      Normalize the vector
      */
-    mutating func normalize() {
+    public mutating func normalize() {
         let newVecor = simd.normalize(double3(x, y, z))
         x = newVecor.x
         y = newVecor.y
         z = newVecor.z
     }
     /**
-     Createds a normalized vector from the current vector
+     Creates a normalized vector from the current vector
      */
-    func normalized() -> AKVector {
+    public func normalized() -> AKVector {
         let newVecor = simd.normalize(double3(x, y, z))
         return AKVector(x: newVecor.x, y: newVecor.y, z: newVecor.z)
     }
+    
+    /**
+     Returns a `SIMD3<Double>` representation of the vector
+     */
+    public func simdRepresentation() -> double3 {
+        return double3(x, y, z)
+    }
+    
 }

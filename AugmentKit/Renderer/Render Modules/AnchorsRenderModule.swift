@@ -52,7 +52,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     // The number of anchor instances to render
     private(set) var anchorInstanceCount: Int = 0
     
-    func initializeBuffers(withDevice aDevice: MTLDevice, maxInFlightBuffers: Int) {
+    func initializeBuffers(withDevice aDevice: MTLDevice, maxInFlightFrames: Int, maxInstances: Int) {
         
         guard device == nil else {
             return
@@ -60,23 +60,19 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         
         device = aDevice
         
-        // Calculate our uniform buffer sizes. We allocate Constants.maxBuffersInFlight instances for uniform
+        // Calculate our uniform buffer sizes. We allocate `maxInFlightFrames` instances for uniform
         // storage in a single buffer. This allows us to update uniforms in a ring (i.e. triple
         // buffer the uniforms) so that the GPU reads from one slot in the ring wil the CPU writes
         // to another. Anchor uniforms should be specified with a max instance count for instancing.
         // Also uniform storage must be aligned (to 256 bytes) to meet the requirements to be an
         // argument in the constant address space of our shading functions.
-        let anchorUniformBufferSize = Constants.alignedAnchorInstanceUniformsSize * maxInFlightBuffers
-        let materialUniformBufferSize = RenderModuleConstants.alignedMaterialSize * maxInFlightBuffers
-        let paletteBufferSize = Constants.alignedPaletteSize * Constants.maxPaletteSize * maxInFlightBuffers
-        let effectsUniformBufferSize = Constants.alignedEffectsUniformSize * maxInFlightBuffers
-        let environmentUniformBufferSize = Constants.alignedEnvironmentUniformSize * maxInFlightBuffers
+        let materialUniformBufferSize = RenderModuleConstants.alignedMaterialSize * maxInFlightFrames
+        let paletteBufferSize = Constants.alignedPaletteSize * Constants.maxPaletteSize * maxInFlightFrames
+        let effectsUniformBufferSize = Constants.alignedEffectsUniformSize * maxInFlightFrames
+        let environmentUniformBufferSize = Constants.alignedEnvironmentUniformSize * maxInFlightFrames
         
         // Create and allocate our uniform buffer objects. Indicate shared storage so that both the
         // CPU can access the buffer
-        anchorUniformBuffer = device?.makeBuffer(length: anchorUniformBufferSize, options: .storageModeShared)
-        anchorUniformBuffer?.label = "AnchorUniformBuffer"
-        
         materialUniformBuffer = device?.makeBuffer(length: materialUniformBufferSize, options: .storageModeShared)
         materialUniformBuffer?.label = "MaterialUniformBuffer"
         
@@ -124,7 +120,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                 return
             }
             
-            self?.modelAssetsForAnchorsByUUID[generalUUID] = asset
+            self?.modelAssetsByUUID[generalUUID] = asset
             
             if numModels == 0 {
                 completion()
@@ -146,7 +142,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                         return
                     }
                     
-                    self?.modelAssetsForAnchorsByUUID[identifier] = asset
+                    self?.modelAssetsByUUID[identifier] = asset
                     self?.shaderPreferenceByUUID[identifier] = geometricEntity.shaderPreference
                 }
             }
@@ -171,7 +167,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         }
             
         // Make sure there is at least one general purpose model
-        guard modelAssetsForAnchorsByUUID[generalUUID] != nil else {
+        guard modelAssetsByUUID[generalUUID] != nil else {
             print("Warning (AnchorsRenderModule) - Anchor Model was not found. Aborting the render phase.")
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeModelNotFound, userInfo: nil)
             let newError = AKError.warning(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
@@ -181,17 +177,19 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         
         var drawCallGroups = [DrawCallGroup]()
         
+        // Get a list of uuids
         let filteredGeometryUUIDs = geometricEntities.compactMap({$0.identifier})
-        let filteredModelsByUUID = modelAssetsForAnchorsByUUID.filter { (uuid, asset) in
+        
+        // filter the `modelAssetsByUUID` by the model asses contained in the list of uuids
+        let filteredModelsByUUID = modelAssetsByUUID.filter { (uuid, asset) in
             filteredGeometryUUIDs.contains(uuid)
         }
+        
+        // Create a draw call group for every model asset. Each model asset may have multiple instances.
         for item in filteredModelsByUUID {
             
-            // Check to make sure this geometry should be rendered in this render pass
-            if let geometricEntity = geometricEntities.first(where: {$0.identifier == item.key}), let geometryFilterFunction = renderPass?.geometryFilterFunction {
-                guard geometryFilterFunction(geometricEntity) else {
-                    continue
-                }
+            guard let geometricEntity = geometricEntities.first(where: {$0.identifier == item.key}) else {
+                continue
             }
             
             let uuid = item.key
@@ -204,22 +202,19 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                 }
             }()
             
-            meshGPUDataForAnchorsByUUID[uuid] = ModelIOTools.meshGPUData(from: mdlAsset, device: device, textureBundle: textureBundle, vertexDescriptor: RenderUtilities.createStandardVertexDescriptor(), frameRate: 60, shaderPreference: shaderPreference)
+            // Build the GPU Data
+            let meshGPUData = ModelIOTools.meshGPUData(from: mdlAsset, device: device, textureBundle: textureBundle, vertexDescriptor: RenderUtilities.createStandardVertexDescriptor(), frameRate: 60, shaderPreference: shaderPreference)
             
-            let drawCallGroup = createPipelineStates(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass)
+            // Create a draw call group that contins all of the individual draw calls for this model
+            let drawCallGroup = createDrawCallGroup(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass, meshGPUData: meshGPUData, geometricEntity: geometricEntity)
             drawCallGroup.moduleIdentifier = moduleIdentifier
             
             drawCallGroups.append(drawCallGroup)
             
         }
         
-        // In the buffer, the anchors are layed out by UUID in sorted order. So if there are
-        // 5 anchors with UUID = "A..." and 3 UUIDs = "B..." and 1 UUID = "C..." then that's
-        // how they will layed out in memory. Therefore updating the buffers is a 2 step process.
-        // First, loop through all of the ARAnchors and gather the UUIDs as well as the counts for each.
-        // Second, layout and update the buffers in the desired order.
+        // Because there must be a deterministic way to order the draw calls so the draw call groups are sorted by UUID.
         drawCallGroups.sort { $0.uuid.uuidString < $1.uuid.uuidString }
-        sortedUUIDs = drawCallGroups.map { $0.uuid }
         isInitialized = true
         
         return drawCallGroups
@@ -230,15 +225,15 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     // Per Frame Updates
     //
     
-    func updateBufferState(withBufferIndex bufferIndex: Int) {
+    func updateBufferState(withBufferIndex theBufferIndex: Int) {
         
-        anchorUniformBufferOffset = Constants.alignedAnchorInstanceUniformsSize * bufferIndex
+        bufferIndex = theBufferIndex
+        
         materialUniformBufferOffset = RenderModuleConstants.alignedMaterialSize * bufferIndex
         paletteBufferOffset = Constants.alignedPaletteSize * Constants.maxPaletteSize * bufferIndex
         effectsUniformBufferOffset = Constants.alignedEffectsUniformSize * bufferIndex
         environmentUniformBufferOffset = Constants.alignedEnvironmentUniformSize * bufferIndex
         
-        anchorUniformBufferAddress = anchorUniformBuffer?.contents().advanced(by: anchorUniformBufferOffset)
         materialUniformBufferAddress = materialUniformBuffer?.contents().advanced(by: materialUniformBufferOffset)
         paletteBufferAddress = paletteBuffer?.contents().advanced(by: paletteBufferOffset)
         effectsUniformBufferAddress = effectsUniformBuffer?.contents().advanced(by: effectsUniformBufferOffset)
@@ -246,11 +241,19 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         
     }
     
-    func updateBuffers(withAugmentedAnchors anchors: [AKAugmentedAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
+    func updateBuffers(withModuleEntities moduleEntities: [AKEntity], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, argumentBufferProperties: ArgumentBufferProperties, forRenderPass renderPass: RenderPass) {
+        
+        let anchors: [AKAugmentedAnchor] = moduleEntities.compactMap({
+            if let anAnchor = $0 as? AKAugmentedAnchor {
+                return anAnchor
+            } else {
+                return nil
+            }
+        })
         
         // Update the anchor uniform buffer with transforms of the current frame's anchors
         anchorInstanceCount = 0
-        anchorsByUUID = [:]
+        var anchorsByUUID = [UUID: [AKAugmentedAnchor]]()
         environmentTextureByUUID = [:]
         
         //
@@ -276,14 +279,16 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                 break
             }
             
+            // If an anchor is passed in that does not seem to be associated with any model, assign it the `generalUUD` so it will be rendered with a general model
             let uuid: UUID = {
-                if modelAssetsForAnchorsByUUID[anchor.identifier] != nil {
+                if modelAssetsByUUID[anchor.identifier] != nil {
                     return anchor.identifier
                 } else {
                     return generalUUID
                 }
             }()
             
+            // collect all of the anchors by uuid. A uuid can be associated with multiple anchors (like the general uuid).
             if let currentAnchors = anchorsByUUID[uuid] {
                 var mutableCurrentAnchors = currentAnchors
                 mutableCurrentAnchors.append(akAnchor)
@@ -292,10 +297,10 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                 anchorsByUUID[uuid] = [akAnchor]
             }
             
+            // see if this anchor is associated with an environment anchor. An environment anchor applies to a regino of space which may contain serveral anchors.
             let environmentProperty = environmentProperties.environmentAnchorsWithReatedAnchors.first(where: {
-                $0.value.contains(uuid)
+                $0.value.contains(anchor.identifier)
             })
-            
             if let environmentProbeAnchor = environmentProperty?.key, let texture = environmentProbeAnchor.environmentTexture {
                 environmentTextureByUUID[uuid] = texture
             }
@@ -308,69 +313,24 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         
         var anchorMeshIndex = 0
         
-        for uuid in sortedUUIDs {
+        for drawCallGroup in renderPass.drawCallGroups {
             
-            let akAnchors = anchorsByUUID[uuid] ?? []
+            let uuid = drawCallGroup.uuid
             
-            for akAnchor in akAnchors {
+            for drawCall in drawCallGroup.drawCalls {
                 
-                guard let arAnchor = akAnchor.arAnchor else {
+                let akAnchors = anchorsByUUID[uuid] ?? []
+                anchorCountByUUID[uuid] = akAnchors.count
+                guard let drawData = drawCall.drawData else {
                     continue
                 }
                 
-                // allDrawData contains the meshGPUData for all of the meshes associated with this anchor
-                guard let allDrawData = meshGPUDataForAnchorsByUUID[uuid]?.drawData else {
-                    continue
-                }
-                
-                for drawData in allDrawData {
-                
-                    // Flip Z axis to convert geometry from right handed to left handed
-                    var coordinateSpaceTransform = matrix_identity_float4x4
-                    coordinateSpaceTransform.columns.2.z = -1.0
-                    
-                    // Apply the world transform (as defined in the imported model) if applicable
-                    let worldTransform: matrix_float4x4 = {
-                        if drawData.worldTransformAnimations.count > 0 {
-                            let index = Int(cameraProperties.currentFrame % UInt(drawData.worldTransformAnimations.count))
-                            return drawData.worldTransformAnimations[index]
-                        } else {
-                            return drawData.worldTransform
-                        }
-                    }()
-                    coordinateSpaceTransform = simd_mul(coordinateSpaceTransform, worldTransform)
-                    
-                    // Update Heading
-                    var newTransform = akAnchor.heading.offsetRotation.quaternion.toMatrix4()
-                    
-                    if akAnchor.heading.type == .absolute {
-                        newTransform = newTransform * float4x4(
-                            float4(coordinateSpaceTransform.columns.0.x, 0, 0, 0),
-                            float4(0, coordinateSpaceTransform.columns.1.y, 0, 0),
-                            float4(0, 0, coordinateSpaceTransform.columns.2.z, 0),
-                            float4(coordinateSpaceTransform.columns.3.x, coordinateSpaceTransform.columns.3.y, coordinateSpaceTransform.columns.3.z, 1)
-                        )
-                        coordinateSpaceTransform = newTransform
-                    } else if akAnchor.heading.type == .relative {
-                        coordinateSpaceTransform = coordinateSpaceTransform * newTransform
-                    }
-                    
-                    let modelMatrix = arAnchor.transform * coordinateSpaceTransform
-                    let anchorUniforms = anchorUniformBufferAddress?.assumingMemoryBound(to: AnchorInstanceUniforms.self).advanced(by: anchorMeshIndex)
-                    anchorUniforms?.pointee.modelMatrix = modelMatrix
-                    anchorUniforms?.pointee.normalMatrix = modelMatrix.normalMatrix
+                for akAnchor in akAnchors {
                     
                     //
                     // Update puppet animation
                     //
                     
-                    let uuid: UUID = {
-                        if modelAssetsForAnchorsByUUID[uuid] != nil {
-                            return arAnchor.identifier
-                        } else {
-                            return generalUUID
-                        }
-                    }()
                     updatePuppetAnimation(from: drawData, frameNumber: cameraProperties.currentFrame, frameRate: cameraProperties.frameRate)
                     
                     //
@@ -491,18 +451,6 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         
     }
     
-    func updateBuffers(withRealAnchors: [AKRealAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
-        // Do Nothing
-    }
-    
-    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
-        // Do Nothing
-    }
-    
-    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties) {
-        // Do Nothing
-    }
-    
     func draw(withRenderPass renderPass: RenderPass, sharedModules: [SharedRenderModule]?) {
         
         guard anchorInstanceCount > 0 else {
@@ -516,15 +464,10 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         // Push a debug group allowing us to identify render commands in the GPU Frame Capture tool
         renderEncoder.pushDebugGroup("Draw Anchors")
         
-        if let sharedBuffer = sharedModules?.first(where: {$0.moduleIdentifier == SharedBuffersRenderModule.identifier}), renderPass.usesSharedBuffer {
-            
-            renderEncoder.pushDebugGroup("Draw Shared Uniforms")
-            
-            renderEncoder.setVertexBuffer(sharedBuffer.sharedUniformBuffer, offset: sharedBuffer.sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
-            renderEncoder.setFragmentBuffer(sharedBuffer.sharedUniformBuffer, offset: sharedBuffer.sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
-            
+        if let argumentBufferProperties = argumentBufferProperties, let vertexArgumentBuffer = argumentBufferProperties.vertexArgumentBuffer {
+            renderEncoder.pushDebugGroup("Argument Buffer")
+            renderEncoder.setVertexBuffer(vertexArgumentBuffer, offset: argumentBufferProperties.vertexArgumentBufferOffset(forFrame: bufferIndex), index: Int(kBufferIndexPrecalculationOutputBuffer.rawValue))
             renderEncoder.popDebugGroup()
-            
         }
         
         if let environmentUniformBuffer = environmentUniformBuffer, renderPass.usesEnvironment {
@@ -533,7 +476,6 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             if let environmentTexture = environmentData?.environmentTexture, environmentData?.hasEnvironmentMap == true {
                 renderEncoder.setFragmentTexture(environmentTexture, index: Int(kTextureIndexEnvironmentMap.rawValue))
             }
-            renderEncoder.setVertexBuffer(environmentUniformBuffer, offset: environmentUniformBufferOffset, index: Int(kBufferIndexEnvironmentUniforms.rawValue))
             renderEncoder.setFragmentBuffer(environmentUniformBuffer, offset: environmentUniformBufferOffset, index: Int(kBufferIndexEnvironmentUniforms.rawValue))
             renderEncoder.popDebugGroup()
             
@@ -542,7 +484,6 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         if let effectsBuffer = effectsUniformBuffer, renderPass.usesEffects {
             
             renderEncoder.pushDebugGroup("Draw Effects Uniforms")
-            renderEncoder.setVertexBuffer(effectsBuffer, offset: effectsUniformBufferOffset, index: Int(kBufferIndexAnchorEffectsUniforms.rawValue))
             renderEncoder.setFragmentBuffer(effectsBuffer, offset: effectsUniformBufferOffset, index: Int(kBufferIndexAnchorEffectsUniforms.rawValue))
             renderEncoder.popDebugGroup()
             
@@ -556,42 +497,65 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             
         }
         
+        var drawCallGroupIndex: Int32 = 0
+        var drawCallIndex: Int32 = 0
         var baseIndex = 0
         
-        for drawCallGroup in renderPass.drawCallGroups.filter({ $0.moduleIdentifier == moduleIdentifier }) {
+        for drawCallGroup in renderPass.drawCallGroups {
             
-            let uuid = drawCallGroup.uuid
-            
-            guard let meshGPUData = meshGPUDataForAnchorsByUUID[uuid] else {
-                print("Error: Could not find meshGPUData for UUID: \(uuid)")
-                let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeIntermediateMeshDataNotAvailable, userInfo: nil)
-                let newError = AKError.recoverableError(.renderPipelineError(.drawAborted(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-                recordNewError(newError)
+            guard drawCallGroup.moduleIdentifier == moduleIdentifier else {
+                drawCallIndex += Int32(drawCallGroup.drawCalls.count)
+                drawCallGroupIndex += 1
                 continue
             }
             
-            let anchorcount = (anchorsByUUID[uuid] ?? []).count
+            // Use the render pass filter function to skip draw call groups on an individual basis
+            if let filterFunction = renderPass.drawCallGroupFilterFunction {
+                guard filterFunction(drawCallGroup) else {
+                    drawCallIndex += Int32(drawCallGroup.drawCalls.count)
+                    drawCallGroupIndex += 1
+                    continue
+                }
+            }
             
-            // Geometry Draw Calls
-            for (index, drawCall) in drawCallGroup.drawCalls.enumerated() {
+            let uuid = drawCallGroup.uuid
+            
+            // TODO: remove. I think this should always be 1. Even if draw call groups share geometries, we should only be incrementing the base index once per draw call. The whole idea of sharing geometries is probably misguided anyway
+            let anchorcount = (anchorCountByUUID[uuid] ?? 0)
+            if anchorcount > 1 {
+                print("There are \(anchorcount) geometries sharing this one UUID. This is something to refactor.")
+            }
+            
+            // Geometry Draw Calls. The order of the draw calls in the draw call group determines the order in which they are dispatched to the GPU for rendering.
+            for drawCall in drawCallGroup.drawCalls {
+                
+                guard let drawData = drawCall.drawData else {
+                    drawCallIndex += 1
+                    continue
+                }
                 
                 drawCall.prepareDrawCall(withRenderPass: renderPass)
                 
+                // Set the offset index of the draw call into the argument buffer
+                renderEncoder.setVertexBytes(&drawCallIndex, length: MemoryLayout<Int32>.size, index: Int(kBufferIndexDrawCallIndex.rawValue))
+                // Set the offset index of the draw call group into the argument buffer
+                renderEncoder.setVertexBytes(&drawCallGroupIndex, length: MemoryLayout<Int32>.size, index: Int(kBufferIndexDrawCallGroupIndex.rawValue))
+                
                 // Set any buffers fed into our render pipeline
-                renderEncoder.setVertexBuffer(anchorUniformBuffer, offset: anchorUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
                 renderEncoder.setVertexBuffer(paletteBuffer, offset: paletteBufferOffset, index: Int(kBufferIndexMeshPalettes.rawValue))
                 
-                var mutableDrawData = meshGPUData.drawData[index]
+                var mutableDrawData = drawData
                 mutableDrawData.instanceCount = anchorcount
                 
                 // Set the mesh's vertex data buffers and draw
                 draw(withDrawData: mutableDrawData, with: renderEncoder, baseIndex: baseIndex)
                 
                 baseIndex += anchorcount
+                drawCallIndex += 1
                 
             }
             
-//            baseIndex += anchorcount
+            drawCallGroupIndex += 1
             
         }
         
@@ -616,32 +580,25 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     private enum Constants {
         static let maxAnchorInstanceCount = 256
         static let maxPaletteSize = 100
-        static let alignedAnchorInstanceUniformsSize = ((MemoryLayout<AnchorInstanceUniforms>.stride * Constants.maxAnchorInstanceCount) & ~0xFF) + 0x100
         static let alignedPaletteSize = (MemoryLayout<matrix_float4x4>.stride & ~0xFF) + 0x100
         static let alignedEffectsUniformSize = ((MemoryLayout<AnchorEffectsUniforms>.stride * Constants.maxAnchorInstanceCount) & ~0xFF) + 0x100
         static let alignedEnvironmentUniformSize = ((MemoryLayout<EnvironmentUniforms>.stride * Constants.maxAnchorInstanceCount) & ~0xFF) + 0x100
     }
     
+    private var bufferIndex: Int = 0
     private var device: MTLDevice?
     private var textureLoader: MTKTextureLoader?
     private var geometricEntities = [AKGeometricEntity]()
     private var generalUUID = UUID()
-    private var sortedUUIDs = [UUID]()
-    private var modelAssetsForAnchorsByUUID = [UUID: MDLAsset]()
+    private var modelAssetsByUUID = [UUID: MDLAsset]()
     private var shaderPreferenceByUUID = [UUID: ShaderPreference]()
-    private var anchorUniformBuffer: MTLBuffer?
     private var materialUniformBuffer: MTLBuffer?
     private var paletteBuffer: MTLBuffer?
     private var effectsUniformBuffer: MTLBuffer?
     private var environmentUniformBuffer: MTLBuffer?
     private var environmentData: EnvironmentData?
     private var shadowMap: MTLTexture?
-    
-    // MetalKit meshes containing vertex data and index buffer for our anchor geometry
-    private var meshGPUDataForAnchorsByUUID = [UUID: MeshGPUData]()
-    
-    // Offset within anchorUniformBuffer to set for the current frame
-    private var anchorUniformBufferOffset: Int = 0
+    private var argumentBufferProperties: ArgumentBufferProperties?
     
     // Offset within materialUniformBuffer to set for the current frame
     private var materialUniformBufferOffset: Int = 0
@@ -654,9 +611,6 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     
     // Offset within environmentUniformBuffer to set for the current frame
     private var environmentUniformBufferOffset: Int = 0
-    
-    // Addresses to write anchor uniforms to each frame
-    private var anchorUniformBufferAddress: UnsafeMutableRawPointer?
     
     // Addresses to write anchor uniforms to each frame
     private var materialUniformBufferAddress: UnsafeMutableRawPointer?
@@ -673,14 +627,14 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     // number of frames in the anchor animation by anchor index
     private var anchorAnimationFrameCount = [Int]()
     
-    private var anchorsByUUID = [UUID: [AKAugmentedAnchor]]()
+    private var anchorCountByUUID = [UUID: Int]()
     private var environmentTextureByUUID = [UUID: MTLTexture]()
     
-    private func createPipelineStates(forUUID uuid: UUID, withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, renderPass: RenderPass?) -> DrawCallGroup {
+    private func createDrawCallGroup(forUUID uuid: UUID, withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, renderPass: RenderPass?, meshGPUData: MeshGPUData, geometricEntity: AKGeometricEntity) -> DrawCallGroup {
         
-        guard let meshGPUData = meshGPUDataForAnchorsByUUID[uuid] else {
-            print("Serious Error - ERROR: No meshGPUData found when trying to load the pipeline.")
-            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeIntermediateMeshDataNotFound, userInfo: nil)
+        guard let renderPass = renderPass else {
+            print("Warning - Skipping all draw calls because the render pass is nil.")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeRenderPassNotFound, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
             return DrawCallGroup(drawCalls: [], uuid: uuid)
@@ -698,81 +652,31 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         
         let shaderPreference = meshGPUData.shaderPreference
         
-        // Saving all of the states for each mesh in the myPipelineStates array.
+        // Create a draw call group containing draw calls. Each draw call is associated with a `DrawData` object in the `MeshGPUData`
         var drawCalls = [DrawCall]()
         for drawData in meshGPUData.drawData {
             
-            let funcConstants = RenderUtilities.getFuncConstants(forDrawData: drawData)
-            
-            let fragFunc: MTLFunction = {
-                do {
-                    let fragmentShaderName: String = {
-                        if shaderPreference == .simple {
-                            return "anchorGeometryFragmentLightingSimple"
-                        } else {
-                            return "anchorGeometryFragmentLighting"
-                        }
-                    }()
-                    return try metalLibrary.makeFunction(name: fragmentShaderName, constantValues: funcConstants)
-                } catch let error {
-                    print("Failed to create fragment function for pipeline state descriptor, error \(error)")
-                    let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: error))))
-                    recordNewError(newError)
-                    fatalError()
-                }
-            }()
-            
-            let vertFunc: MTLFunction = {
-                do {
-                    // Specify which shader to use based on if the model has skinned puppet suppot
-                    let vertexName = drawData.isSkinned ? "anchorGeometryVertexTransformSkinned" : "anchorGeometryVertexTransform"
-                    return try metalLibrary.makeFunction(name: vertexName, constantValues: funcConstants)
-                } catch let error {
-                    print("Failed to create vertex function for pipeline state descriptor, error \(error)")
-                    let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: error))))
-                    recordNewError(newError)
-                    fatalError()
-                }
-            }()
-
-            let pipelineStateDescriptor: MTLRenderPipelineDescriptor = {
-                if let renderPass = renderPass, let aPipelineDescriptor = renderPass.renderPipelineDescriptor(withVertexDescriptor: aVertexDescriptor, vertexFunction: vertFunc, fragmentFunction: fragFunc) {
-                    return aPipelineDescriptor
+            let fragmentShaderName: String = {
+                if shaderPreference == .simple {
+                    return "anchorGeometryFragmentLightingSimple"
                 } else {
-                    let aPipelineDescriptor = MTLRenderPipelineDescriptor()
-                    aPipelineDescriptor.vertexDescriptor = aVertexDescriptor
-                    aPipelineDescriptor.vertexFunction = vertFunc
-                    aPipelineDescriptor.fragmentFunction = fragFunc
-                    aPipelineDescriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
-                    aPipelineDescriptor.colorAttachments[0].isBlendingEnabled = true
-                    aPipelineDescriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
-                    aPipelineDescriptor.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
-                    aPipelineDescriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-                    aPipelineDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-                    aPipelineDescriptor.sampleCount = renderDestination.sampleCount
-                    return aPipelineDescriptor
+                    return "anchorGeometryFragmentLighting"
                 }
             }()
-            
-            let anchorDepthStateDescriptor: MTLDepthStencilDescriptor = {
-                if let renderPass = renderPass {
-                    let aDepthStateDescriptor = renderPass.depthStencilDescriptor(withDepthComareFunction: .less, isDepthWriteEnabled: true)
-                    return aDepthStateDescriptor
+            let vertexShaderName: String = {
+                if drawData.isSkinned {
+                    return "anchorGeometryVertexTransformSkinned"
                 } else {
-                    let aDepthStateDescriptor = MTLDepthStencilDescriptor()
-                    aDepthStateDescriptor.depthCompareFunction = .less
-                    aDepthStateDescriptor.isDepthWriteEnabled = true
-                    return aDepthStateDescriptor
+                    return "anchorGeometryVertexTransform"
                 }
             }()
             
-            if let drawCall = renderPass?.drawCall(withRenderPipelineDescriptor: pipelineStateDescriptor, depthStencilDescriptor: anchorDepthStateDescriptor) {
-                drawCalls.append(drawCall)
-            }
+            let drawCall = DrawCall(metalLibrary: metalLibrary, renderPass: renderPass, vertexFunctionName: vertexShaderName, fragmentFunctionName: fragmentShaderName, vertexDescriptor: aVertexDescriptor, drawData: drawData)
+            drawCalls.append(drawCall)
             
         }
         
-        let drawCallGroup = DrawCallGroup(drawCalls: drawCalls, uuid: uuid)
+        let drawCallGroup = DrawCallGroup(drawCalls: drawCalls, uuid: uuid, generatesShadows: geometricEntity.generatesShadows)
         return drawCallGroup
         
     }
@@ -780,9 +684,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     private func updatePuppetAnimation(from drawData: DrawData, frameNumber: UInt, frameRate: Double = 60) {
         
         let capacity = Constants.alignedPaletteSize * Constants.maxPaletteSize
-        
         let boundPaletteData = paletteBufferAddress?.bindMemory(to: matrix_float4x4.self, capacity: capacity)
-        
         let paletteData = UnsafeMutableBufferPointer<matrix_float4x4>(start: boundPaletteData, count: Constants.maxPaletteSize)
         
         var jointPaletteOffset = 0

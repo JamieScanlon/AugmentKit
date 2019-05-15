@@ -40,6 +40,10 @@ import Foundation
  */
 public protocol AKAnchor: class, AKGeometricEntity {
     /**
+     A unique, per-instance identifier. Redefine the `identifier property to require a setter.
+     */
+    var identifier: UUID? { get set }
+    /**
      The location in the ARWorld
      */
     var worldLocation: AKWorldLocation { get set }
@@ -47,11 +51,4 @@ public protocol AKAnchor: class, AKGeometricEntity {
      The heading in the ARWorld
      */
     var heading: AKHeading { get set }
-    /**
-     Set the identifier for this instance
-     - Parameters:
-        - _: A UUID
-     */
-    func setIdentifier(_ identifier: UUID)
-    
 }

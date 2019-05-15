@@ -165,6 +165,9 @@
                 <a href="../Global Variables.html#/s:10AugmentKit32AKErrorCodeModelProviderNotFoundSivp">AKErrorCodeModelProviderNotFound</a>
               </li>
               <li class="nav-group-task">
+                <a href="../Global Variables.html#/s:10AugmentKit29AKErrorCodeRenderPassNotFoundSivp">AKErrorCodeRenderPassNotFound</a>
+              </li>
+              <li class="nav-group-task">
                 <a href="../Global Variables.html#/s:10AugmentKit45AKErrorCodeRenderPipelineInitializationFailedSivp">AKErrorCodeRenderPipelineInitializationFailed</a>
               </li>
               <li class="nav-group-task">
@@ -226,6 +229,9 @@
             <a href="../Extensions.html">Extensions</a>
             <ul class="nav-group-tasks">
               <li class="nav-group-task">
+                <a href="../Extensions/CocoaError.html">CocoaError</a>
+              </li>
+              <li class="nav-group-task">
                 <a href="../Extensions/Data.html">Data</a>
               </li>
               <li class="nav-group-task">
@@ -244,13 +250,22 @@
                 <a href="../Extensions/Notification/Name.html">– Name</a>
               </li>
               <li class="nav-group-task">
+                <a href="../Extensions/double4.html">double4</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Extensions/double4x4.html">double4x4</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Extensions/float3.html">float3</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Extensions/float4.html">float4</a>
+              </li>
+              <li class="nav-group-task">
                 <a href="../Extensions/float4x4.html">float4x4</a>
               </li>
               <li class="nav-group-task">
-                <a href="../Extensions/simd_float3.html">simd_float3</a>
-              </li>
-              <li class="nav-group-task">
-                <a href="../Extensions/simd_float4.html">simd_float4</a>
+                <a href="../Extensions/simd_quatd.html">simd_quatd</a>
               </li>
               <li class="nav-group-task">
                 <a href="../Extensions/simd_quatf.html">simd_quatf</a>
@@ -276,7 +291,13 @@
                 <a href="../Protocols/AKEffect.html">AKEffect</a>
               </li>
               <li class="nav-group-task">
+                <a href="../Protocols/AKEntity.html">AKEntity</a>
+              </li>
+              <li class="nav-group-task">
                 <a href="../Protocols/AKGeometricEntity.html">AKGeometricEntity</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Protocols/AKGeometricEntityGroup.html">AKGeometricEntityGroup</a>
               </li>
               <li class="nav-group-task">
                 <a href="../Protocols/AKHeading.html">AKHeading</a>
@@ -335,6 +356,15 @@
             <a href="../Structs.html">Structures</a>
             <ul class="nav-group-tasks">
               <li class="nav-group-task">
+                <a href="../Structs/AKLine.html">AKLine</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/AKSphere.html">AKSphere</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/AKSphereLineIntersection.html">AKSphereLineIntersection</a>
+              </li>
+              <li class="nav-group-task">
                 <a href="../Structs/AKVector.html">AKVector</a>
               </li>
               <li class="nav-group-task">
@@ -363,6 +393,9 @@
               </li>
               <li class="nav-group-task">
                 <a href="../Structs.html#/s:10AugmentKit16AnimatedSkeletonV">AnimatedSkeleton</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs.html#/s:10AugmentKit24ArgumentBufferPropertiesV">ArgumentBufferProperties</a>
               </li>
               <li class="nav-group-task">
                 <a href="../Structs.html#/s:10AugmentKit14AssetErrorInfoV">AssetErrorInfo</a>
@@ -429,6 +462,9 @@
               </li>
               <li class="nav-group-task">
                 <a href="../Structs/RenderStats.html">RenderStats</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs.html#/s:10AugmentKit16ShadowPropertiesV">ShadowProperties</a>
               </li>
               <li class="nav-group-task">
                 <a href="../Structs.html#/s:10AugmentKit8SkinDataV">SkinData</a>
@@ -554,12 +590,174 @@
                     </section>
                   </div>
                 </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8AKVectorV1x1y1zACSd_S2dtcfc"></a>
+                    <a name="//apple_ref/swift/Method/init(x:y:z:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8AKVectorV1x1y1zACSd_S2dtcfc">init(x:y:z:)</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Initialize with <code><a href="../Structs/AKVector.html#/s:10AugmentKit8AKVectorV1xSdvp">x</a></code>, <code><a href="../Structs/AKVector.html#/s:10AugmentKit8AKVectorV1ySdvp">y</a></code>, and <code><a href="../Structs/AKVector.html#/s:10AugmentKit8AKVectorV1zSdvp">z</a></code> components</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="nf">init</span><span class="p">(</span><span class="nv">x</span><span class="p">:</span> <span class="kt">Double</span><span class="p">,</span> <span class="nv">y</span><span class="p">:</span> <span class="kt">Double</span><span class="p">,</span> <span class="nv">z</span><span class="p">:</span> <span class="kt">Double</span><span class="p">)</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8AKVectorVyACs5SIMD3VySfGcfc"></a>
+                    <a name="//apple_ref/swift/Method/init(_:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8AKVectorVyACs5SIMD3VySfGcfc">init(_:)</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Initialize with a <code>SIMD3&lt;Float&gt;</code> object</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="nf">init</span><span class="p">(</span><span class="n">_</span> <span class="nv">float3</span><span class="p">:</span> <span class="n">float3</span><span class="p">)</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8AKVectorVyACs5SIMD3VySdGcfc"></a>
+                    <a name="//apple_ref/swift/Method/init(_:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8AKVectorVyACs5SIMD3VySdGcfc">init(_:)</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Initialize with a <code>SIMD3&lt;Double&gt;</code> object</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="nf">init</span><span class="p">(</span><span class="n">_</span> <span class="nv">double3</span><span class="p">:</span> <span class="n">double3</span><span class="p">)</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8AKVectorV9normalizeyyF"></a>
+                    <a name="//apple_ref/swift/Method/normalize()" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8AKVectorV9normalizeyyF">normalize()</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Normalize the vector</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="k">mutating</span> <span class="kd">func</span> <span class="nf">normalize</span><span class="p">()</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8AKVectorV10normalizedACyF"></a>
+                    <a name="//apple_ref/swift/Method/normalized()" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8AKVectorV10normalizedACyF">normalized()</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Creates a normalized vector from the current vector</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">func</span> <span class="nf">normalized</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kt">AKVector</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8AKVectorV18simdRepresentations5SIMD3VySdGyF"></a>
+                    <a name="//apple_ref/swift/Method/simdRepresentation()" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8AKVectorV18simdRepresentations5SIMD3VySdGyF">simdRepresentation()</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Returns a <code>SIMD3&lt;Double&gt;</code> representation of the vector</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">func</span> <span class="nf">simdRepresentation</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">double3</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
               </ul>
             </div>
           </section>
         </section>
         <section id="footer">
-          <p>&copy; 2018 <a class="link" href="" target="_blank" rel="external"></a>. All rights reserved. (Last updated: 2018-10-07)</p>
+          <p>&copy; 2019 <a class="link" href="" target="_blank" rel="external"></a>. All rights reserved. (Last updated: 2019-05-14)</p>
           <p>Generated by <a class="link" href="https://github.com/realm/jazzy" target="_blank" rel="external">jazzy ♪♫ v0.9.3</a>, a <a class="link" href="https://realm.io" target="_blank" rel="external">Realm</a> project.</p>
         </section>
       </article>

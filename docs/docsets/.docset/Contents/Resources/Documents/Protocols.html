@@ -165,6 +165,9 @@
                 <a href="Global Variables.html#/s:10AugmentKit32AKErrorCodeModelProviderNotFoundSivp">AKErrorCodeModelProviderNotFound</a>
               </li>
               <li class="nav-group-task">
+                <a href="Global Variables.html#/s:10AugmentKit29AKErrorCodeRenderPassNotFoundSivp">AKErrorCodeRenderPassNotFound</a>
+              </li>
+              <li class="nav-group-task">
                 <a href="Global Variables.html#/s:10AugmentKit45AKErrorCodeRenderPipelineInitializationFailedSivp">AKErrorCodeRenderPipelineInitializationFailed</a>
               </li>
               <li class="nav-group-task">
@@ -226,6 +229,9 @@
             <a href="Extensions.html">Extensions</a>
             <ul class="nav-group-tasks">
               <li class="nav-group-task">
+                <a href="Extensions/CocoaError.html">CocoaError</a>
+              </li>
+              <li class="nav-group-task">
                 <a href="Extensions/Data.html">Data</a>
               </li>
               <li class="nav-group-task">
@@ -244,13 +250,22 @@
                 <a href="Extensions/Notification/Name.html">– Name</a>
               </li>
               <li class="nav-group-task">
+                <a href="Extensions/double4.html">double4</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="Extensions/double4x4.html">double4x4</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="Extensions/float3.html">float3</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="Extensions/float4.html">float4</a>
+              </li>
+              <li class="nav-group-task">
                 <a href="Extensions/float4x4.html">float4x4</a>
               </li>
               <li class="nav-group-task">
-                <a href="Extensions/simd_float3.html">simd_float3</a>
-              </li>
-              <li class="nav-group-task">
-                <a href="Extensions/simd_float4.html">simd_float4</a>
+                <a href="Extensions/simd_quatd.html">simd_quatd</a>
               </li>
               <li class="nav-group-task">
                 <a href="Extensions/simd_quatf.html">simd_quatf</a>
@@ -276,7 +291,13 @@
                 <a href="Protocols/AKEffect.html">AKEffect</a>
               </li>
               <li class="nav-group-task">
+                <a href="Protocols/AKEntity.html">AKEntity</a>
+              </li>
+              <li class="nav-group-task">
                 <a href="Protocols/AKGeometricEntity.html">AKGeometricEntity</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="Protocols/AKGeometricEntityGroup.html">AKGeometricEntityGroup</a>
               </li>
               <li class="nav-group-task">
                 <a href="Protocols/AKHeading.html">AKHeading</a>
@@ -335,6 +356,15 @@
             <a href="Structs.html">Structures</a>
             <ul class="nav-group-tasks">
               <li class="nav-group-task">
+                <a href="Structs/AKLine.html">AKLine</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="Structs/AKSphere.html">AKSphere</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="Structs/AKSphereLineIntersection.html">AKSphereLineIntersection</a>
+              </li>
+              <li class="nav-group-task">
                 <a href="Structs/AKVector.html">AKVector</a>
               </li>
               <li class="nav-group-task">
@@ -363,6 +393,9 @@
               </li>
               <li class="nav-group-task">
                 <a href="Structs.html#/s:10AugmentKit16AnimatedSkeletonV">AnimatedSkeleton</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="Structs.html#/s:10AugmentKit24ArgumentBufferPropertiesV">ArgumentBufferProperties</a>
               </li>
               <li class="nav-group-task">
                 <a href="Structs.html#/s:10AugmentKit14AssetErrorInfoV">AssetErrorInfo</a>
@@ -429,6 +462,9 @@
               </li>
               <li class="nav-group-task">
                 <a href="Structs/RenderStats.html">RenderStats</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="Structs.html#/s:10AugmentKit16ShadowPropertiesV">ShadowProperties</a>
               </li>
               <li class="nav-group-task">
                 <a href="Structs.html#/s:10AugmentKit8SkinDataV">SkinData</a>
@@ -633,7 +669,7 @@
                     <section class="section">
                       <div class="pointer"></div>
                       <div class="abstract">
-                        <p>An <code>AKPath</code> draws a path in the AR world. A path is a series of straight line segments each terminated by a special type of anchor called a <code><a href="Protocols/AKPathSegmentAnchor.html">AKPathSegmentAnchor</a></code>. The geometry of a line segment is an elongated cylinder. The <code>lineThickness</code> property represents the diameter of the cross section.</p>
+                        <p>Undocumented</p>
 
                         <a href="Protocols/AKPath.html" class="slightly-smaller">See more</a>
                       </div>
@@ -641,7 +677,7 @@
                         <h4>Declaration</h4>
                         <div class="language">
                           <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">protocol</span> <span class="kt">AKPath</span> <span class="p">:</span> <span class="kt"><a href="Protocols/AKAugmentedAnchor.html">AKAugmentedAnchor</a></span></code></pre>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">protocol</span> <span class="kt">AKPath</span> <span class="p">:</span> <span class="kt"><a href="Protocols/AKGeometricEntityGroup.html">AKGeometricEntityGroup</a></span></code></pre>
 
                         </div>
                       </div>
@@ -865,6 +901,45 @@
             </div>
             <div class="task-group">
               <div class="task-name-container">
+                <a name="/AKEntity"></a>
+                <a name="//apple_ref/swift/Section/AKEntity" class="dashAnchor"></a>
+                <a href="#/AKEntity">
+                  <h3 class="section-name">AKEntity</h3>
+                </a>
+              </div>
+              <ul>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit8AKEntityP"></a>
+                    <a name="//apple_ref/swift/Protocol/AKEntity" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit8AKEntityP">AKEntity</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>An <code>AKEntity</code> defines an object that can be used and tracked by AugmentKit. Each instance of an <code>AKEntity</code> is uniquely represented by it&rsquo;s <code>identifier</code> and can be classified by <code>type</code>.</p>
+
+                        <a href="Protocols/AKEntity.html" class="slightly-smaller">See more</a>
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">protocol</span> <span class="kt">AKEntity</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+              </ul>
+            </div>
+            <div class="task-group">
+              <div class="task-name-container">
                 <a name="/AKGeometricEntity"></a>
                 <a name="//apple_ref/swift/Section/AKGeometricEntity" class="dashAnchor"></a>
                 <a href="#/AKGeometricEntity">
@@ -893,7 +968,46 @@
                         <h4>Declaration</h4>
                         <div class="language">
                           <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">protocol</span> <span class="kt">AKGeometricEntity</span></code></pre>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">protocol</span> <span class="kt">AKGeometricEntity</span> <span class="p">:</span> <span class="kt"><a href="Protocols/AKEntity.html">AKEntity</a></span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+              </ul>
+            </div>
+            <div class="task-group">
+              <div class="task-name-container">
+                <a name="/AKGeometricEntityGroup"></a>
+                <a name="//apple_ref/swift/Section/AKGeometricEntityGroup" class="dashAnchor"></a>
+                <a href="#/AKGeometricEntityGroup">
+                  <h3 class="section-name">AKGeometricEntityGroup</h3>
+                </a>
+              </div>
+              <ul>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:10AugmentKit22AKGeometricEntityGroupP"></a>
+                    <a name="//apple_ref/swift/Protocol/AKGeometricEntityGroup" class="dashAnchor"></a>
+                    <a class="token" href="#/s:10AugmentKit22AKGeometricEntityGroupP">AKGeometricEntityGroup</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>An <code>AKGeometricEntityGroup</code> defines a group of <code><a href="Protocols/AKGeometricEntity.html">AKGeometricEntity</a></code> objects.</p>
+
+                        <a href="Protocols/AKGeometricEntityGroup.html" class="slightly-smaller">See more</a>
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">protocol</span> <span class="kt">AKGeometricEntityGroup</span> <span class="p">:</span> <span class="kt"><a href="Protocols/AKEntity.html">AKEntity</a></span></code></pre>
 
                         </div>
                       </div>
@@ -1321,7 +1435,7 @@ An <code>AKTarget</code> might be the red dot of a laser pointer. Where the lase
           </section>
         </section>
         <section id="footer">
-          <p>&copy; 2018 <a class="link" href="" target="_blank" rel="external"></a>. All rights reserved. (Last updated: 2018-10-07)</p>
+          <p>&copy; 2019 <a class="link" href="" target="_blank" rel="external"></a>. All rights reserved. (Last updated: 2019-05-14)</p>
           <p>Generated by <a class="link" href="https://github.com/realm/jazzy" target="_blank" rel="external">jazzy ♪♫ v0.9.3</a>, a <a class="link" href="https://realm.io" target="_blank" rel="external">Realm</a> project.</p>
         </section>
       </article>

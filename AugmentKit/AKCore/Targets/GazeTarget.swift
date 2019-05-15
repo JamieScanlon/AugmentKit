@@ -79,13 +79,18 @@ public class GazeTarget: AKTarget {
         self.position = myPosition
         self.vectorDirection = AKVector(x: 0, y: 0, z: -1)
     }
-    /**
-     Set the identifier for this instance
-     - Parameters:
-        - _: A UUID
-     */
-    public func setIdentifier(_ identifier: UUID) {
-        self.identifier = identifier
+}
+
+extension GazeTarget: CustomStringConvertible, CustomDebugStringConvertible {
+    
+    /// :nodoc:
+    public var description: String {
+        return debugDescription
+    }
+    /// :nodoc:
+    public var debugDescription: String {
+        let myDescription = "<GazeTarget: \(Unmanaged.passUnretained(self).toOpaque())> type: \(UserTracker.type), identifier: \(identifier?.debugDescription ?? "None"), vectorDirection: \(vectorDirection), position: \(position), asset: \(asset), effects: \(effects.debugDescription), shaderPreference: \(shaderPreference), generatesShadows: \(generatesShadows)"
+        return myDescription
     }
     
 }

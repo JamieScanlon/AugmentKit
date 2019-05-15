@@ -312,6 +312,8 @@ extension MDLMaterialProperty {
             myDescription += "Value: \(float4Value)"
         case .matrix44:
             myDescription += "Value: \(matrix4x4)"
+        @unknown default:
+            fatalError("Unhandled MDLMaterialProperty type: \(type)")
         }
         return myDescription
     }
@@ -379,6 +381,8 @@ extension MDLMaterialSemantic: CustomDebugStringConvertible, CustomStringConvert
             myDescription += "ambientOcclusionScale"
         case .userDefined:
             myDescription += "userDefined"
+        @unknown default:
+            fatalError("Unhandled MDLMaterialSemantic: \(self)")
         }
         return myDescription
     }
@@ -463,7 +467,7 @@ extension simd_float4x4: CustomStringConvertible {
     }
     /// :nodoc:
     public var debugDescription: String {
-        var myDescription = "\n"
+        var myDescription = "Pretty: \n"
         myDescription += "[\(self.columns.0.x), \(self.columns.1.x), \(self.columns.2.x), \(self.columns.3.x)]"
         myDescription += "\n"
         myDescription += "[\(self.columns.0.y), \(self.columns.1.y), \(self.columns.2.y), \(self.columns.3.y)]"
@@ -471,6 +475,43 @@ extension simd_float4x4: CustomStringConvertible {
         myDescription += "[\(self.columns.0.z), \(self.columns.1.z), \(self.columns.2.z), \(self.columns.3.z)]"
         myDescription += "\n"
         myDescription += "[\(self.columns.0.w), \(self.columns.1.w), \(self.columns.2.w), \(self.columns.3.w)]"
+        myDescription += "\n"
+        myDescription += "Columns: \n"
+        myDescription += "[\(self.columns.0.x), \(self.columns.0.y), \(self.columns.0.z), \(self.columns.0.w)]"
+        myDescription += "\n"
+        myDescription += "[\(self.columns.1.x), \(self.columns.1.y), \(self.columns.1.z), \(self.columns.1.w)]"
+        myDescription += "\n"
+        myDescription += "[\(self.columns.2.x), \(self.columns.2.y), \(self.columns.2.z), \(self.columns.2.w)]"
+        myDescription += "\n"
+        myDescription += "[\(self.columns.3.x), \(self.columns.3.y), \(self.columns.3.z), \(self.columns.3.w)]"
+        return myDescription
+    }
+}
+
+extension simd_double4x4: CustomStringConvertible {
+    /// :nodoc:
+    public var description: String {
+        return debugDescription
+    }
+    /// :nodoc:
+    public var debugDescription: String {
+        var myDescription = "Pretty: \n"
+        myDescription += "[\(self.columns.0.x), \(self.columns.1.x), \(self.columns.2.x), \(self.columns.3.x)]"
+        myDescription += "\n"
+        myDescription += "[\(self.columns.0.y), \(self.columns.1.y), \(self.columns.2.y), \(self.columns.3.y)]"
+        myDescription += "\n"
+        myDescription += "[\(self.columns.0.z), \(self.columns.1.z), \(self.columns.2.z), \(self.columns.3.z)]"
+        myDescription += "\n"
+        myDescription += "[\(self.columns.0.w), \(self.columns.1.w), \(self.columns.2.w), \(self.columns.3.w)]"
+        myDescription += "\n"
+        myDescription += "Columns: \n"
+        myDescription += "[\(self.columns.0.x), \(self.columns.0.y), \(self.columns.0.z), \(self.columns.0.w)]"
+        myDescription += "\n"
+        myDescription += "[\(self.columns.1.x), \(self.columns.1.y), \(self.columns.1.z), \(self.columns.1.w)]"
+        myDescription += "\n"
+        myDescription += "[\(self.columns.2.x), \(self.columns.2.y), \(self.columns.2.z), \(self.columns.2.w)]"
+        myDescription += "\n"
+        myDescription += "[\(self.columns.3.x), \(self.columns.3.y), \(self.columns.3.z), \(self.columns.3.w)]"
         return myDescription
     }
 }

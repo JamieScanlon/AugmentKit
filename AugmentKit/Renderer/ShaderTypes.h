@@ -48,6 +48,9 @@ enum BufferIndices {
     kBufferIndexMeshPaletteSize,
     kBufferIndexAnchorEffectsUniforms,
     kBufferIndexEnvironmentUniforms,
+    kBufferIndexPrecalculationOutputBuffer,
+    kBufferIndexDrawCallIndex, // The index into the draw call. Used for the precalcualted arguments buffer
+    kBufferIndexDrawCallGroupIndex, // The index into the draw call group. Used for the environment and effects buffers
 };
 
 /**
@@ -69,6 +72,7 @@ enum VertexAttributes {
     //kVertexAttributeShadingBasisU,
     //kVertexAttributeShadingBasisV,
     //kVertexAttributeSubdivisionStencil,
+    kVertexArguments, 
 };
 
 /// Texture index values shared between shader and C code to ensure Metal shader texture indices match indices of Metal API texture set calls
@@ -117,6 +121,13 @@ enum FunctionConstantIndices {
     kNumFunctionConstantIndices
 };
 
+enum ArgumentBufferIndices {
+//    kArgumentBufferTextureIndex = 0,
+//    kArgumentBufferSamplerIndex,
+    kArgumentBufferPrecalculationBufferIndex,
+//    kArgumentBufferConstantIndex,
+};
+
 // MARK: - AR/VR goggle support for left and right eyes.
 
 enum Viewports {
@@ -132,6 +143,13 @@ enum QualityLevel {
     kQualityLevelMedium,
     kQualityLevelLow,
     kQualityNumLevels
+};
+
+// MARK: - HeadingType
+
+enum HeadingType {
+    kAbsolute   = 0,
+    kRelative
 };
 
 // MARK: - Uniforms
@@ -158,6 +176,13 @@ struct EnvironmentUniforms {
 
 /// Structure shared between shader and C code that contains information pertaining to a single model like the model matrix transform
 struct AnchorInstanceUniforms {
+    int hasGeometry;
+    int hasHeading;
+    matrix_float4x4 headingTransform;
+    int headingType;
+    
+    matrix_float4x4 locationTransform;
+    matrix_float4x4 worldTransform; // A transform matrix for the anchor model in world space.
     matrix_float4x4 modelMatrix; // A transform matrix for the anchor model in world space.
     matrix_float3x3 normalMatrix;
 };
@@ -223,5 +248,43 @@ struct LightingParameters {
     float   clearcoat;
     float   clearcoatGloss;
 };
+
+// MARK: Precalculated Parameters
+
+/// Calculated on a per-draw basis
+struct PrecalculatedParameters {
+    int hasGeometry;
+    matrix_float4x4 worldTransform;
+    int hasHeading;
+    matrix_float4x4 headingTransform;
+    int headingType;
+    matrix_float4x4 coordinateSpaceTransform; // calculated using worldTransform and headingTransform
+    matrix_float4x4 locationTransform;
+    
+    matrix_float4x4 modelMatrix; // locationTransform * coordinateSpaceTransform. A transform matrix for the anchor model in world space.
+    matrix_float4x4 scaledModelMatrix; // modelMatrix * scaleMatrix. scaleMatrix is AnchorEffectsUniforms.scale
+    matrix_float3x3 normalMatrix;
+    matrix_float3x3 scaledNormalMatrix; // normalMatrix * scaleMatrix. scaleMatrix is AnchorEffectsUniforms.scale
+    matrix_float4x4 modelViewMatrix; // scaledModelMatrix * viewMatrix
+    matrix_float4x4 modelViewProjectionMatrix; // projectionMatrix * modelViewMatrix
+    matrix_float4x4 shadowMVPTransformMatrix;
+    matrix_float4x4 directionalLightMVP;
+};
+
+// MARK: Argument Buffers
+
+typedef struct VertexShaderArguments {
+//    texture2d<half> exampleTexture  [[ id(AAPLArgumentBufferIDExampleTexture)  ]];
+//    sampler         exampleSampler  [[ id(AAPLArgumentBufferIDExampleSampler)  ]];
+//    device PrecalculatedParameters *precalculationBuffer [[ id(kArgumentBufferPrecalculationBufferIndex) ]];
+//    uint32_t        exampleConstant [[ id(AAPLArgumentBufferIDExampleConstant) ]];
+} VertexShaderArguments;
+
+typedef struct FragmentShaderArguments {
+//    texture2d<half> exampleTexture  [[ id(AAPLArgumentBufferIDExampleTexture)  ]];
+//    sampler         exampleSampler  [[ id(AAPLArgumentBufferIDExampleSampler)  ]];
+//    device float   *exampleBuffer   [[ id(AAPLArgumentBufferIDExampleBuffer)   ]];
+//    uint32_t        exampleConstant [[ id(AAPLArgumentBufferIDExampleConstant) ]];
+} FragmentShaderArguments;
 
 #endif /* ShaderTypes_h */

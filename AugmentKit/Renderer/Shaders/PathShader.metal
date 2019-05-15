@@ -41,14 +41,15 @@ struct PathFragmentInOut {
     float4 position [[position]];
     float4 color;
     ushort iid;
+    int drawCallIndex;
+    int drawCallGroupIndex;
     float3 shadowCoord;
 };
 
 vertex PathFragmentInOut pathVertexShader(PathVertexIn in [[stage_in]],
-                                          constant SharedUniforms &sharedUniforms [[ buffer(kBufferIndexSharedUniforms) ]],
-                                          constant AnchorInstanceUniforms *anchorInstanceUniforms [[ buffer(kBufferIndexAnchorInstanceUniforms) ]],
-                                          constant AnchorEffectsUniforms *anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]],
-                                          constant EnvironmentUniforms *environmentUniforms [[ buffer(kBufferIndexEnvironmentUniforms) ]],
+                                          device PrecalculatedParameters *arguments [[ buffer(kBufferIndexPrecalculationOutputBuffer) ]],
+                                          constant int &drawCallIndex [[ buffer(kBufferIndexDrawCallIndex) ]],
+                                          constant int &drawCallGroupIndex [[ buffer(kBufferIndexDrawCallGroupIndex) ]],
                                           uint vid [[vertex_id]],
                                           ushort iid [[instance_id]]
                                           ){
@@ -57,24 +58,18 @@ vertex PathFragmentInOut pathVertexShader(PathVertexIn in [[stage_in]],
     
     // Make position a float4 to perform 4x4 matrix math on it
     float4 position = in.position;
+    int argumentBufferIndex = drawCallIndex;
     
-    // Get the anchor model's orientation in world space
-    float4x4 modelMatrix = anchorInstanceUniforms[iid].modelMatrix;
+    float4x4 modelViewProjectionMatrix = arguments[argumentBufferIndex].modelViewProjectionMatrix;
     
-    // Apply effects that affect geometry
-    float4x4 scaleMatrix = anchorEffectsUniforms[iid].scale;
-    modelMatrix = modelMatrix * scaleMatrix;
+    out.position = modelViewProjectionMatrix * position;
     
-    // Transform the model's orientation from world space to camera space.
-    float4x4 modelViewMatrix = sharedUniforms.viewMatrix * modelMatrix;
-    
-    // Calculate the position of our vertex in clip space and output for clipping and rasterization
-    out.position = sharedUniforms.projectionMatrix * modelViewMatrix * position;
     out.iid = iid;
+    out.drawCallIndex = drawCallIndex;
+    out.drawCallGroupIndex = drawCallGroupIndex;
     
     // Shadow Coord
-    EnvironmentUniforms environmentUniform = environmentUniforms[iid];
-    out.shadowCoord = (environmentUniform.shadowMVPTransformMatrix * out.position).xyz;
+    out.shadowCoord = (arguments[argumentBufferIndex].shadowMVPTransformMatrix * out.position).xyz;
 
     
     return out;
@@ -86,11 +81,11 @@ fragment float4 pathFragmentShader( PathFragmentInOut in [[stage_in]],
                                     constant AnchorEffectsUniforms *anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]]
                                    ){
     
-    ushort iid = in.iid;
+    int argumentBufferIndex = in.drawCallIndex;
     float4 intermediate_color = materialUniforms.baseColor;
     
     // Apply effects
-    float4 final_color = float4(intermediate_color.rgb * anchorEffectsUniforms[iid].tint, intermediate_color.a * anchorEffectsUniforms[iid].alpha);
+    float4 final_color = float4(intermediate_color.rgb * anchorEffectsUniforms[argumentBufferIndex].tint, intermediate_color.a * anchorEffectsUniforms[argumentBufferIndex].alpha);
     
     return final_color;
     

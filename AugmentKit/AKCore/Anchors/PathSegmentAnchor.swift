@@ -73,6 +73,19 @@ public class PathSegmentAnchor: AKPathSegmentAnchor {
      */
     public var arAnchor: ARAnchor?
     /**
+     A transform, in the coodinate space of the AR world, which is used to transform the path segment geometry such that it connects with the previous segment to form a line.
+     */
+    public fileprivate(set) var segmentTransform: matrix_float4x4
+    
+    /**
+     Sets a new `segmentTransform` value
+     - Parameters:
+     - _: A `matrix_float4x4`
+     */
+    public func setSegmentTransform(_ newTransform: matrix_float4x4) {
+        segmentTransform = newTransform
+    }
+    /**
      Initialize an object with an array of `AKWorldLocation`s
      - Parameters:
         - at: The location of the anchor
@@ -84,14 +97,7 @@ public class PathSegmentAnchor: AKPathSegmentAnchor {
         self.worldLocation = location
         self.identifier = identifier
         self.effects = effects
-    }
-    /**
-     Set the identifier for this instance
-     - Parameters:
-        - _: A UUID
-     */
-    public func setIdentifier(_ identifier: UUID) {
-        self.identifier = identifier
+        self.segmentTransform = location.transform
     }
     /**
      Sets a new `arAnchor`
@@ -108,17 +114,15 @@ public class PathSegmentAnchor: AKPathSegmentAnchor {
     
 }
 
-extension PathSegmentAnchor: CustomStringConvertible {
+extension PathSegmentAnchor: CustomStringConvertible, CustomDebugStringConvertible {
     /// :nodoc:
     public var description: String {
         return debugDescription
     }
-}
-
-extension PathSegmentAnchor: CustomDebugStringConvertible {
+    
     /// :nodoc:
     public var debugDescription: String {
-        let myDescription = "<\(PathSegmentAnchor.type): \(Unmanaged.passUnretained(self).toOpaque())> Identifier: \(identifier?.uuidString ?? "none"), World Location: \(worldLocation), Heading: \(heading)"
+        let myDescription = "<\(PathSegmentAnchor.type): \(Unmanaged.passUnretained(self).toOpaque())> Identifier: \(identifier?.uuidString ?? "none"), World Location: \(worldLocation), Heading: \(heading), effects: \(effects?.debugDescription ?? "None")"
         return myDescription
     }
 }

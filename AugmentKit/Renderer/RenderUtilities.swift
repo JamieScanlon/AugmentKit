@@ -99,6 +99,8 @@ class RenderUtilities {
         case .invalid:
             print("Invalid MTLIndexType, defaulting to uint16")
             return .uint16
+        @unknown default:
+            fatalError("Unhandled mdlIndexBitDepth")
         }
     }
     

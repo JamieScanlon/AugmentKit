@@ -21,7 +21,7 @@
 		7D53471F203A961A00714A6F /* PathShader.metal in Sources */ = {isa = PBXBuildFile; fileRef = 7D53471E203A961A00714A6F /* PathShader.metal */; };
 		7D5B25A72069626900EFA3C6 /* AKRealSurfaceAnchor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D5B25A62069626900EFA3C6 /* AKRealSurfaceAnchor.swift */; };
 		7D5B25A9206BFAC100EFA3C6 /* GazeTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D5B25A8206BFAC100EFA3C6 /* GazeTarget.swift */; };
-		7D5FDA321FC72AAE00BAE104 /* RenderModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D5FDA311FC72AAE00BAE104 /* RenderModule.swift */; };
+		7D5FDA321FC72AAE00BAE104 /* ShaderModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D5FDA311FC72AAE00BAE104 /* ShaderModule.swift */; };
 		7D5FDA341FC7333200BAE104 /* SharedBuffersRenderModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D5FDA331FC7333200BAE104 /* SharedBuffersRenderModule.swift */; };
 		7D5FDA361FC73AD000BAE104 /* CameraPlaneRenderModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D5FDA351FC73AD000BAE104 /* CameraPlaneRenderModule.swift */; };
 		7D5FDA381FC7431500BAE104 /* AnchorsRenderModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D5FDA371FC7431500BAE104 /* AnchorsRenderModule.swift */; };
@@ -74,7 +74,14 @@
 		7DFCF6051FC096A900E8A560 /* PointShader.metal in Sources */ = {isa = PBXBuildFile; fileRef = 7DFCF6041FC096A900E8A560 /* PointShader.metal */; };
 		9614CC13216A5C9100427C6D /* AKAugmentedTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9614CC12216A5C9100427C6D /* AKAugmentedTracker.swift */; };
 		9614CC15216A5CC500427C6D /* AKRealTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9614CC14216A5CC500427C6D /* AKRealTracker.swift */; };
+		961D705B21FCC4F7006DF951 /* PrecalculationComputeShader.metal in Sources */ = {isa = PBXBuildFile; fileRef = 961D705A21FCC4F7006DF951 /* PrecalculationComputeShader.metal */; };
+		961D705D21FCCB00006DF951 /* ComputePass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 961D705C21FCCB00006DF951 /* ComputePass.swift */; };
+		963B72A42257AA4C007E95C2 /* AKSphere.swift in Sources */ = {isa = PBXBuildFile; fileRef = 963B72A32257AA4C007E95C2 /* AKSphere.swift */; };
+		963B72A62257ABD6007E95C2 /* AKLine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 963B72A52257ABD6007E95C2 /* AKLine.swift */; };
+		963B72A822639AD8007E95C2 /* AKEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 963B72A722639AD8007E95C2 /* AKEntity.swift */; };
+		963B72AA22639C3E007E95C2 /* AKGeometricEntityGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 963B72A922639C3E007E95C2 /* AKGeometricEntityGroup.swift */; };
 		964EF2A721C5C51C00967FD6 /* SurfaceShader.metal in Sources */ = {isa = PBXBuildFile; fileRef = 964EF2A621C5C51C00967FD6 /* SurfaceShader.metal */; };
+		965A0B1521F4D57A009D4E7F /* PrecalculationModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 965A0B1421F4D57A009D4E7F /* PrecalculationModule.swift */; };
 		965F894F2186BD5E00D1B195 /* RenderPass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 965F894E2186BD5E00D1B195 /* RenderPass.swift */; };
 		96CACF7C2156A051009A8A20 /* RenderUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96CACF7B2156A051009A8A20 /* RenderUtilities.swift */; };
 		96CACF7E2156D3C9009A8A20 /* GeometryUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96CACF7D2156D3C9009A8A20 /* GeometryUtilities.swift */; };
@@ -111,7 +118,7 @@
 		7D53471E203A961A00714A6F /* PathShader.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = PathShader.metal; sourceTree = "<group>"; };
 		7D5B25A62069626900EFA3C6 /* AKRealSurfaceAnchor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKRealSurfaceAnchor.swift; sourceTree = "<group>"; };
 		7D5B25A8206BFAC100EFA3C6 /* GazeTarget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GazeTarget.swift; sourceTree = "<group>"; };
-		7D5FDA311FC72AAE00BAE104 /* RenderModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RenderModule.swift; sourceTree = "<group>"; };
+		7D5FDA311FC72AAE00BAE104 /* ShaderModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShaderModule.swift; sourceTree = "<group>"; };
 		7D5FDA331FC7333200BAE104 /* SharedBuffersRenderModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedBuffersRenderModule.swift; sourceTree = "<group>"; };
 		7D5FDA351FC73AD000BAE104 /* CameraPlaneRenderModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraPlaneRenderModule.swift; sourceTree = "<group>"; };
 		7D5FDA371FC7431500BAE104 /* AnchorsRenderModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnchorsRenderModule.swift; sourceTree = "<group>"; };
@@ -165,7 +172,14 @@
 		7DFCF6041FC096A900E8A560 /* PointShader.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = PointShader.metal; sourceTree = "<group>"; };
 		9614CC12216A5C9100427C6D /* AKAugmentedTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKAugmentedTracker.swift; sourceTree = "<group>"; };
 		9614CC14216A5CC500427C6D /* AKRealTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKRealTracker.swift; sourceTree = "<group>"; };
+		961D705A21FCC4F7006DF951 /* PrecalculationComputeShader.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = PrecalculationComputeShader.metal; sourceTree = "<group>"; };
+		961D705C21FCCB00006DF951 /* ComputePass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComputePass.swift; sourceTree = "<group>"; };
+		963B72A32257AA4C007E95C2 /* AKSphere.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKSphere.swift; sourceTree = "<group>"; };
+		963B72A52257ABD6007E95C2 /* AKLine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKLine.swift; sourceTree = "<group>"; };
+		963B72A722639AD8007E95C2 /* AKEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKEntity.swift; sourceTree = "<group>"; };
+		963B72A922639C3E007E95C2 /* AKGeometricEntityGroup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKGeometricEntityGroup.swift; sourceTree = "<group>"; };
 		964EF2A621C5C51C00967FD6 /* SurfaceShader.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = SurfaceShader.metal; sourceTree = "<group>"; };
+		965A0B1421F4D57A009D4E7F /* PrecalculationModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrecalculationModule.swift; sourceTree = "<group>"; };
 		965F894E2186BD5E00D1B195 /* RenderPass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RenderPass.swift; sourceTree = "<group>"; };
 		96CACF7B2156A051009A8A20 /* RenderUtilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RenderUtilities.swift; sourceTree = "<group>"; };
 		96CACF7D2156D3C9009A8A20 /* GeometryUtilities.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = GeometryUtilities.swift; sourceTree = "<group>"; };
@@ -217,6 +231,7 @@
 				7DAA7255211D4A3B00AA11AF /* Common.h */,
 				96CACF7B2156A051009A8A20 /* RenderUtilities.swift */,
 				965F894E2186BD5E00D1B195 /* RenderPass.swift */,
+				961D705C21FCCB00006DF951 /* ComputePass.swift */,
 			);
 			path = Renderer;
 			sourceTree = "<group>";
@@ -254,6 +269,7 @@
 				7DAA7252211D395900AA11AF /* Common.metal */,
 				96E0B5B021914B3300140317 /* ShadowShader.metal */,
 				964EF2A621C5C51C00967FD6 /* SurfaceShader.metal */,
+				961D705A21FCC4F7006DF951 /* PrecalculationComputeShader.metal */,
 			);
 			path = Shaders;
 			sourceTree = "<group>";
@@ -261,7 +277,7 @@
 		7D5FDA301FC72A6F00BAE104 /* Render Modules */ = {
 			isa = PBXGroup;
 			children = (
-				7D5FDA311FC72AAE00BAE104 /* RenderModule.swift */,
+				7D5FDA311FC72AAE00BAE104 /* ShaderModule.swift */,
 				7D5FDA331FC7333200BAE104 /* SharedBuffersRenderModule.swift */,
 				7D5FDA351FC73AD000BAE104 /* CameraPlaneRenderModule.swift */,
 				7D5FDA371FC7431500BAE104 /* AnchorsRenderModule.swift */,
@@ -269,6 +285,7 @@
 				7D5FDA3B1FC9E70E00BAE104 /* SurfacesRenderModule.swift */,
 				7D5FDA391FC9CFA400BAE104 /* TrackingPointsRenderModule.swift */,
 				7D818908201EB5DB0021694F /* PathsRenderModule.swift */,
+				965A0B1421F4D57A009D4E7F /* PrecalculationModule.swift */,
 			);
 			path = "Render Modules";
 			sourceTree = "<group>";
@@ -388,9 +405,11 @@
 		7DAD06C320716CDB00B62B61 /* Primatives */ = {
 			isa = PBXGroup;
 			children = (
+				963B72A722639AD8007E95C2 /* AKEntity.swift */,
+				7DAD06BF207150B300B62B61 /* AKGeometricEntity.swift */,
+				963B72A922639C3E007E95C2 /* AKGeometricEntityGroup.swift */,
 				7D8A0A7F2013D058006CAAAD /* AKRelativePosiiton.swift */,
 				7D8A0A812013D143006CAAAD /* AKHeading.swift */,
-				7DAD06BF207150B300B62B61 /* AKGeometricEntity.swift */,
 				7DAD06C420716D5600B62B61 /* AKVector.swift */,
 				7D345B06208B83CA00C2D5D0 /* AKWorldLocation.swift */,
 				7D345B08208B844600C2D5D0 /* AKWorldDistance.swift */,
@@ -398,6 +417,8 @@
 				7D8D4DE4209E8E6900F98072 /* AKAnimatable.swift */,
 				7D8D4DE6209E907E00F98072 /* AKEffect.swift */,
 				7D1FC691213C5EA6006CB649 /* AKWorldMap.swift */,
+				963B72A32257AA4C007E95C2 /* AKSphere.swift */,
+				963B72A52257ABD6007E95C2 /* AKLine.swift */,
 			);
 			path = Primatives;
 			sourceTree = "<group>";
@@ -482,7 +503,7 @@
 				TargetAttributes = {
 					7D6E6B461F8F19C300EFC667 = {
 						CreatedOnToolsVersion = 9.0;
-						LastSwiftMigration = 1000;
+						LastSwiftMigration = 1020;
 						ProvisioningStyle = Automatic;
 					};
 					7D6E6B4E1F8F19C300EFC667 = {
@@ -540,16 +561,20 @@
 				7D1FC692213C5EA7006CB649 /* AKWorldMap.swift in Sources */,
 				7D6E6B6E1F8F1CDB00EFC667 /* LocalStoreManager.swift in Sources */,
 				7D8A0A802013D058006CAAAD /* AKRelativePosiiton.swift in Sources */,
+				963B72AA22639C3E007E95C2 /* AKGeometricEntityGroup.swift in Sources */,
 				964EF2A721C5C51C00967FD6 /* SurfaceShader.metal in Sources */,
 				7D6979FE21287FBF000106DF /* PathSegmentAnchor.swift in Sources */,
 				7D48011D20FDA7C000E4B082 /* Data+Serialization.swift in Sources */,
 				7DAD06C520716D5600B62B61 /* AKVector.swift in Sources */,
+				961D705B21FCC4F7006DF951 /* PrecalculationComputeShader.metal in Sources */,
 				96CACF7C2156A051009A8A20 /* RenderUtilities.swift in Sources */,
+				961D705D21FCCB00006DF951 /* ComputePass.swift in Sources */,
 				7D6E6B5F1F8F1C9D00EFC667 /* AnchorShaders.metal in Sources */,
 				7D6979F221287A8A000106DF /* RealSurfaceAnchor.swift in Sources */,
 				7D6E6B631F8F1CBC00EFC667 /* AKAnchor.swift in Sources */,
 				7D9B13AA20A7519F006C2B63 /* SHA256.swift in Sources */,
 				9614CC15216A5CC500427C6D /* AKRealTracker.swift in Sources */,
+				963B72A822639AD8007E95C2 /* AKEntity.swift in Sources */,
 				7D48011820FDA7C000E4B082 /* Archive.swift in Sources */,
 				7DAA7253211D395900AA11AF /* Common.metal in Sources */,
 				7D6E6B661F8F1CBC00EFC667 /* AKUtility.swift in Sources */,
@@ -564,15 +589,18 @@
 				7D6E6B641F8F1CBC00EFC667 /* AKWorld.swift in Sources */,
 				7D6E6B651F8F1CBC00EFC667 /* AugmentedAnchor.swift in Sources */,
 				7D6979FA21287DB5000106DF /* AugmentedSurfaceAnchor.swift in Sources */,
+				965A0B1521F4D57A009D4E7F /* PrecalculationModule.swift in Sources */,
 				7DAD06BE2071505E00B62B61 /* AKTracker.swift in Sources */,
 				7D5FDA3C1FC9E70E00BAE104 /* SurfacesRenderModule.swift in Sources */,
 				7D6E6B5E1F8F1C9600EFC667 /* AKSceneKitUtils.swift in Sources */,
+				963B72A62257ABD6007E95C2 /* AKLine.swift in Sources */,
 				96E0B5B121914B3300140317 /* ShadowShader.metal in Sources */,
 				7D6979F421287AEF000106DF /* GuideSurfaceAnchor.swift in Sources */,
 				7D6E6B681F8F1CC300EFC667 /* MeshTools.swift in Sources */,
 				7DAD06C22071520F00B62B61 /* AKTarget.swift in Sources */,
-				7D5FDA321FC72AAE00BAE104 /* RenderModule.swift in Sources */,
+				7D5FDA321FC72AAE00BAE104 /* ShaderModule.swift in Sources */,
 				9614CC13216A5C9100427C6D /* AKAugmentedTracker.swift in Sources */,
+				963B72A42257AA4C007E95C2 /* AKSphere.swift in Sources */,
 				7D6979F821287D60000106DF /* AKRealAnchor.swift in Sources */,
 				7D5FDA3A1FC9CFA400BAE104 /* TrackingPointsRenderModule.swift in Sources */,
 				7D6E6B691F8F1CC300EFC667 /* MeshData.swift in Sources */,
@@ -641,7 +669,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
 				SKIP_INSTALL = YES;
 				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/AugmentKit/Renderer/**";
-				SWIFT_VERSION = 4.2;
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
 				VERSION_INFO_PREFIX = "";
@@ -667,7 +695,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
 				SKIP_INSTALL = YES;
 				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/AugmentKit/Renderer/**";
-				SWIFT_VERSION = 4.2;
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
 				VERSION_INFO_PREFIX = "";
@@ -754,13 +782,13 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 12.2;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-				SWIFT_VERSION = 4.0;
+				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
 		};
@@ -808,11 +836,11 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 12.2;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
 				SWIFT_OPTIMIZATION_LEVEL = "-Owholemodule";
-				SWIFT_VERSION = 4.0;
+				SWIFT_VERSION = 5.0;
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;

@@ -31,9 +31,9 @@ import AugmentKitShader
 import Metal
 import MetalKit
 
-// MARK: - RenderModule protocol
+// MARK: - ShaderModule protocol
 
-protocol RenderModule {
+protocol ShaderModule {
     
     //
     // State
@@ -41,19 +41,55 @@ protocol RenderModule {
     
     var moduleIdentifier: String { get }
     var isInitialized: Bool { get }
-    // Lower layer modules are rendered first
+    /// Lower layer modules are executed first. By convention, modules that to not participate directly in rendering have negavive values. Also by convention, the camera plane is layer 0, 1 - 9 and Int.max are reseved for the renderer.
     var renderLayer: Int { get }
-    // An array of shared module identifiers that it this module will rely on in the draw phase.
-    var sharedModuleIdentifiers: [String]? { get }
-    var renderDistance: Double { get set }
     var errors: [AKError] { get set }
+    /// An array of shared module identifiers that it this module will rely on in the draw phase.
+    var sharedModuleIdentifiers: [String]? { get }
     
     //
     // Bootstrap
     //
     
-    // Initialize the buffers that will me managed and updated in this module.
-    func initializeBuffers(withDevice: MTLDevice, maxInFlightBuffers: Int)
+    /// Initialize the buffers that will me managed and updated in this module.
+    /// - parameters:
+    ///   - withDevice: An `MTLDevice`.
+    ///   - maxInFlightFrames: The number of in flight render frames.
+    ///   - maxInstances: The maximum number of model instances. Must be a power of 2.
+    func initializeBuffers(withDevice: MTLDevice, maxInFlightFrames: Int, maxInstances: Int)
+    
+    //
+    // Per Frame Updates
+    //
+    
+    /// The buffer index is the index into the ring on in flight buffers
+    func updateBufferState(withBufferIndex: Int)
+    
+    /// Called when Metal and the GPU has fully finished proccssing the commands we're encoding this frame. This indicates when the dynamic buffers, that we're writing to this frame, will no longer be needed by Metal and the GPU. This gets called per frame.
+    func frameEncodingComplete()
+    
+    //
+    // Util
+    //
+    
+    func recordNewError(_ akError: AKError)
+    
+}
+
+// MARK: - RenderModule protocol
+
+protocol RenderModule: ShaderModule {
+    
+    //
+    // State
+    //
+    
+    var renderDistance: Double { get set }
+    
+    
+    //
+    // Bootstrap
+    //
     
     // Load the data from the Model Provider.
     func loadAssets(forGeometricEntities: [AKGeometricEntity], fromModelProvider: ModelProvider?, textureLoader: MTKTextureLoader, completion: (() -> Void))
@@ -65,35 +101,14 @@ protocol RenderModule {
     // Per Frame Updates
     //
     
-    // The buffer index is the index into the ring on in flight buffers
-    func updateBufferState(withBufferIndex: Int)
-    
-    // Update the buffer data for augmented anchors
-    func updateBuffers(withAugmentedAnchors: [AKAugmentedAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties)
-    
-    // Update the buffer data for real anchors
-    func updateBuffers(withRealAnchors: [AKRealAnchor], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties)
-    
-    // Update the buffer data for trackers
-    func updateBuffers(withTrackers: [AKAugmentedTracker], targets: [AKTarget], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties)
-    
-    // Update the buffer data for trackers
-    func updateBuffers(withPaths: [AKPath], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties)
+    // Update the buffer data for the geometric entities
+    func updateBuffers(withModuleEntities: [AKEntity], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, argumentBufferProperties: ArgumentBufferProperties, forRenderPass renderPass: RenderPass)
     
     // Update the render encoder for the draw call. At the end of this method it is expected that
     // drawPrimatives or drawIndexedPrimatives is called.
     func draw(withRenderPass renderPass: RenderPass, sharedModules: [SharedRenderModule]?)
     
-    // Called when Metal and the GPU has fully finished proccssing the commands we're encoding
-    // this frame. This indicates when the dynamic buffers, that we're writing to this frame,
-    // will no longer be needed by Metal and the GPU. This gets called per frame.
-    func frameEncodingComplete()
     
-    //
-    // Util
-    //
-    
-    func recordNewError(_ akError: AKError)
     
 }
 
@@ -101,6 +116,7 @@ protocol RenderModule {
 
 extension RenderModule {
     
+    /// Calls `drawIndexedPrimitives` for every submesh in the `drawData`
     func draw(withDrawData drawData: DrawData, with renderEncoder: MTLRenderCommandEncoder, baseIndex: Int = 0, environmentData: EnvironmentData? = nil) {
         
         // Set mesh's vertex buffers
@@ -432,12 +448,77 @@ struct SphereLineIntersection {
 
 // MARK: - SharedRenderModule protocol
 
-// A shared render module is a render module responsible for setting up and updating
-// shared buffers. Although it does have a draw() method, typically this method does
-// not do anything. Instead, the module that uses this shared module is responsible
-// for encoding the shared buffer and issuing the draw call
+/// A shared render module is a `RenderModule` responsible for setting up and updating shared buffers. Although it does have a draw() method, typically this method does not do anything. Instead, the module that uses this shared module is responsible for encoding the shared buffer and issuing the draw call
 protocol SharedRenderModule: RenderModule {
     var sharedUniformBuffer: MTLBuffer? { get }
     var sharedUniformBufferOffset: Int { get }
     var sharedUniformBufferAddress: UnsafeMutableRawPointer? { get }
+}
+
+// MARK: - ComputeModule
+
+/// A module to perform a compute function
+protocol ComputeModule: ShaderModule {
+    
+    //
+    // Bootstrap
+    //
+    
+    /// After this function is called, The Compute Pass Desciptors, Textures, Buffers, Compute Pipeline State Descriptors should all be set up.
+    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, forComputePass computePass: ComputePass?) -> ThreadGroup?
+    
+    //
+    // Per Frame Updates
+    //
+    
+    /// Update and dispatch the command encoder. At the end of this method it is expected that `dispatchThreads` or dispatchThreadgroups` is called.
+    func dispatch(withComputePass computePass: ComputePass, sharedModules: [SharedRenderModule]?)
+}
+
+/// A `ComputePass` that is part of a render pipeline and used to prepare data for subsequent draw calls
+protocol PreRenderComputeModule: ComputeModule {
+    
+    //
+    // Per Frame Updates
+    //
+    
+    /// Update the buffer(s) data from information about the render
+    func prepareToDraw(withAllEntities: [AKEntity], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, computePass: ComputePass, renderPass: RenderPass?)
+    
+}
+
+extension PreRenderComputeModule {
+    
+    // MARK: Util
+    
+    func getRGB(from colorTemperature: CGFloat) -> vector_float3 {
+        
+        let temp = Float(colorTemperature) / 100
+        
+        var red: Float = 127
+        var green: Float = 127
+        var blue: Float = 127
+        
+        if temp <= 66 {
+            red = 255
+            green = temp
+            green = 99.4708025861 * log(green) - 161.1195681661
+            if temp <= 19 {
+                blue = 0
+            } else {
+                blue = temp - 10
+                blue = 138.5177312231 * log(blue) - 305.0447927307
+            }
+        } else {
+            red = temp - 60
+            red = 329.698727446 * pow(red, -0.1332047592)
+            green = temp - 60
+            green = 288.1221695283 * pow(green, -0.0755148492 )
+            blue = 255
+        }
+        
+        let clamped = clamp(float3(red, green, blue), min: 0, max: 255)
+        return vector3(clamped.x, clamped.y, clamped.z)
+        
+    }
 }

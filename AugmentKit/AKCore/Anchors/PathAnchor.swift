@@ -39,37 +39,13 @@ public class PathAnchor: AKPath {
         return "PathAnchor"
     }
     /**
-     The location in the ARWorld. The `worldLocation` property will be set to the locaiton of the first `AKPathSegmentAnchor` in the `segmentPoints` array
-     */
-//    public var worldLocation: AKWorldLocation
-    /**
-     The heading in the ARWorld. Defaults to `SameHeading()`
-     */
-//    public var heading: AKHeading = SameHeading()
-    /**
-     The `MDLAsset` associated with the entity.
-     */
-//    public var asset: MDLAsset
-    /**
      A unique, per-instance identifier
      */
     public var identifier: UUID?
     /**
-     An array of `AKEffect` objects that are applied by the renderer
+     An array of `AKEffect` objects that are applied to each `AKGeometricEntity` in the group by the renderer. If the individual `AKGeometricEntity` has it's own effects, they will override the effects here.
      */
-//    public var effects: [AnyEffect<Any>]? {
-//        didSet {
-//            segmentPoints.forEach { $0.effects = effects }
-//        }
-//    }
-    /**
-     Specified a perfered renderer to use when rendering this enitity. Most will use the standard PBR renderer but some entities may prefer a simpiler renderer when they are not trying to achieve the look of real-world objects. Defaults to `ShaderPreference.simple`
-     */
-//    public var shaderPreference: ShaderPreference = .simple
-    /**
-     Indicates whether this geometry participates in the generation of augmented shadows. Defaults to `false`
-     */
-//    public var generatesShadows: Bool = false
+    public var effects: [AnyEffect<Any>]?
     /**
      Thickness measured in meters. Defaults to 10cm
      */
@@ -79,33 +55,28 @@ public class PathAnchor: AKPath {
      */
     public var geometries: [AKGeometricEntity]
     /**
-     An `ARAnchor` that will be tracked in the AR world by `ARKit`
-     */
-//    public var arAnchor: ARAnchor?
-    /**
      Initialize an object with an array of `AKWorldLocation`s 
      - Parameters:
         - withWorldLocaitons: An array of `AKWorldLocation`s representing the locations of the `segmentPoints`
      */
-    public init(withWorldLocaitons locations: [AKWorldLocation]) {
-//        self.asset = MDLAsset()
-//        self.worldLocation = locations[0]
+    public init(withWorldLocaitons locations: [AKWorldLocation], color: UIColor? = nil) {
         self.geometries = locations.map {
             return PathSegmentAnchor(at: $0)
         }
+        if let color = color {
+            var red: CGFloat = 1
+            var green: CGFloat = 1
+            var blue: CGFloat = 1
+            var alpha: CGFloat = 1
+            color.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+            let tintEffect = ConstantTintEffect(tintValue: float3(Float(red), Float(green), Float(blue)))
+            self.effects = [AnyEffect(tintEffect)]
+            if alpha < 1 {
+                let alphaEffect = ConstantAlphaEffect(alphaValue: Float(alpha))
+                self.effects?.append(AnyEffect(alphaEffect))
+            }
+        }
     }
-    /**
-     Sets a new `arAnchor`
-     - Parameters:
-        - _: An `ARAnchor`
-     */
-//    public func setARAnchor(_ arAnchor: ARAnchor) {
-//        self.arAnchor = arAnchor
-//        if identifier == nil {
-//            identifier = arAnchor.identifier
-//        }
-//        worldLocation.transform = arAnchor.transform
-//    }
     
     /**
      This methods calculates the position, scale, and rotation of each path segment anchor so that it connects to the next and previous anchors.
@@ -118,6 +89,8 @@ public class PathAnchor: AKPath {
         for anchor in segmentPoints {
             
             guard let myLastAnchor = lastAnchor else {
+                let zeroTransform = matrix_float4x4([float4(0, 0, 0, 0), float4(0, 0, 0, 0), float4(0, 0, 0, 0), float4(0, 0, 0, 0)])
+                anchor.setSegmentTransform(zeroTransform)
                 lastAnchor = anchor
                 continue
             }
@@ -132,8 +105,22 @@ public class PathAnchor: AKPath {
                 }
             }()
             anchor.updateSegmentTransform(withLine: recalculatedLine)
+            lastAnchor = anchor
         }
+    }
+}
+
+extension PathAnchor: CustomDebugStringConvertible, CustomStringConvertible {
+    
+    /// :nodoc:
+    public var description: String {
+        return debugDescription
+    }
+    
+    /// :nodoc:
+    public var debugDescription: String {
+        let myDescription = "<PathAnchor: \(Unmanaged.passUnretained(self).toOpaque())> identifier:\(identifier?.debugDescription ?? "None"), effects: \(effects?.debugDescription ?? "None"), lineThickness: \(lineThickness), geometries: \(geometries)"
+        return myDescription
     }
     
 }
-

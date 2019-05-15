@@ -292,7 +292,10 @@ class PrecalculationModule: PreRenderComputeModule {
                     
                     // Apply the world transform (as defined in the imported model) if applicable
                     let worldTransform: matrix_float4x4 = {
-                        if drawData.worldTransformAnimations.count > 0 {
+                        if let pathSegment = geometricEntity as? AKPathSegmentAnchor {
+                            // For path segments, use the segmentTransform as the worldTransform
+                            return pathSegment.segmentTransform
+                        } else if drawData.worldTransformAnimations.count > 0 {
                             let index = Int(cameraProperties.currentFrame % UInt(drawData.worldTransformAnimations.count))
                             return drawData.worldTransformAnimations[index]
                         } else {

@@ -1083,10 +1083,10 @@ public class Renderer: NSObject {
         // Keep track of the path bucketed by the RenderModule
         if let existingGeometries = entitiesForRenderModule[PathsRenderModule.identifier] {
             var mutableExistingGeometries = existingGeometries
-            mutableExistingGeometries.append(contentsOf: akPath.geometries)
+            mutableExistingGeometries.append(akPath)
             entitiesForRenderModule[PathsRenderModule.identifier] = mutableExistingGeometries
         } else {
-            entitiesForRenderModule[PathsRenderModule.identifier] = akPath.geometries
+            entitiesForRenderModule[PathsRenderModule.identifier] = [akPath]
         }
         
         paths.append(akPath)
@@ -1639,9 +1639,6 @@ public class Renderer: NSObject {
     
     fileprivate func updateBuffers(forCameraProperties cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, argumentBufferProperties: ArgumentBufferProperties, renderPass: RenderPass ) {
         
-        let allEntities: [AKEntity] = entitiesForRenderModule.flatMap { (key, value) in
-            return value
-        }
         // Update Buffers
         renderModules.forEach { module in
             if module.isInitialized {

@@ -41,11 +41,12 @@ struct PathFragmentInOut {
     float4 position [[position]];
     float4 color;
     ushort iid;
+    int drawCallIndex;
+    int drawCallGroupIndex;
     float3 shadowCoord;
 };
 
 vertex PathFragmentInOut pathVertexShader(PathVertexIn in [[stage_in]],
-//                                          constant EnvironmentUniforms *environmentUniforms [[ buffer(kBufferIndexEnvironmentUniforms) ]],
                                           device PrecalculatedParameters *arguments [[ buffer(kBufferIndexPrecalculationOutputBuffer) ]],
                                           constant int &drawCallIndex [[ buffer(kBufferIndexDrawCallIndex) ]],
                                           constant int &drawCallGroupIndex [[ buffer(kBufferIndexDrawCallGroupIndex) ]],
@@ -64,9 +65,10 @@ vertex PathFragmentInOut pathVertexShader(PathVertexIn in [[stage_in]],
     out.position = modelViewProjectionMatrix * position;
     
     out.iid = iid;
+    out.drawCallIndex = drawCallIndex;
+    out.drawCallGroupIndex = drawCallGroupIndex;
     
     // Shadow Coord
-//    EnvironmentUniforms environmentUniform = environmentUniforms[iid];
     out.shadowCoord = (arguments[argumentBufferIndex].shadowMVPTransformMatrix * out.position).xyz;
 
     
@@ -79,11 +81,11 @@ fragment float4 pathFragmentShader( PathFragmentInOut in [[stage_in]],
                                     constant AnchorEffectsUniforms *anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]]
                                    ){
     
-    ushort iid = in.iid;
+    int argumentBufferIndex = in.drawCallIndex;
     float4 intermediate_color = materialUniforms.baseColor;
     
     // Apply effects
-    float4 final_color = float4(intermediate_color.rgb * anchorEffectsUniforms[iid].tint, intermediate_color.a * anchorEffectsUniforms[iid].alpha);
+    float4 final_color = float4(intermediate_color.rgb * anchorEffectsUniforms[argumentBufferIndex].tint, intermediate_color.a * anchorEffectsUniforms[argumentBufferIndex].alpha);
     
     return final_color;
     

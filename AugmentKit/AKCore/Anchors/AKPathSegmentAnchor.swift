@@ -88,6 +88,7 @@ extension AKPathSegmentAnchor {
         
         // Translate so that it is midway between the two points
         let middle = -delta / 2
+        
         segmentTransform = segmentTransform.translate(x: middle.x, y: middle.y, z: -middle.z)
         if angle == Double.pi {
             segmentTransform = segmentTransform.rotate(radians: angle, x: 0, y: 0, z: 1)

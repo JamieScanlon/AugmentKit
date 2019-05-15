@@ -34,6 +34,10 @@ import Foundation
  */
 public protocol AKGeometricEntityGroup: AKEntity {
     /**
+     An array of `AKEffect` objects that are applied to each `AKGeometricEntity` in the group by the renderer. If the individual `AKGeometricEntity` has it's own effects, they will override the effects here.
+     */
+    var effects: [AnyEffect<Any>]? { get }
+    /**
      A unique, per-instance identifier
      */
     var geometries: [AKGeometricEntity] { get }

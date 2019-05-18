@@ -140,13 +140,13 @@ class RenderUtilities {
         
         // JointIndices (Puppet animations)
         geometryVertexDescriptor.attributes[Int(kVertexAttributeJointIndices.rawValue)].format = .ushort4 // 8 bytes
-        geometryVertexDescriptor.attributes[Int(kVertexAttributeJointIndices.rawValue)].offset = 20
-        geometryVertexDescriptor.attributes[Int(kVertexAttributeJointIndices.rawValue)].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
+        geometryVertexDescriptor.attributes[Int(kVertexAttributeJointIndices.rawValue)].offset = 12
+        geometryVertexDescriptor.attributes[Int(kVertexAttributeJointIndices.rawValue)].bufferIndex = Int(kBufferIndexMeshPositions.rawValue)
         
         // JointWeights (Puppet animations)
         geometryVertexDescriptor.attributes[Int(kVertexAttributeJointWeights.rawValue)].format = .float4 // 16 bytes
-        geometryVertexDescriptor.attributes[Int(kVertexAttributeJointWeights.rawValue)].offset = 28
-        geometryVertexDescriptor.attributes[Int(kVertexAttributeJointWeights.rawValue)].bufferIndex = Int(kBufferIndexMeshGenerics.rawValue)
+        geometryVertexDescriptor.attributes[Int(kVertexAttributeJointWeights.rawValue)].offset = 20
+        geometryVertexDescriptor.attributes[Int(kVertexAttributeJointWeights.rawValue)].bufferIndex = Int(kBufferIndexMeshPositions.rawValue)
         
         // -------- Buffer 1 --------
         
@@ -175,7 +175,7 @@ class RenderUtilities {
         geometryVertexDescriptor.layouts[0].stepFunction = .perVertex
         
         // Pixel Shader Buffer Layout
-        geometryVertexDescriptor.layouts[1].stride = 44
+        geometryVertexDescriptor.layouts[1].stride = 32
         geometryVertexDescriptor.layouts[1].stepRate = 1
         geometryVertexDescriptor.layouts[1].stepFunction = .perVertex
         

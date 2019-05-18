@@ -129,8 +129,8 @@ constexpr sampler reflectiveEnvironmentSampler(address::clamp_to_edge, min_filte
 
 float3 computeNormalMap(ColorInOut in, texture2d<float> normalMapTexture) {
     float4 normalMap = float4((float4(normalMapTexture.sample(nearestSampler, float2(in.texCoord)).rgb, 0.0)));
-    float3x3 TBN(in.tangent, in.bitangent, in.normal);
-    return float3(normalize(TBN * normalMap.xyz));
+    float3x3 tbn = float3x3(in.tangent, in.bitangent, in.normal);
+    return float3(normalize(tbn * normalMap.xyz));
 }
 
 float3 computeDiffuse(LightingParameters parameters) {

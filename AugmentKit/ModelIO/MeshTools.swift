@@ -247,7 +247,7 @@ class ModelIOTools {
         for sourceMesh in asset.childObjects(of: MDLMesh.self) as! [MDLMesh] {
             
             // Calculate tangent information
-            sourceMesh.addOrthTanBasis(forTextureCoordinateAttributeNamed: MDLVertexAttributeTextureCoordinate, normalAttributeNamed: MDLVertexAttributeNormal, tangentAttributeNamed: MDLVertexAttributeTangent)
+            sourceMesh.addTangentBasis(forTextureCoordinateAttributeNamed: MDLVertexAttributeTextureCoordinate, normalAttributeNamed: MDLVertexAttributeNormal, tangentAttributeNamed: MDLVertexAttributeTangent)
             
             // Set the Vertex Descriptor
             sourceMesh.vertexDescriptor = concreteVertexDescriptor
@@ -274,7 +274,7 @@ class ModelIOTools {
             }
             
             // Calculate tangent information
-            mesh.addOrthTanBasis(forTextureCoordinateAttributeNamed: MDLVertexAttributeTextureCoordinate, normalAttributeNamed: MDLVertexAttributeNormal, tangentAttributeNamed: MDLVertexAttributeTangent)
+            mesh.addTangentBasis(forTextureCoordinateAttributeNamed: MDLVertexAttributeTextureCoordinate, normalAttributeNamed: MDLVertexAttributeNormal, tangentAttributeNamed: MDLVertexAttributeTangent)
             
             // Set the Vertex Descriptor
             mesh.vertexDescriptor = concreteVertexDescriptor
@@ -373,7 +373,7 @@ class ModelIOTools {
             if let mesh = object as? MDLMesh {
                 
                 // Calculate tangent information
-                mesh.addOrthTanBasis(forTextureCoordinateAttributeNamed: MDLVertexAttributeTextureCoordinate, normalAttributeNamed: MDLVertexAttributeNormal, tangentAttributeNamed: MDLVertexAttributeTangent)
+                mesh.addTangentBasis(forTextureCoordinateAttributeNamed: MDLVertexAttributeTextureCoordinate, normalAttributeNamed: MDLVertexAttributeNormal, tangentAttributeNamed: MDLVertexAttributeTangent)
                 
                 // Set the Vertex Descriptor
                 mesh.vertexDescriptor = concreteVertexDescriptor

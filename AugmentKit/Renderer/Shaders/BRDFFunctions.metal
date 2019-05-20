@@ -24,7 +24,7 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 //
-// This is an atempted port of the filament BRDF shader for Android
+// These are inspired the filament BRDF shader functions
 // See: https://github.com/google/filament
 //
 
@@ -36,8 +36,123 @@ using namespace metal;
 #ifndef AK_SHADERS_BDRFFUNCTIONS
 #define AK_SHADERS_BDRFFUNCTIONS
 
+//------------------------------------------------------------------------------
+// Specular BRDF implementations
+//------------------------------------------------------------------------------
+
+/// Generalized Trowbridge-Reitz to calculate Specular D
+/// DGGX(h) = α² / π((n⋅h)²(α²−1)+1)²
+float D_TrowbridgeReitz(float linearRoughness, float nDoth) {
+    if (linearRoughness >= 1.0) return 1.0 / M_PI_F;
+    float a² = sqr(linearRoughness);
+    float d = sqr(nDoth) * (a² - 1) + 1;
+    return a² / (M_PI_F * sqr(d));
+}
+
+/// Generalized Trowbridge-Reitz, with GGX divided out
+float D_GTR2_aniso(float nDoth, float hDotx, float hDoty, float ax, float ay) {
+    return 1.0 / ( M_PI_F * ax*ay * sqr( sqr(hDotx/ax) + sqr(hDoty/ay) + nDoth * nDoth ));
+}
+
+/// Walter et al. 2007, "Microfacet Models for Refraction through Rough Surfaces"
+/// equivalent to the Trowbridge-Reitz distribution
+float D_GGX(float linearRoughness, float nDoth) {
+    float oneMinusNDotHSquared = 1.0 - nDoth * nDoth;
+    float a = nDoth * linearRoughness;
+    float k = linearRoughness / (oneMinusNDotHSquared + a * a);
+    float d = k * k * (1.0 / M_PI_F);
+    return min(d, MAXFLOAT);
+}
+
+/// Burley 2012, "Physically-Based Shading at Disney"
+float D_GGX_Anisotropic(float at, float ab, float tDoth, float bDoth, float nDoth) {
+    float a2 = at * ab;
+    float3 d = float3(ab * tDoth, at * bDoth, a2 * nDoth);
+    return min(a2 * sqr(a2 / dot(d, d)) * (1.0 / M_PI_F), MAXFLOAT);
+}
+
+/// Ashikhmin 2007, "Distribution-based BRDFs"
+float D_Ashikhmin(float linearRoughness, float nDoth) {
+    float a2 = linearRoughness * linearRoughness;
+    float cos2h = nDoth * nDoth;
+    float sin2h = max(1.0 - cos2h, 0.0078125); // 2^(-14/2), so sin2h^2 > 0 in fp16
+    float sin4h = sin2h * sin2h;
+    float cot2 = -cos2h / (a2 * sin2h);
+    return 1.0 / (M_PI_F * (4.0 * a2 + 1.0) * sin4h) * (4.0 * exp(cot2) + sin4h);
+}
+
+/// Estevez and Kulla 2017, "Production Friendly Microfacet Sheen BRDF". Used for Cloth.
+float D_Charlie(float linearRoughness, float nDoth) {
+    float invAlpha  = 1.0 / linearRoughness;
+    float cos2h = nDoth * nDoth;
+    float sin2h = max(1.0 - cos2h, 0.0078125); // 2^(-14/2), so sin2h^2 > 0 in fp16
+    return (2.0 + invAlpha) * pow(sin2h, invAlpha * 0.5) / (2.0 * M_PI_F);
+}
+
+float V_SmithG_GGX(float linearRoughness, float nDotl, float nDotv) {
+    float roughnessAlpha = sqr(linearRoughness * 0.5 + 0.5);
+    float a² = sqr(roughnessAlpha);
+    float bL = sqr(nDotl);
+    float bV = sqr(nDotv);
+    float GsL = 1.0 / (nDotl + sqrt(a² + bL - a² * bL));
+    float GsV = 1.0 / (nDotv + sqrt(a² + bV - a² * bV));
+    return GsL * GsV;
+}
+
+/// Heitz 2014, "Understanding the Masking-Shadowing Function in Microfacet-Based BRDFs"
+float V_SmithGGXCorrelated(float linearRoughness, float nDotv, float nDotl) {
+    float a² = sqr(linearRoughness);
+    // TODO: lambdaV can be pre-computed for all the lights, it should be moved out of this function
+    float lambdaV = nDotl * sqrt((nDotv - a² * nDotv) * nDotv + a²);
+    float lambdaL = nDotv * sqrt((nDotl - a² * nDotl) * nDotl + a²);
+    float v = 0.5 / (lambdaV + lambdaL);
+    // a2=0 => v = 1 / 4*nDotl*nDotv   => min=1/4, max=+inf
+    // a2=1 => v = 1 / 2*(nDotl+nDotv) => min=1/4, max=+inf
+    // clamp to the maximum value representable
+    return min(v, MAXFLOAT);
+}
+
+/// Hammon 2017, "PBR Diffuse Lighting for GGX+Smith Microsurfaces"
+float V_SmithGGXCorrelated_Fast(float linearRoughness, float nDotv, float nDotl) {
+    float v = 0.5 / mix(2.0 * nDotl * nDotv, nDotl + nDotv, linearRoughness);
+    return min(v, MAXFLOAT);
+}
+
+/// Heitz 2014, "Understanding the Masking-Shadowing Function in Microfacet-Based BRDFs"
+/// TODO: lambdaV can be pre-computed for all the lights, it should be moved out of this function
+float V_SmithGGXCorrelated_Anisotropic(float at, float ab, float tDotv, float bDotv, float tDotl, float bDotl, float nDotv, float nDotl) {
+    float lambdaV = nDotl * length(float3(at * tDotv, ab * bDotv, nDotv));
+    float lambdaL = nDotv * length(float3(at * tDotl, ab * bDotl, nDotl));
+    float v = 0.5 / (lambdaV + lambdaL);
+    return min(v, MAXFLOAT);
+}
+
+/// Kelemen 2001, "A Microfacet Based Coupled Specular-Matte BRDF Model with Importance Sampling"
+float V_Kelemen(float lDoth) {
+    return min(0.25 / (lDoth * lDoth), MAXFLOAT);
+}
+
+/// Neubelt and Pettineo 2013, "Crafting a Next-gen Material Pipeline for The Order: 1886". Used for Cloth.
+float V_Neubelt(float linearRoughness, float nDotv, float nDotl) {
+    return min(1.0 / (4.0 * (nDotl + nDotv - nDotl * nDotv)), MAXFLOAT);
+}
+
+/// Schlick 1994, "An Inexpensive BRDF Model for Physically-Based Rendering"
+float3 F_Schlick3(float3 f0, float f90, float vDoth) {
+    float f = pow(clamp(1.0 - vDoth, 0.0, 1.0), 5.0);
+    return f + f0 * (f90 - f);
+}
+
+float F_Schlick(float f0, float f90, float vDoth) {
+    return f0 + (f90 - f0) * pow(clamp(1.0 - vDoth, 0.0, 1.0), 5.0);
+}
+
+//------------------------------------------------------------------------------
+// Specular BRDF dispatch
+//------------------------------------------------------------------------------
+
 // Schlick Fresnel Approximation:
-// F0 + (F90 - F0) * pow(1.0 - dotProduct, 5.0)
+// F0 + (F90 - F0) * pow(1.0 - vDoth, 5.0)
 //
 // F0 is the Fresnel of the material at 0º (normal incidence)
 // F0 can be approximated by a constant 0.04 (water/glass)
@@ -45,30 +160,100 @@ using namespace metal;
 // F90 is the Fresnel of the material at 90º
 // F90 can be approximated by 1.0 because Fresnel goes to 1 as the angle of incidence goes to 90º
 //
-float Fresnel(float F0, float F90, float dotProduct) {
-    return F0 + (F90 - F0) * pow(clamp(1.0 - dotProduct, 0.0, 1.0), 5.0);
+float3 Fresnel(float3 f0, float vDoth) {
+    float f90 = saturate(dot(f0, float3(50.0 * 0.33)));
+    return F_Schlick3(f0, f90, vDoth);
 }
 
-// dotProduct is either nDotl or nDotv
-// roughness = Perceptually linear roughness
-float smithG_GGX(float dotProduct, float roughness) {
-    float a² = sqr(roughness);
-    float b = sqr(dotProduct);
-    return 1.0 / (dotProduct + sqrt(a² + b - a² * b));
+float distribution(float linearRoughness, float nDoth) {
+    return D_GGX(linearRoughness, nDoth);
 }
 
-// We are using Generalized Trowbridge-Reitz to calculate Specular D
-// DGGX(h) = α² / π((n⋅h)²(α²−1)+1)²
-float TrowbridgeReitzNDF(float nDoth, float roughness) {
-    if (roughness >= 1.0) return 1.0 / M_PI_F;
-    float a² = sqr(roughness);
-    float d = sqr(nDoth) * (a² - 1) + 1;
-    return a² / (M_PI_F * sqr(d));
+float distributionAnisotropic(float at, float ab, float tDoth, float bDoth, float nDoth) {
+    return D_GGX_Anisotropic(at, ab, tDoth, bDoth, nDoth);
 }
 
-// Generalized Trowbridge-Reitz, with GGX divided out
-float GTR2_aniso(float nDoth, float HdotX, float HdotY, float ax, float ay) {
-    return 1.0 / ( M_PI_F * ax*ay * sqr( sqr(HdotX/ax) + sqr(HdotY/ay) + nDoth * nDoth ));
+float distributionClearCoat(float linearRoughness, float nDoth) {
+    return D_GGX(linearRoughness, nDoth);
+}
+
+float distributionCloth(float linearRoughness, float nDoth) {
+    // Ashikhmin
+//    return D_Ashikhmin(linearRoughness, nDoth);
+    // Charlie
+    return D_Charlie(linearRoughness, nDoth);
+}
+
+float visibility(float linearRoughness, float nDotv, float nDotl) {
+    // Correct
+//    return V_SmithGGXCorrelated(linearRoughness, nDotv, nDotl);
+    // Fast
+//    return V_SmithGGXCorrelated_Fast(linearRoughness, nDotv, nDotl);
+    // Less shiney
+    return V_SmithG_GGX(linearRoughness, nDotv, nDotl);
+}
+
+float visibilityAnisotropic(float linearRoughness, float at, float ab, float tDotv, float bDotv, float tDotl, float bDotl, float nDotv, float nDotl) {
+    return V_SmithGGXCorrelated_Anisotropic(at, ab, tDotv, bDotv, tDotl, bDotl, nDotv, nDotl);
+}
+
+float visibilityClearCoat(float roughness, float linearRoughness, float lDoth) {
+    return V_Kelemen(lDoth);
+}
+
+float visibilityCloth(float linearRoughness, float nDotv, float nDotl) {
+    return V_Neubelt(linearRoughness, nDotv, nDotl);
+}
+
+//------------------------------------------------------------------------------
+// Diffuse BRDF implementations
+//------------------------------------------------------------------------------
+
+float Fd_Lambert() {
+    return 1.0 / M_PI_F;
+}
+
+/// Burley 2012, "Physically-Based Shading at Disney"
+float Fd_Burley(float linearRoughness, float nDotv, float nDotl, float lDoth) {
+    float f90 = 0.5 + 2.0 * linearRoughness * lDoth * lDoth;
+    float lightScatter = F_Schlick(1.0, f90, nDotl);
+    float viewScatter  = F_Schlick(1.0, f90, nDotv);
+    return lightScatter * viewScatter * (1.0 / M_PI_F);
+}
+
+/// Energy conserving wrap diffuse term, does *not* include the divide by pi. Used for Cloth.
+float Fd_Wrap(float nDotl, float w) {
+    return saturate((nDotl + w) / sqr(1.0 + w));
+}
+
+//------------------------------------------------------------------------------
+// Diffuse BRDF dispatch
+//------------------------------------------------------------------------------
+
+float diffuse(float linearRoughness, float nDotv, float nDotl, float lDoth) {
+    // LAMBERT
+//    return Fd_Lambert();
+    // BURLEY
+    return Fd_Burley(linearRoughness, nDotv, nDotl, lDoth);
+}
+
+//------------------------------------------------------------------------------
+// Index of refraction (IOR)
+//------------------------------------------------------------------------------
+
+float iorToF0(float transmittedIor, float incidentIor) {
+    return sqr((transmittedIor - incidentIor) / (transmittedIor + incidentIor));
+}
+
+float f0ToIor(float f0) {
+    float r = sqrt(f0);
+    return (1.0 + r) / (1.0 - r);
+}
+
+float3 f0ClearCoatToSurface(float3 f0) {
+    // Approximation of iorTof0(f0ToIor(f0), 1.5)
+    // This assumes that the clear coat layer has an IOR of 1.5
+    return saturate(f0 * (f0 * (0.941892 - 0.263008 * f0) + 0.346479) - 0.0285998);
 }
 
 #endif /* AK_SHADERS_BDRFFUNCTIONS */

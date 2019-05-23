@@ -1668,7 +1668,7 @@ public class Renderer: NSObject {
     // MARK: Shadow Pass
     
     /// Draw to the depth texture from the directional lights point of view to generate the shadow map
-    func drawShadowPass(with commandEncoder: MTLRenderCommandEncoder) {
+    fileprivate func drawShadowPass(with commandEncoder: MTLRenderCommandEncoder) {
         
         // Draw
         renderModules.forEach { module in
@@ -1682,7 +1682,7 @@ public class Renderer: NSObject {
     
     // MARK: Main Pass
     
-    func drawMainPass(with commandEncoder: MTLRenderCommandEncoder) {
+    fileprivate func drawMainPass(with commandEncoder: MTLRenderCommandEncoder) {
         
         // Draw
         renderModules.forEach { module in
@@ -1699,7 +1699,7 @@ public class Renderer: NSObject {
     // MARK: Precomute pass
     
     /// Draw to the depth texture from the directional lights point of view to generate the shadow map
-    func dispatchComputePass(with commandEncoder: MTLComputeCommandEncoder) {
+    fileprivate func dispatchComputePass(with commandEncoder: MTLComputeCommandEncoder) {
         
         // Dispatch
         computeModules.forEach { module in
@@ -1709,6 +1709,28 @@ public class Renderer: NSObject {
         }
         
         commandEncoder.endEncoding()
+    }
+    
+    // MARK: Environment maps
+    
+    fileprivate func remapEnvironmentProbes() {
+        // The AREnvironmentProbeAnchor probes that are provided by ARKit onlt apply
+        // to a certain range. This maps the AREnvironmentProbeAnchor's with the
+        // identifiers of the AKAnchors that fall inside
+        environmentAnchorsWithReatedAnchors = [:]
+        environmentProbeAnchors.forEach { environmentAnchor in
+            let environmentPosition = simd_float3(environmentAnchor.transform.columns.3.x, environmentAnchor.transform.columns.3.y, environmentAnchor.transform.columns.3.z)
+            let cube = AKCube(position: AKVector(environmentPosition), extent: AKVector(environmentAnchor.extent))
+            let anchorIDs: [UUID] = augmentedAnchors.compactMap{ normalAnchor in
+                let anchorPosition = AKVector(x: normalAnchor.worldLocation.transform.columns.3.x, y: normalAnchor.worldLocation.transform.columns.3.y, z: normalAnchor.worldLocation.transform.columns.3.z)
+                if cube.contains(anchorPosition) {
+                    return normalAnchor.identifier
+                } else {
+                    return nil
+                }
+            }
+            environmentAnchorsWithReatedAnchors[environmentAnchor] = anchorIDs
+        }
     }
     
 }
@@ -1772,27 +1794,8 @@ extension Renderer: ARSessionDelegate {
                 }
                 
             } else if let environmentProbeAnchor = anchor as? AREnvironmentProbeAnchor {
-                
                 environmentProbeAnchors.append(environmentProbeAnchor)
-                
-                // The AREnvironmentProbeAnchor probes that are provided by ARKit onlt apply
-                // to a certain range. This maps the AREnvironmentProbeAnchor's with the
-                // identifiers of the AKAnchors that fall inside
-                environmentAnchorsWithReatedAnchors = [:]
-                environmentProbeAnchors.forEach { environmentAnchor in
-                    let environmentPosition = simd_float3(environmentAnchor.transform.columns.3.x, environmentAnchor.transform.columns.3.y, environmentAnchor.transform.columns.3.z)
-                    let cube = Cube(position: environmentPosition, extent: environmentAnchor.extent)
-                    let anchorIDs: [UUID] = augmentedAnchors.compactMap{ normalAnchor in
-                        let anchorPosition = simd_float3(normalAnchor.worldLocation.transform.columns.3.x, normalAnchor.worldLocation.transform.columns.3.y, normalAnchor.worldLocation.transform.columns.3.z)
-                        if cube.contains(anchorPosition) {
-                            return normalAnchor.identifier
-                        } else {
-                            return nil
-                        }
-                    }
-                    environmentAnchorsWithReatedAnchors[environmentAnchor] = anchorIDs
-                }
-                
+                remapEnvironmentProbes()
             } else if let _ = anchor as? ARObjectAnchor {
                 
             } else if let _ = anchor as? ARImageAnchor {
@@ -1805,6 +1808,7 @@ extension Renderer: ARSessionDelegate {
                 }) {
                     akAnchor.setARAnchor(anchor)
                 }
+                remapEnvironmentProbes()
             }
         }
     }
@@ -1841,29 +1845,9 @@ extension Renderer: ARSessionDelegate {
             } else if let environmentProbeAnchor = anchor as? AREnvironmentProbeAnchor {
                 
                 if let index = environmentProbeAnchors.firstIndex(of: environmentProbeAnchor) {
-                    
                     environmentProbeAnchors.replaceSubrange(index..<(index + 1), with: [environmentProbeAnchor])
-                    
-                    // The AREnvironmentProbeAnchor probes that are provided by ARKit onlt apply
-                    // to a certain range. This maps the AREnvironmentProbeAnchor's with the
-                    // identifiers of the AKAnchors that fall inside
-                    environmentAnchorsWithReatedAnchors = [:]
-                    environmentProbeAnchors.forEach { environmentAnchor in
-                        let environmentPosition = simd_float3(environmentAnchor.transform.columns.3.x, environmentAnchor.transform.columns.3.y, environmentAnchor.transform.columns.3.z)
-                        let cube = Cube(position: environmentPosition, extent: environmentAnchor.extent)
-                        let anchorIDs: [UUID] = augmentedAnchors.compactMap{ normalAnchor in
-                            let anchorPosition = simd_float3(normalAnchor.worldLocation.transform.columns.3.x, normalAnchor.worldLocation.transform.columns.3.y, normalAnchor.worldLocation.transform.columns.3.z)
-                            if cube.contains(anchorPosition) {
-                                return normalAnchor.identifier
-                            } else {
-                                return nil
-                            }
-                        }
-                        environmentAnchorsWithReatedAnchors[environmentAnchor] = anchorIDs
-                    }
-                    
+                    remapEnvironmentProbes()
                 }
-                
             } else if let _ = anchor as? ARObjectAnchor {
                 
             } else if let _ = anchor as? ARImageAnchor {
@@ -1876,6 +1860,59 @@ extension Renderer: ARSessionDelegate {
                 }) {
                     akAnchor.setARAnchor(anchor)
                 }
+                remapEnvironmentProbes()
+            }
+        }
+    }
+    
+    /// :nodoc:
+    public func session(_ session: ARSession, didRemove anchors: [ARAnchor]) {
+        anchors.forEach { anchor in
+            if let planeAnchor = anchor as? ARPlaneAnchor {
+                
+                if let anchorIndex = realAnchors.firstIndex(where: { k in
+                    k.identifier == planeAnchor.identifier
+                }) {
+                    var updatedAnchors = entitiesForRenderModule[SurfacesRenderModule.identifier]
+                    updatedAnchors?.remove(at: anchorIndex)
+                    entitiesForRenderModule[SurfacesRenderModule.identifier] = updatedAnchors
+                }
+                
+                //
+                // Update the lowest surface plane
+                //
+                
+                if lowestHorizPlaneAnchor?.identifier == planeAnchor.identifier {
+                    for index in 0..<realAnchors.count {
+                        let realAnchor = realAnchors[index]
+                        if let plane = realAnchor as? AKRealSurfaceAnchor, plane.orientation == .horizontal {
+                            // Keep track of the lowest horizontal plane. This can be assumed to be the ground.
+                            if lowestHorizPlaneAnchor != nil {
+                                if plane.worldLocation.transform.columns.1.y < lowestHorizPlaneAnchor?.transform.columns.1.y ?? 0 {
+                                    lowestHorizPlaneAnchor = plane.arAnchor as? ARPlaneAnchor
+                                }
+                            } else {
+                                lowestHorizPlaneAnchor = plane.arAnchor as? ARPlaneAnchor
+                            }
+                        }
+                    }
+                }
+                
+                
+            } else if let environmentProbeAnchor = anchor as? AREnvironmentProbeAnchor {
+                
+                if let index = environmentProbeAnchors.firstIndex(of: environmentProbeAnchor) {
+                    environmentProbeAnchors.remove(at: index)
+                    remapEnvironmentProbes()
+                }
+            } else if let _ = anchor as? ARObjectAnchor {
+                
+            } else if let _ = anchor as? ARImageAnchor {
+                
+            } else if let _ = anchor as? ARFaceAnchor {
+                
+            } else {
+                //
             }
         }
     }
@@ -1996,18 +2033,3 @@ fileprivate class InterpolatingAugmentedAnchor: AKAugmentedAnchor {
     
 }
 
-// MARK: - Cube
-fileprivate struct Cube {
-    var position: simd_float3
-    var extent: simd_float3
-    func contains(_ point: simd_float3) -> Bool {
-        let minX = position.x - extent.x
-        let minY = position.y - extent.y
-        let minZ = position.z - extent.z
-        let maxX = position.x + extent.x
-        let maxY = position.y + extent.y
-        let maxZ = position.z + extent.z
-        
-        return ( point.x > minX && point.y > minY && point.z > minZ ) && ( point.x < maxX && point.y < maxY && point.z < maxZ )
-    }
-}

@@ -604,13 +604,12 @@ class ModelIOTools {
         
         // Create Vertex Buffers
         for vtxBuffer in vertexBuffers {
-            vtxBuffer.withUnsafeBytes { (bytes: UnsafePointer<UInt8>) in
-                guard let aVTXBuffer = device.makeBuffer(bytes: bytes, length: vtxBuffer.count, options: .storageModeShared) else {
+            vtxBuffer.withUnsafeBytes {
+                guard let bytesPointer = $0.baseAddress, let aVTXBuffer = device.makeBuffer(bytes: bytesPointer, length: vtxBuffer.count, options: .storageModeShared) else {
                     fatalError("Failed to create a buffer from the device.")
                 }
                 drawData.vertexBuffers.append(aVTXBuffer)
             }
-            
         }
         
         return drawData

@@ -55,6 +55,24 @@ public struct AKVector: Equatable {
     }
     
     /**
+     Initialize with `x`, `y`, and `z` components
+     */
+    public init(x: Float, y: Float, z: Float) {
+        self.x = Double(x)
+        self.y = Double(y)
+        self.z = Double(z)
+    }
+    
+    /**
+     Initialize with `x`, `y`, and `z` components
+     */
+    public init(x: Int, y: Int, z: Int) {
+        self.x = Double(x)
+        self.y = Double(y)
+        self.z = Double(z)
+    }
+    
+    /**
      Initialize with a `SIMD3<Float>` object
      */
     public init(_ float3: float3) {

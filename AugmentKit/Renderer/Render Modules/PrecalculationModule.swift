@@ -26,6 +26,7 @@
 //
 //
 
+import ARKit
 import AugmentKitShader
 import Foundation
 import MetalKit
@@ -163,18 +164,37 @@ class PrecalculationModule: PreRenderComputeModule {
                 
                 if let environmentUniform = environmentUniforms?.advanced(by: drawCallGroupOffset + drawCallIndex), computePass.usesEnvironment {
                     
-                    // see if this geometry is associated with an environment anchor. An environment anchor applies to a regino of space which may contain serveral anchors.
-                    let environmentProperty = environmentProperties.environmentAnchorsWithReatedAnchors.first(where: {
-                        $0.value.contains(uuid)
-                    })
-                    // Get the environment texture if available
-                    let environmentTexture: MTLTexture? = {
-                        if let environmentProbeAnchor = environmentProperty?.key, let aTexture = environmentProbeAnchor.environmentTexture {
-                            return aTexture
+                    // See if this anchor is associated with an environment anchor. An environment anchor applies to a region of space which may contain several anchors. The environment anchor that has the smallest volume is assumed to be more localized and therefore be the best for for this anchor
+                    var environmentTexture: MTLTexture?
+                    let environmentProbes: [AREnvironmentProbeAnchor] = environmentProperties.environmentAnchorsWithReatedAnchors.compactMap{
+                        if $0.value.contains(uuid) {
+                            return $0.key
                         } else {
                             return nil
                         }
-                    }()
+                    }
+                    if environmentProbes.count > 1 {
+                        var bestEnvironmentProbe: AREnvironmentProbeAnchor?
+                        environmentProbes.forEach {
+                            if let theBestEnvironmentProbe = bestEnvironmentProbe {
+                                let existingVolume = AKCube(position: AKVector(x: theBestEnvironmentProbe.transform.columns.3.x, y: theBestEnvironmentProbe.transform.columns.3.y, z: theBestEnvironmentProbe.transform.columns.3.z), extent: AKVector(theBestEnvironmentProbe.extent)).volume()
+                                let newVolume = AKCube(position: AKVector(x: $0.transform.columns.3.x, y: $0.transform.columns.3.y, z: $0.transform.columns.3.z), extent: AKVector($0.extent)).volume()
+                                if newVolume < existingVolume {
+                                    bestEnvironmentProbe = $0
+                                }
+                            } else {
+                                bestEnvironmentProbe = $0
+                            }
+                        }
+                        if let environmentProbeAnchor = bestEnvironmentProbe, let texture = environmentProbeAnchor.environmentTexture {
+                            environmentTexture = texture
+                        }
+                    } else {
+                        if let environmentProbeAnchor = environmentProbes.first, let texture = environmentProbeAnchor.environmentTexture {
+                            environmentTexture = texture
+                        }
+                    }
+                    
                     let environmentData: EnvironmentData = {
                         var myEnvironmentData = EnvironmentData()
                         if let texture = environmentTexture {

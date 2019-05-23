@@ -297,12 +297,34 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                 anchorsByUUID[uuid] = [akAnchor]
             }
             
-            // see if this anchor is associated with an environment anchor. An environment anchor applies to a regino of space which may contain serveral anchors.
-            let environmentProperty = environmentProperties.environmentAnchorsWithReatedAnchors.first(where: {
-                $0.value.contains(anchor.identifier)
-            })
-            if let environmentProbeAnchor = environmentProperty?.key, let texture = environmentProbeAnchor.environmentTexture {
-                environmentTextureByUUID[uuid] = texture
+            // See if this anchor is associated with an environment anchor. An environment anchor applies to a region of space which may contain several anchors. The environment anchor that has the smallest volume is assumed to be more localized and therefore be the best for for this anchor
+            let environmentProbes: [AREnvironmentProbeAnchor] = environmentProperties.environmentAnchorsWithReatedAnchors.compactMap{
+                if $0.value.contains(anchor.identifier) {
+                    return $0.key
+                } else {
+                    return nil
+                }
+            }
+            if environmentProbes.count > 1 {
+                var bestEnvironmentProbe: AREnvironmentProbeAnchor?
+                environmentProbes.forEach {
+                    if let theBestEnvironmentProbe = bestEnvironmentProbe {
+                        let existingVolume = AKCube(position: AKVector(x: theBestEnvironmentProbe.transform.columns.3.x, y: theBestEnvironmentProbe.transform.columns.3.y, z: theBestEnvironmentProbe.transform.columns.3.z), extent: AKVector(theBestEnvironmentProbe.extent)).volume()
+                        let newVolume = AKCube(position: AKVector(x: $0.transform.columns.3.x, y: $0.transform.columns.3.y, z: $0.transform.columns.3.z), extent: AKVector($0.extent)).volume()
+                        if newVolume < existingVolume {
+                            bestEnvironmentProbe = $0
+                        }
+                    } else {
+                        bestEnvironmentProbe = $0
+                    }
+                }
+                if let environmentProbeAnchor = bestEnvironmentProbe, let texture = environmentProbeAnchor.environmentTexture {
+                    environmentTextureByUUID[uuid] = texture
+                }
+            } else {
+                if let environmentProbeAnchor = environmentProbes.first, let texture = environmentProbeAnchor.environmentTexture {
+                    environmentTextureByUUID[uuid] = texture
+                }
             }
             
         }

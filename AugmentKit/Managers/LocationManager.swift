@@ -213,7 +213,7 @@ public extension LocationManager {
         
         if theLocation == nil {
             
-            if let archivedLocationData = localStoreManager?.lastKnownLocationData, let archivedLocationDict = NSKeyedUnarchiver.unarchiveObject(with: archivedLocationData) as? [String: Any], let lastKnownLocation = archivedLocationDict["location"] as? CLLocation, let myUpddatedTime = archivedLocationDict["updated"] as? Date {
+            if let archivedLocationData = localStoreManager?.lastKnownLocationData, let archivedLocationDict = try? NSKeyedUnarchiver.unarchivedObject(ofClass: NSDictionary.self, from: archivedLocationData), let lastKnownLocation = archivedLocationDict["location"] as? CLLocation, let myUpddatedTime = archivedLocationDict["updated"] as? Date {
                 // If it's more than an hour ago, ignore it.
                 if myUpddatedTime.timeIntervalSince(Date()) < 60 * 60 {
                     theLocation = lastKnownLocation

@@ -32,7 +32,7 @@ import CoreMotion
 /**
  `LocationManager` protocol implementation
  */
-public class WorldLocationManager: NSObject, LocationManager {
+open class WorldLocationManager: NSObject, LocationManager {
     /**
      Singleton instance
      */

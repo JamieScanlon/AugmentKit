@@ -32,7 +32,7 @@ import MetalKit
 /**
  Extensions for loading a model from SceneKit so it can be used as an anchor. This can be excluded if SceneKit is not being used.
  */
-public class AKSceneKitUtils {
+open class AKSceneKitUtils {
     /**
      Creates an `MDLAsset` object from a `SceneKit` file. The method looks for a file with the specified name in the application’s main bundle.
      - Parameters:

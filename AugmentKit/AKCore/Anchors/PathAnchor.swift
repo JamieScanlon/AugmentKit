@@ -31,7 +31,7 @@ import Foundation
 /**
  A generic implementation of AKPath that renders a path using the world locations as endpoints for the path segments.
  */
-public class PathAnchor: AKPath {
+open class PathAnchor: AKPath {
     /**
      A type string. Always returns "PathAnchor"
      */

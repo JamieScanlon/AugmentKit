@@ -581,7 +581,7 @@ class SurfacesRenderModule: RenderModule {
         
     }
     
-    func frameEncodingComplete() {
+    func frameEncodingComplete(renderPasses: [RenderPass]) {
         //
     }
     

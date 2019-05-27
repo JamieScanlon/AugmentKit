@@ -66,7 +66,7 @@ public protocol ModelProvider {
 /**
  A standard implementation of `ModelProvider`. This implementation stores all registered `MDLAsset` objects in memory and returns them synchronously when `loadAsset(forObjectType:,identifier:,completion:)` is called.
  */
-public class AKModelProvider: ModelProvider {
+open class AKModelProvider: ModelProvider {
     
     /**
      Provides a singleton instance.

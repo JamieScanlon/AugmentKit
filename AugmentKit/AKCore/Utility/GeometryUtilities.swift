@@ -788,7 +788,7 @@ extension simd_quatd: CustomStringConvertible {
 /**
  Tools for using quaternions. Augmentkit uses `simd_quatf` for all quaternions.
  */
-public class QuaternionUtilities {
+open class QuaternionUtilities {
     
     /**
      Creates a quaternion from a set of `EulerAngles`

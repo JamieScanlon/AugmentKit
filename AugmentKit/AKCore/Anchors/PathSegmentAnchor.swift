@@ -32,7 +32,7 @@ import ModelIO
 /**
  A generic implementation of a AKPathSegmentAnchor. Instead of creating these objects directly, these objects should be created as part of creating a new `AKPath` instance.
  */
-public class PathSegmentAnchor: AKPathSegmentAnchor {
+open class PathSegmentAnchor: AKPathSegmentAnchor {
     
     /**
      A type string. Always returns "PathSegmentAnchor"
@@ -68,6 +68,10 @@ public class PathSegmentAnchor: AKPathSegmentAnchor {
      Indicates whether this geometry participates in the generation of augmented shadows. Defaults to `false`
      */
     public var generatesShadows: Bool = false
+    /**
+     If `true`, the current base color texture of the entity has changed since the last time it was rendered and the pixel data needs to be updated. This flag can be used to achieve dynamically updated textures for rendered objects.
+     */
+    public var needsColorTextureUpdate: Bool = false
     /**
      An `ARAnchor` that will be tracked in the AR world by `ARKit`
      */

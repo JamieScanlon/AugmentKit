@@ -38,6 +38,7 @@ class ViewController: UIViewController {
     var pinAsset: MDLAsset?
     var shipAsset: MDLAsset?
     var maxAsset: MDLAsset?
+    var demoVC: UIViewController?
     
     @IBOutlet var infoView: UIView?
     @IBOutlet var debugInfoAnchorCounts: UILabel?
@@ -222,10 +223,27 @@ class ViewController: UIViewController {
         //s'durned innarestin'...
         //"""
         //        textView.backgroundColor = .clear
-        //        let location = world.worldLocationWithDistanceFromMe(metersAbove: 0, metersInFront: 2)!
-        //        let heading = AlwaysFacingMeHeading(withWorldLocaiton: location)
-        //        let viewSurface = AugmentedUIViewSurface(withView: textView, at: location, heading: heading)
-        //        world.add(anchor: viewSurface)
+//                let location = world.worldLocationWithDistanceFromMe(metersAbove: 0, metersInFront: 2)!
+//                let heading = AlwaysFacingMeHeading(withWorldLocaiton: location)
+//                let viewSurface = AugmentedUIViewSurface(withView: textView, at: location, heading: heading)
+//                world.add(anchor: viewSurface)
+        
+        
+        // Example:
+        // Render a UINavigationViewController stack as a surface in the AR World 2 meters in from of the current location. Use an AlwaysFacingMeHeading
+        // This is still a work in progress. In order for mapkit to render, it must be in the view heirarchy but I still haven't found a great way to render with animations (Core Animation) because it automatically turns off animations if it is not on screen.
+        if demoVC == nil {
+            demoVC = storyboard?.instantiateViewController(withIdentifier: "AutoNavigationController")
+            demoVC!.view.frame = CGRect(x: 0, y: -view.bounds.height, width: view.bounds.width, height: view.bounds.height)
+            view.addSubview(demoVC!.view)
+        }
+        let location = world.worldLocationWithDistanceFromMe(metersAbove: 0, metersInFront: 2)!
+        let heading = AlwaysFacingMeHeading(withWorldLocaiton: location)
+        if let demoView = demoVC?.view {
+            let viewSurface = AugmentedUIViewSurface(withView: demoView, at: location, heading: heading)
+            world.add(anchor: viewSurface)
+        }
+        
         
     }
     

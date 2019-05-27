@@ -241,7 +241,9 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         
     }
     
-    func updateBuffers(withModuleEntities moduleEntities: [AKEntity], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, argumentBufferProperties: ArgumentBufferProperties, forRenderPass renderPass: RenderPass) {
+    func updateBuffers(withModuleEntities moduleEntities: [AKEntity], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, argumentBufferProperties theArgumentBufferProperties: ArgumentBufferProperties, forRenderPass renderPass: RenderPass) {
+        
+        argumentBufferProperties = theArgumentBufferProperties
         
         let anchors: [AKAugmentedAnchor] = moduleEntities.compactMap({
             if let anAnchor = $0 as? AKAugmentedAnchor {
@@ -262,12 +264,12 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         
         for akAnchor in anchors {
             
-            guard let anchor = akAnchor.arAnchor else {
+            guard let arAnchor = akAnchor.arAnchor else {
                 continue
             }
             
             // Ignore anchors that are beyond the renderDistance
-            let distance = anchorDistance(withTransform: anchor.transform, cameraProperties: cameraProperties)
+            let distance = anchorDistance(withTransform: arAnchor.transform, cameraProperties: cameraProperties)
             guard Double(distance) < renderDistance else {
                 continue
             }
@@ -281,8 +283,8 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             
             // If an anchor is passed in that does not seem to be associated with any model, assign it the `generalUUD` so it will be rendered with a general model
             let uuid: UUID = {
-                if modelAssetsByUUID[anchor.identifier] != nil {
-                    return anchor.identifier
+                if modelAssetsByUUID[arAnchor.identifier] != nil {
+                    return arAnchor.identifier
                 } else {
                     return generalUUID
                 }
@@ -299,7 +301,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             
             // See if this anchor is associated with an environment anchor. An environment anchor applies to a region of space which may contain several anchors. The environment anchor that has the smallest volume is assumed to be more localized and therefore be the best for for this anchor
             let environmentProbes: [AREnvironmentProbeAnchor] = environmentProperties.environmentAnchorsWithReatedAnchors.compactMap{
-                if $0.value.contains(anchor.identifier) {
+                if $0.value.contains(arAnchor.identifier) {
                     return $0.key
                 } else {
                     return nil
@@ -330,7 +332,11 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         }
         
         //
-        // Update the Anchor uniform
+        // Update Textures
+        //
+        
+        //
+        // Update the Buffers
         //
         
         var anchorMeshIndex = 0
@@ -585,8 +591,40 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         
     }
     
-    func frameEncodingComplete() {
-        //
+    func frameEncodingComplete(renderPasses: [RenderPass]) {
+        
+        // Here it is safe to update textures
+        
+        guard let renderPass = renderPasses.first(where: {$0.name == "Main Render Pass"}) else {
+            return
+        }
+
+        for drawCallGroup in renderPass.drawCallGroups {
+
+            let uuid = drawCallGroup.uuid
+
+            for drawCall in drawCallGroup.drawCalls {
+
+                guard let drawData = drawCall.drawData else {
+                    continue
+                }
+
+                guard let akAnchor = geometricEntities.first(where: {$0 is AKAugmentedAnchor && $0.identifier == uuid}) else {
+                    continue
+                }
+
+                //
+                // Update Base Color texture
+                //
+
+                // Currently only supports AugmentedUIViewSurface's with a single submesh
+                if let viewSurface = akAnchor as? AugmentedUIViewSurface, viewSurface.needsColorTextureUpdate, let baseColorTexture = drawData.subData[0].baseColorTexture, drawData.subData.count == 1 {
+                    DispatchQueue.main.sync {
+                        viewSurface.updateTextureWithCurrentPixelData(baseColorTexture)
+                    }
+                }
+            }
+        }
     }
     
     //

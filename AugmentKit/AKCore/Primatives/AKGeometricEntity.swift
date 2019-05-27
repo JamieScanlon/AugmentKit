@@ -50,4 +50,8 @@ public protocol AKGeometricEntity: AKEntity {
      Indicates whether this geometry participates in the generation of augmented shadows. As a general guide, geometries that represent real world objects should not generate shadows because they have them already. Augmented geometries, however, should have this property enabled.
      */
     var generatesShadows: Bool { get }
+    /**
+     If `true`, the current base color texture of the entity has changed since the last time it was rendered and the pixel data needs to be updated. This flag can be used to achieve dynamically updated textures for rendered objects.
+     */
+    var needsColorTextureUpdate: Bool { get set }
 }

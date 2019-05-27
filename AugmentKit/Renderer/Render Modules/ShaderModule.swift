@@ -66,7 +66,7 @@ protocol ShaderModule {
     func updateBufferState(withBufferIndex: Int)
     
     /// Called when Metal and the GPU has fully finished proccssing the commands we're encoding this frame. This indicates when the dynamic buffers, that we're writing to this frame, will no longer be needed by Metal and the GPU. This gets called per frame.
-    func frameEncodingComplete()
+    func frameEncodingComplete(renderPasses: [RenderPass])
     
     //
     // Util

@@ -61,7 +61,7 @@ protocol AKAugmentedUserTracker: AKAugmentedTracker {
 /**
  An implementation of `AKAugmentedUserTracker`
  */
-public class UserTracker: AKAugmentedUserTracker {
+open class UserTracker: AKAugmentedUserTracker {
     /**
      A type string. Always returns "UserTracker"
      */
@@ -88,6 +88,10 @@ public class UserTracker: AKAugmentedUserTracker {
      Indicates whether this geometry participates in the generation of augmented shadows. Defaults to `false`.
      */
     public var generatesShadows: Bool = false
+    /**
+     If `true`, the current base color texture of the entity has changed since the last time it was rendered and the pixel data needs to be updated. This flag can be used to achieve dynamically updated textures for rendered objects.
+     */
+    public var needsColorTextureUpdate: Bool = false
     /**
      The position of the tracker. The position is relative to the user.
      */

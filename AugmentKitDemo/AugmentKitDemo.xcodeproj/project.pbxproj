@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		96087441229AE8750053E42C /* AutoNavigationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96087440229AE8750053E42C /* AutoNavigationController.swift */; };
 		9614CC4D216A6A5500427C6D /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9614CC4C216A6A5500427C6D /* AppDelegate.swift */; };
 		9614CC4F216A6A5500427C6D /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9614CC4E216A6A5500427C6D /* ViewController.swift */; };
 		9614CC52216A6A5500427C6D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 9614CC50216A6A5500427C6D /* Main.storyboard */; };
@@ -40,6 +41,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		96087440229AE8750053E42C /* AutoNavigationController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoNavigationController.swift; sourceTree = "<group>"; };
 		9614CC49216A6A5500427C6D /* AugmentKitDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AugmentKitDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9614CC4C216A6A5500427C6D /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		9614CC4E216A6A5500427C6D /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
@@ -99,6 +101,7 @@
 				9614CC53216A6A5500427C6D /* Assets.xcassets */,
 				9614CC55216A6A5500427C6D /* LaunchScreen.storyboard */,
 				9614CC58216A6A5500427C6D /* Info.plist */,
+				96087440229AE8750053E42C /* AutoNavigationController.swift */,
 			);
 			path = AugmentKitDemo;
 			sourceTree = "<group>";
@@ -210,6 +213,7 @@
 			files = (
 				9614CC4F216A6A5500427C6D /* ViewController.swift in Sources */,
 				9614CC4D216A6A5500427C6D /* AppDelegate.swift in Sources */,
+				96087441229AE8750053E42C /* AutoNavigationController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

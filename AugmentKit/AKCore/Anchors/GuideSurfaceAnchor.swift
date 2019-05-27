@@ -36,7 +36,7 @@ import MetalKit
 /**
  An anchor used for debugging which displays a guide image as the texture for real surfaces detected by `ARKit`
  */
-public class GuideSurfaceAnchor: AKRealSurfaceAnchor {
+open class GuideSurfaceAnchor: AKRealSurfaceAnchor {
     
     /**
      A type string. Always returns "GuideSurface"
@@ -76,6 +76,10 @@ public class GuideSurfaceAnchor: AKRealSurfaceAnchor {
      Indicates whether this geometry participates in the generation of augmented shadows. Since this is a geometry that represents a real world object, it does not generate shadows.
      */
     public var generatesShadows: Bool = false
+    /**
+     If `true`, the current base color texture of the entity has changed since the last time it was rendered and the pixel data needs to be updated. This flag can be used to achieve dynamically updated textures for rendered objects.
+     */
+    public var needsColorTextureUpdate: Bool = false
     /**
      An `ARAnchor` that will be tracked in the AR world by `ARKit`
      */

@@ -490,7 +490,7 @@ class PrecalculationModule: PreRenderComputeModule {
         
     }
     
-    func frameEncodingComplete() {
+    func frameEncodingComplete(renderPasses: [RenderPass]) {
         //
     }
     

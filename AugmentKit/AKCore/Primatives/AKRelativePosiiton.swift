@@ -32,7 +32,7 @@ import simd
 /**
  A data structure that represents a position relative to another reference position in world space.
  */
-public class AKRelativePosition {
+open class AKRelativePosition {
     
     /**
      Another `AKRelativePosition` which this object is relative to.

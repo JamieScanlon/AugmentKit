@@ -44,7 +44,7 @@ public protocol LocalStoreManager {
 /**
  A default implementation of `LocalStoreManager` which sotores properties in memory
  */
-public class DefaultLocalStoreManager: LocalStoreManager {
+open class DefaultLocalStoreManager: LocalStoreManager {
     /**
      A singleton instance
      */

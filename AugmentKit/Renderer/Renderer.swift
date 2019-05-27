@@ -322,7 +322,7 @@ public struct ArgumentBufferProperties {
 /**
  AumentKit's main Metal based render.
  */
-public class Renderer: NSObject {
+open class Renderer: NSObject {
     
     /**
      When set, the monitor gets notified of render status changes.
@@ -866,19 +866,7 @@ public class Renderer: NSObject {
         if let commandBuffer = commandQueue.makeCommandBuffer() {
             
             commandBuffer.label = "RenderCommandBuffer"
-            
-            // Add completion hander which signal _inFlightSemaphore when Metal and the GPU has fully
-            // finished proccssing the commands we're encoding this frame.  This indicates when the
-            // dynamic buffers, that we're writing to this frame, will no longer be needed by Metal
-            // and the GPU.
-            commandBuffer.addCompletedHandler{ [weak self] commandBuffer in
-                if let strongSelf = self {
-                    strongSelf.inFlightSemaphore.signal()
-                    strongSelf.renderModules.forEach { module in
-                        module.frameEncodingComplete()
-                    }
-                }
-            }
+            var renderPasses = [RenderPass]()
             
             uniformBufferIndex = (uniformBufferIndex + 1) % Constants.maxInFlightFrames
             
@@ -933,6 +921,8 @@ public class Renderer: NSObject {
                     print("WARNING: Could not create MTLRenderCommandEncoder for the shadow pass. Aborting.")
                 }
                 
+                renderPasses.append(shadowRenderPass)
+                
             }
             
             //
@@ -963,9 +953,45 @@ public class Renderer: NSObject {
                     commandBuffer.present(currentDrawable)
 
                 }
+                
+                renderPasses.append(mainRenderPass)
             }
             
-            // Finalize rendering here & push the command buffer to the GPU
+            //
+            // Setup Bloom Downsample pass
+            //
+            
+            // TODO: implement
+            
+            //
+            // Setup Bloom Blur pass
+            //
+            
+            // TODO: implement
+            
+            //
+            // Setup Composite Pass
+            //
+            
+            // TODO: implement
+            
+            //
+            // Finalize rendering: push the command buffer to the GPU
+            //
+            
+            // Add completion hander which signal _inFlightSemaphore when Metal and the GPU has fully
+            // finished proccssing the commands we're encoding this frame.  This indicates when the
+            // dynamic buffers, that we're writing to this frame, will no longer be needed by Metal
+            // and the GPU.
+            commandBuffer.addCompletedHandler{ [weak self] commandBuffer in
+                if let strongSelf = self {
+                    strongSelf.inFlightSemaphore.signal()
+                    strongSelf.renderModules.forEach { module in
+                        module.frameEncodingComplete(renderPasses: renderPasses)
+                    }
+                }
+            }
+            
             commandBuffer.commit()
             
         }
@@ -1938,8 +1964,9 @@ fileprivate class InterpolatingAugmentedAnchor: AKAugmentedAnchor {
     var asset: MDLAsset
     var identifier: UUID?
     var effects: [AnyEffect<Any>]?
-    public var shaderPreference: ShaderPreference = .pbr
-    public var generatesShadows: Bool = true
+    var shaderPreference: ShaderPreference = .pbr
+    var generatesShadows: Bool = true
+    var needsColorTextureUpdate: Bool = false
     var arAnchor: ARAnchor?
 
     init(withAKAugmentedAnchor akAugmentedAnchor: AKAugmentedAnchor) {

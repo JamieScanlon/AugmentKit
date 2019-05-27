@@ -199,7 +199,7 @@ public protocol AKWorldMonitor {
 /**
  A single class to hold all world state. It manages it's own Metal Device, Renderer, and ARSession. Initialize it with a MetalKit View which this class will render into. There should only be one of these per AR View.
  */
-public class AKWorld: NSObject {
+open class AKWorld: NSObject {
     
     // MARK: Properties
     

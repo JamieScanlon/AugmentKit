@@ -29,7 +29,7 @@ import UIKit
 /**
  Provides methods for geting information about the users device
  */
-public class DeviceManager {
+open class DeviceManager {
     /**
      Singleton instance
      */

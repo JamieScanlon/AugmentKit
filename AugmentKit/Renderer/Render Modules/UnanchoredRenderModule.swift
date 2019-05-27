@@ -752,7 +752,7 @@ class UnanchoredRenderModule: RenderModule {
         
     }
     
-    func frameEncodingComplete() {
+    func frameEncodingComplete(renderPasses: [RenderPass]) {
         //
     }
     

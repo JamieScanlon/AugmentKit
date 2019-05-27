@@ -32,7 +32,7 @@ import ModelIO
 /**
  A generic AR object that can be placed in the AR world. These can be created and given to the AR engine to render in the AR world.
  */
-public class AugmentedAnchor: AKAugmentedAnchor {
+open class AugmentedAnchor: AKAugmentedAnchor {
     
     /**
      Returns "AugmentedAnchor"
@@ -68,6 +68,10 @@ public class AugmentedAnchor: AKAugmentedAnchor {
      Indicates whether this geometry participates in the generation of augmented shadows. Since this is an augmented geometry, it does generate shadows.
      */
     public var generatesShadows: Bool = true
+    /**
+     If `true`, the current base color texture of the entity has changed since the last time it was rendered and the pixel data needs to be updated. This flag can be used to achieve dynamically updated textures for rendered objects.
+     */
+    public var needsColorTextureUpdate: Bool = false
     /**
      An `ARAnchor` that will be tracked in the AR world by `ARKit`
      */

@@ -68,7 +68,7 @@ public extension FloatingPoint {
 /**
  A utility for doing location conversion calculations
  */
-public class AKLocationUtility {
+open class AKLocationUtility {
     
     // Equatorial radius
     static let eR = 63781370.0

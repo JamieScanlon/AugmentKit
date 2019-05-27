@@ -33,7 +33,7 @@ import simd
 /**
  A generic implementation of `AKAugmentedSurfaceAnchor` that renders a `MDLTexture` on a simple plane with a given extent
  */
-public class AugmentedSurfaceAnchor: AKAugmentedSurfaceAnchor {
+open class AugmentedSurfaceAnchor: AKAugmentedSurfaceAnchor {
     
     /**
      A type string. Always returns "AugmentedSurface"
@@ -69,6 +69,10 @@ public class AugmentedSurfaceAnchor: AKAugmentedSurfaceAnchor {
      Indicates whether this geometry participates in the generation of augmented shadows. Since this is an augmented geometry, it does generate shadows.
      */
     public var generatesShadows: Bool = true
+    /**
+     If `true`, the current base color texture of the entity has changed since the last time it was rendered and the pixel data needs to be updated. This flag can be used to achieve dynamically updated textures for rendered objects.
+     */
+    public var needsColorTextureUpdate: Bool = false
     /**
      An `ARAnchor` that will be tracked in the AR world by `ARKit`
      */

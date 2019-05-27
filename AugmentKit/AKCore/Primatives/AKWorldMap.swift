@@ -33,7 +33,7 @@ import simd
 /**
  Wraps ARKit's `ARWorldMap` and adds world location properties which ties the World Map to a specific location in the real world. The `ARWorldMap` provides enough information to tie all of the anchors in `arWorldMap` to real world locations. The `transform`, a position in the coordinate space of the `arWorldMap` is mapped to the `latitude`, `longitude`, and `elevation`. From one knowd reference location,  the `latitude`, `longitude`, and `elevation` of every other point in the coordinate space of `arWorldMap` can be calculated.
  */
-public class AKWorldMap: NSObject, NSCopying, NSSecureCoding {
+open class AKWorldMap: NSObject, NSCopying, NSSecureCoding {
     
     /**
      The latitude of a reference location given by the `transform`

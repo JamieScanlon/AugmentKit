@@ -246,7 +246,7 @@ class CameraPlaneRenderModule: RenderModule {
         
     }
     
-    func frameEncodingComplete() {
+    func frameEncodingComplete(renderPasses: [RenderPass]) {
         textureReferences.removeAll()
     }
     

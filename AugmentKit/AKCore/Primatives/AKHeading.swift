@@ -116,7 +116,7 @@ public protocol AKHeading {
 /**
  A relative `AKHeading` that matches the heading of it's parent. This is the simplest relative heading and is the default heading for Real anchors which (due to the fact that they represent real world geometries) must match the heading of their parent objects.
  */
-public class SameHeading: AKHeading {
+open class SameHeading: AKHeading {
     /**
      Fixed to `HeadingType.relative`
      */
@@ -140,7 +140,7 @@ public class SameHeading: AKHeading {
 /**
  An absolute `AKHeading` that is aligned with the AR World's axis. This is the simplest absolute heading and is the default heading for Augmented anchors.
  */
-public class NorthHeading: AKHeading {
+open class NorthHeading: AKHeading {
     /**
      Fixed to `HeadingType.absolute`
      */
@@ -164,7 +164,7 @@ public class NorthHeading: AKHeading {
 /**
  An absolute `AKHeading` that rotates to face the users current position.
  */
-public class AlwaysFacingMeHeading: AKHeading {
+open class AlwaysFacingMeHeading: AKHeading {
     /**
      Fixed to `HeadingType.absolute`
      */
@@ -203,7 +203,7 @@ public class AlwaysFacingMeHeading: AKHeading {
 /**
  A General use implementation of `AKHeading`.
  */
-public class Heading: AKHeading {
+open class Heading: AKHeading {
     /**
      Determines how the AugmentKit render engine will interperet the value found in `offsetRotation`. When the `HeadingType` is set to `.absolute`, the AugmentKit render engine uses the value of `offsetRotation` to rotate the object to this orientation. When the `HeadingType` is set to `.relative`, the AugmentKit render engine combines the value of `offsetRotation` with the parent objects rotation to rotate the object to it's final orientation.
      */
@@ -272,7 +272,7 @@ public class Heading: AKHeading {
 /**
  An absolute `AKHeading` where the heading can be initialized relative to due north or facing a `AKWorldLocation`
  */
-public class WorldHeading: AKHeading {
+open class WorldHeading: AKHeading {
     
     /**
      Used to describe how the heading should function. `WorldHeading` can be used to face in a direction described as due north offset by a number of degrees (in radians), or to face at a specific location described by a `AKWorldLocation` object

@@ -32,7 +32,7 @@ import ModelIO
 /**
  An ARTarget object whos vector matches the rotation of the device
  */
-public class GazeTarget: AKTarget {
+open class GazeTarget: AKTarget {
     /**
      A direction vector relative to it's position and can be a unit vector. Matches the orientation of the device
      */
@@ -63,6 +63,10 @@ public class GazeTarget: AKTarget {
      Indicates whether this geometry participates in the generation of augmented shadows. Defaults to `false`.
      */
     public var generatesShadows: Bool = false
+    /**
+     If `true`, the current base color texture of the entity has changed since the last time it was rendered and the pixel data needs to be updated. This flag can be used to achieve dynamically updated textures for rendered objects.
+     */
+    public var needsColorTextureUpdate: Bool = false
     /**
      The position of the tracker. The position is relative to the user.
      */

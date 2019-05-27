@@ -394,7 +394,7 @@ class PathsRenderModule: RenderModule {
         
     }
     
-    func frameEncodingComplete() {
+    func frameEncodingComplete(renderPasses: [RenderPass]) {
         //
     }
     

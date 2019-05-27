@@ -98,7 +98,7 @@ class SharedBuffersRenderModule: SharedRenderModule {
         // the vertex and fragment shaders and issue the draw calls
     }
     
-    func frameEncodingComplete() {
+    func frameEncodingComplete(renderPasses: [RenderPass]) {
         //
     }
     

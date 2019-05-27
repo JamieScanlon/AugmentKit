@@ -76,7 +76,7 @@ extension MDLAsset {
 /**
  Tools for creating ModelIO's `MDLAsset` objects
  */
-public class MDLAssetTools {
+open class MDLAssetTools {
     /**
      Creates an `MDLAsset` object from a `ModelIO` compatable model file. The method looks for a file with the specified name in the specified bundle and uses the specified `MTKMeshBufferAllocator` to create the `MDLAsset`.
      - Parameters:
@@ -644,6 +644,7 @@ class ModelIOTools {
         if let property = mdlMaterial.property(with: semantic) {
             if let sourceTexture = property.textureSamplerValue?.texture {
                 let wantMips = property.semantic != .tangentSpaceNormal
+//                let options: [MTKTextureLoader.Option : Any] = [ .generateMipmaps : wantMips, .textureUsage: NSNumber(value: MTLTextureUsage.unknown.rawValue) ] // Force an uncompressed texture
                 let options: [MTKTextureLoader.Option : Any] = [ .generateMipmaps : wantMips ]
                 do {
                     result.texture = try textureLoader.newTexture(texture: sourceTexture, options: options)

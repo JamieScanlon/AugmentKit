@@ -327,16 +327,9 @@ class PrecalculationModule: PreRenderComputeModule {
                     var headingType: HeadingType = .absolute
                     var headingTransform = matrix_identity_float4x4
                     var locationTransform = matrix_identity_float4x4
-                    var modelMatrix = matrix_identity_float4x4
-                    var normalMatrix = matrix_identity_float3x3
-                    // Flip Z axis to convert geometry from right handed to left handed
-                    var coordinateSpaceTransform = matrix_identity_float4x4
-                    coordinateSpaceTransform.columns.2.z = -1.0
-                    coordinateSpaceTransform = coordinateSpaceTransform * worldTransform
                     
                     if let akAnchor = geometricEntity as? AKAnchor {
                         
-                        // TODO: Move this logic to shader
                         // Ignore anchors that are beyond the renderDistance
                         let distance = anchorDistance(withTransform: akAnchor.worldLocation.transform, cameraProperties: cameraProperties)
                         guard Double(distance) < renderDistance else {
@@ -348,25 +341,10 @@ class PrecalculationModule: PreRenderComputeModule {
                         // Update Heading
                         let myHeadingTransform = akAnchor.heading.offsetRotation.quaternion.toMatrix4()
                         
-                        if akAnchor.heading.type == .absolute {
-                            let newTransform = myHeadingTransform * float4x4(
-                                float4(coordinateSpaceTransform.columns.0.x, 0, 0, 0),
-                                float4(0, coordinateSpaceTransform.columns.1.y, 0, 0),
-                                float4(0, 0, coordinateSpaceTransform.columns.2.z, 0),
-                                float4(coordinateSpaceTransform.columns.3.x, coordinateSpaceTransform.columns.3.y, coordinateSpaceTransform.columns.3.z, 1)
-                            )
-                            coordinateSpaceTransform = newTransform
-                        } else if akAnchor.heading.type == .relative {
-                            coordinateSpaceTransform = coordinateSpaceTransform * myHeadingTransform
-                        }
-                        
-                        let myModelMatrix = akAnchor.worldLocation.transform * coordinateSpaceTransform
                         hasHeading = true
                         headingType = akAnchor.heading.type
                         headingTransform = myHeadingTransform
                         locationTransform = akAnchor.worldLocation.transform
-                        modelMatrix = myModelMatrix
-                        normalMatrix = myModelMatrix.normalMatrix
                         
                     } else if let akTarget = geometricEntity as? AKTarget {
                         
@@ -382,11 +360,7 @@ class PrecalculationModule: PreRenderComputeModule {
                             continue
                         }
                         
-                        let myModelMatrix = targetAbsoluteTransform * coordinateSpaceTransform
-                        
                         locationTransform = targetAbsoluteTransform
-                        modelMatrix = myModelMatrix
-                        normalMatrix = myModelMatrix.normalMatrix
                         
                     } else if let akTracker = geometricEntity as? AKTracker {
                         
@@ -402,11 +376,7 @@ class PrecalculationModule: PreRenderComputeModule {
                             continue
                         }
                         
-                        let myModelMatrix = trackerAbsoluteTransform * coordinateSpaceTransform
-                        
                         locationTransform = trackerAbsoluteTransform
-                        modelMatrix = myModelMatrix
-                        normalMatrix = myModelMatrix.normalMatrix
                         
                     }
                     
@@ -416,8 +386,6 @@ class PrecalculationModule: PreRenderComputeModule {
                     geometryUniform.pointee.headingTransform = headingTransform
                     geometryUniform.pointee.worldTransform = worldTransform
                     geometryUniform.pointee.locationTransform = locationTransform
-                    geometryUniform.pointee.modelMatrix = modelMatrix
-                    geometryUniform.pointee.normalMatrix = normalMatrix
                 }
                 
                 drawCallIndex += 1

@@ -183,8 +183,8 @@ struct AnchorInstanceUniforms {
     
     matrix_float4x4 locationTransform;
     matrix_float4x4 worldTransform; // A transform matrix for the anchor model in world space.
-    matrix_float4x4 modelMatrix; // A transform matrix for the anchor model in world space.
-    matrix_float3x3 normalMatrix;
+//    matrix_float4x4 modelMatrix; // A transform matrix for the anchor model in world space.
+//    matrix_float3x3 normalMatrix;
 };
 
 /// Structure shared between shader and C code that contains information about effects that should be applied to a model
@@ -198,7 +198,7 @@ struct AnchorEffectsUniforms {
 /// Structure shared between shader and C code that contains information about the material that should be used to render a model
 struct MaterialUniforms {
     vector_float4 baseColor;
-    vector_float3 emissionColor;
+    vector_float4 emissionColor;
     float roughness;
     float metalness;
     float ambientOcclusion;
@@ -224,7 +224,7 @@ struct LightingParameters {
     vector_float3   reflectedVector;
     vector_float3   normal;
     vector_float3   reflectedColor;
-    vector_float3   emissionColor;
+    vector_float4   emissionColor;
     vector_float3   ambientOcclusion;
     vector_float4   baseColor;
     float           baseColorLuminance;

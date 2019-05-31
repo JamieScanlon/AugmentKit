@@ -497,61 +497,59 @@ class ModelIOTools {
                 var material = MaterialUniforms()
                 if let mdlMaterial = submesh.material {
                     
-                    let baseColorProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .baseColor, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloat4Value)
-                    let metallicProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .metallic, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloatValue)
-                    let roughnessProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .roughness, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloatValue)
-                    let ambientOcclusionProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .ambientOcclusion, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloatValue)
-                    let normalProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .tangentSpaceNormal, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloat3Value)
-                    let emissionProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .emission, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloat3Value)
-                    let subsurfaceProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .subsurface, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloatValue)
-                    let specularProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .specular, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloatValue)
-                    let specularTintProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .specularTint, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloatValue)
-                    let anisotropicProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .anisotropic, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloatValue)
-                    let sheenProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .sheen, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloatValue)
-                    let sheenTintProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .sheenTint, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloatValue)
-                    let clearcoatProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .clearcoat, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloatValue)
-                    let clearcoatGlossProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .clearcoatGloss, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloatValue)
-                    //                        let opacityProperty = readMaterialProperty(fromAsset: mdlAsset, material: mdlMaterial, semantic: .opacity, textureLoader: textureLoader, bundle: textureBundle, withPropertyFunction: getMaterialFloatValue)
+                    let allProperties = readMaterialProperties(from: mdlMaterial, asset: mdlAsset, textureLoader: textureLoader, bundle: textureBundle)
+                    
+                    // Encode the texture indexes corresponding to the texture maps. If a property has no texture map this value will be nil
+                    subData.baseColorTexture = allProperties[.baseColor]?.texture
+                    subData.metallicTexture = allProperties[.metallic]?.texture
+                    subData.ambientOcclusionTexture = allProperties[.ambientOcclusion]?.texture
+                    subData.roughnessTexture = allProperties[.roughness]?.texture
+                    subData.normalTexture = allProperties[.tangentSpaceNormal]?.texture
+                    subData.emissionTexture = allProperties[.emission]?.texture
+                    subData.subsurfaceTexture = allProperties[.subsurface]?.texture
+                    subData.specularTexture = allProperties[.specular]?.texture
+                    subData.specularTintTexture = allProperties[.specularTint]?.texture
+                    subData.anisotropicTexture = allProperties[.anisotropic]?.texture
+                    subData.sheenTexture = allProperties[.sheen]?.texture
+                    subData.sheenTintTexture = allProperties[.sheenTint]?.texture
+                    subData.clearcoatTexture = allProperties[.clearcoat]?.texture
+                    subData.clearcoatGlossTexture = allProperties[.clearcoatGloss]?.texture
                     
                     // Encode the uniform values
-                    material.baseColor = baseColorProperty.uniform ?? float4(1.0, 1.0, 1.0, 1.0)
-                    material.metalness = metallicProperty.uniform ?? 0.0
-                    material.roughness = roughnessProperty.uniform ?? 1.0 
-                    material.ambientOcclusion = ambientOcclusionProperty.uniform ?? 1.0
-                    material.emissionColor = emissionProperty.uniform ?? float3(0, 0, 0)
-                    material.subsurface = subsurfaceProperty.uniform ?? 0.0
-                    material.specular = specularProperty.uniform ?? 0.0
-                    material.specularTint = specularTintProperty.uniform ?? 0.0
-                    material.anisotropic = anisotropicProperty.uniform ?? 0.0
-                    material.sheen = sheenProperty.uniform ?? 0.0
-                    material.sheenTint = sheenTintProperty.uniform ?? 0.0
-                    material.clearcoat = clearcoatProperty.uniform ?? 0.0
-                    material.clearcoatGloss = clearcoatGlossProperty.uniform ?? 0.0
-                    //                        material.opacity = opacityProperty.uniform ?? 1.0
+                    
+                    // The inherent color of a surface, to be used as a modulator during shading.
+                    material.baseColor = (allProperties[.baseColor]?.uniform as? float4) ?? float4(repeating: 1)
+                    // The degree to which a material appears as a dielectric surface (lower values) or as a metal (higher values).
+                    material.metalness = (allProperties[.metallic]?.uniform as? Float) ?? 0.0
+                    // The degree to which a material appears smooth, affecting both diffuse and specular response.
+                    material.roughness = (allProperties[.roughness]?.uniform as? Float) ?? 1.0
+                    // The attenuation of ambient light due to local geometry variations on a surface.
+                    material.ambientOcclusion  = (allProperties[.ambientOcclusion]?.uniform as? Float) ?? 1.0
+                    // The color emitted as radiance from a material’s surface.
+                    material.emissionColor = (allProperties[.emission]?.uniform as? float4) ?? float4(repeating: 0)
+                    // The degree to which light scatters under the surface of a material.
+                    material.subsurface = (allProperties[.subsurface]?.uniform as? Float) ?? 0.0
+                    // The intensity of specular highlights that appear on the material’s surface.
+                    material.specular = (allProperties[.specular]?.uniform as? Float) ?? 0.0
+                    // The balance of color for specular highlights, between the light color (lower values) and the material’s base color (at higher values).
+                    material.specularTint = (allProperties[.specularTint]?.uniform as? Float) ?? 0.0
+                    // The angle at which anisotropic effects are rotated relative to the local tangent basis.
+                    material.anisotropic = (allProperties[.anisotropic]?.uniform as? Float) ?? 0.0
+                    // The intensity of highlights that appear only at glancing angles on a material’s surface.
+                    material.sheen = (allProperties[.sheen]?.uniform as? Float) ?? 0.0
+                    // The balance of color for highlights that appear only at glancing angles, between the light color (lower values) and the material’s base color (at higher values).
+                    material.sheenTint = (allProperties[.sheenTint]?.uniform as? Float) ?? 0.0
+                    // The intensity of a second specular highlight, similar to the gloss that results from a clear coat on an automotive finish.
+                    material.clearcoat = (allProperties[.clearcoat]?.uniform as? Float) ?? 0.0
+                    // The spread of a second specular highlight, similar to the gloss that results from a clear coat on an automotive finish.
+                    material.clearcoatGloss = (allProperties[.clearcoatGloss]?.uniform as? Float) ?? 0.0
+//                    material.opacity = (allProperties[.opacity]?.uniform as? Float) ?? 1.0
                     material.opacity = 1.0
                     subData.materialUniforms = material
                     
-                    // Encode the texture indexes corresponding to the texture maps. If a property has no texture map this value will be nil
-                    subData.baseColorTexture = baseColorProperty.texture
-                    subData.metallicTexture = metallicProperty.texture
-                    subData.ambientOcclusionTexture = ambientOcclusionProperty.texture
-                    subData.roughnessTexture = roughnessProperty.texture
-                    subData.normalTexture = normalProperty.texture
-                    subData.emissionTexture = emissionProperty.texture
-                    subData.subsurfaceTexture = subsurfaceProperty.texture
-                    subData.specularTexture = specularProperty.texture
-                    subData.specularTintTexture = specularTintProperty.texture
-                    subData.anisotropicTexture = anisotropicProperty.texture
-                    subData.sheenTexture = sheenProperty.texture
-                    subData.sheenTintTexture = sheenTintProperty.texture
-                    subData.clearcoatTexture = clearcoatProperty.texture
-                    subData.clearcoatGlossTexture = clearcoatGlossProperty.texture
-                    
                 } else {
-                    
                     // Default uniforms
                     subData.materialUniforms = MaterialUniforms()
-                    
                 }
                 
                 if subData.baseColorTexture != nil {
@@ -635,31 +633,188 @@ class ModelIOTools {
         return skin
     }
     
-    // Read a material's property of a particular semantic (e.g. .baseColor),
-    // and return tuple of uniform value or texture index
-    private static func readMaterialProperty<T>(fromAsset asset: MDLAsset, material mdlMaterial: MDLMaterial, semantic: MDLMaterialSemantic, textureLoader: MTKTextureLoader, bundle: Bundle, withPropertyFunction getPropertyValue: (MDLMaterialProperty) -> T) -> (uniform: T?, texture: MTLTexture?) {
-        var result: (uniform: T?, texture: MTLTexture?) = (nil, nil)
+    private static func readMaterialProperties(from material: MDLMaterial, asset: MDLAsset, textureLoader: MTKTextureLoader, bundle: Bundle) -> [MDLMaterialSemantic: (uniform: Any?, texture: MTLTexture?)] {
         
-        //for property in mdlMaterial.properties(with: semantic) {
-        if let property = mdlMaterial.property(with: semantic) {
-            if let sourceTexture = property.textureSamplerValue?.texture {
-                let wantMips = property.semantic != .tangentSpaceNormal
-//                let options: [MTKTextureLoader.Option : Any] = [ .generateMipmaps : wantMips, .textureUsage: NSNumber(value: MTLTextureUsage.unknown.rawValue) ] // Force an uncompressed texture
-                let options: [MTKTextureLoader.Option : Any] = [ .generateMipmaps : wantMips ]
-                do {
-                    result.texture = try textureLoader.newTexture(texture: sourceTexture, options: options)
-                } catch {
-                    print(error)
+        var allProperties = [MDLMaterialSemantic: (uniform: Any?, texture: MTLTexture?)]()
+        
+        // Parse all material properties
+        for childIndex in 0..<material.count {
+            guard let property = material[childIndex] else {
+                continue
+            }
+            
+            let propertyValue = readMaterialPropertyValue(from: property, asset: asset, textureLoader: textureLoader, bundle: bundle)
+                
+            // There is an existing value for this semantic. Choose one that is the best fit
+            
+            let existingIsTexture: Bool = {
+                if allProperties[property.semantic]?.texture != nil {
+                    return true
+                } else {
+                    return false
                 }
+            }()
+            let newIsTexture: Bool = {
+                if propertyValue?.texture != nil {
+                    return true
+                } else {
+                    return false
+                }
+            }()
+            
+            // Rule 1: Always chooce a texture over a uniform
+            if newIsTexture && !existingIsTexture {
+                allProperties[property.semantic] = propertyValue
+            } else if !newIsTexture && existingIsTexture {
+                continue
             } else {
-                switch property.type {
-                case .float, .float3, .float4:
-                    result.uniform = getPropertyValue(property)
-                    return result
-                case .string, .URL:
-                    result.texture = createMTLTexture(fromMaterialProperty: property, asset: asset, inBundle: bundle, withTextureLoader: textureLoader)
-                default: break
+            
+                // Rule 2: The last matching semantic wins
+                switch property.semantic {
+                case .baseColor:
+                    if property.type == .color {
+                        let newValue = propertyValue?.uniform as! CGColor
+                        if newValue.numberOfComponents == 3, let companents = newValue.components {
+                            allProperties[property.semantic] = (float4(Float(companents[0]), Float(companents[1]), Float(companents[2]), 1), nil)
+                        } else if newValue.numberOfComponents == 4, let companents = newValue.components {
+                            allProperties[property.semantic] = (float4(Float(companents[0]), Float(companents[1]), Float(companents[2]), Float(companents[3])), nil)
+                        }
+                    } else if let _ = propertyValue?.uniform as? float4 {
+                        allProperties[property.semantic] = propertyValue
+                    } else if let newValue = propertyValue?.uniform as? float3 {
+                        allProperties[property.semantic] = (float4(newValue.x, newValue.y, newValue.z, 1), nil)
+                    }
+                case .emission:
+                    // Workaround for other properties like "ambientColor" getting (incorrectly) tagged with the .emission semantic
+                    guard property.name == "emission" else {
+                        break
+                    }
+                    if property.type == .color {
+                        let newValue = propertyValue?.uniform as! CGColor
+                        if newValue.numberOfComponents == 3, let companents = newValue.components {
+                            allProperties[property.semantic] = (float4(Float(companents[0]), Float(companents[1]), Float(companents[2]), 1), nil)
+                        } else if newValue.numberOfComponents == 4, let companents = newValue.components {
+                            allProperties[property.semantic] = (float4(Float(companents[0]), Float(companents[1]), Float(companents[2]), Float(companents[3])), nil)
+                        }
+                    } else if let _ = propertyValue?.uniform as? float4 {
+                        allProperties[property.semantic] = propertyValue
+                    } else if let newValue = propertyValue?.uniform as? float3 {
+                        allProperties[property.semantic] = (float4(newValue.x, newValue.y, newValue.z, 1), nil)
+                    }
+                case .subsurface:
+                    fallthrough
+                case .metallic:
+                    fallthrough
+                case .specular:
+                    fallthrough
+                case .specularExponent:
+                    fallthrough
+                case .specularTint:
+                    fallthrough
+                case .roughness:
+                    fallthrough
+                case .anisotropic:
+                    fallthrough
+                case .anisotropicRotation:
+                    fallthrough
+                case .sheen:
+                    fallthrough
+                case .sheenTint:
+                    fallthrough
+                case .clearcoat:
+                    fallthrough
+                case .bump:
+                    fallthrough
+                case .clearcoatGloss:
+                    fallthrough
+                case .opacity:
+                    fallthrough
+                case .interfaceIndexOfRefraction:
+                    fallthrough
+                case .displacementScale:
+                    fallthrough
+                case .ambientOcclusionScale:
+                    fallthrough
+                case .materialIndexOfRefraction:
+                    if let _ = propertyValue?.uniform as? Float {
+                        allProperties[property.semantic] = propertyValue
+                    } else if let float3Value = propertyValue?.uniform as? float3 {
+                        let aveValue = (float3Value.x + float3Value.y + float3Value.z) / 3
+                        allProperties[property.semantic] = (aveValue, nil)
+                    } else if let float4Value = propertyValue?.uniform as? float4 {
+                        let aveValue = (float4Value.x + float4Value.y + float4Value.z + float4Value.w) / 4
+                        allProperties[property.semantic] = (aveValue, nil)
+                    }
+                case .objectSpaceNormal:
+                    fallthrough
+                case .tangentSpaceNormal:
+                    fallthrough
+                case .displacement:
+                    if let _ = propertyValue?.uniform as? float3 {
+                        allProperties[property.semantic] = propertyValue
+                    } else if let float4Value = propertyValue?.uniform as? float4 {
+                        allProperties[property.semantic] = (float4Value.xyz, nil)
+                    } else if let floatValue = propertyValue?.uniform as? Float {
+                        allProperties[property.semantic] = (float3(repeating: floatValue), nil)
+                    }
+                case .ambientOcclusion:
+                    // Ambient Occlusion only makes sense as a texture map. Ignore any constant uniform values
+                    allProperties[property.semantic] = (Float(1), nil)
+                case .userDefined:
+                    fallthrough
+                case .none:
+                    fallthrough
+                @unknown default:
+                    break
                 }
+            }
+        }
+        return allProperties
+    }
+    
+    private static func readMaterialPropertyValue(from property: MDLMaterialProperty, asset: MDLAsset, textureLoader: MTKTextureLoader, bundle: Bundle) -> (uniform: Any?, texture: MTLTexture?)? {
+        
+        var result: (uniform: Any?, texture: MTLTexture?) = (nil, nil)
+        
+        if let sourceTexture = property.textureSamplerValue?.texture {
+            let wantMips = property.semantic != .tangentSpaceNormal
+            //                  let options: [MTKTextureLoader.Option : Any] = [ .generateMipmaps : wantMips, .textureUsage: NSNumber(value: MTLTextureUsage.unknown.rawValue) ] // Force an uncompressed texture
+            let options: [MTKTextureLoader.Option : Any] = [ .generateMipmaps : wantMips ]
+            do {
+                result.texture = try textureLoader.newTexture(texture: sourceTexture, options: options)
+            } catch {
+                print(error)
+            }
+        } else {
+            switch property.type {
+            case .none:
+                return nil
+            case .string:
+                result.texture = createMTLTexture(fromMaterialProperty: property, asset: asset, inBundle: bundle, withTextureLoader: textureLoader)
+            case .URL:
+                result.texture = createMTLTexture(fromMaterialProperty: property, asset: asset, inBundle: bundle, withTextureLoader: textureLoader)
+            case .texture:
+                if let sourceTexture = property.textureSamplerValue?.texture {
+                    let wantMips = property.semantic != .tangentSpaceNormal
+                    let options: [MTKTextureLoader.Option : Any] = [ .generateMipmaps : wantMips ]
+                    result.texture = try? textureLoader.newTexture(texture: sourceTexture, options: options)
+                } else {
+                    return nil
+                }
+            case .color:
+                result.uniform = property.color
+            case .float:
+                result.uniform = property.floatValue
+            case .float2:
+                result.uniform = property.float2Value
+            case .float3:
+                result.uniform = property.float3Value
+            case .float4:
+                result.uniform = property.float4Value
+            case .matrix44:
+                result.uniform = property.matrix4x4
+            @unknown default:
+                return nil
             }
         }
         return result

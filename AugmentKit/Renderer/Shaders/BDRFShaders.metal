@@ -291,7 +291,7 @@ float4 illuminate(LightingParameters parameters) {
     // SHEEN
     float3 sheenOut = computeSheen(parameters);
 
-    return float4(parameters.ambientOcclusion, 1) * float4(diffuseOut + clearcoatOut + specularOut + sheenOut + parameters.emissionColor, 1) * float4(1.0, 1.0, 1.0, parameters.baseColor.w);
+    return float4(parameters.ambientOcclusion, 1) * float4(diffuseOut + clearcoatOut + specularOut + sheenOut + parameters.emissionColor.xyz, 1) * float4(1.0, 1.0, 1.0, parameters.baseColor.w);
 
 }
 
@@ -350,7 +350,7 @@ LightingParameters calculateParameters(ColorInOut in,
     
 //    uint8_t mipLevel = parameters.roughness * emissionMap.get_num_mip_levels();
 //    parameters.emissionColor = has_emission_map ? emissionMap.sample(mipSampler, parameters.reflectedVector, level(mipLevel)).xyz : materialUniforms.emissionColor.xyz;
-    parameters.emissionColor = has_emission_map ? emissionMap.sample(linearSampler, in.texCoord.xy).xyz : materialUniforms.emissionColor;
+    parameters.emissionColor = has_emission_map ? emissionMap.sample(linearSampler, in.texCoord.xy) : materialUniforms.emissionColor;
     parameters.ambientOcclusion = has_ambient_occlusion_map ? max(srgbToLinear(ambientOcclusionMap.sample(linearSampler, in.texCoord.xy)).x, 0.001f) : materialUniforms.ambientOcclusion;
     
     parameters.directionalLightCol = environmentUniforms[in.iid].directionalLightColor;

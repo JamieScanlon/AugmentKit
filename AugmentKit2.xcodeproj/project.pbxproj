@@ -35,7 +35,7 @@
 		7D6E6B551F8F19C300EFC667 /* AugmentKitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D6E6B541F8F19C300EFC667 /* AugmentKitTests.swift */; };
 		7D6E6B571F8F19C400EFC667 /* AugmentKit.h in Headers */ = {isa = PBXBuildFile; fileRef = 7D6E6B491F8F19C300EFC667 /* AugmentKit.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		7D6E6B5E1F8F1C9600EFC667 /* AKSceneKitUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D3EAC131F7EEDCA0076635C /* AKSceneKitUtils.swift */; };
-		7D6E6B5F1F8F1C9D00EFC667 /* AnchorShaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = 7D88D7AC1F0AFD550009A154 /* AnchorShaders.metal */; };
+		7D6E6B5F1F8F1C9D00EFC667 /* BDRFShaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = 7D88D7AC1F0AFD550009A154 /* BDRFShaders.metal */; };
 		7D6E6B631F8F1CBC00EFC667 /* AKAnchor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D3EAC0B1F7EA6790076635C /* AKAnchor.swift */; };
 		7D6E6B641F8F1CBC00EFC667 /* AKWorld.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D3EAC0E1F7EA8440076635C /* AKWorld.swift */; };
 		7D6E6B651F8F1CBC00EFC667 /* AugmentedAnchor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D3EAC101F7ED05B0076635C /* AugmentedAnchor.swift */; };
@@ -131,7 +131,7 @@
 		7D6E6B731F8F283C00EFC667 /* module.modulemap */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.module-map"; path = module.modulemap; sourceTree = "<group>"; };
 		7D808FAD209FD3210077FA19 /* AKPath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKPath.swift; sourceTree = "<group>"; };
 		7D818908201EB5DB0021694F /* PathsRenderModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PathsRenderModule.swift; sourceTree = "<group>"; };
-		7D88D7AC1F0AFD550009A154 /* AnchorShaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = AnchorShaders.metal; sourceTree = "<group>"; };
+		7D88D7AC1F0AFD550009A154 /* BDRFShaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = BDRFShaders.metal; sourceTree = "<group>"; };
 		7D88D7AE1F0AFD550009A154 /* ShaderTypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ShaderTypes.h; sourceTree = "<group>"; };
 		7D88D7C61F0C07960009A154 /* LocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationManager.swift; sourceTree = "<group>"; };
 		7D88D7CB1F0C2B0A0009A154 /* LocalStoreManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocalStoreManager.swift; path = AugmentKit/Managers/LocalStoreManager.swift; sourceTree = SOURCE_ROOT; };
@@ -235,7 +235,7 @@
 		7D5FDA2D1FC404A400BAE104 /* Shaders */ = {
 			isa = PBXGroup;
 			children = (
-				7D88D7AC1F0AFD550009A154 /* AnchorShaders.metal */,
+				7D88D7AC1F0AFD550009A154 /* BDRFShaders.metal */,
 				7DFCF6021FC08CD300E8A560 /* ImageCaptureShaders.metal */,
 				7DFCF6041FC096A900E8A560 /* PointShader.metal */,
 				7D53471E203A961A00714A6F /* PathShader.metal */,
@@ -542,7 +542,7 @@
 				961D705B21FCC4F7006DF951 /* PrecalculationComputeShader.metal in Sources */,
 				96CACF7C2156A051009A8A20 /* RenderUtilities.swift in Sources */,
 				961D705D21FCCB00006DF951 /* ComputePass.swift in Sources */,
-				7D6E6B5F1F8F1C9D00EFC667 /* AnchorShaders.metal in Sources */,
+				7D6E6B5F1F8F1C9D00EFC667 /* BDRFShaders.metal in Sources */,
 				7D6979F221287A8A000106DF /* RealSurfaceAnchor.swift in Sources */,
 				7D6E6B631F8F1CBC00EFC667 /* AKAnchor.swift in Sources */,
 				7D9B13AA20A7519F006C2B63 /* SHA256.swift in Sources */,

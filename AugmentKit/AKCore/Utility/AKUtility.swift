@@ -389,6 +389,18 @@ extension MDLMaterialSemantic: CustomDebugStringConvertible, CustomStringConvert
     
 }
 
+extension MDLScatteringFunction {
+    /// :nodoc:
+    override open var description: String {
+        return debugDescription
+    }
+    /// :nodoc:
+    override open var debugDescription: String {
+        let myDescription = "<MDLScatteringFunction: \(Unmanaged.passUnretained(self).toOpaque())> name: \(name), baseColor: \(baseColor), emission: \(emission), specular: \(specular), materialIndexOfRefraction: \(materialIndexOfRefraction), interfaceIndexOfRefraction: \(interfaceIndexOfRefraction), normal: \(normal), ambientOcclusion: \(ambientOcclusion), ambientOcclusionScale: \(ambientOcclusionScale) "
+        return myDescription
+    }
+}
+
 extension MDLTransformStack {
     /// :nodoc:
     override open var description: String {

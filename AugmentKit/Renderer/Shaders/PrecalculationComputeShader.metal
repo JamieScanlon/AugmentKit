@@ -40,17 +40,19 @@ kernel void precalculationComputeShader(constant SharedUniforms &sharedUniforms 
     // Apply the world transform (as defined in the imported model) if applicable
     float4x4 worldTransform = anchorInstanceUniforms[index].worldTransform;
     coordinateSpaceTransform = coordinateSpaceTransform * worldTransform;
+    
+    float4x4 locationTransform = anchorInstanceUniforms[index].locationTransform;
 
     // Update Heading
     float4x4 headingTransform = anchorInstanceUniforms[index].headingTransform;
     float headingType = float(anchorInstanceUniforms[index].headingType);
-    coordinateSpaceTransform = headingTransform * float4x4(float4(coordinateSpaceTransform[0][0], headingType * coordinateSpaceTransform[0][1], headingType * coordinateSpaceTransform[0][2], headingType * coordinateSpaceTransform[0][3]),
-                                        float4(headingType * coordinateSpaceTransform[1][0], coordinateSpaceTransform[1][1], headingType * coordinateSpaceTransform[1][2], headingType * coordinateSpaceTransform[1][3]),
-                                        float4(headingType * coordinateSpaceTransform[2][0], headingType * coordinateSpaceTransform[2][1], coordinateSpaceTransform[2][2], headingType * coordinateSpaceTransform[2][3]),
-                                        float4(coordinateSpaceTransform[3][0], coordinateSpaceTransform[3][1], coordinateSpaceTransform[3][2], 1)
-                                        );
+    locationTransform =  float4x4(float4(locationTransform[0][0], headingType * locationTransform[0][1], headingType * locationTransform[0][2], headingType * locationTransform[0][3]),
+                                        float4(headingType * locationTransform[1][0], locationTransform[1][1], headingType * locationTransform[1][2], headingType * locationTransform[1][3]),
+                                        float4(headingType * locationTransform[2][0], headingType * locationTransform[2][1], locationTransform[2][2], headingType * locationTransform[2][3]),
+                                        float4(locationTransform[3][0], locationTransform[3][1], locationTransform[3][2], 1)
+                                        ) * headingTransform;
 
-    float4x4 locationTransform = anchorInstanceUniforms[index].locationTransform;
+    
     float4x4 modelMatrix = locationTransform * coordinateSpaceTransform;
 
     // Scaled geomentry effects

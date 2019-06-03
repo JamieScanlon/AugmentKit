@@ -255,11 +255,11 @@ This project is in Alpha having completed all of the base pre-release functional
 
 #### Beta-Release Project Goals
 - [ ] Test and fix animation for models
-- [ ] Animated AugmentedUIViewSurface
+- [x] Animated AugmentedUIViewSurface
 - [ ] Improve jerky movements with smoothing
 - [ ] Surface culling
 - [x] Offload many per-frame calculations to GPU Kernel function
-- [ ] Improve render engine
+- [x] Improve render engine
 - [x] Add support for shadow maps
 
 #### _Stretch Goals_

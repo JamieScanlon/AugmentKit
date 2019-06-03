@@ -326,6 +326,7 @@ class ViewController: UIViewController {
         }
         
         let newObject = AugmentedAnchor(withModelAsset: anchorModel, at: location)
+        newObject.shaderPreference = .blinn
         world.add(anchor: newObject)
         
     }

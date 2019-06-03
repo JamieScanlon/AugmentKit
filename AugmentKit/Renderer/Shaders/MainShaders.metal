@@ -317,59 +317,42 @@ LightingParameters calculateParameters(ColorInOut in,
     LightingParameters parameters;
     
     float4 baseColor = has_base_color_map ? srgbToLinear(baseColorMap.sample(linearSampler, in.texCoord.xy)) : materialUniforms.baseColor;
-    parameters.baseColor = float4(baseColor.xyz, baseColor.w * materialUniforms.opacity);
     
+    parameters.baseColor = float4(baseColor.xyz, baseColor.w * materialUniforms.opacity);
     parameters.baseColorLuminance = 0.3 * parameters.baseColor.x + 0.6 * parameters.baseColor.y + 0.1 * parameters.baseColor.z; // approximation of luminanc
     parameters.baseColorHueSat = parameters.baseColorLuminance > 0.0 ? parameters.baseColor.rgb / parameters.baseColorLuminance : float3(1); // remove luminance
-    
     parameters.subsurface = has_subsurface_map ? subsurfaceMap.sample(linearSampler, in.texCoord.xy).x : materialUniforms.subsurface;
-    
     parameters.specular = has_specular_map ? specularMap.sample(linearSampler, in.texCoord.xy).x : materialUniforms.specular;
-    
     parameters.specularTint = has_specularTint_map ? specularTintMap.sample(linearSampler, in.texCoord.xy).x : materialUniforms.specularTint;
-    
     parameters.sheen = has_sheen_map ? sheenMap.sample(linearSampler, in.texCoord.xy).x : materialUniforms.sheen;
-    
     parameters.sheenTint = has_sheenTint_map ? sheenTintMap.sample(linearSampler, in.texCoord.xy).x : materialUniforms.sheenTint;
-    
     parameters.anisotropic = has_anisotropic_map ? anisotropicMap.sample(linearSampler, in.texCoord.xy).x : materialUniforms.anisotropic;
-    
     parameters.clearcoat = has_clearcoat_map ? clearcoatMap.sample(linearSampler, in.texCoord.xy).x : materialUniforms.clearcoat;
-    
     parameters.clearcoatGloss = has_clearcoatGloss_map ? clearcoatGlossMap.sample(linearSampler, in.texCoord.xy).x : materialUniforms.clearcoatGloss;
-    
-    parameters.normal = has_normal_map ? computeNormalMap(in, normalMap) : float3(in.normal);
-    
-    parameters.viewDir = float3(in.eyePosition);
+    parameters.normal = has_normal_map ? computeNormalMap(in, normalMap) : normalize(in.normal);
+    parameters.viewDir = -normalize(in.eyePosition);
     parameters.reflectedVector = reflect(-parameters.viewDir, parameters.normal);
     parameters.reflectedColor = (environmentUniforms[in.iid].hasEnvironmentMap == 1) ? environmentCubemap.sample(reflectiveEnvironmentSampler, parameters.reflectedVector).xyz : float3(0, 0, 0);
-    
     parameters.roughness = has_roughness_map ? max(roughnessMap.sample(linearSampler, in.texCoord.xy).x, 0.001f) : materialUniforms.roughness;
     parameters.metalness = has_metallic_map ? metallicMap.sample(linearSampler, in.texCoord.xy).x : materialUniforms.metalness;
     parameters.linearRoughness = parameters.roughness * (1.0 - parameters.metalness) + parameters.metalness;
-    
 //    uint8_t mipLevel = parameters.roughness * emissionMap.get_num_mip_levels();
 //    parameters.emissionColor = has_emission_map ? emissionMap.sample(mipSampler, parameters.reflectedVector, level(mipLevel)).xyz : materialUniforms.emissionColor.xyz;
     parameters.emissionColor = has_emission_map ? emissionMap.sample(linearSampler, in.texCoord.xy) : materialUniforms.emissionColor;
     parameters.ambientOcclusion = has_ambient_occlusion_map ? max(srgbToLinear(ambientOcclusionMap.sample(linearSampler, in.texCoord.xy)).x, 0.001f) : materialUniforms.ambientOcclusion;
-    
     parameters.directionalLightCol = environmentUniforms[in.iid].directionalLightColor;
     parameters.ambientLightCol = environmentUniforms[in.iid].ambientLightColor / 255.0;
-    parameters.lightDirection = -environmentUniforms[in.iid].directionalLightDirection;
-    
+    parameters.lightDirection = normalize(in.eyePosition - environmentUniforms[in.iid].directionalLightDirection);
     // Light falls off based on how closely aligned the surface normal is to the light direction.
     // This is the dot product of the light direction vector and vertex normal.
     // The smaller the angle between those two vectors, the higher this value,
     // and the stronger the diffuse lighting effect should be.
     parameters.nDotl = max(0.001f,saturate(dot(parameters.normal, parameters.lightDirection)));
-    
     // Calculate the halfway vector between the light direction and the direction they eye is looking
     parameters.halfVector = normalize(parameters.lightDirection + parameters.viewDir);
-    
     parameters.nDoth = max(0.001f,saturate(dot(parameters.normal, parameters.halfVector)));
     parameters.nDotv = max(0.001f,saturate(dot(parameters.normal, parameters.viewDir)));
     parameters.lDoth = max(0.001f,saturate(dot(parameters.lightDirection, parameters.halfVector)));
-    
     parameters.f0 = parameters.specular * mix(float3(1.0), parameters.baseColorHueSat, parameters.specularTint);
     parameters.fresnelNDotL = Fresnel(parameters.f0, parameters.nDotl);
     parameters.fresnelNDotV = Fresnel(parameters.f0, parameters.nDotv);
@@ -516,7 +499,6 @@ fragment float4 anchorGeometryFragmentLighting(ColorInOut in [[stage_in]],
                                                depth2d<float> shadowMap [[ texture(kTextureIndexShadowMap) ]]
                                                ) {
     
-    float4 finalColor = float4(0);
     ushort iid = in.iid;
     
     LightingParameters parameters = calculateParameters(in,
@@ -544,20 +526,11 @@ fragment float4 anchorGeometryFragmentLighting(ColorInOut in [[stage_in]],
     if ( parameters.baseColor.w <= 0.01f ) {
         discard_fragment();
     }
-    
-    // Compare the depth value in the shadow map to the depth value of the fragment in the sun's.
-    // frame of reference.  If the sample is occluded, it will be zero.
-//    float shadowSample = shadowMap.sample_compare(shadowSampler, in.shadowCoord.xy, in.shadowCoord.z);
-//    // Lighten shadow to account for ambient light
-//    float shadowContribution = shadowSample + 0.5;
-//    // Clamp shadow values to 1;
-//    shadowContribution = min(1.0, shadowContribution);
-//    float4 shadowColor = float4(1.0, 0.0, 0.0, 1 - shadowContribution); // Black
 
     float4 intermediateColor = illuminate(parameters);
     
     // Apply effects
-    finalColor = float4(intermediateColor.rgb * anchorEffectsUniforms[iid].tint, intermediateColor.a * anchorEffectsUniforms[iid].alpha);
+    float4 finalColor = float4(intermediateColor.rgb * anchorEffectsUniforms[iid].tint, intermediateColor.a * anchorEffectsUniforms[iid].alpha);
     
     return finalColor;
     
@@ -586,21 +559,75 @@ fragment float4 anchorGeometryFragmentLightingSimple(ColorInOut in [[stage_in]],
                                                texturecube<float> environmentCubemap [[  texture(kTextureIndexEnvironmentMap) ]]
                                                ) {
     
-    float4 final_color = float4(0);
     ushort iid = in.iid;
     
-    float4 baseColor = has_base_color_map ? srgbToLinear(baseColorMap.sample(linearSampler, in.texCoord.xy)) : materialUniforms.baseColor;
+    float4 intermediateColor = has_base_color_map ? srgbToLinear(baseColorMap.sample(linearSampler, in.texCoord.xy)) : materialUniforms.baseColor;
     
     // FIXME: discard_fragment may have performance implications.
     // see: http://metalbyexample.com/translucency-and-transparency/
-    if ( baseColor.w <= 0.01f ) {
+    if ( intermediateColor.w <= 0.01f ) {
         discard_fragment();
     }
     
     // Apply effects
-    final_color = float4(baseColor.rgb * anchorEffectsUniforms[iid].tint, baseColor.a * anchorEffectsUniforms[iid].alpha);
+    float4 finalColor = float4(intermediateColor.rgb * anchorEffectsUniforms[iid].tint, intermediateColor.a * anchorEffectsUniforms[iid].alpha);
     
-    return final_color;
+    return finalColor;
     
+}
+
+fragment float4 anchorGeometryFragmentLightingBlinnPhong(ColorInOut in [[stage_in]],
+                                   constant MaterialUniforms &materialUniforms [[ buffer(kBufferIndexMaterialUniforms) ]],
+                                   constant EnvironmentUniforms *environmentUniforms [[ buffer(kBufferIndexEnvironmentUniforms) ]],
+                                   constant AnchorEffectsUniforms *anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]],
+                                   texture2d<float> baseColorMap [[ texture(kTextureIndexColor), function_constant(has_base_color_map) ]],
+                                   texture2d<float> normalMap    [[ texture(kTextureIndexNormal), function_constant(has_normal_map) ]],
+                                   texture2d<float> metallicMap  [[ texture(kTextureIndexMetallic), function_constant(has_metallic_map) ]],
+                                   texture2d<float> roughnessMap  [[ texture(kTextureIndexRoughness), function_constant(has_roughness_map) ]],
+                                   texture2d<float> ambientOcclusionMap  [[ texture(kTextureIndexAmbientOcclusion), function_constant(has_ambient_occlusion_map) ]],
+                                   texture2d<float> emissionMap [[texture(kTextureIndexEmissionMap), function_constant(has_emission_map)]],
+                                   texture2d<float> subsurfaceMap [[texture(kTextureIndexSubsurfaceMap), function_constant(has_subsurface_map)]],
+                                   texture2d<float> specularMap [[  texture(kTextureIndexSpecularMap), function_constant(has_specular_map) ]],
+                                   texture2d<float> specularTintMap [[  texture(kTextureIndexSpecularTintMap), function_constant(has_specularTint_map) ]],
+                                   texture2d<float> anisotropicMap [[  texture(kTextureIndexAnisotropicMap), function_constant(has_anisotropic_map) ]],
+                                   texture2d<float> sheenMap [[  texture(kTextureIndexSheenMap), function_constant(has_sheen_map) ]],
+                                   texture2d<float> sheenTintMap [[  texture(kTextureIndexSheenTintMap), function_constant(has_sheenTint_map) ]],
+                                   texture2d<float> clearcoatMap [[  texture(kTextureIndexClearcoatMap), function_constant(has_clearcoat_map) ]],
+                                   texture2d<float> clearcoatGlossMap [[  texture(kTextureIndexClearcoatGlossMap), function_constant(has_clearcoatGloss_map) ]],
+                                   texturecube<float> environmentCubemap [[  texture(kTextureIndexEnvironmentMap) ]],
+                                   depth2d<float> shadowMap [[ texture(kTextureIndexShadowMap) ]]
+                                   )
+{
+    
+    ushort iid = in.iid;
+    
+    LightingParameters parameters = calculateParameters(in,
+                                                        materialUniforms,
+                                                        environmentUniforms,
+                                                        baseColorMap,
+                                                        normalMap,
+                                                        metallicMap,
+                                                        roughnessMap,
+                                                        ambientOcclusionMap,
+                                                        emissionMap,
+                                                        subsurfaceMap,
+                                                        specularMap,
+                                                        specularTintMap,
+                                                        anisotropicMap,
+                                                        sheenMap,
+                                                        sheenTintMap,
+                                                        clearcoatMap,
+                                                        clearcoatGlossMap,
+                                                        environmentCubemap);
+
+    float ambient = 0.1;
+    float diffuse = parameters.nDotl;
+    float specular = pow(parameters.nDoth, 64);
+    float4 baseColor = float4(parameters.baseColor.rgb, parameters.baseColor.a * materialUniforms.opacity);
+    float3 diffuseColor = baseColor.rgb;
+    
+    float4 intermediateColor = float4((ambient + diffuse) * diffuseColor + specular, baseColor.a);
+    float4 finalColor = float4(intermediateColor.rgb * anchorEffectsUniforms[iid].tint, intermediateColor.a * anchorEffectsUniforms[iid].alpha);
+    return finalColor;
 }
 

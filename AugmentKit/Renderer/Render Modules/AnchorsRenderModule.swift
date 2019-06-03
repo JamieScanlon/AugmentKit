@@ -719,6 +719,8 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             let fragmentShaderName: String = {
                 if shaderPreference == .simple {
                     return "anchorGeometryFragmentLightingSimple"
+                } else if shaderPreference == .blinn {
+                    return "anchorGeometryFragmentLightingBlinnPhong"
                 } else {
                     return "anchorGeometryFragmentLighting"
                 }

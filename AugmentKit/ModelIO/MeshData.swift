@@ -183,6 +183,10 @@ public enum ShaderPreference {
      A phisically based shader that is intended to render an object realistically in the environment.
      */
     case pbr
+    /**
+     A Blinn-Phong shader.
+     */
+    case blinn
 }
 
 // MARK: - Puppet Animation (Not currently supported by renderer)

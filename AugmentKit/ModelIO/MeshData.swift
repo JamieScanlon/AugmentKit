@@ -76,7 +76,7 @@ public struct DrawSubData {
     // TODO: Implement for Quality level
     func computeTextureWeights(for quality: QualityLevel, with globalWeight:Float) {
         for textureIndex in 0..<kNumTextureIndices.rawValue {
-            let constantIndex = mapTextureBindPoint(to: TextureIndices(rawValue:textureIndex))
+            let constantIndex = DrawSubData.mapTextureBindPoint(to: TextureIndices(rawValue:textureIndex))
 
             if RenderUtilities.isTexturedProperty(constantIndex, at: quality) && !RenderUtilities.isTexturedProperty(constantIndex, at: QualityLevel(rawValue: quality.rawValue + 1)) {
                 //materialUniforms.mapWeights[textureIndex] = globalWeight
@@ -85,8 +85,65 @@ public struct DrawSubData {
             }
         }
     }
+    
+    public mutating func updateMaterialTextures(from mdlMaterial: MDLMaterial, textureBundle: Bundle? = nil, textureLoader: MTKTextureLoader? = nil) {
+        
+        var material = MaterialUniforms()
+        
+        let myMaterialProperties = ModelIOTools.materialProperties(from: mdlMaterial, textureLoader: textureLoader, bundle: textureBundle)
+        let allProperties = myMaterialProperties.properties
+        
+        // Encode the texture indexes corresponding to the texture maps. If a property has no texture map this value will be nil
+        baseColorTexture = allProperties[.baseColor]?.texture
+        metallicTexture = allProperties[.metallic]?.texture
+        ambientOcclusionTexture = allProperties[.ambientOcclusion]?.texture
+        roughnessTexture = allProperties[.roughness]?.texture
+        normalTexture = allProperties[.tangentSpaceNormal]?.texture
+        emissionTexture = allProperties[.emission]?.texture
+        subsurfaceTexture = allProperties[.subsurface]?.texture
+        specularTexture = allProperties[.specular]?.texture
+        specularTintTexture = allProperties[.specularTint]?.texture
+        anisotropicTexture = allProperties[.anisotropic]?.texture
+        sheenTexture = allProperties[.sheen]?.texture
+        sheenTintTexture = allProperties[.sheenTint]?.texture
+        clearcoatTexture = allProperties[.clearcoat]?.texture
+        clearcoatGlossTexture = allProperties[.clearcoatGloss]?.texture
+        
+        // Encode the uniform values
+        
+        // The inherent color of a surface, to be used as a modulator during shading.
+        material.baseColor = (allProperties[.baseColor]?.uniform as? SIMD4<Float>) ?? SIMD4<Float>(repeating: 1)
+        // The degree to which a material appears as a dielectric surface (lower values) or as a metal (higher values).
+        material.metalness = (allProperties[.metallic]?.uniform as? Float) ?? 0.0
+        // The degree to which a material appears smooth, affecting both diffuse and specular response.
+        material.roughness = (allProperties[.roughness]?.uniform as? Float) ?? 0.9
+        // The attenuation of ambient light due to local geometry variations on a surface.
+        material.ambientOcclusion  = (allProperties[.ambientOcclusion]?.uniform as? Float) ?? 1.0
+        // The color emitted as radiance from a material’s surface.
+        material.emissionColor = (allProperties[.emission]?.uniform as? SIMD4<Float>) ?? SIMD4<Float>(repeating: 0)
+        // The degree to which light scatters under the surface of a material.
+        material.subsurface = (allProperties[.subsurface]?.uniform as? Float) ?? 0.0
+        // The intensity of specular highlights that appear on the material’s surface.
+        material.specular = (allProperties[.specular]?.uniform as? Float) ?? 0.0
+        // The balance of color for specular highlights, between the light color (lower values) and the material’s base color (at higher values).
+        material.specularTint = (allProperties[.specularTint]?.uniform as? Float) ?? 0.0
+        // The angle at which anisotropic effects are rotated relative to the local tangent basis.
+        material.anisotropic = (allProperties[.anisotropic]?.uniform as? Float) ?? 0.0
+        // The intensity of highlights that appear only at glancing angles on a material’s surface.
+        material.sheen = (allProperties[.sheen]?.uniform as? Float) ?? 0.0
+        // The balance of color for highlights that appear only at glancing angles, between the light color (lower values) and the material’s base color (at higher values).
+        material.sheenTint = (allProperties[.sheenTint]?.uniform as? Float) ?? 0.0
+        // The intensity of a second specular highlight, similar to the gloss that results from a clear coat on an automotive finish.
+        material.clearcoat = (allProperties[.clearcoat]?.uniform as? Float) ?? 0.0
+        // The spread of a second specular highlight, similar to the gloss that results from a clear coat on an automotive finish.
+        material.clearcoatGloss = (allProperties[.clearcoatGloss]?.uniform as? Float) ?? 0.0
+        material.opacity = (allProperties[.opacity]?.uniform as? Float) ?? 1.0
+        //                    material.opacity = 1.0
+        materialUniforms = material
+        
+    }
 
-    func mapTextureBindPoint(to textureIndex: TextureIndices) -> FunctionConstantIndices {
+    static func mapTextureBindPoint(to textureIndex: TextureIndices) -> FunctionConstantIndices {
         switch textureIndex {
         case kTextureIndexColor:
             return kFunctionConstantBaseColorMapIndex
@@ -128,10 +185,11 @@ public struct DrawSubData {
  `DrawData` is a data structure for the render engine. The structure of this data object is intended to contain all the data needed to set up the Metal pipline in a way where there is not much, if any, translation required between the properties here and the properties of the render pipleine objects.
  */
 public struct DrawData {
+    /// A buffer contining Vertex Buffer data
     var vertexBuffers = [MTLBuffer]()
-    /**
-     Used in the render pipeline to store the number of instances of this type to render
-     */
+    /// A buffer contining `RawVertexBuffer` uniforms. If this buffer is populated, it will be used instead of `vertexBuffers`
+    var rawVertexBuffers = [MTLBuffer]()
+    /// Used in the render pipeline to store the number of instances of this type to render
     var instanceCount = 0
     var paletteStartIndex: Int?
     var paletteSize = 0
@@ -156,6 +214,9 @@ public struct DrawData {
     var hasClearcoatGlossMap = false
     var isSkinned: Bool {
         return paletteStartIndex != nil
+    }
+    var isRaw: Bool {
+        return rawVertexBuffers.count > 0
     }
 }
 
@@ -214,7 +275,7 @@ public struct AnimatedSkeleton: JointPathRemappable {
     var jointPaths = [String]()
     var parentIndices = [Int?]()
     var keyTimes = [Double]()
-    var translations = [vector_float3]()
+    var translations = [SIMD3<Float>]()
     var rotations = [simd_quatf]()
     var jointCount: Int {
         return jointPaths.count

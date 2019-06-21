@@ -47,7 +47,7 @@ class SurfacesRenderModule: RenderModule {
     var renderLayer: Int {
         return 2
     }
-    var isInitialized: Bool = false
+    var state: ShaderModuleState = .uninitialized
     var sharedModuleIdentifiers: [String]? = [SharedBuffersRenderModule.identifier]
     var renderDistance: Double = 500
     var errors = [AKError]()
@@ -56,6 +56,8 @@ class SurfacesRenderModule: RenderModule {
     private(set) var instanceCount: Int = 0
     
     func initializeBuffers(withDevice aDevice: MTLDevice, maxInFlightFrames: Int, maxInstances: Int) {
+        
+        state = .initializing
         
         device = aDevice
         
@@ -81,11 +83,9 @@ class SurfacesRenderModule: RenderModule {
         environmentUniformBuffer = device?.makeBuffer(length: environmentUniformBufferSize, options: .storageModeShared)
         environmentUniformBuffer?.label = "EnvironemtUniformBuffer"
         
-        geometricEntities = []
-        
     }
     
-    func loadAssets(forGeometricEntities theGeometricEntities: [AKGeometricEntity], fromModelProvider modelProvider: ModelProvider?, textureLoader aTextureLoader: MTKTextureLoader, completion: (() -> Void)) {
+    func loadAssets(forGeometricEntities geometricEntities: [AKGeometricEntity], fromModelProvider modelProvider: ModelProvider?, textureLoader aTextureLoader: MTKTextureLoader, completion: (() -> Void)) {
         
         guard let modelProvider = modelProvider else {
             print("Serious Error - Model Provider not found.")
@@ -97,54 +97,21 @@ class SurfacesRenderModule: RenderModule {
         }
         
         textureLoader = aTextureLoader
-        geometricEntities.append(contentsOf: theGeometricEntities)
         
         //
         // Create and load our models
         //
         
-        var numModels = theGeometricEntities.count
-        
-        // Load the default model
-        modelProvider.loadAsset(forObjectType: "AnySurface", identifier: nil) { [weak self] asset in
-            
-            guard let asset = asset else {
-                print("Warning (AnchorsRenderModule) - Failed to get a MDLAsset for type  \"AnySurface\") from the modelProvider. Aborting the render phase.")
-                let newError = AKError.warning(.modelError(.modelNotFound(ModelErrorInfo(type:  "AnySurface"))))
-                recordNewError(newError)
-                completion()
-                return
-            }
-            
-            self?.generalModelAsset = asset
-            
-            if numModels == 0 {
-                completion()
-            }
-            
-        }
+        var numModels = geometricEntities.count
         
         // Load the per-geometry models
         for geometricEntity in geometricEntities {
             
+            // Check for Plane Anchors that have raw geometry data instead of assets
             if let identifier = geometricEntity.identifier {
-                modelProvider.loadAsset(forObjectType:  "AnySurface", identifier: identifier) { [weak self] asset in
-                    
-                    guard let asset = asset else {
-                        print("Warning (SurfacesRenderModule) - Failed to get a MDLAsset for type \"AnySurface\") with identifier \(identifier) from the modelProvider. Aborting the render phase.")
-                        let newError = AKError.warning(.modelError(.modelNotFound(ModelErrorInfo(type:  "AnySurface", identifier: identifier))))
-                        recordNewError(newError)
-                        completion()
-                        return
-                    }
-                    
-                    self?.modelAssetsForAnchorsByUUID[identifier] = asset
-                    self?.shaderPreferenceForAnchorsByUUID[identifier] = geometricEntity.shaderPreference
+                modelProvider.loadAsset(forObjectType:  "AnySurface", identifier: identifier) { asset in
                     
                 }
-            } else if let generalModelAsset = generalModelAsset {
-                // One of the entities does not have an identifier so register the general asset
-                modelAssetsForAnchorsByUUID[generalUUID] = generalModelAsset
             }
             
             numModels -= 1
@@ -156,61 +123,74 @@ class SurfacesRenderModule: RenderModule {
         
     }
     
-    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, forRenderPass renderPass: RenderPass? = nil) -> [DrawCallGroup] {
+    func loadPipeline(withModuleEntities moduleEntities: [AKEntity], metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, renderPass: RenderPass? = nil, completion: (([DrawCallGroup]) -> Void)? = nil) {
         
         guard let device = device else {
             print("Serious Error - device not found")
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeDeviceNotFound, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return []
+            state = .uninitialized
+            completion?([])
+            return
         }
         
-        // Make sure there is at least one general purpose model
-        guard generalModelAsset != nil else {
-            print("Warning (AnchorsRenderModule) - Anchor Model was not found. Aborting the render phase.")
-            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeModelNotFound, userInfo: nil)
-            let newError = AKError.warning(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-            recordNewError(newError)
-            return []
-        }
+        DispatchQueue.global(qos: .default).async { [weak self] in
         
-        var drawCallGroups = [DrawCallGroup]()
-        
-        for item in modelAssetsForAnchorsByUUID {
+            var drawCallGroups = [DrawCallGroup]()
             
-            guard let geometricEntity = geometricEntities.first(where: {$0.identifier == item.key}) else {
-                continue
+            let scatteringFunction = MDLScatteringFunction()
+            let material = MDLMaterial(name: "AKRealSurfaceAnchor - baseMaterial", scatteringFunction: scatteringFunction)
+            let property = MDLMaterialProperty(name: "bsseColor", semantic: .baseColor, float4: SIMD4<Float>(0, 0, 0, 0)) // Clear black
+            material.setProperty(property)
+            
+            for moduleEntity in moduleEntities {
+                
+                if let surfaceEntity = moduleEntity as? AKRealSurfaceAnchor {
+                    
+                    guard let uuid = surfaceEntity.identifier, let planeGeometry = surfaceEntity.planeGeometry else {
+                        continue
+                    }
+                    
+                    let meshGPUData = ModelIOTools.meshGPUData(from: planeGeometry.vertices, indices: planeGeometry.triangleIndices, textureCoordinates: planeGeometry.textureCoordinates, device: device, material: material, textureBundle: textureBundle)
+                    
+                    if let drawCallGroup = self?.createDrawCallGroup(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass, meshGPUData: meshGPUData, geometricEntity: surfaceEntity) {
+                        drawCallGroup.moduleIdentifier = SurfacesRenderModule.identifier
+                        drawCallGroups.append(drawCallGroup)
+                    }
+                    
+                } else if let geometricEntity = moduleEntity as? AKGeometricEntity {
+                    
+                    guard let uuid = geometricEntity.identifier else {
+                        continue
+                    }
+                    
+                    let mdlAsset = geometricEntity.asset
+                    let shaderPreference = geometricEntity.shaderPreference
+                    
+                    let meshGPUData = ModelIOTools.meshGPUData(from: mdlAsset, device: device, vertexDescriptor: RenderUtilities.createStandardVertexDescriptor(), frameRate: 60, shaderPreference: shaderPreference, loadTextures: renderPass?.usesLighting ?? true, textureBundle: textureBundle)
+                    
+                    if let drawCallGroup = self?.createDrawCallGroup(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass, meshGPUData: meshGPUData, geometricEntity: geometricEntity) {
+                        drawCallGroup.moduleIdentifier = SurfacesRenderModule.identifier
+                        drawCallGroups.append(drawCallGroup)
+                    }
+                    
+                }
+                
             }
             
-            let uuid = item.key
-            let mdlAsset = item.value
-            let shaderPreference: ShaderPreference = {
-                if let prefernece = shaderPreferenceForAnchorsByUUID[uuid] {
-                    return prefernece
-                } else {
-                    return .pbr
-                }
-            }()
-            
-            let meshGPUData = ModelIOTools.meshGPUData(from: mdlAsset, device: device, textureBundle: textureBundle, vertexDescriptor: RenderUtilities.createStandardVertexDescriptor(), frameRate: 60, shaderPreference: shaderPreference)
-            
-            let drawCallGroup = createDrawCallGroup(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass, meshGPUData: meshGPUData, geometricEntity: geometricEntity)
-            drawCallGroup.moduleIdentifier = moduleIdentifier
-            
-            drawCallGroups.append(drawCallGroup)
+            // In the buffer, the anchors are layed out by UUID in sorted order. So if there are
+            // 5 anchors with UUID = "A..." and 3 UUIDs = "B..." and 1 UUID = "C..." then that's
+            // how they will layed out in memory. Therefore updating the buffers is a 2 step process.
+            // First, loop through all of the ARAnchors and gather the UUIDs as well as the counts for each.
+            // Second, layout and update the buffers in the desired order.
+            drawCallGroups.sort { $0.uuid.uuidString < $1.uuid.uuidString }
+            DispatchQueue.main.async { [weak self] in
+                self?.state = .ready
+                completion?(drawCallGroups)
+            }
             
         }
-        
-        // In the buffer, the anchors are layed out by UUID in sorted order. So if there are
-        // 5 anchors with UUID = "A..." and 3 UUIDs = "B..." and 1 UUID = "C..." then that's
-        // how they will layed out in memory. Therefore updating the buffers is a 2 step process.
-        // First, loop through all of the ARAnchors and gather the UUIDs as well as the counts for each.
-        // Second, layout and update the buffers in the desired order.
-        drawCallGroups.sort { $0.uuid.uuidString < $1.uuid.uuidString }
-        isInitialized = true
-        
-        return drawCallGroups
         
     }
     
@@ -236,61 +216,80 @@ class SurfacesRenderModule: RenderModule {
         
         argumentBufferProperties = theArgumentBufferProperties
         
-        let anchors: [AKRealAnchor] = moduleEntities.compactMap({
-            if let anAnchor = $0 as? AKRealAnchor {
-                return anAnchor
-            } else {
-                return nil
-            }
-        })
-        
         // Update the anchor uniform buffer with transforms of the current frame's anchors
         instanceCount = 0
-        anchorsByUUID = [:]
-        environmentTextureByUUID = [:]
         
         //
-        // Gather the UUID's
+        // Update Geometry
         //
         
-        for akAnchor in anchors {
+        for drawCallGroup in renderPass.drawCallGroups {
             
-            guard let anchor = akAnchor.arAnchor else {
+            guard drawCallGroup.moduleIdentifier == moduleIdentifier else {
+                continue
+            }
+            
+            let identifier = drawCallGroup.uuid
+            
+            guard let realSurfaceAnchor = moduleEntities.first(where: {$0.identifier == identifier}) as? AKRealSurfaceAnchor else {
+                continue
+            }
+            
+            if let planeGeometry = realSurfaceAnchor.planeGeometry, let device = device, realSurfaceAnchor.needsMeshUpdate {
+                let rawVertexBuffers = ModelIOTools.rawVertexBuffers(from: planeGeometry.vertices, textureCoordinates: planeGeometry.textureCoordinates, device: device)
+                let indexBuffer = ModelIOTools.indexBuffer(from: planeGeometry.triangleIndices, device: device)
+                
+                var mutableDrawCallGroups = [DrawCallGroup]()
+                for drawCallGroup in renderPass.drawCallGroups {
+                    if let drawCall = drawCallGroup.drawCalls.first, let drawData = drawCall.drawData, drawCallGroup.uuid == identifier {
+                        var mutableDrawCall = drawCall
+                        var mutableDrawData = drawData
+                        mutableDrawData.rawVertexBuffers = rawVertexBuffers
+                        mutableDrawData.subData[0].indexBuffer = indexBuffer
+                        mutableDrawCall.drawData = mutableDrawData
+                        drawCallGroup.drawCalls = [mutableDrawCall]
+                    }
+                    mutableDrawCallGroups.append(drawCallGroup)
+                }
+                renderPass.drawCallGroups = mutableDrawCallGroups
+                var mutableAKAnchor = realSurfaceAnchor
+                mutableAKAnchor.needsMeshUpdate = false
+            }
+        }
+        
+        //
+        // Update the Buffers
+        //
+        
+        var anchorMeshIndex = 0
+        
+        for drawCallGroup in renderPass.drawCallGroups {
+            
+            guard drawCallGroup.moduleIdentifier == moduleIdentifier else {
+                continue
+            }
+            
+            let identifier = drawCallGroup.uuid
+            
+            guard let realSurfaceAnchor = moduleEntities.first(where: {$0.identifier == identifier}) as? AKRealSurfaceAnchor else {
+                continue
+            }
+            
+            guard let arAnchor = realSurfaceAnchor.arAnchor else {
                 continue
             }
             
             // Ignore anchors that are beyond the renderDistance
-            let distance = anchorDistance(withTransform: anchor.transform, cameraProperties: cameraProperties)
+            let distance = anchorDistance(withTransform: arAnchor.transform, cameraProperties: cameraProperties)
             guard Double(distance) < renderDistance else {
+                print("Info: AKRealSurfaceAnchor \(identifier) is too far away. Skipping render")
                 continue
             }
             
-            instanceCount += 1
-            
-            if instanceCount > Constants.maxSurfaceInstanceCount {
-                instanceCount = Constants.maxSurfaceInstanceCount
-                break
-            }
-            
-            let uuid: UUID = {
-                if modelAssetsForAnchorsByUUID[anchor.identifier] != nil {
-                    return anchor.identifier
-                } else {
-                    return generalUUID
-                }
-            }()
-            
-            if let currentAnchors = anchorsByUUID[uuid] {
-                var mutableCurrentAnchors = currentAnchors
-                mutableCurrentAnchors.append(akAnchor)
-                anchorsByUUID[uuid] = mutableCurrentAnchors
-            } else {
-                anchorsByUUID[uuid] = [akAnchor]
-            }
-            
             // See if this anchor is associated with an environment anchor. An environment anchor applies to a region of space which may contain several anchors. The environment anchor that has the smallest volume is assumed to be more localized and therefore be the best for for this anchor
+            var environmentTexture: MTLTexture?
             let environmentProbes: [AREnvironmentProbeAnchor] = environmentProperties.environmentAnchorsWithReatedAnchors.compactMap{
-                if $0.value.contains(anchor.identifier) {
+                if $0.value.contains(identifier) {
                     return $0.key
                 } else {
                     return nil
@@ -310,159 +309,129 @@ class SurfacesRenderModule: RenderModule {
                     }
                 }
                 if let environmentProbeAnchor = bestEnvironmentProbe, let texture = environmentProbeAnchor.environmentTexture {
-                    environmentTextureByUUID[uuid] = texture
+                    environmentTexture = texture
                 }
             } else {
                 if let environmentProbeAnchor = environmentProbes.first, let texture = environmentProbeAnchor.environmentTexture {
-                    environmentTextureByUUID[uuid] = texture
+                    environmentTexture = texture
                 }
             }
             
-        }
-        
-        //
-        // Update the Anchor uniform
-        //
-        
-        var anchorMeshIndex = 0
-        
-        for drawCallGroup in renderPass.drawCallGroups {
-            
-            let uuid = drawCallGroup.uuid
-            
-            drawCallGroup.drawCalls.forEach { _ in
+            drawCallGroup.drawCalls.forEach { drawCall in
                 
-                let akAnchors = anchorsByUUID[uuid] ?? []
+                instanceCount += 1
                 
-                for akAnchor in akAnchors {
-                    
-                    guard let arAnchor = akAnchor.arAnchor else {
-                        continue
-                    }
-                    
-                    let uuid: UUID = {
-                        if modelAssetsForAnchorsByUUID[uuid] != nil {
-                            return arAnchor.identifier
-                        } else {
-                            return generalUUID
-                        }
-                    }()
-                    
-                    //
-                    // Update Geometry
-                    //
-                    
-                    
-                    
-                    //
-                    // Update Environment
-                    //
-                    
-                    environmentData = {
-                        var myEnvironmentData = EnvironmentData()
-                        if let texture = environmentTextureByUUID[uuid] {
-                            myEnvironmentData.environmentTexture = texture
-                            myEnvironmentData.hasEnvironmentMap = true
-                            return myEnvironmentData
-                        } else {
-                            myEnvironmentData.hasEnvironmentMap = false
-                        }
+                if instanceCount > Constants.maxSurfaceInstanceCount {
+                    instanceCount = Constants.maxSurfaceInstanceCount
+                    return
+                }
+                
+                //
+                // Update Environment
+                //
+                
+                environmentData = {
+                    var myEnvironmentData = EnvironmentData()
+                    if let texture = environmentTexture {
+                        myEnvironmentData.environmentTexture = texture
+                        myEnvironmentData.hasEnvironmentMap = true
                         return myEnvironmentData
-                    }()
-                    
-                    let environmentUniforms = environmentUniformBufferAddress?.assumingMemoryBound(to: EnvironmentUniforms.self).advanced(by: anchorMeshIndex)
-                    
-                    // Set up lighting for the scene using the ambient intensity if provided
-                    let ambientIntensity: Float = {
-                        if let lightEstimate = environmentProperties.lightEstimate {
-                            return Float(lightEstimate.ambientIntensity) / 1000.0
-                        } else {
-                            return 1
-                        }
-                    }()
-                    
-                    let ambientLightColor: vector_float3 = {
-                        if let lightEstimate = environmentProperties.lightEstimate {
-                            return getRGB(from: lightEstimate.ambientColorTemperature)
-                        } else {
-                            return vector3(0.5, 0.5, 0.5)
-                        }
-                    }()
-                    
-                    environmentUniforms?.pointee.ambientLightColor = ambientLightColor// * ambientIntensity
-                    
-                    var directionalLightDirection : vector_float3 = environmentProperties.directionalLightDirection
-                    directionalLightDirection = simd_normalize(directionalLightDirection)
-                    environmentUniforms?.pointee.directionalLightDirection = directionalLightDirection
-                    
-                    let directionalLightColor: vector_float3 = vector3(0.6, 0.6, 0.6)
-                    environmentUniforms?.pointee.directionalLightColor = directionalLightColor * ambientIntensity
-                    
-                    environmentUniforms?.pointee.directionalLightMVP = environmentProperties.directionalLightMVP
-                    environmentUniforms?.pointee.shadowMVPTransformMatrix = shadowProperties.shadowMVPTransformMatrix
-                    
-                    if environmentData?.hasEnvironmentMap == true {
-                        environmentUniforms?.pointee.hasEnvironmentMap = 1
                     } else {
-                        environmentUniforms?.pointee.hasEnvironmentMap = 0
+                        myEnvironmentData.hasEnvironmentMap = false
                     }
-                    
-                    //
-                    // Update Effects uniform
-                    //
-                    
-                    let effectsUniforms = effectsUniformBufferAddress?.assumingMemoryBound(to: AnchorEffectsUniforms.self).advanced(by: anchorMeshIndex)
-                    var hasSetAlpha = false
-                    var hasSetGlow = false
-                    var hasSetTint = false
-                    var hasSetScale = false
-                    if let effects = akAnchor.effects {
-                        let currentTime: TimeInterval = Double(cameraProperties.currentFrame) / cameraProperties.frameRate
-                        for effect in effects {
-                            switch effect.effectType {
-                            case .alpha:
-                                if let value = effect.value(forTime: currentTime) as? Float {
-                                    effectsUniforms?.pointee.alpha = value
-                                    hasSetAlpha = true
-                                }
-                            case .glow:
-                                if let value = effect.value(forTime: currentTime) as? Float {
-                                    effectsUniforms?.pointee.glow = value
-                                    hasSetGlow = true
-                                }
-                            case .tint:
-                                if let value = effect.value(forTime: currentTime) as? float3 {
-                                    effectsUniforms?.pointee.tint = value
-                                    hasSetTint = true
-                                }
-                            case .scale:
-                                if let value = effect.value(forTime: currentTime) as? Float {
-                                    let scaleMatrix = matrix_identity_float4x4
-                                    effectsUniforms?.pointee.scale = scaleMatrix.scale(x: value, y: value, z: value)
-                                    hasSetScale = true
-                                }
+                    return myEnvironmentData
+                }()
+                
+                let environmentUniforms = environmentUniformBufferAddress?.assumingMemoryBound(to: EnvironmentUniforms.self).advanced(by: anchorMeshIndex)
+                
+                // Set up lighting for the scene using the ambient intensity if provided
+                let ambientIntensity: Float = {
+                    if let lightEstimate = environmentProperties.lightEstimate {
+                        return Float(lightEstimate.ambientIntensity) / 1000.0
+                    } else {
+                        return 1
+                    }
+                }()
+                
+                let ambientLightColor: SIMD3<Float> = {
+                    if let lightEstimate = environmentProperties.lightEstimate {
+                        return getRGB(from: lightEstimate.ambientColorTemperature)
+                    } else {
+                        return SIMD3<Float>(0.5, 0.5, 0.5)
+                    }
+                }()
+                
+                environmentUniforms?.pointee.ambientLightColor = ambientLightColor// * ambientIntensity
+                
+                var directionalLightDirection : SIMD3<Float> = environmentProperties.directionalLightDirection
+                directionalLightDirection = simd_normalize(directionalLightDirection)
+                environmentUniforms?.pointee.directionalLightDirection = directionalLightDirection
+                
+                let directionalLightColor: SIMD3<Float> = SIMD3<Float>(0.6, 0.6, 0.6)
+                environmentUniforms?.pointee.directionalLightColor = directionalLightColor * ambientIntensity
+                
+                environmentUniforms?.pointee.directionalLightMVP = environmentProperties.directionalLightMVP
+                environmentUniforms?.pointee.shadowMVPTransformMatrix = shadowProperties.shadowMVPTransformMatrix
+                
+                if environmentData?.hasEnvironmentMap == true {
+                    environmentUniforms?.pointee.hasEnvironmentMap = 1
+                } else {
+                    environmentUniforms?.pointee.hasEnvironmentMap = 0
+                }
+                
+                //
+                // Update Effects uniform
+                //
+                
+                let effectsUniforms = effectsUniformBufferAddress?.assumingMemoryBound(to: AnchorEffectsUniforms.self).advanced(by: anchorMeshIndex)
+                var hasSetAlpha = false
+                var hasSetGlow = false
+                var hasSetTint = false
+                var hasSetScale = false
+                if let effects = realSurfaceAnchor.effects {
+                    let currentTime: TimeInterval = Double(cameraProperties.currentFrame) / cameraProperties.frameRate
+                    for effect in effects {
+                        switch effect.effectType {
+                        case .alpha:
+                            if let value = effect.value(forTime: currentTime) as? Float {
+                                effectsUniforms?.pointee.alpha = value
+                                hasSetAlpha = true
+                            }
+                        case .glow:
+                            if let value = effect.value(forTime: currentTime) as? Float {
+                                effectsUniforms?.pointee.glow = value
+                                hasSetGlow = true
+                            }
+                        case .tint:
+                            if let value = effect.value(forTime: currentTime) as? SIMD3<Float> {
+                                effectsUniforms?.pointee.tint = value
+                                hasSetTint = true
+                            }
+                        case .scale:
+                            if let value = effect.value(forTime: currentTime) as? Float {
+                                let scaleMatrix = matrix_identity_float4x4
+                                effectsUniforms?.pointee.scale = scaleMatrix.scale(x: value, y: value, z: value)
+                                hasSetScale = true
                             }
                         }
                     }
-                    if !hasSetAlpha {
-                        effectsUniforms?.pointee.alpha = 1
-                    }
-                    if !hasSetGlow {
-                        effectsUniforms?.pointee.glow = 0
-                    }
-                    if !hasSetTint {
-                        effectsUniforms?.pointee.tint = float3(1,1,1)
-                    }
-                    if !hasSetScale {
-                        effectsUniforms?.pointee.scale = matrix_identity_float4x4
-                    }
-                    
-                    anchorMeshIndex += 1
-                    
+                }
+                if !hasSetAlpha {
+                    effectsUniforms?.pointee.alpha = 1
+                }
+                if !hasSetGlow {
+                    effectsUniforms?.pointee.glow = 0
+                }
+                if !hasSetTint {
+                    effectsUniforms?.pointee.tint = SIMD3<Float>(1,1,1)
+                }
+                if !hasSetScale {
+                    effectsUniforms?.pointee.scale = matrix_identity_float4x4
                 }
                 
+                anchorMeshIndex += 1
+                
             }
-            
         }
         
         //
@@ -539,14 +508,6 @@ class SurfacesRenderModule: RenderModule {
                 }
             }
             
-            let uuid = drawCallGroup.uuid
-            
-            // TODO: remove. I think this should always be 1. Even if draw call groups share geometries, we should only be incrementing the base index once per draw call. The whole idea of sharing geometries is probably misguided anyway
-            let anchorcount = (anchorsByUUID[uuid] ?? []).count
-//            if anchorcount > 1 {
-//                print("There are \(anchorcount) geometries sharing this one UUID. This is something to refactor.")
-//            }
-            
             // Geometry Draw Calls
             for drawCall in drawCallGroup.drawCalls {
                 
@@ -557,18 +518,20 @@ class SurfacesRenderModule: RenderModule {
                 
                 drawCall.prepareDrawCall(withRenderPass: renderPass)
                 
-                // Set the offset index of the draw call into the argument buffer
-                renderEncoder.setVertexBytes(&drawCallIndex, length: MemoryLayout<Int32>.size, index: Int(kBufferIndexDrawCallIndex.rawValue))
-                // Set the offset index of the draw call group into the argument buffer
-                renderEncoder.setVertexBytes(&drawCallGroupIndex, length: MemoryLayout<Int32>.size, index: Int(kBufferIndexDrawCallGroupIndex.rawValue))
+                if renderPass.usesGeometry {
+                    // Set the offset index of the draw call into the argument buffer
+                    renderEncoder.setVertexBytes(&drawCallIndex, length: MemoryLayout<Int32>.size, index: Int(kBufferIndexDrawCallIndex.rawValue))
+                    // Set the offset index of the draw call group into the argument buffer
+                    renderEncoder.setVertexBytes(&drawCallGroupIndex, length: MemoryLayout<Int32>.size, index: Int(kBufferIndexDrawCallGroupIndex.rawValue))
+                }
                 
                 var mutableDrawData = drawData
-                mutableDrawData.instanceCount = anchorcount
+                mutableDrawData.instanceCount = 1
                 
                 // Set the mesh's vertex data buffers and draw
-                draw(withDrawData: mutableDrawData, with: renderEncoder, baseIndex: baseIndex)
+                draw(withDrawData: mutableDrawData, with: renderEncoder, baseIndex: baseIndex, includeGeometry: renderPass.usesGeometry, includeLighting: renderPass.usesLighting)
                 
-                baseIndex += anchorcount
+                baseIndex += 1
                 drawCallIndex += 1
                 
             }
@@ -604,11 +567,6 @@ class SurfacesRenderModule: RenderModule {
     private var bufferIndex: Int = 0
     private var device: MTLDevice?
     private var textureLoader: MTKTextureLoader?
-    private var geometricEntities = [AKGeometricEntity]()
-    private var generalUUID = UUID()
-    private var modelAssetsForAnchorsByUUID = [UUID: MDLAsset]()
-    private var generalModelAsset: MDLAsset?
-    private var shaderPreferenceForAnchorsByUUID = [UUID: ShaderPreference]()
     private var materialUniformBuffer: MTLBuffer?
     private var effectsUniformBuffer: MTLBuffer?
     private var environmentUniformBuffer: MTLBuffer?
@@ -634,24 +592,11 @@ class SurfacesRenderModule: RenderModule {
     // Addresses to write environment uniforms to each frame
     private var environmentUniformBufferAddress: UnsafeMutableRawPointer?
     
-    private var anchorsByUUID = [UUID: [AKRealAnchor]]()
-    private var environmentTextureByUUID = [UUID: MTLTexture]()
-    
     private func createDrawCallGroup(forUUID uuid: UUID, withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, renderPass: RenderPass?, meshGPUData: MeshGPUData, geometricEntity: AKGeometricEntity) -> DrawCallGroup {
         
         guard let renderPass = renderPass else {
             print("Warning - Skipping all draw calls because the render pass is nil.")
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeRenderPassNotFound, userInfo: nil)
-            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-            recordNewError(newError)
-            return DrawCallGroup(drawCalls: [], uuid: uuid)
-        }
-        
-        let myVertexDescriptor: MTLVertexDescriptor? = meshGPUData.vertexDescriptor
-        
-        guard let aVertexDescriptor = myVertexDescriptor else {
-            print("Serious Error - Failed to create a MetalKit vertex descriptor from ModelIO.")
-            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeInvalidMeshData, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
             return DrawCallGroup(drawCalls: [], uuid: uuid)
@@ -672,9 +617,15 @@ class SurfacesRenderModule: RenderModule {
                 }
             }()
             
-            let vertexShaderName = "surfaceGeometryVertexTransform"
+            let vertexShaderName: String = {
+                if drawData.isRaw {
+                    return "rawSurfaceGeometryVertexTransform"
+                } else {
+                    return "surfaceGeometryVertexTransform"
+                }
+            }()
             
-            let drawCall = DrawCall(metalLibrary: metalLibrary, renderPass: renderPass, vertexFunctionName: vertexShaderName, fragmentFunctionName: fragmentShaderName, vertexDescriptor: aVertexDescriptor, drawData: drawData)
+            let drawCall = DrawCall(metalLibrary: metalLibrary, renderPass: renderPass, vertexFunctionName: vertexShaderName, fragmentFunctionName: fragmentShaderName, vertexDescriptor: meshGPUData.vertexDescriptor, drawData: drawData)
             drawCalls.append(drawCall)
             
         }

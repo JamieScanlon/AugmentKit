@@ -44,7 +44,7 @@ class UnanchoredRenderModule: RenderModule {
     var renderLayer: Int {
         return 12
     }
-    var isInitialized: Bool = false
+    var state: ShaderModuleState = .uninitialized
     var sharedModuleIdentifiers: [String]? = [SharedBuffersRenderModule.identifier]
     var renderDistance: Double = 500
     var errors = [AKError]()
@@ -56,6 +56,8 @@ class UnanchoredRenderModule: RenderModule {
     private(set) var targetInstanceCount: Int = 0
     
     func initializeBuffers(withDevice aDevice: MTLDevice, maxInFlightFrames: Int, maxInstances: Int) {
+        
+        state = .initializing
         
         device = aDevice
         
@@ -180,54 +182,71 @@ class UnanchoredRenderModule: RenderModule {
         
     }
     
-    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, forRenderPass renderPass: RenderPass? = nil) -> [DrawCallGroup] {
+    func loadPipeline(withModuleEntities: [AKEntity], metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, renderPass: RenderPass? = nil, completion: (([DrawCallGroup]) -> Void)? = nil) {
         
         guard let device = device else {
             print("Serious Error - device not found")
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeDeviceNotFound, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return []
+            state = .uninitialized
+            completion?([])
+            return
         }
         
-        var drawCallGroups = [DrawCallGroup]()
-        let filteredGeometryUUIDs = geometricEntities.compactMap({$0.identifier})
-        let filteredModelsByUUID = modelAssetsByUUID.filter { (uuid, asset) in
-            filteredGeometryUUIDs.contains(uuid)
-        }
-        for item in filteredModelsByUUID {
+        DispatchQueue.global(qos: .default).async { [weak self] in
+        
+            var drawCallGroups = [DrawCallGroup]()
             
-            guard let geometricEntity = geometricEntities.first(where: {$0.identifier == item.key}) else {
-                continue
+            guard let geometricEntities = self?.geometricEntities, let modelAssetsByUUID = self?.modelAssetsByUUID, let shaderPreferenceByUUID = self?.shaderPreferenceByUUID else {
+                DispatchQueue.main.async { [weak self] in
+                    self?.state = .ready
+                    completion?(drawCallGroups)
+                }
+                return
             }
             
-            let uuid = item.key
-            let mdlAsset = item.value
-            let shaderPreference: ShaderPreference = {
-                if let prefernece = shaderPreferenceByUUID[uuid] {
-                    return prefernece
-                } else {
-                    return .pbr
+            let filteredGeometryUUIDs = geometricEntities.compactMap({$0.identifier})
+            let filteredModelsByUUID = modelAssetsByUUID.filter { (uuid, asset) in
+                filteredGeometryUUIDs.contains(uuid)
+            }
+            for item in filteredModelsByUUID {
+                
+                guard let geometricEntity = geometricEntities.first(where: {$0.identifier == item.key}) else {
+                    continue
                 }
-            }()
+                
+                let uuid = item.key
+                let mdlAsset = item.value
+                let shaderPreference: ShaderPreference = {
+                    if let prefernece = shaderPreferenceByUUID[uuid] {
+                        return prefernece
+                    } else {
+                        return .pbr
+                    }
+                }()
+                
+                let meshGPUData = ModelIOTools.meshGPUData(from: mdlAsset, device: device, vertexDescriptor: RenderUtilities.createStandardVertexDescriptor(), frameRate: 60, shaderPreference: shaderPreference, loadTextures: renderPass?.usesLighting ?? true, textureBundle: textureBundle)
+                
+                if let drawCallGroup = self?.createDrawCallGroup(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass, meshGPUData: meshGPUData, geometricEntity: geometricEntity) {
+                    drawCallGroup.moduleIdentifier = UnanchoredRenderModule.identifier
+                    drawCallGroups.append(drawCallGroup)
+                }
+                
+            }
             
-            let meshGPUData = ModelIOTools.meshGPUData(from: mdlAsset, device: device, textureBundle: textureBundle, vertexDescriptor: RenderUtilities.createStandardVertexDescriptor(), frameRate: 60, shaderPreference: shaderPreference)
-            
-            let drawCallGroup = createDrawCallGroup(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass, meshGPUData: meshGPUData, geometricEntity: geometricEntity)
-            drawCallGroup.moduleIdentifier = moduleIdentifier
-            drawCallGroups.append(drawCallGroup)
+            // In the buffer, the anchors are layed out by UUID in sorted order. So if there are
+            // 5 anchors with UUID = "A..." and 3 UUIDs = "B..." and 1 UUID = "C..." then that's
+            // how they will layed out in memory. Therefore updating the buffers is a 2 step process.
+            // First, loop through all of the ARAnchors and gather the UUIDs as well as the counts for each.
+            // Second, layout and update the buffers in the desired order.
+            drawCallGroups.sort { $0.uuid.uuidString < $1.uuid.uuidString }
+            DispatchQueue.main.async { [weak self] in
+                self?.state = .ready
+                completion?(drawCallGroups)
+            }
             
         }
-        
-        // In the buffer, the anchors are layed out by UUID in sorted order. So if there are
-        // 5 anchors with UUID = "A..." and 3 UUIDs = "B..." and 1 UUID = "C..." then that's
-        // how they will layed out in memory. Therefore updating the buffers is a 2 step process.
-        // First, loop through all of the ARAnchors and gather the UUIDs as well as the counts for each.
-        // Second, layout and update the buffers in the desired order.
-        drawCallGroups.sort { $0.uuid.uuidString < $1.uuid.uuidString }
-        isInitialized = true
-        
-        return drawCallGroups
         
     }
     
@@ -289,7 +308,7 @@ class UnanchoredRenderModule: RenderModule {
             if let lightEstimate = environmentProperties.lightEstimate {
                 return getRGB(from: lightEstimate.ambientColorTemperature)
             } else {
-                return vector3(0.5, 0.5, 0.5)
+                return SIMD3<Float>(0.5, 0.5, 0.5)
             }
         }()
         
@@ -418,13 +437,13 @@ class UnanchoredRenderModule: RenderModule {
                         
                         let environmentUniforms = environmentUniformBufferAddress?.assumingMemoryBound(to: EnvironmentUniforms.self).advanced(by: index)
                         
-                        environmentUniforms?.pointee.ambientLightColor = ambientLightColor ?? vector3(0.5, 0.5, 0.5)
+                        environmentUniforms?.pointee.ambientLightColor = ambientLightColor ?? SIMD3<Float>(0.5, 0.5, 0.5)
                         
-                        var directionalLightDirection : vector_float3 = environmentProperties.directionalLightDirection
+                        var directionalLightDirection : SIMD3<Float> = environmentProperties.directionalLightDirection
                         directionalLightDirection = simd_normalize(directionalLightDirection)
                         environmentUniforms?.pointee.directionalLightDirection = directionalLightDirection
                         
-                        let directionalLightColor: vector_float3 = vector3(0.6, 0.6, 0.6)
+                        let directionalLightColor: SIMD3<Float> = SIMD3<Float>(0.6, 0.6, 0.6)
                         environmentUniforms?.pointee.directionalLightColor = directionalLightColor * (ambientIntensity ?? 1)
                         
                         environmentUniforms?.pointee.directionalLightMVP = environmentProperties.directionalLightMVP
@@ -460,7 +479,7 @@ class UnanchoredRenderModule: RenderModule {
                                         hasSetGlow = true
                                     }
                                 case .tint:
-                                    if let value = effect.value(forTime: currentTime) as? float3 {
+                                    if let value = effect.value(forTime: currentTime) as? SIMD3<Float> {
                                         effectsUniforms?.pointee.tint = value
                                         hasSetTint = true
                                     }
@@ -480,7 +499,7 @@ class UnanchoredRenderModule: RenderModule {
                             effectsUniforms?.pointee.glow = 0
                         }
                         if !hasSetTint {
-                            effectsUniforms?.pointee.tint = float3(1,1,1)
+                            effectsUniforms?.pointee.tint = SIMD3<Float>(1,1,1)
                         }
                         if !hasSetScale {
                             effectsUniforms?.pointee.scale = matrix_identity_float4x4
@@ -562,13 +581,13 @@ class UnanchoredRenderModule: RenderModule {
                         
                         let environmentUniforms = environmentUniformBufferAddress?.assumingMemoryBound(to: EnvironmentUniforms.self).advanced(by: index)
                         
-                        environmentUniforms?.pointee.ambientLightColor = ambientLightColor ?? vector3(0.5, 0.5, 0.5)
+                        environmentUniforms?.pointee.ambientLightColor = ambientLightColor ?? SIMD3<Float>(0.5, 0.5, 0.5)
                         
-                        var directionalLightDirection : vector_float3 = environmentProperties.directionalLightDirection
+                        var directionalLightDirection : SIMD3<Float> = environmentProperties.directionalLightDirection
                         directionalLightDirection = simd_normalize(directionalLightDirection)
                         environmentUniforms?.pointee.directionalLightDirection = directionalLightDirection
                         
-                        let directionalLightColor: vector_float3 = vector3(0.6, 0.6, 0.6)
+                        let directionalLightColor: SIMD3<Float> = SIMD3<Float>(0.6, 0.6, 0.6)
                         environmentUniforms?.pointee.directionalLightColor = directionalLightColor * (ambientIntensity ?? 1)
                         
                         environmentUniforms?.pointee.directionalLightMVP = environmentProperties.directionalLightMVP
@@ -604,7 +623,7 @@ class UnanchoredRenderModule: RenderModule {
                                         hasSetGlow = true
                                     }
                                 case .tint:
-                                    if let value = effect.value(forTime: currentTime) as? float3 {
+                                    if let value = effect.value(forTime: currentTime) as? SIMD3<Float> {
                                         effectsUniforms?.pointee.tint = value
                                         hasSetTint = true
                                     }
@@ -624,7 +643,7 @@ class UnanchoredRenderModule: RenderModule {
                             effectsUniforms?.pointee.glow = 0
                         }
                         if !hasSetTint {
-                            effectsUniforms?.pointee.tint = float3(1,1,1)
+                            effectsUniforms?.pointee.tint = SIMD3<Float>(1,1,1)
                         }
                         if !hasSetScale {
                             effectsUniforms?.pointee.scale = matrix_identity_float4x4
@@ -728,16 +747,18 @@ class UnanchoredRenderModule: RenderModule {
                 
                 drawCall.prepareDrawCall(withRenderPass: renderPass)
                 
-                // Set the offset index of the draw call into the argument buffer
-                renderEncoder.setVertexBytes(&drawCallIndex, length: MemoryLayout<Int32>.size, index: Int(kBufferIndexDrawCallIndex.rawValue))
-                // Set the offset index of the draw call group into the argument buffer
-                renderEncoder.setVertexBytes(&drawCallGroupIndex, length: MemoryLayout<Int32>.size, index: Int(kBufferIndexDrawCallGroupIndex.rawValue))
+                if renderPass.usesGeometry {
+                    // Set the offset index of the draw call into the argument buffer
+                    renderEncoder.setVertexBytes(&drawCallIndex, length: MemoryLayout<Int32>.size, index: Int(kBufferIndexDrawCallIndex.rawValue))
+                    // Set the offset index of the draw call group into the argument buffer
+                    renderEncoder.setVertexBytes(&drawCallGroupIndex, length: MemoryLayout<Int32>.size, index: Int(kBufferIndexDrawCallGroupIndex.rawValue))
+                }
                 
                 var mutableDrawData = drawData
                 mutableDrawData.instanceCount = trackerInstanceCount
                 
                 // Set the mesh's vertex data buffers and draw
-                draw(withDrawData: mutableDrawData, with: renderEncoder, baseIndex: baseIndex)
+                draw(withDrawData: mutableDrawData, with: renderEncoder, baseIndex: baseIndex, includeGeometry: renderPass.usesGeometry, includeLighting: renderPass.usesLighting)
                 
                 baseIndex += geometryCount
                 drawCallIndex += 1
@@ -784,7 +805,7 @@ class UnanchoredRenderModule: RenderModule {
     private var environmentTextureByUUID = [UUID: MTLTexture]()
     private var geometryCountByUUID = [UUID: Int]()
     private var ambientIntensity: Float?
-    private var ambientLightColor: vector_float3?
+    private var ambientLightColor: SIMD3<Float>?
     private var unanchoredUniformBuffer: MTLBuffer?
     private var materialUniformBuffer: MTLBuffer?
     private var effectsUniformBuffer: MTLBuffer?
@@ -827,14 +848,6 @@ class UnanchoredRenderModule: RenderModule {
             return DrawCallGroup(drawCalls: [], uuid: uuid)
         }
         
-        guard let aVertexDescriptor = meshGPUData.vertexDescriptor else {
-            print("Serious Error - Failed to create a MetalKit vertex descriptor from ModelIO.")
-            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeInvalidMeshData, userInfo: nil)
-            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-            recordNewError(newError)
-            return DrawCallGroup(drawCalls: [], uuid: uuid)
-        }
-        
         let shaderPreference = meshGPUData.shaderPreference
         
         var drawCalls = [DrawCall]()
@@ -851,11 +864,15 @@ class UnanchoredRenderModule: RenderModule {
                 if drawData.isSkinned {
                     return "anchorGeometryVertexTransformSkinned"
                 } else {
-                    return "anchorGeometryVertexTransform"
+                    if drawData.isRaw {
+                        return "rawGeometryVertexTransform"
+                    } else {
+                        return "anchorGeometryVertexTransform"
+                    }
                 }
             }()
             
-            let drawCall = DrawCall(metalLibrary: metalLibrary, renderPass: renderPass, vertexFunctionName: vertexShaderName, fragmentFunctionName: fragmentShaderName, vertexDescriptor: aVertexDescriptor, drawData: drawData)
+            let drawCall = DrawCall(metalLibrary: metalLibrary, renderPass: renderPass, vertexFunctionName: vertexShaderName, fragmentFunctionName: fragmentShaderName, vertexDescriptor: meshGPUData.vertexDescriptor, drawData: drawData)
             drawCalls.append(drawCall)
             
         }

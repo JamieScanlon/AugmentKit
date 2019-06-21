@@ -44,12 +44,14 @@ class CameraPlaneRenderModule: RenderModule {
     var renderLayer: Int {
         return 0
     }
-    var isInitialized: Bool = false
+    var state: ShaderModuleState = .uninitialized
     var sharedModuleIdentifiers: [String]? = nil
     var renderDistance: Double = 500
     var errors = [AKError]()
     
     func initializeBuffers(withDevice aDevice: MTLDevice, maxInFlightFrames: Int, maxInstances: Int) {
+        
+        state = .initializing
         
         device = aDevice
         
@@ -64,29 +66,24 @@ class CameraPlaneRenderModule: RenderModule {
         completion()
     }
     
-    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, forRenderPass renderPass: RenderPass? = nil) -> [DrawCallGroup] {
+    func loadPipeline(withModuleEntities: [AKEntity], metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, renderPass: RenderPass? = nil, completion: (([DrawCallGroup]) -> Void)? = nil) {
         
         guard let device = device else {
             print("Serious Error - device not found")
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeDeviceNotFound, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return []
+            completion?([])
+            return
         }
-        
-        // Check to make sure this geometry should be rendered in this render pass
-//        if let geometryFilterFunction = renderPass?.geometryFilterFunction {
-//            guard geometryFilterFunction(nil) else {
-//                return []
-//            }
-//        }
         
         guard let capturedImageVertexTransform = metalLibrary.makeFunction(name: "capturedImageVertexTransform") else {
             print("Serious Error - failed to create the capturedImageVertexTransform function")
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeShaderInitializationFailed, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return []
+            completion?([])
+            return
         }
         
         guard let capturedImageFragmentShader = metalLibrary.makeFunction(name: "capturedImageFragmentShader") else {
@@ -94,7 +91,8 @@ class CameraPlaneRenderModule: RenderModule {
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeShaderInitializationFailed, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return []
+            completion?([])
+            return
         }
         
         let capturedImageVertexFunction = capturedImageVertexTransform
@@ -129,16 +127,6 @@ class CameraPlaneRenderModule: RenderModule {
         capturedImagePipelineStateDescriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
         capturedImagePipelineStateDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
         
-//        do {
-//            try capturedImagePipelineState = device.makeRenderPipelineState(descriptor: capturedImagePipelineStateDescriptor)
-//        } catch let error {
-//            print("Serious Error - Failed to create captured image pipeline state, error \(error)")
-//            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeRenderPipelineInitializationFailed, userInfo: nil)
-//            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-//            recordNewError(newError)
-//            return []
-//        }
-        
         let capturedImageDepthStateDescriptor = MTLDepthStencilDescriptor()
         capturedImageDepthStateDescriptor.depthCompareFunction = .always
         capturedImageDepthStateDescriptor.isDepthWriteEnabled = false
@@ -152,9 +140,8 @@ class CameraPlaneRenderModule: RenderModule {
         let drawCallGroup = DrawCallGroup(drawCalls: [drawCall], generatesShadows: false)
         drawCallGroup.moduleIdentifier = moduleIdentifier
         
-        isInitialized = true
-        
-        return [drawCallGroup]
+        state = .ready
+        completion?([drawCallGroup])
         
     }
     
@@ -274,7 +261,6 @@ class CameraPlaneRenderModule: RenderModule {
     
     private var device: MTLDevice?
     private var imagePlaneVertexBuffer: MTLBuffer?
-//    private var capturedImagePipelineState: MTLRenderPipelineState?
     private var capturedImageTextureCache: CVMetalTextureCache?
     private var capturedImageTextureY: CVMetalTexture?
     private var capturedImageTextureCbCr: CVMetalTexture?

@@ -48,7 +48,7 @@ class PathsRenderModule: RenderModule {
     var renderLayer: Int {
         return 10
     }
-    var isInitialized: Bool = false
+    var state: ShaderModuleState = .uninitialized
     var sharedModuleIdentifiers: [String]? = [SharedBuffersRenderModule.identifier]
     var renderDistance: Double = 500
     var errors = [AKError]()
@@ -61,6 +61,8 @@ class PathsRenderModule: RenderModule {
     private(set) var anchorIdentifiers = [Int: [UUID]]()
     
     func initializeBuffers(withDevice aDevice: MTLDevice, maxInFlightFrames: Int, maxInstances: Int) {
+        
+        state = .initializing
         
         device = aDevice
         
@@ -98,11 +100,11 @@ class PathsRenderModule: RenderModule {
         // Metal buffers accessible by the GPU
         let metalAllocator = MTKMeshBufferAllocator(device: device)
         // Create a cylinder that is 10cm in diameter
-        let mesh = MDLMesh.newCylinder(withHeight: 1, radii: vector2(0.05, 0.05), radialSegments: 6, verticalSegments: 1, geometryType: .triangles, inwardNormals: false, allocator: metalAllocator)
+        let mesh = MDLMesh.newCylinder(withHeight: 1, radii: SIMD2<Float>(0.05, 0.05), radialSegments: 6, verticalSegments: 1, geometryType: .triangles, inwardNormals: false, allocator: metalAllocator)
         let scatteringFunction = MDLScatteringFunction()
-        let material = MDLMaterial(name: "baseMaterial", scatteringFunction: scatteringFunction)
+        let material = MDLMaterial(name: "AKPathSegmentAnchor - baseMaterial", scatteringFunction: scatteringFunction)
         // TODO: Get color from the renderer as passed from the users setup
-        let colorProperty = MDLMaterialProperty(name: "pathColor", semantic: .baseColor, float4: float4(1, 1, 1, 1))
+        let colorProperty = MDLMaterialProperty(name: "pathColor", semantic: .baseColor, float4: SIMD4<Float>(1, 1, 1, 1))
         material.setProperty(colorProperty)
         
         for submesh in mesh.submeshes!  {
@@ -122,14 +124,16 @@ class PathsRenderModule: RenderModule {
         
     }
     
-    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, forRenderPass renderPass: RenderPass? = nil) -> [DrawCallGroup] {
+    func loadPipeline(withModuleEntities: [AKEntity], metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, renderPass: RenderPass? = nil, completion: (([DrawCallGroup]) -> Void)? = nil) {
         
         guard let renderPass = renderPass else {
             print("Warning - Skipping all draw calls because the render pass is nil.")
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeRenderPassNotFound, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return []
+            state = .ready
+            completion?([])
+            return
         }
         
         guard let device = device else {
@@ -137,7 +141,9 @@ class PathsRenderModule: RenderModule {
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeDeviceNotFound, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return []
+            state = .uninitialized
+            completion?([])
+            return
         }
         
         guard let pathSegmentAsset = pathSegmentAsset else {
@@ -145,38 +151,44 @@ class PathsRenderModule: RenderModule {
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeModelNotFound, userInfo: nil)
             let newError = AKError.warning(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return []
+            state = .uninitialized
+            completion?([])
+            return
         }
         
-        let meshGPUData = ModelIOTools.meshGPUData(from: pathSegmentAsset, device: device, textureBundle: textureBundle, vertexDescriptor: RenderUtilities.createStandardVertexDescriptor())
-        
-        if meshGPUData.drawData.count > 1 {
-            print("WARNING: More than one mesh was found. Currently only one mesh per anchor is supported.")
-            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeModelNotSupported, userInfo: nil)
-            let newError = AKError.warning(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-            recordNewError(newError)
+        DispatchQueue.global(qos: .default).async { [weak self] in
+            
+            var drawCallGroups = [DrawCallGroup]()
+            
+            guard let geometricEntities = self?.geometricEntities else {
+                DispatchQueue.main.async { [weak self] in
+                    self?.state = .ready
+                    completion?(drawCallGroups)
+                }
+                return
+            }
+            
+            let meshGPUData = ModelIOTools.meshGPUData(from: pathSegmentAsset, device: device, vertexDescriptor: RenderUtilities.createStandardVertexDescriptor(), loadTextures: renderPass.usesLighting, textureBundle: textureBundle)
+            
+            // Create a draw call group for every model asset. Each model asset may have multiple instances.
+            for geometricEntity in geometricEntities {
+                
+                let uuid = geometricEntity.identifier ?? UUID()
+                
+                // Create a draw call group that contins all of the individual draw calls for this model
+                if let drawCallGroup = self?.createDrawCallGroup(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass, meshGPUData: meshGPUData, geometricEntity: geometricEntity) {
+                    drawCallGroup.moduleIdentifier = PathsRenderModule.identifier
+                    drawCallGroups.append(drawCallGroup)
+                }
+            }
+            
+            // Because there must be a deterministic way to order the draw calls so the draw call groups are sorted by UUID.
+            drawCallGroups.sort { $0.uuid.uuidString < $1.uuid.uuidString }
+            DispatchQueue.main.async { [weak self] in
+                self?.state = .ready
+                completion?(drawCallGroups)
+            }
         }
-        
-        var drawCallGroups = [DrawCallGroup]()
-        
-        // Create a draw call group for every model asset. Each model asset may have multiple instances.
-        for geometricEntity in geometricEntities {
-            
-            let uuid = geometricEntity.identifier ?? UUID()
-            
-            // Create a draw call group that contins all of the individual draw calls for this model
-            let drawCallGroup = createDrawCallGroup(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass, meshGPUData: meshGPUData, geometricEntity: geometricEntity)
-            drawCallGroup.moduleIdentifier = moduleIdentifier
-            
-            drawCallGroups.append(drawCallGroup)
-            
-        }
-        
-        // Because there must be a deterministic way to order the draw calls so the draw call groups are sorted by UUID.
-        drawCallGroups.sort { $0.uuid.uuidString < $1.uuid.uuidString }
-        isInitialized = true
-        
-        return drawCallGroups
         
     }
     
@@ -263,7 +275,7 @@ class PathsRenderModule: RenderModule {
                                 hasSetGlow = true
                             }
                         case .tint:
-                            if let value = effect.value(forTime: currentTime) as? float3 {
+                            if let value = effect.value(forTime: currentTime) as? SIMD3<Float> {
                                 effectsUniforms?.pointee.tint = value
                                 hasSetTint = true
                             }
@@ -283,7 +295,7 @@ class PathsRenderModule: RenderModule {
                     effectsUniforms?.pointee.glow = 0
                 }
                 if !hasSetTint {
-                    effectsUniforms?.pointee.tint = float3(1,1,1)
+                    effectsUniforms?.pointee.tint = SIMD3<Float>(1,1,1)
                 }
                 if !hasSetScale {
                     effectsUniforms?.pointee.scale = matrix_identity_float4x4
@@ -371,16 +383,18 @@ class PathsRenderModule: RenderModule {
                 
                 drawCall.prepareDrawCall(withRenderPass: renderPass)
                 
-                // Set the offset index of the draw call into the argument buffer
-                renderEncoder.setVertexBytes(&drawCallIndex, length: MemoryLayout<Int32>.size, index: Int(kBufferIndexDrawCallIndex.rawValue))
-                // Set the offset index of the draw call group into the argument buffer
-                renderEncoder.setVertexBytes(&drawCallGroupIndex, length: MemoryLayout<Int32>.size, index: Int(kBufferIndexDrawCallGroupIndex.rawValue))
+                if renderPass.usesGeometry {
+                    // Set the offset index of the draw call into the argument buffer
+                    renderEncoder.setVertexBytes(&drawCallIndex, length: MemoryLayout<Int32>.size, index: Int(kBufferIndexDrawCallIndex.rawValue))
+                    // Set the offset index of the draw call group into the argument buffer
+                    renderEncoder.setVertexBytes(&drawCallGroupIndex, length: MemoryLayout<Int32>.size, index: Int(kBufferIndexDrawCallGroupIndex.rawValue))
+                }
                 
                 var mutableDrawData = drawData
                 mutableDrawData.instanceCount = pathSegmentInstanceCount
                 
                 // Set the mesh's vertex data buffers and draw
-                draw(withDrawData: mutableDrawData, with: renderEncoder)
+                draw(withDrawData: mutableDrawData, with: renderEncoder, includeGeometry: renderPass.usesGeometry, includeLighting: renderPass.usesLighting)
                 
                 drawCallIndex += 1
                 
@@ -514,20 +528,10 @@ class PathsRenderModule: RenderModule {
             return DrawCallGroup(drawCalls: [], uuid: uuid)
         }
         
-        let myVertexDescriptor: MTLVertexDescriptor? = meshGPUData.vertexDescriptor
-        
-        guard let aVertexDescriptor = myVertexDescriptor else {
-            print("Serious Error - Failed to create a MetalKit vertex descriptor from ModelIO.")
-            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeInvalidMeshData, userInfo: nil)
-            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-            recordNewError(newError)
-            return DrawCallGroup(drawCalls: [], uuid: uuid)
-        }
-        
         // Create a draw call group containing draw calls. Each draw call is associated with a `DrawData` object in the `MeshGPUData`
         var drawCalls = [DrawCall]()
         for drawData in meshGPUData.drawData {
-            let drawCall = DrawCall(metalLibrary: metalLibrary, renderPass: renderPass, vertexFunctionName: "pathVertexShader", fragmentFunctionName: "pathFragmentShader", vertexDescriptor: aVertexDescriptor, drawData: drawData)
+            let drawCall = DrawCall(metalLibrary: metalLibrary, renderPass: renderPass, vertexFunctionName: "pathVertexShader", fragmentFunctionName: "pathFragmentShader", vertexDescriptor: meshGPUData.vertexDescriptor, drawData: drawData)
             drawCalls.append(drawCall)
         }
         

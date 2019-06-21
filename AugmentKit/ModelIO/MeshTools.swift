@@ -80,9 +80,10 @@ open class MDLAssetTools {
     /**
      Creates an `MDLAsset` object from a `ModelIO` compatable model file. The method looks for a file with the specified name in the specified bundle and uses the specified `MTKMeshBufferAllocator` to create the `MDLAsset`.
      - Parameters:
-        - named: The specified name of the file
-        - inBundle: The `Bundle` where the asset can be found
-        - allocator: A `MTKMeshBufferAllocator` that will be used to create the `MDLAsset`
+         - named: The specified name of the file
+         - inBundle: The `Bundle` where the asset can be found
+         - allocator: A `MTKMeshBufferAllocator` that will be used to create the `MDLAsset`
+         - bundle: The bundle from which the asset is loaded
      - Returns: A new `MDLAsset`
      */
     public static func asset(named: String, inBundle bundle: Bundle, allocator: MTKMeshBufferAllocator? = nil) -> MDLAsset? {
@@ -145,19 +146,19 @@ open class MDLAssetTools {
                 return 1
             }
         }()
-        let extent: vector_float3 = {
+        let extent: SIMD3<Float> = {
             if aspectRatio > 1 {
-                return vector3(scale, 0, scale/aspectRatio)
+                return SIMD3<Float>(scale, 0, scale/aspectRatio)
             } else if aspectRatio < 1 {
-                return vector3(aspectRatio, 0, scale)
+                return SIMD3<Float>(aspectRatio, 0, scale)
             } else {
-                return vector3(scale, 0, scale)
+                return SIMD3<Float>(scale, 0, scale)
             }
         }()
         
-        let mesh = MDLMesh(planeWithExtent: extent, segments: vector2(1, 1), geometryType: .triangles, allocator: allocator)
+        let mesh = MDLMesh(planeWithExtent: extent, segments: SIMD2<UInt32>(1, 1), geometryType: .triangles, allocator: allocator)
         let scatteringFunction = MDLScatteringFunction()
-        let material = MDLMaterial(name: "baseMaterial", scatteringFunction: scatteringFunction)
+        let material = MDLMaterial(name: "\(baseColorFileName) baseMaterial", scatteringFunction: scatteringFunction)
         
         let textues: [MDLMaterialSemantic: URL] = {
             var myTextures = [MDLMaterialSemantic.baseColor: baseColorFileURL]
@@ -218,11 +219,17 @@ class ModelIOTools {
     // MARK: Encoding Mesh Data
     
     // Encodes an MDLAsset from ModelIO into a MeshGPUData object which is used internally to set up the render pipeline.
-    static func meshGPUData(from asset: MDLAsset, device: MTLDevice, textureBundle: Bundle, vertexDescriptor: MDLVertexDescriptor?, frameRate: Double = 60, shaderPreference: ShaderPreference = .pbr) -> MeshGPUData {
+    static func meshGPUData(from asset: MDLAsset, device: MTLDevice, vertexDescriptor: MDLVertexDescriptor?, frameRate: Double = 60, shaderPreference: ShaderPreference = .pbr, loadTextures: Bool = true, textureBundle: Bundle? = nil) -> MeshGPUData {
         
         // see: https://github.com/metal-by-example/modelio-materials
         
-        let textureLoader = MTKTextureLoader(device: device)
+        let textureLoader: MTKTextureLoader? = {
+            if loadTextures {
+                return MTKTextureLoader(device: device)
+            } else {
+                return nil
+            }
+        }()
         var meshGPUData = MeshGPUData()
         var parentWorldTransformsByIndex = [Int: matrix_float4x4]()
         var parentWorldAnimationTransformsByIndex = [Int: [matrix_float4x4]]()
@@ -279,7 +286,7 @@ class ModelIOTools {
             // Set the Vertex Descriptor
             mesh.vertexDescriptor = concreteVertexDescriptor
             
-            let drawData = store(mesh, from: asset, device: device, textureBundle: textureBundle, textureLoader: textureLoader, vertexDescriptor: vertexDescriptor)
+            let drawData = store(mesh, device: device, textureBundle: textureBundle, textureLoader: textureLoader, vertexDescriptor: vertexDescriptor, baseURL: asset.url?.deletingLastPathComponent())
             masterDrawDatas.append(drawData)
             masterMeshes.append(mesh)
             
@@ -379,7 +386,7 @@ class ModelIOTools {
                 mesh.vertexDescriptor = concreteVertexDescriptor
                 
                 // Create a new DrawData object from the mesh
-                var drawData = store(mesh, from: asset, device: device, textureBundle: textureBundle, textureLoader: textureLoader, vertexDescriptor: vertexDescriptor)
+                var drawData = store(mesh, device: device, textureBundle: textureBundle, textureLoader: textureLoader, vertexDescriptor: vertexDescriptor, baseURL: asset.url?.deletingLastPathComponent())
                 
                 // Update the skin properties
                 if let skin = storeMeshSkin(for: object) {
@@ -423,6 +430,7 @@ class ModelIOTools {
                 // Update the World Transforms (calculated previously)
                 if hasAnimation {
                     drawData.worldTransformAnimations = parentWorldAnimationTransformsByIndex[currentIndex] ?? []
+                    print()
                 } else {
                     drawData.worldTransform = parentWorldTransformsByIndex[currentIndex] ?? matrix_identity_float4x4
                 }
@@ -431,7 +439,6 @@ class ModelIOTools {
                 meshGPUData.drawData.append(drawData)
                 
             }
-            
             
         }
         
@@ -445,6 +452,271 @@ class ModelIOTools {
         
         return meshGPUData
         
+    }
+    
+    /// Gererates `RawVertexBuffer` uniforms given raw vertex data.
+    /// - Parameter vertices: An array of verticies
+    /// - Parameter textureCoordinates: An array of texture coordinates
+    /// - Parameter device: The Metal device
+    static func rawVertexBuffers(from vertices: [SIMD3<Float>], textureCoordinates: [SIMD2<Float>], device: MTLDevice) -> [MTLBuffer] {
+        
+        let rawVerticiesSize = vertices.count * MemoryLayout<RawVertexBuffer>.size
+        var rawVerticies = [RawVertexBuffer]()
+        for index in 0..<vertices.count {
+            let positions = vertices[index]
+            let texCoord = textureCoordinates[index]
+            rawVerticies.append(RawVertexBuffer(position: positions, texCoord: texCoord, normal: SIMD3<Float>(0, 0, 0), tangent: SIMD3<Float>(0, 0, 0)))
+        }
+        
+        guard let vertexBuffer = device.makeBuffer(bytes: &rawVerticies, length: rawVerticiesSize, options: []) else {
+            return []
+        }
+        return [vertexBuffer]
+    }
+    
+    /// Generated index buffer data from a raw array of indexes.
+    /// - Parameter indices: An array of vertex indices
+    /// - Parameter device: The Metal device
+    static func indexBuffer(from indices: [Int16], device: MTLDevice) -> MTLBuffer? {
+        let indexDataSize = indices.count * MemoryLayout<Int16>.size
+        let indexBuffer = device.makeBuffer(bytes: indices, length: indexDataSize, options: [])
+        return indexBuffer
+    }
+    
+    /// Creates a `MeshGPUData` object from raw vertiex data and the material provided. The grometry will be givent the `ShaderPreference.simple` shader preference
+    /// - Parameter vertices: An array of verticies
+    /// - Parameter indices: An array of vertex indices
+    /// - Parameter textureCoordinates: An array of texture coordinates
+    /// - Parameter device: The Metal device
+    /// - Parameter material: The material that will be applied to the geometry
+    /// - Parameter textureBundle: The texture bundle that will be used to load any asssets in the material
+    static func meshGPUData(from vertices: [SIMD3<Float>], indices: [Int16], textureCoordinates: [SIMD2<Float>], device: MTLDevice, material: MDLMaterial? = nil, textureBundle: Bundle? = nil) -> MeshGPUData {
+        
+        let textureLoader = MTKTextureLoader(device: device)
+        var meshGPUData = MeshGPUData()
+        var drawData = DrawData()
+        var submesh = DrawSubData()
+        
+        submesh.indexBuffer = indexBuffer(from: indices, device: device)
+        submesh.indexCount = indices.count
+        if let material = material {
+            submesh.updateMaterialTextures(from: material, textureBundle: textureBundle, textureLoader: textureLoader)
+        }
+        
+        let verticesSize = vertices.count * MemoryLayout<SIMD3<Float>>.size
+        let verticiesBuffer = device.makeBuffer(bytes: vertices, length: verticesSize, options: [])!
+        
+        let textureCoordinatesSize = textureCoordinates.count * MemoryLayout<SIMD2<Float>>.size
+        let textureCoordinatesBuffer = device.makeBuffer(bytes: textureCoordinates, length: textureCoordinatesSize, options: [])!
+        
+        drawData.vertexBuffers = [verticiesBuffer, textureCoordinatesBuffer]
+        drawData.rawVertexBuffers = rawVertexBuffers(from: vertices, textureCoordinates: textureCoordinates, device: device)
+        drawData.subData = [submesh]
+        
+        if submesh.baseColorTexture != nil {
+            drawData.hasBaseColorMap = true
+        }
+        if submesh.normalTexture != nil {
+            drawData.hasNormalMap = true
+        }
+        if submesh.ambientOcclusionTexture != nil {
+            drawData.hasAmbientOcclusionMap = true
+        }
+        if submesh.roughnessTexture != nil {
+            drawData.hasRoughnessMap = true
+        }
+        if submesh.metallicTexture != nil {
+            drawData.hasMetallicMap = true
+        }
+        if submesh.emissionTexture != nil {
+            drawData.hasEmissionMap = true
+        }
+        if submesh.subsurfaceTexture != nil {
+            drawData.hasSubsurfaceMap = true
+        }
+        if submesh.specularTexture != nil {
+            drawData.hasSpecularMap = true
+        }
+        if submesh.specularTintTexture != nil {
+            drawData.hasSpecularTintMap = true
+        }
+        if submesh.anisotropicTexture != nil {
+            drawData.hasAnisotropicMap = true
+        }
+        if submesh.sheenTexture != nil {
+            drawData.hasSheenMap = true
+        }
+        if submesh.sheenTintTexture != nil {
+            drawData.hasSheenTintMap = true
+        }
+        if submesh.clearcoatTexture != nil {
+            drawData.hasClearcoatMap = true
+        }
+        if submesh.clearcoatGlossTexture != nil {
+            drawData.hasClearcoatGlossMap = true
+        }
+        
+        meshGPUData.drawData = [drawData]
+        meshGPUData.vertexDescriptor = MTKMetalVertexDescriptorFromModelIO(RenderUtilities.createStandardVertexDescriptor())
+        meshGPUData.shaderPreference = .simple
+        
+        return meshGPUData
+        
+    }
+    
+    /// Takes an `MDLMaterial` object and returns a `MaterialProperties` object. The object may come from cache.
+    /// - Parameter material: The `MDLMaterial` objet to parse
+    /// - Parameter textureLoader: Used to load textures when found. if nil, uniform values will be used instead of textures.
+    /// - Parameter bundle: If a relatice URL to an asset is encountered, it is assumed to be an asset within this bundle.
+    /// - Parameter baseURL: If provided, all texture asset path will be assumed to be relative to this base url. This may be used id the material is part of an `MDLAsset` within an bundle. Generally the texture asset patch will be relative to the asset but in order to find the asset, we need to know where the asset is. In this case the `baseURL` would be the `URL` of the folder that contains the `MDLAsset`
+    static func materialProperties(from material: MDLMaterial, textureLoader: MTKTextureLoader? = nil, bundle: Bundle? = nil, baseURL: URL? = nil) -> MaterialProperties {
+        
+        if let cachedProperties = MaterialCache.shared.cachedMaterial(with: material.name), textureLoader != nil, bundle != nil {
+            // Only attempt to load from cache materials with textures.
+            return cachedProperties
+        }
+        
+        var allProperties = [MDLMaterialSemantic: (uniform: Any?, texture: MTLTexture?)]()
+        
+        // Parse all material properties
+        for childIndex in 0..<material.count {
+            guard let property = material[childIndex] else {
+                continue
+            }
+            
+            let propertyValue = readMaterialPropertyValue(from: property, textureLoader: textureLoader, bundle: bundle, baseURL: baseURL)
+            
+            // There is an existing value for this semantic. Choose one that is the best fit
+            
+            let existingIsTexture: Bool = {
+                if allProperties[property.semantic]?.texture != nil {
+                    return true
+                } else {
+                    return false
+                }
+            }()
+            let newIsTexture: Bool = {
+                if propertyValue?.texture != nil {
+                    return true
+                } else {
+                    return false
+                }
+            }()
+            
+            // Rule 1: Always chooce a texture over a uniform
+            if newIsTexture && !existingIsTexture {
+                allProperties[property.semantic] = propertyValue
+            } else if !newIsTexture && existingIsTexture {
+                continue
+            } else {
+                
+                // Rule 2: The last matching semantic wins
+                switch property.semantic {
+                case .baseColor:
+                    if property.type == .color {
+                        let newValue = propertyValue?.uniform as! CGColor
+                        if newValue.numberOfComponents == 3, let companents = newValue.components {
+                            allProperties[property.semantic] = (SIMD4<Float>(Float(companents[0]), Float(companents[1]), Float(companents[2]), 1), nil)
+                        } else if newValue.numberOfComponents == 4, let companents = newValue.components {
+                            allProperties[property.semantic] = (SIMD4<Float>(Float(companents[0]), Float(companents[1]), Float(companents[2]), Float(companents[3])), nil)
+                        }
+                    } else if let _ = propertyValue?.uniform as? SIMD4<Float> {
+                        allProperties[property.semantic] = propertyValue
+                    } else if let newValue = propertyValue?.uniform as? SIMD3<Float> {
+                        allProperties[property.semantic] = (SIMD4<Float>(newValue.x, newValue.y, newValue.z, 1), nil)
+                    }
+                case .emission:
+                    // Workaround for other properties like "ambientColor" getting (incorrectly) tagged with the .emission semantic
+                    guard property.name == "emission" else {
+                        break
+                    }
+                    if property.type == .color {
+                        let newValue = propertyValue?.uniform as! CGColor
+                        if newValue.numberOfComponents == 3, let companents = newValue.components {
+                            allProperties[property.semantic] = (SIMD4<Float>(Float(companents[0]), Float(companents[1]), Float(companents[2]), 1), nil)
+                        } else if newValue.numberOfComponents == 4, let companents = newValue.components {
+                            allProperties[property.semantic] = (SIMD4<Float>(Float(companents[0]), Float(companents[1]), Float(companents[2]), Float(companents[3])), nil)
+                        }
+                    } else if let _ = propertyValue?.uniform as? SIMD4<Float> {
+                        allProperties[property.semantic] = propertyValue
+                    } else if let newValue = propertyValue?.uniform as? SIMD3<Float> {
+                        allProperties[property.semantic] = (SIMD4<Float>(newValue.x, newValue.y, newValue.z, 1), nil)
+                    }
+                case .subsurface:
+                    fallthrough
+                case .metallic:
+                    fallthrough
+                case .specular:
+                    fallthrough
+                case .specularExponent:
+                    fallthrough
+                case .specularTint:
+                    fallthrough
+                case .roughness:
+                    fallthrough
+                case .anisotropic:
+                    fallthrough
+                case .anisotropicRotation:
+                    fallthrough
+                case .sheen:
+                    fallthrough
+                case .sheenTint:
+                    fallthrough
+                case .clearcoat:
+                    fallthrough
+                case .bump:
+                    fallthrough
+                case .clearcoatGloss:
+                    fallthrough
+                case .opacity:
+                    fallthrough
+                case .interfaceIndexOfRefraction:
+                    fallthrough
+                case .displacementScale:
+                    fallthrough
+                case .ambientOcclusionScale:
+                    fallthrough
+                case .materialIndexOfRefraction:
+                    if let _ = propertyValue?.uniform as? Float {
+                        allProperties[property.semantic] = propertyValue
+                    } else if let float3Value = propertyValue?.uniform as? SIMD3<Float> {
+                        let aveValue = (float3Value.x + float3Value.y + float3Value.z) / 3
+                        allProperties[property.semantic] = (aveValue, nil)
+                    } else if let float4Value = propertyValue?.uniform as? SIMD4<Float> {
+                        let aveValue = (float4Value.x + float4Value.y + float4Value.z + float4Value.w) / 4
+                        allProperties[property.semantic] = (aveValue, nil)
+                    }
+                case .objectSpaceNormal:
+                    fallthrough
+                case .tangentSpaceNormal:
+                    fallthrough
+                case .displacement:
+                    if let _ = propertyValue?.uniform as? SIMD3<Float> {
+                        allProperties[property.semantic] = propertyValue
+                    } else if let float4Value = propertyValue?.uniform as? SIMD4<Float> {
+                        allProperties[property.semantic] = (float4Value.xyz, nil)
+                    } else if let floatValue = propertyValue?.uniform as? Float {
+                        allProperties[property.semantic] = (SIMD3<Float>(repeating: floatValue), nil)
+                    }
+                case .ambientOcclusion:
+                    // Ambient Occlusion only makes sense as a texture map. Ignore any constant uniform values
+                    allProperties[property.semantic] = (Float(1), nil)
+                case .userDefined:
+                    fallthrough
+                case .none:
+                    fallthrough
+                @unknown default:
+                    break
+                }
+            }
+        }
+        
+        let materialProperties = MaterialProperties(name: material.name, properties: allProperties)
+        if textureLoader != nil, bundle != nil {
+            // Only cace materials with textures
+            MaterialCache.shared.cacheMaterial(materialProperties, for: material.name)
+        }
+        return materialProperties
     }
     
     // MARK: - Private
@@ -461,7 +733,7 @@ class ModelIOTools {
     }
     
     // Record all buffers and materials for an MDLMesh
-    private static func store(_ mesh: MDLMesh, from mdlAsset: MDLAsset, device: MTLDevice, textureBundle: Bundle, textureLoader: MTKTextureLoader, vertexDescriptor: MDLVertexDescriptor? = nil) -> DrawData {
+    private static func store(_ mesh: MDLMesh, device: MTLDevice, textureBundle: Bundle? = nil, textureLoader: MTKTextureLoader? = nil, vertexDescriptor: MDLVertexDescriptor? = nil, baseURL: URL? = nil) -> DrawData {
         
         var drawData = DrawData()
         
@@ -494,10 +766,12 @@ class ModelIOTools {
                 subData.indexCount = submesh.indexCount
                 subData.indexType = RenderUtilities.convertToMTLIndexType(from: submesh.indexType)
                 
-                var material = MaterialUniforms()
                 if let mdlMaterial = submesh.material {
                     
-                    let allProperties = readMaterialProperties(from: mdlMaterial, asset: mdlAsset, textureLoader: textureLoader, bundle: textureBundle)
+                    var material = MaterialUniforms()
+                    
+                    let myMaterialProperties = materialProperties(from: mdlMaterial, textureLoader: textureLoader, bundle: textureBundle, baseURL: baseURL)
+                    let allProperties = myMaterialProperties.properties
                     
                     // Encode the texture indexes corresponding to the texture maps. If a property has no texture map this value will be nil
                     subData.baseColorTexture = allProperties[.baseColor]?.texture
@@ -518,15 +792,15 @@ class ModelIOTools {
                     // Encode the uniform values
                     
                     // The inherent color of a surface, to be used as a modulator during shading.
-                    material.baseColor = (allProperties[.baseColor]?.uniform as? float4) ?? float4(repeating: 1)
+                    material.baseColor = (allProperties[.baseColor]?.uniform as? SIMD4<Float>) ?? SIMD4<Float>(repeating: 1)
                     // The degree to which a material appears as a dielectric surface (lower values) or as a metal (higher values).
                     material.metalness = (allProperties[.metallic]?.uniform as? Float) ?? 0.0
                     // The degree to which a material appears smooth, affecting both diffuse and specular response.
-                    material.roughness = (allProperties[.roughness]?.uniform as? Float) ?? 1.0
+                    material.roughness = (allProperties[.roughness]?.uniform as? Float) ?? 0.9
                     // The attenuation of ambient light due to local geometry variations on a surface.
                     material.ambientOcclusion  = (allProperties[.ambientOcclusion]?.uniform as? Float) ?? 1.0
                     // The color emitted as radiance from a material’s surface.
-                    material.emissionColor = (allProperties[.emission]?.uniform as? float4) ?? float4(repeating: 0)
+                    material.emissionColor = (allProperties[.emission]?.uniform as? SIMD4<Float>) ?? SIMD4<Float>(repeating: 0)
                     // The degree to which light scatters under the surface of a material.
                     material.subsurface = (allProperties[.subsurface]?.uniform as? Float) ?? 0.0
                     // The intensity of specular highlights that appear on the material’s surface.
@@ -543,8 +817,8 @@ class ModelIOTools {
                     material.clearcoat = (allProperties[.clearcoat]?.uniform as? Float) ?? 0.0
                     // The spread of a second specular highlight, similar to the gloss that results from a clear coat on an automotive finish.
                     material.clearcoatGloss = (allProperties[.clearcoatGloss]?.uniform as? Float) ?? 0.0
-//                    material.opacity = (allProperties[.opacity]?.uniform as? Float) ?? 1.0
-                    material.opacity = 1.0
+                    material.opacity = (allProperties[.opacity]?.uniform as? Float) ?? 1.0
+//                    material.opacity = 1.0
                     subData.materialUniforms = material
                     
                 } else {
@@ -633,150 +907,11 @@ class ModelIOTools {
         return skin
     }
     
-    private static func readMaterialProperties(from material: MDLMaterial, asset: MDLAsset, textureLoader: MTKTextureLoader, bundle: Bundle) -> [MDLMaterialSemantic: (uniform: Any?, texture: MTLTexture?)] {
-        
-        var allProperties = [MDLMaterialSemantic: (uniform: Any?, texture: MTLTexture?)]()
-        
-        // Parse all material properties
-        for childIndex in 0..<material.count {
-            guard let property = material[childIndex] else {
-                continue
-            }
-            
-            let propertyValue = readMaterialPropertyValue(from: property, asset: asset, textureLoader: textureLoader, bundle: bundle)
-                
-            // There is an existing value for this semantic. Choose one that is the best fit
-            
-            let existingIsTexture: Bool = {
-                if allProperties[property.semantic]?.texture != nil {
-                    return true
-                } else {
-                    return false
-                }
-            }()
-            let newIsTexture: Bool = {
-                if propertyValue?.texture != nil {
-                    return true
-                } else {
-                    return false
-                }
-            }()
-            
-            // Rule 1: Always chooce a texture over a uniform
-            if newIsTexture && !existingIsTexture {
-                allProperties[property.semantic] = propertyValue
-            } else if !newIsTexture && existingIsTexture {
-                continue
-            } else {
-            
-                // Rule 2: The last matching semantic wins
-                switch property.semantic {
-                case .baseColor:
-                    if property.type == .color {
-                        let newValue = propertyValue?.uniform as! CGColor
-                        if newValue.numberOfComponents == 3, let companents = newValue.components {
-                            allProperties[property.semantic] = (float4(Float(companents[0]), Float(companents[1]), Float(companents[2]), 1), nil)
-                        } else if newValue.numberOfComponents == 4, let companents = newValue.components {
-                            allProperties[property.semantic] = (float4(Float(companents[0]), Float(companents[1]), Float(companents[2]), Float(companents[3])), nil)
-                        }
-                    } else if let _ = propertyValue?.uniform as? float4 {
-                        allProperties[property.semantic] = propertyValue
-                    } else if let newValue = propertyValue?.uniform as? float3 {
-                        allProperties[property.semantic] = (float4(newValue.x, newValue.y, newValue.z, 1), nil)
-                    }
-                case .emission:
-                    // Workaround for other properties like "ambientColor" getting (incorrectly) tagged with the .emission semantic
-                    guard property.name == "emission" else {
-                        break
-                    }
-                    if property.type == .color {
-                        let newValue = propertyValue?.uniform as! CGColor
-                        if newValue.numberOfComponents == 3, let companents = newValue.components {
-                            allProperties[property.semantic] = (float4(Float(companents[0]), Float(companents[1]), Float(companents[2]), 1), nil)
-                        } else if newValue.numberOfComponents == 4, let companents = newValue.components {
-                            allProperties[property.semantic] = (float4(Float(companents[0]), Float(companents[1]), Float(companents[2]), Float(companents[3])), nil)
-                        }
-                    } else if let _ = propertyValue?.uniform as? float4 {
-                        allProperties[property.semantic] = propertyValue
-                    } else if let newValue = propertyValue?.uniform as? float3 {
-                        allProperties[property.semantic] = (float4(newValue.x, newValue.y, newValue.z, 1), nil)
-                    }
-                case .subsurface:
-                    fallthrough
-                case .metallic:
-                    fallthrough
-                case .specular:
-                    fallthrough
-                case .specularExponent:
-                    fallthrough
-                case .specularTint:
-                    fallthrough
-                case .roughness:
-                    fallthrough
-                case .anisotropic:
-                    fallthrough
-                case .anisotropicRotation:
-                    fallthrough
-                case .sheen:
-                    fallthrough
-                case .sheenTint:
-                    fallthrough
-                case .clearcoat:
-                    fallthrough
-                case .bump:
-                    fallthrough
-                case .clearcoatGloss:
-                    fallthrough
-                case .opacity:
-                    fallthrough
-                case .interfaceIndexOfRefraction:
-                    fallthrough
-                case .displacementScale:
-                    fallthrough
-                case .ambientOcclusionScale:
-                    fallthrough
-                case .materialIndexOfRefraction:
-                    if let _ = propertyValue?.uniform as? Float {
-                        allProperties[property.semantic] = propertyValue
-                    } else if let float3Value = propertyValue?.uniform as? float3 {
-                        let aveValue = (float3Value.x + float3Value.y + float3Value.z) / 3
-                        allProperties[property.semantic] = (aveValue, nil)
-                    } else if let float4Value = propertyValue?.uniform as? float4 {
-                        let aveValue = (float4Value.x + float4Value.y + float4Value.z + float4Value.w) / 4
-                        allProperties[property.semantic] = (aveValue, nil)
-                    }
-                case .objectSpaceNormal:
-                    fallthrough
-                case .tangentSpaceNormal:
-                    fallthrough
-                case .displacement:
-                    if let _ = propertyValue?.uniform as? float3 {
-                        allProperties[property.semantic] = propertyValue
-                    } else if let float4Value = propertyValue?.uniform as? float4 {
-                        allProperties[property.semantic] = (float4Value.xyz, nil)
-                    } else if let floatValue = propertyValue?.uniform as? Float {
-                        allProperties[property.semantic] = (float3(repeating: floatValue), nil)
-                    }
-                case .ambientOcclusion:
-                    // Ambient Occlusion only makes sense as a texture map. Ignore any constant uniform values
-                    allProperties[property.semantic] = (Float(1), nil)
-                case .userDefined:
-                    fallthrough
-                case .none:
-                    fallthrough
-                @unknown default:
-                    break
-                }
-            }
-        }
-        return allProperties
-    }
-    
-    private static func readMaterialPropertyValue(from property: MDLMaterialProperty, asset: MDLAsset, textureLoader: MTKTextureLoader, bundle: Bundle) -> (uniform: Any?, texture: MTLTexture?)? {
+    private static func readMaterialPropertyValue(from property: MDLMaterialProperty, textureLoader: MTKTextureLoader? = nil, bundle: Bundle? = nil, baseURL: URL? = nil) -> (uniform: Any?, texture: MTLTexture?)? {
         
         var result: (uniform: Any?, texture: MTLTexture?) = (nil, nil)
         
-        if let sourceTexture = property.textureSamplerValue?.texture {
+        if let textureLoader = textureLoader, let sourceTexture = property.textureSamplerValue?.texture {
             let wantMips = property.semantic != .tangentSpaceNormal
             //                  let options: [MTKTextureLoader.Option : Any] = [ .generateMipmaps : wantMips, .textureUsage: NSNumber(value: MTLTextureUsage.unknown.rawValue) ] // Force an uncompressed texture
             let options: [MTKTextureLoader.Option : Any] = [ .generateMipmaps : wantMips ]
@@ -790,11 +925,15 @@ class ModelIOTools {
             case .none:
                 return nil
             case .string:
-                result.texture = createMTLTexture(fromMaterialProperty: property, asset: asset, inBundle: bundle, withTextureLoader: textureLoader)
+                if let textureLoader = textureLoader, let bundle = bundle {
+                    result.texture = createMTLTexture(fromMaterialProperty: property, inBundle: bundle, withTextureLoader: textureLoader, baseURL: baseURL)
+                }
             case .URL:
-                result.texture = createMTLTexture(fromMaterialProperty: property, asset: asset, inBundle: bundle, withTextureLoader: textureLoader)
+                if let textureLoader = textureLoader, let bundle = bundle {
+                    result.texture = createMTLTexture(fromMaterialProperty: property, inBundle: bundle, withTextureLoader: textureLoader, baseURL: baseURL)
+                }
             case .texture:
-                if let sourceTexture = property.textureSamplerValue?.texture {
+                if let textureLoader = textureLoader, let sourceTexture = property.textureSamplerValue?.texture {
                     let wantMips = property.semantic != .tangentSpaceNormal
                     let options: [MTKTextureLoader.Option : Any] = [ .generateMipmaps : wantMips ]
                     result.texture = try? textureLoader.newTexture(texture: sourceTexture, options: options)
@@ -820,15 +959,15 @@ class ModelIOTools {
         return result
     }
     
-    private static func createMTLTexture(fromMaterialProperty property: MDLMaterialProperty, asset: MDLAsset, inBundle bundle: Bundle, withTextureLoader textureLoader: MTKTextureLoader) -> MTLTexture? {
+    private static func createMTLTexture(fromMaterialProperty property: MDLMaterialProperty, inBundle bundle: Bundle, withTextureLoader textureLoader: MTKTextureLoader, baseURL: URL? = nil) -> MTLTexture? {
             
         if let textureSampler = property.textureSamplerValue, let texture = textureSampler.texture {
             return try? textureLoader.newTexture(texture: texture)
         } else if let path = property.urlValue?.absoluteString {
-            let fixedPath = fixupPath(asset, path: path)
+            let fixedPath = fullPath(with: path, baseURL: baseURL)
             return createMTLTexture(inBundle: bundle, fromAssetPath: fixedPath, withTextureLoader: textureLoader)
         } else if let path = property.stringValue {
-            let fixedPath = fixupPath(asset, path: path)
+            let fixedPath = fullPath(with: path, baseURL: baseURL)
             return createMTLTexture(inBundle: bundle, fromAssetPath: fixedPath, withTextureLoader: textureLoader)
         } else {
             return nil
@@ -897,7 +1036,7 @@ class ModelIOTools {
         
         animation = AnimatedSkeleton()
         animation.keyTimes = sampleTimes
-        animation.translations = [vector_float3](repeating: vector_float3(), count: sampleTimes.count * jointCount)
+        animation.translations = [SIMD3<Float>](repeating: SIMD3<Float>(), count: sampleTimes.count * jointCount)
         animation.rotations = [simd_quatf](repeating: simd_quatf(), count: sampleTimes.count * jointCount)
         
         ModelIOTools.walkSceneGraph(rootAt: object) { object, jointIndex, parentIndex in
@@ -907,12 +1046,12 @@ class ModelIOTools {
             if let xform = object.componentConforming(to: MDLTransformComponent.self) as? MDLTransformComponent {
                 for timeIndex in 0..<sampleTimes.count {
                     let xM = xform.localTransform?(atTime: sampleTimes[timeIndex]) ?? matrix_identity_float4x4
-                    let xR = matrix_float3x3(columns: (simd_float3(xM.columns.0.x, xM.columns.0.y, xM.columns.0.z),
-                                                       simd_float3(xM.columns.1.x, xM.columns.1.y, xM.columns.1.z),
-                                                       simd_float3(xM.columns.2.x, xM.columns.2.y, xM.columns.2.z)))
+                    let xR = matrix_float3x3(columns: (SIMD3<Float>(xM.columns.0.x, xM.columns.0.y, xM.columns.0.z),
+                                                       SIMD3<Float>(xM.columns.1.x, xM.columns.1.y, xM.columns.1.z),
+                                                       SIMD3<Float>(xM.columns.2.x, xM.columns.2.y, xM.columns.2.z)))
                     animation.rotations[timeIndex * jointCount + jointIndex] = simd_quaternion(xR)
                     animation.translations[timeIndex * jointCount + jointIndex] =
-                        vector_float3(xM.columns.3.x, xM.columns.3.y, xM.columns.3.z)
+                        SIMD3<Float>(xM.columns.3.x, xM.columns.3.y, xM.columns.3.z)
                 }
             }
         }
@@ -1015,12 +1154,11 @@ class ModelIOTools {
         return nil
     }
     
-    private static func fixupPath(_ asset: MDLAsset, path: String) -> String {
-        guard let assetURL = asset.url else {
+    private static func fullPath(with path: String, baseURL: URL? = nil) -> String {
+        guard let assetURL = baseURL else {
             return path
         }
-        let assetRelativeURL = assetURL.deletingLastPathComponent()
-        return assetRelativeURL.appendingPathComponent(path).absoluteString
+        return assetURL.appendingPathComponent(path).absoluteString
     }
 
     //  Find the shortest subpath containing a rootIdentifier (used to find a e.g. skeleton's root path)
@@ -1037,26 +1175,53 @@ class ModelIOTools {
         return nil
     }
     
-    //  Get a float4 property from an MDLMaterialProperty
-    private static func getMaterialFloat4Value(_ materialProperty: MDLMaterialProperty) -> float4 {
+    ///  Get a float4 property from an MDLMaterialProperty
+    private static func getMaterialFloat4Value(_ materialProperty: MDLMaterialProperty) -> SIMD4<Float> {
         return materialProperty.float4Value
     }
 
-    //  Get a float3 property from an MDLMaterialProperty
-    private static func getMaterialFloat3Value(_ materialProperty: MDLMaterialProperty) -> float3 {
+    ///  Get a `SIMD3<Float>` property from an MDLMaterialProperty
+    private static func getMaterialFloat3Value(_ materialProperty: MDLMaterialProperty) -> SIMD3<Float> {
         return materialProperty.float3Value
     }
 
-    //  Get a float property from an MDLMaterialProperty
+    ///  Get a float property from an MDLMaterialProperty
     private static func getMaterialFloatValue(_ materialProperty: MDLMaterialProperty) -> Float {
         return materialProperty.floatValue
     }
 
-    //  Uniformly sample a time interval
+    ///  Uniformly sample a time interval
     private static func sampleTimeInterval(start startTime: TimeInterval, end endTime: TimeInterval,
                             frameInterval: TimeInterval) -> [TimeInterval] {
         let count = Int( (endTime - startTime) / frameInterval )
         return (0..<count).map { startTime + TimeInterval($0) * frameInterval }
     }
 
+}
+
+// MARK: - MaterialProperties
+
+/// Stores a material name along with a properties dictionary where the keys are each `MDLMaterialSemantic` that's contained in the material and the values are tupels that either contain a uniform value or a `MTLTexture`. Since `MDLMaterial` objects parsed from various file formats can contain multiple values for the same semantic, generally, a texture is preferred over a uniform and the last value found is the value used.
+class MaterialProperties {
+    var materialName: String
+    var properties = [MDLMaterialSemantic: (uniform: Any?, texture: MTLTexture?)]()
+    init(name: String, properties: [MDLMaterialSemantic: (uniform: Any?, texture: MTLTexture?)] = [:]) {
+        self.materialName = name
+        self.properties = properties
+    }
+}
+
+// MARK: - MaterialCache
+
+class MaterialCache: NSCache<AnyObject, MaterialProperties> {
+    static let shared = MaterialCache()
+    
+    func cachedMaterial(with name: String) -> MaterialProperties? {
+        return object(forKey: name as AnyObject)
+    }
+    
+    func cacheMaterial(_ materialProperties: MaterialProperties, for name: String) {
+        setObject(materialProperties, forKey: name as AnyObject)
+    }
+    
 }

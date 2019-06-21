@@ -53,7 +53,7 @@ public extension float4x4 {
      - Returns: A new rotation transform
      */
     static func makeRotate(radians: Float, x: Float, y: Float, z: Float) -> float4x4 {
-        let q = simd_quatf(angle: radians, axis: float3(x, y, z))
+        let q = simd_quatf(angle: radians, axis: SIMD3<Float>(x, y, z))
         return q.toMatrix4()
     }
     /**
@@ -65,7 +65,7 @@ public extension float4x4 {
      - Returns: A new translation transform
      */
     static func makeTranslation(x: Float, y: Float, z: Float) -> float4x4 {
-        return float4x4(float4(1, 0, 0, 0), float4(0, 1, 0, 0), float4(0, 0, 1, 0), float4(x, y, z, 1))
+        return float4x4(SIMD4<Float>(1, 0, 0, 0), SIMD4<Float>(0, 1, 0, 0), SIMD4<Float>(0, 0, 1, 0), SIMD4<Float>(x, y, z, 1))
     }
     /**
      Make a 4x4 perspective projection matrix.
@@ -81,10 +81,10 @@ public extension float4x4 {
         let h = 1 / tan(fovyRadians * Float.pi / 360)
         let negDepth = nearZ - farZ
         return float4x4(
-            float4(h / aspect, 0, 0, 0),
-            float4(0, h, 0, 0),
-            float4(0, 0, (farZ + nearZ) / negDepth, 2 * (nearZ * farZ) / negDepth),
-            float4(0, 0, -1, 0)
+            SIMD4<Float>(h / aspect, 0, 0, 0),
+            SIMD4<Float>(0, h, 0, 0),
+            SIMD4<Float>(0, 0, (farZ + nearZ) / negDepth, 2 * (nearZ * farZ) / negDepth),
+            SIMD4<Float>(0, 0, -1, 0)
         )
     }
     /**
@@ -130,8 +130,8 @@ public extension float4x4 {
      - Returns: A rotation matrix
      */
     static func makeLookAt(eyeX: Float, eyeY: Float, eyeZ: Float, centerX: Float, centerY: Float, centerZ: Float, upX: Float, upY: Float, upZ: Float) -> float4x4 {
-        let quaternion = simd_quatf(vector: float4(0, 0, 0, 1))
-        let lookAtQ = quaternion.lookAt(eye: float3(eyeX, eyeY, eyeZ), center: float3(centerX, centerY, centerZ), up: float3(upX, upY, upZ))
+        let quaternion = simd_quatf(vector: SIMD4<Float>(0, 0, 0, 1))
+        let lookAtQ = quaternion.lookAt(eye: SIMD3<Float>(eyeX, eyeY, eyeZ), center: SIMD3<Float>(centerX, centerY, centerZ), up: SIMD3<Float>(upX, upY, upZ))
         return lookAtQ.toMatrix4()
     }
 
@@ -210,7 +210,7 @@ public extension float4x4 {
         - position: The point to look at
      - Returns: A `float4x4` which specifies how this transform should be rotated to look at the point.
      */
-    func lookAtMatrix(position: float3) -> float4x4 {
+    func lookAtMatrix(position: SIMD3<Float>) -> float4x4 {
         return lookAtQuaternion(position: position).toMatrix4()
     }
     /**
@@ -219,7 +219,7 @@ public extension float4x4 {
         - position: The point to look at
      - Returns: A `simd_quatf` which specifies how this transform should be rotated to look at the point.
      */
-    func lookAtQuaternion(position: float3) -> simd_quatf {
+    func lookAtQuaternion(position: SIMD3<Float>) -> simd_quatf {
         let quaternion = float4x4.makeLookAt(eyeX: columns.3.x, eyeY: columns.3.y, eyeZ: columns.3.z, centerX: position.x, centerY: position.y, centerZ: position.z, upX: 0, upY: 1, upZ: 0).quaternion()
         return quaternion
     }
@@ -245,7 +245,7 @@ public extension double4x4 {
      - Returns: A new scale transform
      */
     static func makeScale(x: Double, y: Double, z: Double) -> double4x4 {
-        return double4x4(double4(x, 0, 0, 0), double4(0, y, 0, 0), double4(0, 0, z, 0), double4(0, 0, 0, 1))
+        return double4x4(SIMD4<Double>(x, 0, 0, 0), SIMD4<Double>(0, y, 0, 0), SIMD4<Double>(0, 0, z, 0), SIMD4<Double>(0, 0, 0, 1))
     }
     /**
      Make a rotation transform
@@ -257,7 +257,7 @@ public extension double4x4 {
      - Returns: A new rotation transform
      */
     static func makeRotate(radians: Double, x: Double, y: Double, z: Double) -> double4x4 {
-        let q = simd_quatd(angle: radians, axis: double3(x, y, z))
+        let q = simd_quatd(angle: radians, axis: SIMD3<Double>(x, y, z))
         return q.toMatrix4()
     }
     /**
@@ -269,7 +269,7 @@ public extension double4x4 {
      - Returns: A new translation transform
      */
     static func makeTranslation(x: Double, y: Double, z: Double) -> double4x4 {
-        return double4x4(double4(1, 0, 0, 0), double4(0, 1, 0, 0), double4(0, 0, 1, 0), double4(x, y, z, 1))
+        return double4x4(SIMD4<Double>(1, 0, 0, 0), SIMD4<Double>(0, 1, 0, 0), SIMD4<Double>(0, 0, 1, 0), SIMD4<Double>(x, y, z, 1))
     }
     /**
      Make a 4x4 perspective projection matrix.
@@ -284,10 +284,10 @@ public extension double4x4 {
         let scale = 1 / tan(fovyRadians * Double.pi / 360)
         let negDepth = nearZ - farZ
         return double4x4(
-            double4(scale / aspect, 0, 0, 0),
-            double4(0, scale, 0, 0),
-            double4(0, 0, (farZ + nearZ) / negDepth, 2 * (nearZ * farZ) / negDepth),
-            double4(0, 0, -1, 0)
+            SIMD4<Double>(scale / aspect, 0, 0, 0),
+            SIMD4<Double>(0, scale, 0, 0),
+            SIMD4<Double>(0, 0, (farZ + nearZ) / negDepth, 2 * (nearZ * farZ) / negDepth),
+            SIMD4<Double>(0, 0, -1, 0)
         )
     }
     /**
@@ -333,8 +333,8 @@ public extension double4x4 {
      - Returns: A rotation matrix
      */
     static func makeLookAt(eyeX: Double, eyeY: Double, eyeZ: Double, centerX: Double, centerY: Double, centerZ: Double, upX: Double, upY: Double, upZ: Double) -> double4x4 {
-        let quaternion = simd_quatd(vector: double4(0, 0, 0, 1))
-        let lookAtQ = quaternion.lookAt(eye: double3(eyeX, eyeY, eyeZ), center: double3(centerX, centerY, centerZ), up: double3(upX, upY, upZ))
+        let quaternion = simd_quatd(vector: SIMD4<Double>(0, 0, 0, 1))
+        let lookAtQ = quaternion.lookAt(eye: SIMD3<Double>(eyeX, eyeY, eyeZ), center: SIMD3<Double>(centerX, centerY, centerZ), up: SIMD3<Double>(upX, upY, upZ))
         return lookAtQ.toMatrix4()
     }
     
@@ -413,7 +413,7 @@ public extension double4x4 {
          - position: The point to look at
      - Returns: A `float4x4` which specifies how this transform should be rotated to look at the point.
      */
-    func lookAtMatrix(position: double3) -> double4x4 {
+    func lookAtMatrix(position: SIMD3<Double>) -> double4x4 {
         return lookAtQuaternion(position: position).toMatrix4()
     }
     /**
@@ -422,7 +422,7 @@ public extension double4x4 {
          - position: The point to look at
      - Returns: A `simd_quatd` which specifies how this transform should be rotated to look at the point.
      */
-    func lookAtQuaternion(position: double3) -> simd_quatd {
+    func lookAtQuaternion(position: SIMD3<Double>) -> simd_quatd {
         let quaternion = double4x4.makeLookAt(eyeX: columns.3.x, eyeY: columns.3.y, eyeZ: columns.3.z, centerX: position.x, centerY: position.y, centerZ: position.z, upX: 0, upY: 1, upZ: 0).quaternion()
         return quaternion
     }
@@ -430,7 +430,7 @@ public extension double4x4 {
      A normalized 3x3 matrix
      */
     var normalMatrix: double3x3 {
-        let upperLeft = double3x3(double3(columns.0.x, columns.0.y, columns.0.z), double3(columns.1.x, columns.1.y, columns.1.z), double3(columns.2.x, columns.2.y, columns.2.z))
+        let upperLeft = double3x3(SIMD3<Double>(columns.0.x, columns.0.y, columns.0.z), SIMD3<Double>(columns.1.x, columns.1.y, columns.1.z), SIMD3<Double>(columns.2.x, columns.2.y, columns.2.z))
         return upperLeft.transpose.inverse
     }
     
@@ -448,26 +448,26 @@ public extension double4x4 {
     
 }
 
-// MARK: - float4
+// MARK: - SIMD4<Float>
 
-public extension float4 {
+public extension SIMD4 where Scalar == Float {
     /**
      A zero vector
      */
-    static let zero = float4(0.0, 0.0, 0.0, 0.0)
+    static let zero = SIMD4<Float>(0.0, 0.0, 0.0, 0.0)
     
     /**
      Equatable function
      */
-    static func ==(left: float4, right: float4) -> int4 {
-        return int4(left.x == right.x ? -1: 0, left.y == right.y ? -1: 0, left.z == right.z ? -1: 0, left.w == right.w ? -1: 0)
+    static func ==(left: SIMD4<Float>, right: SIMD4<Float>) -> SIMD4<Int32> {
+        return SIMD4<Int32>(left.x == right.x ? -1: 0, left.y == right.y ? -1: 0, left.z == right.z ? -1: 0, left.w == right.w ? -1: 0)
     }
     /**
      The first three elements of the vector
      */
-    var xyz: float3 {
+    var xyz: SIMD3<Float> {
         get {
-            return float3(x, y, z)
+            return SIMD3<Float>(x, y, z)
         }
         set {
             x = newValue.x
@@ -477,26 +477,26 @@ public extension float4 {
     }
 }
 
-// MARK: - double4
+// MARK: - SIMD4<Double>
 
-public extension double4 {
+public extension SIMD4 where Scalar == Double {
     /**
      A zero vector
      */
-    static let zero = double4(0.0, 0.0, 0.0, 0.0)
+    static let zero = SIMD4<Double>(0.0, 0.0, 0.0, 0.0)
     
     /**
      Equatable function
      */
-    static func ==(left: double4, right: double4) -> int4 {
-        return int4(left.x == right.x ? -1: 0, left.y == right.y ? -1: 0, left.z == right.z ? -1: 0, left.w == right.w ? -1: 0)
+    static func ==(left: SIMD4<Double>, right: SIMD4<Double>) -> SIMD4<Int32> {
+        return SIMD4<Int32>(left.x == right.x ? -1: 0, left.y == right.y ? -1: 0, left.z == right.z ? -1: 0, left.w == right.w ? -1: 0)
     }
     /**
      The first three elements of the vector
      */
-    var xyz: double3 {
+    var xyz: SIMD3<Double> {
         get {
-            return double3(x, y, z)
+            return SIMD3<Double>(x, y, z)
         }
         set {
             x = newValue.x
@@ -505,28 +505,28 @@ public extension double4 {
         }
     }
     
-    func toFloat() -> float4 {
-        return float4(x: Float(x), y: Float(y), z: Float(z), w: Float(w))
+    func toFloat() -> SIMD4<Float> {
+        return SIMD4<Float>(x: Float(x), y: Float(y), z: Float(z), w: Float(w))
     }
 }
 
-// MARK: - float3
+// MARK: - SIMD3<Float>
 
-public extension float3 {
+public extension SIMD3 where Scalar == Float {
     /**
      Inverse of the vector
      */
-    func inverse() -> float3 {
-        return float3(x: fabsf(self.x)>0 ? 1/self.x : 0, y: fabsf(self.y)>0 ? 1/self.y : 0, z: fabsf(self.z)>0 ? 1/self.z : 0)
+    func inverse() -> SIMD3 {
+        return SIMD3(x: fabsf(self.x)>0 ? 1/self.x : 0, y: fabsf(self.y)>0 ? 1/self.y : 0, z: fabsf(self.z)>0 ? 1/self.z : 0)
     }
     /**
-     Is another `float3` vector close to this one within an `epsilon`. `epsilon` defaults to 0.0001
+     Is another `SIMD3` vector close to this one within an `epsilon`. `epsilon` defaults to 0.0001
      - Parameters:
         - _: The other vector
         - epsilon: the error tollerance
      - Returns: `true` if the other vector is close
      */
-    func isClose(_ v: float3, epsilon: Float = 0.0001) -> Bool {
+    func isClose(_ v: SIMD3, epsilon: Float = 0.0001) -> Bool {
         let diff = self - v
         return Float.isClose(length_squared(diff), 0)
     }
@@ -610,39 +610,39 @@ extension simd_quatf {
         - up: The up direction
      - Returns: a `simd_quatf` rotation quaternion
      */
-    public func lookAt(eye: float3, center: float3, up: float3) -> simd_quatf {
+    public func lookAt(eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float>) -> simd_quatf {
         
         // Normalized vector of the starting orientation. Assume that the starting orientation is
         // pointed alon the z axis
-        let E = simd_normalize(float3(0, 0, 1) - eye)
+        let E = simd_normalize(SIMD3<Float>(0, 0, 1) - eye)
         
         // Normalized vector of the target
         let zaxis = simd_normalize(center - eye)
         // Check for edge cases:
         // - No rotation
         if zaxis.x.isNaN || zaxis.y.isNaN || zaxis.z.isNaN {
-            return simd_quatf(vector: float4(0, 0, 0, 1))
+            return simd_quatf(vector: SIMD4<Float>(0, 0, 0, 1))
         }
         
         var xaxis = simd_normalize(cross(up, zaxis))
         // Check for edge cases:
         // - target is straigh up. In this case the math falls apart
         if xaxis.x.isNaN || xaxis.y.isNaN || xaxis.z.isNaN {
-            xaxis = float3(repeating: 0)
+            xaxis = SIMD3<Float>(repeating: 0)
         }
         
         var yaxis = cross(zaxis, xaxis)
         // Check for edge cases:
         // - target is straigh up. In this case the math falls apart
         if yaxis.x.isNaN || yaxis.y.isNaN || yaxis.z.isNaN {
-            yaxis = float3(repeating: 0)
+            yaxis = SIMD3<Float>(repeating: 0)
         }
         
         // Build the transform matrix
-        var P = float4(repeating: 0)
-        var Q = float4(repeating: 0)
-        var R = float4(repeating: 0)
-        var S = float4(repeating: 0)
+        var P = SIMD4<Float>(repeating: 0)
+        var Q = SIMD4<Float>(repeating: 0)
+        var R = SIMD4<Float>(repeating: 0)
+        var S = SIMD4<Float>(repeating: 0)
         P.x = xaxis.x
         P.y = xaxis.y
         P.z = xaxis.z
@@ -713,39 +713,39 @@ extension simd_quatd {
      - up: The up direction
      - Returns: a `simd_quatd` rotation quaternion
      */
-    public func lookAt(eye: double3, center: double3, up: double3) -> simd_quatd {
+    public func lookAt(eye: SIMD3<Double>, center: SIMD3<Double>, up: SIMD3<Double>) -> simd_quatd {
         
         // Normalized vector of the starting orientation. Assume that the starting orientation is
         // pointed alon the z axis
-        let E = simd_normalize(double3(0, 0, 1) - eye)
+        let E = simd_normalize(SIMD3<Double>(0, 0, 1) - eye)
         
         // Normalized vector of the target
         let zaxis = simd_normalize(center - eye)
         // Check for edge cases:
         // - No rotation
         if zaxis.x.isNaN || zaxis.y.isNaN || zaxis.z.isNaN {
-            return simd_quatd(vector: double4(0, 0, 0, 1))
+            return simd_quatd(vector: SIMD4<Double>(0, 0, 0, 1))
         }
         
         var xaxis = simd_normalize(cross(up, zaxis))
         // Check for edge cases:
         // - target is straigh up. In this case the math falls apart
         if xaxis.x.isNaN || xaxis.y.isNaN || xaxis.z.isNaN {
-            xaxis = double3(repeating: 0)
+            xaxis = SIMD3<Double>(repeating: 0)
         }
         
         var yaxis = cross(zaxis, xaxis)
         // Check for edge cases:
         // - target is straigh up. In this case the math falls apart
         if yaxis.x.isNaN || yaxis.y.isNaN || yaxis.z.isNaN {
-            yaxis = double3(repeating: 0)
+            yaxis = SIMD3<Double>(repeating: 0)
         }
         
         // Build the transform matrix
-        var P = double4(repeating: 0)
-        var Q = double4(repeating: 0)
-        var R = double4(repeating: 0)
-        var S = double4(repeating: 0)
+        var P = SIMD4<Double>(repeating: 0)
+        var Q = SIMD4<Double>(repeating: 0)
+        var R = SIMD4<Double>(repeating: 0)
+        var S = SIMD4<Double>(repeating: 0)
         P.x = xaxis.x
         P.y = xaxis.y
         P.z = xaxis.z
@@ -799,9 +799,9 @@ open class QuaternionUtilities {
     public static func quaternionFromEulerAngles(eulerAngles: EulerAngles) -> simd_quatf {
         
         // Follow the ZYX rotation order convention
-        var q = simd_quatf(angle: eulerAngles.roll, axis: float3(0, 0, 1))
-        q *= simd_quatf(angle: eulerAngles.yaw, axis: float3(0, 1, 0))
-        q *= simd_quatf(angle: eulerAngles.pitch, axis: float3(1, 0, 0))
+        var q = simd_quatf(angle: eulerAngles.roll, axis: SIMD3<Float>(0, 0, 1))
+        q *= simd_quatf(angle: eulerAngles.yaw, axis: SIMD3<Float>(0, 1, 0))
+        q *= simd_quatf(angle: eulerAngles.pitch, axis: SIMD3<Float>(1, 0, 0))
         return q
         
     }

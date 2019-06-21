@@ -54,4 +54,7 @@ public protocol AKGeometricEntity: AKEntity {
      If `true`, the current base color texture of the entity has changed since the last time it was rendered and the pixel data needs to be updated. This flag can be used to achieve dynamically updated textures for rendered objects.
      */
     var needsColorTextureUpdate: Bool { get set }
+    
+    /// If `true` the underlying mesh for this geometry has changed and the renderer needs to update. This can be used to achieve dynamically generated geometries that change over time.
+    var needsMeshUpdate: Bool { get set }
 }

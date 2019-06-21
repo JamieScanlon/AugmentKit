@@ -69,7 +69,7 @@ open class PathAnchor: AKPath {
             var blue: CGFloat = 1
             var alpha: CGFloat = 1
             color.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
-            let tintEffect = ConstantTintEffect(tintValue: float3(Float(red), Float(green), Float(blue)))
+            let tintEffect = ConstantTintEffect(tintValue: SIMD3<Float>(Float(red), Float(green), Float(blue)))
             self.effects = [AnyEffect(tintEffect)]
             if alpha < 1 {
                 let alphaEffect = ConstantAlphaEffect(alphaValue: Float(alpha))
@@ -89,13 +89,13 @@ open class PathAnchor: AKPath {
         for anchor in segmentPoints {
             
             guard let myLastAnchor = lastAnchor else {
-                let zeroTransform = matrix_float4x4([float4(0, 0, 0, 0), float4(0, 0, 0, 0), float4(0, 0, 0, 0), float4(0, 0, 0, 0)])
+                let zeroTransform = matrix_float4x4([SIMD4<Float>(0, 0, 0, 0), SIMD4<Float>(0, 0, 0, 0), SIMD4<Float>(0, 0, 0, 0), SIMD4<Float>(0, 0, 0, 0)])
                 anchor.setSegmentTransform(zeroTransform)
                 lastAnchor = anchor
                 continue
             }
             
-            let line = AKLine(point0: double3(Double(myLastAnchor.worldLocation.transform.columns.3.x), Double(myLastAnchor.worldLocation.transform.columns.3.y), Double(myLastAnchor.worldLocation.transform.columns.3.z)), point1: double3(Double(anchor.worldLocation.transform.columns.3.x), Double(anchor.worldLocation.transform.columns.3.y), Double(anchor.worldLocation.transform.columns.3.z)))
+            let line = AKLine(point0: SIMD3<Double>(Double(myLastAnchor.worldLocation.transform.columns.3.x), Double(myLastAnchor.worldLocation.transform.columns.3.y), Double(myLastAnchor.worldLocation.transform.columns.3.z)), point1: SIMD3<Double>(Double(anchor.worldLocation.transform.columns.3.x), Double(anchor.worldLocation.transform.columns.3.y), Double(anchor.worldLocation.transform.columns.3.z)))
             let recalculatedLine: AKLine = {
                 if let renderSphere = renderSphere {
                     let intersection = renderSphere.intersection(with: line)

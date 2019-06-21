@@ -50,7 +50,7 @@ public struct AKLine: Equatable {
     /**
      Initialize with two `SIMD3<Double>` objects representing the starting and ending points
      */
-    public init(point0: double3, point1: double3) {
+    public init(point0: SIMD3<Double>, point1: SIMD3<Double>) {
         self.point0 = AKVector(point0)
         self.point1 = AKVector(point1)
     }

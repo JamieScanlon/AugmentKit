@@ -51,6 +51,7 @@ enum BufferIndices {
     kBufferIndexPrecalculationOutputBuffer,
     kBufferIndexDrawCallIndex, // The index into the draw call. Used for the precalcualted arguments buffer
     kBufferIndexDrawCallGroupIndex, // The index into the draw call group. Used for the environment and effects buffers
+    kBufferIndexRawVertexData,
 };
 
 /**
@@ -153,6 +154,14 @@ enum HeadingType {
 };
 
 // MARK: - Uniforms
+
+/// Used for constructing raw vertex buffers
+struct RawVertexBuffer {
+    vector_float3 position;
+    vector_float2 texCoord;
+    vector_float3 normal;
+    vector_float3 tangent;
+};
 
 /// Structure shared between shader and C code that contains general information like camera (eye) transforms
 struct SharedUniforms {
@@ -263,9 +272,7 @@ struct PrecalculatedParameters {
     matrix_float4x4 locationTransform;
     
     matrix_float4x4 modelMatrix; // locationTransform * coordinateSpaceTransform. A transform matrix for the anchor model in world space.
-    matrix_float4x4 scaledModelMatrix; // modelMatrix * scaleMatrix. scaleMatrix is AnchorEffectsUniforms.scale
     matrix_float3x3 normalMatrix;
-    matrix_float3x3 scaledNormalMatrix; // normalMatrix * scaleMatrix. scaleMatrix is AnchorEffectsUniforms.scale
     matrix_float4x4 modelViewMatrix; // scaledModelMatrix * viewMatrix
     matrix_float4x4 modelViewProjectionMatrix; // projectionMatrix * modelViewMatrix
     matrix_float4x4 shadowMVPTransformMatrix;

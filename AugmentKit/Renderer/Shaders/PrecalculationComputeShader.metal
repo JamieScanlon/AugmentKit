@@ -36,9 +36,12 @@ kernel void precalculationComputeShader(constant SharedUniforms &sharedUniforms 
                                                  float4(0, 1.0, 0, 0),
                                                  float4(0, 0, -1.0, 0),
                                                  float4(0, 0, 0, 1.0));
+    
+    // Scaled geomentry effects
+    float4x4 scale4Matrix = anchorEffectsUniforms[index].scale;
 
     // Apply the world transform (as defined in the imported model) if applicable
-    float4x4 worldTransform = anchorInstanceUniforms[index].worldTransform;
+    float4x4 worldTransform = scale4Matrix * anchorInstanceUniforms[index].worldTransform;
     coordinateSpaceTransform = coordinateSpaceTransform * worldTransform;
     
     float4x4 locationTransform = anchorInstanceUniforms[index].locationTransform;
@@ -54,20 +57,13 @@ kernel void precalculationComputeShader(constant SharedUniforms &sharedUniforms 
 
     
     float4x4 modelMatrix = locationTransform * coordinateSpaceTransform;
-
-    // Scaled geomentry effects
-    float4x4 scale4Matrix = anchorEffectsUniforms[index].scale;
-    float3x3 scale3Matrix = convert3(scale4Matrix);
     
     // When converting a 4x4 to a 3x3, position data is discarded
     float3x3 upperLeft = convert3(modelMatrix);
     float3x3 normalMatrix = invert3(transpose(upperLeft));
-    
-    float4x4 scaledModelMatrix = modelMatrix * scale4Matrix;
-    float3x3 scaledNormalMatrix = normalMatrix * scale3Matrix;
 
     // Transform the model's orientation from world space to camera space.
-    float4x4 modelViewMatrix = sharedUniforms.viewMatrix * scaledModelMatrix;
+    float4x4 modelViewMatrix = sharedUniforms.viewMatrix * modelMatrix;
     float4x4 modelViewProjectionMatrix = sharedUniforms.projectionMatrix * modelViewMatrix;
     
     float4x4 shadowMVPTransformMatrix = environmentUniforms.shadowMVPTransformMatrix;
@@ -81,9 +77,7 @@ kernel void precalculationComputeShader(constant SharedUniforms &sharedUniforms 
     out[index].coordinateSpaceTransform = coordinateSpaceTransform;
     out[index].locationTransform = locationTransform;
     out[index].modelMatrix = modelMatrix;
-    out[index].scaledModelMatrix = scaledModelMatrix;
     out[index].normalMatrix = normalMatrix;
-    out[index].scaledNormalMatrix = scaledNormalMatrix;
     out[index].modelViewMatrix = modelViewMatrix;
     out[index].modelViewProjectionMatrix = modelViewProjectionMatrix;
     out[index].shadowMVPTransformMatrix = shadowMVPTransformMatrix;

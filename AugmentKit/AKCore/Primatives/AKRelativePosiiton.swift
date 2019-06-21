@@ -102,10 +102,10 @@ open class AKRelativePosition {
                 
                 if mutableHeading.type == .absolute {
                     newTransform = newTransform * float4x4(
-                        float4(transform.columns.0.x, 0, 0, 0),
-                        float4(0, transform.columns.1.y, 0, 0),
-                        float4(0, 0, transform.columns.2.z, 0),
-                        float4(transform.columns.3.x, transform.columns.3.y, transform.columns.3.z, 1)
+                        SIMD4<Float>(transform.columns.0.x, 0, 0, 0),
+                        SIMD4<Float>(0, transform.columns.1.y, 0, 0),
+                        SIMD4<Float>(0, 0, transform.columns.2.z, 0),
+                        SIMD4<Float>(transform.columns.3.x, transform.columns.3.y, transform.columns.3.z, 1)
                     )
                     transform = newTransform
                 } else if mutableHeading.type == .relative {

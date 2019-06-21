@@ -36,4 +36,8 @@ public protocol AKRealSurfaceAnchor: AKRealAnchor {
      The orientation of the surface. Either horizontal or vertical
      */
     var orientation: ARPlaneAnchor.Alignment { get set }
+    /**
+     The geometry that describes the shape of the plane if it not a rectangle.
+     */
+    var planeGeometry: ARPlaneGeometry? { get set }
 }

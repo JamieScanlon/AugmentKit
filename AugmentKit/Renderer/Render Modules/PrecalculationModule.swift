@@ -36,7 +36,7 @@ class PrecalculationModule: PreRenderComputeModule {
     var moduleIdentifier: String {
         return "PrecalculationModule"
     }
-    var isInitialized: Bool = false
+    var state: ShaderModuleState = .uninitialized
     var renderLayer: Int {
         return -3
     }
@@ -49,6 +49,8 @@ class PrecalculationModule: PreRenderComputeModule {
     fileprivate(set) var argumentOutputBufferSize: Int = 0
     
     func initializeBuffers(withDevice device: MTLDevice, maxInFlightFrames: Int, maxInstances: Int) {
+        
+        state = .initializing
         
         instanceCount = maxInstances
         
@@ -94,17 +96,24 @@ class PrecalculationModule: PreRenderComputeModule {
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeShaderInitializationFailed, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
+            state = .uninitialized
+            return nil
+        }
+        
+        guard let computePass = computePass else {
+            print("Warning (PrecalculationModule) - a ComputePass was not found. Aborting.")
+            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeModelNotFound, userInfo: nil)
+            let newError = AKError.warning(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+            recordNewError(newError)
+            state = .ready
             return nil
         }
         
         // If all of the instances are layed out in a square, how big is that square.
         let gridSize = Int(Double(instanceCount).squareRoot())
+        let threadGroup = computePass.threadGroup(withComputeFunction: precalculationFunction, size: (width: gridSize, height: gridSize, depth: 1))
         
-        guard let threadGroup = computePass?.threadGroup(withComputeFunction: precalculationFunction, size: (width: gridSize, height: gridSize, depth: 1)) else {
-            return nil
-        }
-      
-        isInitialized = true
+        state = .ready
         return threadGroup
     }
     
@@ -214,22 +223,22 @@ class PrecalculationModule: PreRenderComputeModule {
                             return 1
                         }
                     }()
-                    let ambientLightColor: vector_float3 = {
+                    let ambientLightColor: SIMD3<Float> = {
                         if let lightEstimate = environmentProperties.lightEstimate {
                             // FIXME: Remove
                             return getRGB(from: lightEstimate.ambientColorTemperature)
                         } else {
-                            return vector3(0.5, 0.5, 0.5)
+                            return SIMD3<Float>(0.5, 0.5, 0.5)
                         }
                     }()
                     
                     environmentUniform.pointee.ambientLightColor = ambientLightColor// * ambientIntensity
                     
-                    var directionalLightDirection : vector_float3 = environmentProperties.directionalLightDirection
+                    var directionalLightDirection : SIMD3<Float> = environmentProperties.directionalLightDirection
                     directionalLightDirection = simd_normalize(directionalLightDirection)
                     environmentUniform.pointee.directionalLightDirection = directionalLightDirection
                     
-                    let directionalLightColor: vector_float3 = vector3(0.6, 0.6, 0.6)
+                    let directionalLightColor: SIMD3<Float> = SIMD3<Float>(0.6, 0.6, 0.6)
                     environmentUniform.pointee.directionalLightColor = directionalLightColor * ambientIntensity
                     
                     environmentUniform.pointee.directionalLightMVP = environmentProperties.directionalLightMVP
@@ -268,7 +277,7 @@ class PrecalculationModule: PreRenderComputeModule {
                                     hasSetGlow = true
                                 }
                             case .tint:
-                                if let value = effect.value(forTime: currentTime) as? float3 {
+                                if let value = effect.value(forTime: currentTime) as? SIMD3<Float> {
                                     effectsUniform.pointee.tint = value
                                     hasSetTint = true
                                 }
@@ -288,7 +297,7 @@ class PrecalculationModule: PreRenderComputeModule {
                         effectsUniform.pointee.glow = 0
                     }
                     if !hasSetTint {
-                        effectsUniform.pointee.tint = float3(1,1,1)
+                        effectsUniform.pointee.tint = SIMD3<Float>(1,1,1)
                     }
                     if !hasSetScale {
                         effectsUniform.pointee.scale = matrix_identity_float4x4
@@ -510,7 +519,7 @@ class PrecalculationModule: PreRenderComputeModule {
         guard let cameraProperties = cameraProperties else {
             return 0
         }
-        let point = float3(transform.columns.3.x, transform.columns.3.x, transform.columns.3.z)
+        let point = SIMD3<Float>(transform.columns.3.x, transform.columns.3.x, transform.columns.3.z)
         return length(point - cameraProperties.position)
     }
     

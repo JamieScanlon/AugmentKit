@@ -112,22 +112,18 @@ class ComputePass {
     }
     
     /// Create a `MTLComputePipelineDescriptor` configured for this ComputePass
-    func computePipelineDescriptor(withComputeFunction computeFunction: MTLFunction? = nil) -> MTLComputePipelineDescriptor? {
-        
+    func computePipelineDescriptor(withComputeFunction computeFunction: MTLFunction? = nil) -> MTLComputePipelineDescriptor {
         let pipelineDescriptor = MTLComputePipelineDescriptor()
         pipelineDescriptor.computeFunction = computeFunction
         return pipelineDescriptor
-        
     }
     
     func threadGroup(withComputePipelineDescriptor computePipelineDescriptor: MTLComputePipelineDescriptor) -> ThreadGroup {
         return ThreadGroup(withDevice: device, computePipelineDescriptor: computePipelineDescriptor)
     }
     
-    func threadGroup(withComputeFunction computeFunction: MTLFunction? = nil, size: (width: Int, height: Int, depth: Int) = (width: 16, height: 16, depth: 1)) -> ThreadGroup? {
-        guard let computePipelineDescriptor = computePipelineDescriptor(withComputeFunction: computeFunction) else {
-            return nil
-        }
+    func threadGroup(withComputeFunction computeFunction: MTLFunction? = nil, size: (width: Int, height: Int, depth: Int) = (width: 16, height: 16, depth: 1)) -> ThreadGroup {
+        let computePipelineDescriptor = self.computePipelineDescriptor(withComputeFunction: computeFunction)
         return ThreadGroup(withDevice: device, computePipelineDescriptor: computePipelineDescriptor, size: size)
     }
     

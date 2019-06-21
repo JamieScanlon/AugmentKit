@@ -72,7 +72,7 @@ public struct HeadingRotation: Equatable {
      Initialize with no rotation
      */
     init() {
-        self.quaternion = simd_quatf(vector: float4(0, 0, 0, 1))
+        self.quaternion = simd_quatf(vector: SIMD4<Float>(0, 0, 0, 1))
     }
     /**
      Initialize with a rotation represented by a quaternion
@@ -193,7 +193,7 @@ open class AlwaysFacingMeHeading: AKHeading {
     public func updateHeading(withPosition position: AKRelativePosition) {
         let thisTransform = worldLocation.transform
         let meTransform = position.transform
-        let quaternion = thisTransform.lookAtQuaternion(position: float3(meTransform.columns.3.x, meTransform.columns.3.y, meTransform.columns.3.z))
+        let quaternion = thisTransform.lookAtQuaternion(position: SIMD3<Float>(meTransform.columns.3.x, meTransform.columns.3.y, meTransform.columns.3.z))
         offsetRotation = HeadingRotation(withQuaternion: quaternion)
     }
 }
@@ -338,12 +338,12 @@ open class WorldHeading: AKHeading {
             case .north(let offsetDegrees):
                 if let referenceWorldLocation = world.referenceWorldLocation {
                     let referenceQuaternion = referenceWorldLocation.transform.quaternion()
-                    offsetRotation = HeadingRotation(withQuaternion: referenceQuaternion * simd_quatf(angle: Float(offsetDegrees), axis: float3(0, 1, 0)))
+                    offsetRotation = HeadingRotation(withQuaternion: referenceQuaternion * simd_quatf(angle: Float(offsetDegrees), axis: SIMD3<Float>(0, 1, 0)))
                 }
             case .lookAt(let thisWorldLocation, let thatWorldLocation):
                 let thisTransform = thisWorldLocation.transform
                 let thatTransform = thatWorldLocation.transform
-                let quaternion = thisTransform.lookAtQuaternion(position: float3(thatTransform.columns.3.x, thatTransform.columns.3.y, thatTransform.columns.3.z))
+                let quaternion = thisTransform.lookAtQuaternion(position: SIMD3<Float>(thatTransform.columns.3.x, thatTransform.columns.3.y, thatTransform.columns.3.z))
                 offsetRotation = HeadingRotation(withQuaternion: quaternion)
             }
         }

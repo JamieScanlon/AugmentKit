@@ -73,6 +73,8 @@ open class AugmentedSurfaceAnchor: AKAugmentedSurfaceAnchor {
      If `true`, the current base color texture of the entity has changed since the last time it was rendered and the pixel data needs to be updated. This flag can be used to achieve dynamically updated textures for rendered objects.
      */
     public var needsColorTextureUpdate: Bool = false
+    /// If `true` the underlying mesh for this geometry has changed and the renderer needs to update. This can be used to achieve dynamically generated geometries that change over time.
+    public var needsMeshUpdate: Bool = false
     /**
      An `ARAnchor` that will be tracked in the AR world by `ARKit`
      */
@@ -86,25 +88,12 @@ open class AugmentedSurfaceAnchor: AKAugmentedSurfaceAnchor {
         - heading: The heading for the anchor
         - withAllocator: A `MTKMeshBufferAllocator` with wich to create the plane geometry
      */
-    public init(withTexture texture: MDLTexture, extent: vector_float3, at location: AKWorldLocation, heading: AKHeading? = nil, withAllocator metalAllocator: MTKMeshBufferAllocator? = nil) {
+    public init(withTexture texture: MDLTexture, extent: SIMD3<Float>, at location: AKWorldLocation, heading: AKHeading? = nil, withAllocator metalAllocator: MTKMeshBufferAllocator? = nil) {
         
-        let mesh = MDLMesh(planeWithExtent: extent, segments: vector2(1, 1), geometryType: .triangles, allocator: metalAllocator)
-        let scatteringFunction = MDLScatteringFunction()
-        let material = MDLMaterial(name: "baseMaterial", scatteringFunction: scatteringFunction)
-        let textureSampler = MDLTextureSampler()
-        textureSampler.texture = texture
-        let property = MDLMaterialProperty(name: "baseColor", semantic: MDLMaterialSemantic.baseColor, textureSampler: textureSampler)
-        material.setProperty(property)
-        
-        for submesh in mesh.submeshes!  {
-            if let submesh = submesh as? MDLSubmesh {
-                submesh.material = material
-            }
-        }
-        let asset = MDLAsset(bufferAllocator: metalAllocator)
-        asset.add(mesh)
-        
-        self.asset = asset
+        self.texture = texture
+        self.extent = extent
+        self.metalAllocator = metalAllocator
+        self.asset = MDLAsset(bufferAllocator: metalAllocator)
         self.worldLocation = location
         if let heading = heading {
             self.heading = heading
@@ -122,7 +111,29 @@ open class AugmentedSurfaceAnchor: AKAugmentedSurfaceAnchor {
             identifier = arAnchor.identifier
         }
         worldLocation.transform = arAnchor.transform
+        
+        let mesh = MDLMesh(planeWithExtent: extent, segments: SIMD2<UInt32>(1, 1), geometryType: .triangles, allocator: metalAllocator)
+        let scatteringFunction = MDLScatteringFunction()
+        let material = MDLMaterial(name: "Default AugmentedSurfaceAnchor baseMaterial", scatteringFunction: scatteringFunction)
+        let textureSampler = MDLTextureSampler()
+        textureSampler.texture = texture
+        let property = MDLMaterialProperty(name: "baseColor", semantic: MDLMaterialSemantic.baseColor, textureSampler: textureSampler)
+        material.setProperty(property)
+        
+        for submesh in mesh.submeshes!  {
+            if let submesh = submesh as? MDLSubmesh {
+                submesh.material = material
+            }
+        }
+        asset.add(mesh)
+        
     }
+    
+    // MARK: Private
+    
+    private var texture: MDLTexture
+    private var extent: SIMD3<Float>
+    private var metalAllocator: MTKMeshBufferAllocator?
     
 }
 

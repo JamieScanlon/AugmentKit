@@ -71,12 +71,12 @@ extension AKPathSegmentAnchor {
         // This reduces floating point rounding errors especially when calculating
         // angles of rotation
         
-        let finalPosition = double3(0, 0, 0)
-        let initialPosition = double3(lastAnchorPosition.x - anchorPosition.x, lastAnchorPosition.y - anchorPosition.y, lastAnchorPosition.z - anchorPosition.z)
+        let finalPosition = SIMD3<Double>(0, 0, 0)
+        let initialPosition = SIMD3<Double>(lastAnchorPosition.x - anchorPosition.x, lastAnchorPosition.y - anchorPosition.y, lastAnchorPosition.z - anchorPosition.z)
         
         // The following was taken from: http://www.thjsmith.com/40/cylinder-between-two-points-opengl-c
         // Default cylinder direction (up)
-        let defaultLineDirection = double3(0,1,0)
+        let defaultLineDirection = SIMD3<Double>(0,1,0)
         // Get diff between two points you want cylinder along
         let delta = (finalPosition - initialPosition)
         // Get CROSS product (the axis of rotation)

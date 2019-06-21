@@ -24,6 +24,10 @@
 		9614CC94216A6DA300427C6D /* plane_grid.png in Resources */ = {isa = PBXBuildFile; fileRef = 9614CC8B216A6DA300427C6D /* plane_grid.png */; };
 		9614CCB4216A76BC00427C6D /* AugmentKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9614CCB3216A76BC00427C6D /* AugmentKit.framework */; };
 		9614CCB5216A76BC00427C6D /* AugmentKit.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 9614CCB3216A76BC00427C6D /* AugmentKit.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		96D759B922AA122D0058D449 /* RedBall.reality in Resources */ = {isa = PBXBuildFile; fileRef = 96D759B822AA122D0058D449 /* RedBall.reality */; };
+		96D759BB22AD4A820058D449 /* toy_biplane.usdz in Resources */ = {isa = PBXBuildFile; fileRef = 96D759BA22AD4A820058D449 /* toy_biplane.usdz */; };
+		96D759BD22AD4A8C0058D449 /* toy_drummer.usdz in Resources */ = {isa = PBXBuildFile; fileRef = 96D759BC22AD4A8C0058D449 /* toy_drummer.usdz */; };
+		96D759BF22AD4A940058D449 /* toy_robot_vintage.usdz in Resources */ = {isa = PBXBuildFile; fileRef = 96D759BE22AD4A940058D449 /* toy_robot_vintage.usdz */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -54,11 +58,15 @@
 		9614CC85216A6DA300427C6D /* ship.scn */ = {isa = PBXFileReference; lastKnownFileType = file.bplist; path = ship.scn; sourceTree = "<group>"; };
 		9614CC86216A6DA300427C6D /* Gaze_Target.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Gaze_Target.png; sourceTree = "<group>"; };
 		9614CC87216A6DA300427C6D /* compass_512.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = compass_512.png; sourceTree = "<group>"; };
-		9614CC88216A6DA300427C6D /* retrotv.usdz */ = {isa = PBXFileReference; lastKnownFileType = file; path = retrotv.usdz; sourceTree = "<group>"; };
+		9614CC88216A6DA300427C6D /* retrotv.usdz */ = {isa = PBXFileReference; lastKnownFileType = file.usdz; path = retrotv.usdz; sourceTree = "<group>"; };
 		9614CC89216A6DA300427C6D /* texture.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = texture.png; sourceTree = "<group>"; };
 		9614CC8A216A6DA300427C6D /* Art.scnassets */ = {isa = PBXFileReference; lastKnownFileType = wrapper.scnassets; path = Art.scnassets; sourceTree = "<group>"; };
 		9614CC8B216A6DA300427C6D /* plane_grid.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = plane_grid.png; sourceTree = "<group>"; };
 		9614CCB3216A76BC00427C6D /* AugmentKit.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = AugmentKit.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		96D759B822AA122D0058D449 /* RedBall.reality */ = {isa = PBXFileReference; lastKnownFileType = file; path = RedBall.reality; sourceTree = "<group>"; };
+		96D759BA22AD4A820058D449 /* toy_biplane.usdz */ = {isa = PBXFileReference; lastKnownFileType = file.usdz; path = toy_biplane.usdz; sourceTree = "<group>"; };
+		96D759BC22AD4A8C0058D449 /* toy_drummer.usdz */ = {isa = PBXFileReference; lastKnownFileType = file.usdz; path = toy_drummer.usdz; sourceTree = "<group>"; };
+		96D759BE22AD4A940058D449 /* toy_robot_vintage.usdz */ = {isa = PBXFileReference; lastKnownFileType = file.usdz; path = toy_robot_vintage.usdz; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -109,12 +117,16 @@
 		9614CC82216A6DA300427C6D /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				96D759B822AA122D0058D449 /* RedBall.reality */,
 				9614CC83216A6DA300427C6D /* Pin.scn */,
 				9614CC84216A6DA300427C6D /* Gaze Target.sketch */,
 				9614CC85216A6DA300427C6D /* ship.scn */,
 				9614CC86216A6DA300427C6D /* Gaze_Target.png */,
 				9614CC87216A6DA300427C6D /* compass_512.png */,
+				96D759BA22AD4A820058D449 /* toy_biplane.usdz */,
 				9614CC88216A6DA300427C6D /* retrotv.usdz */,
+				96D759BC22AD4A8C0058D449 /* toy_drummer.usdz */,
+				96D759BE22AD4A940058D449 /* toy_robot_vintage.usdz */,
 				9614CC89216A6DA300427C6D /* texture.png */,
 				9614CC8A216A6DA300427C6D /* Art.scnassets */,
 				9614CC8B216A6DA300427C6D /* plane_grid.png */,
@@ -194,9 +206,13 @@
 				9614CC8E216A6DA300427C6D /* ship.scn in Resources */,
 				9614CC8D216A6DA300427C6D /* Gaze Target.sketch in Resources */,
 				9614CC8F216A6DA300427C6D /* Gaze_Target.png in Resources */,
+				96D759BD22AD4A8C0058D449 /* toy_drummer.usdz in Resources */,
 				9614CC92216A6DA300427C6D /* texture.png in Resources */,
+				96D759BB22AD4A820058D449 /* toy_biplane.usdz in Resources */,
+				96D759BF22AD4A940058D449 /* toy_robot_vintage.usdz in Resources */,
 				9614CC94216A6DA300427C6D /* plane_grid.png in Resources */,
 				9614CC54216A6A5500427C6D /* Assets.xcassets in Resources */,
+				96D759B922AA122D0058D449 /* RedBall.reality in Resources */,
 				9614CC52216A6A5500427C6D /* Main.storyboard in Resources */,
 				9614CC90216A6DA300427C6D /* compass_512.png in Resources */,
 				9614CC91216A6DA300427C6D /* retrotv.usdz in Resources */,

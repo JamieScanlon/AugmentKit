@@ -45,6 +45,14 @@ open class RealSurfaceAnchor: AKRealSurfaceAnchor {
      */
     public var orientation: ARPlaneAnchor.Alignment = .horizontal
     /**
+     The geometry that describes the shape of the plane if it not a rectangle.
+     */
+    public var planeGeometry: ARPlaneGeometry? {
+        didSet {
+            needsMeshUpdate = true
+        }
+    }
+    /**
      The location in the ARWorld
      */
     public var worldLocation: AKWorldLocation
@@ -76,6 +84,8 @@ open class RealSurfaceAnchor: AKRealSurfaceAnchor {
      If `true`, the current base color texture of the entity has changed since the last time it was rendered and the pixel data needs to be updated. This flag can be used to achieve dynamically updated textures for rendered objects.
      */
     public var needsColorTextureUpdate: Bool = false
+    /// If `true` the underlying mesh for this geometry has changed and the renderer needs to update. This can be used to achieve dynamically generated geometries that change over time.
+    public var needsMeshUpdate: Bool = false
     /**
      An `ARAnchor` that will be tracked in the AR world by `ARKit`
      */
@@ -87,9 +97,10 @@ open class RealSurfaceAnchor: AKRealSurfaceAnchor {
         - at: The location of the anchor
         - withAllocator: A `MTKMeshBufferAllocator` with wich to create the plane geometry
      */
-    public init(at location: AKWorldLocation, withAllocator metalAllocator: MTKMeshBufferAllocator? = nil) {
-        self.asset = RealSurfaceAnchor.createModelAsset(withAllocator: metalAllocator)
+    public init(at location: AKWorldLocation, planeGeometry: ARPlaneGeometry? = nil, withAllocator metalAllocator: MTKMeshBufferAllocator? = nil) {
+        self.asset = MDLAsset()
         self.worldLocation = location
+        self.planeGeometry = planeGeometry
     }
     /**
      Sets a new `arAnchor`
@@ -109,11 +120,11 @@ open class RealSurfaceAnchor: AKRealSurfaceAnchor {
      - Parameters:
      - withAllocator: A `MTKMeshBufferAllocator` with wich to create the plane geometry
      */
-    public static func createModelAsset(withAllocator metalAllocator: MTKMeshBufferAllocator?, baseColor: float4 = float4(1, 1, 1, 1)) -> MDLAsset {
+    public static func createModelAsset(withName: String, allocator metalAllocator: MTKMeshBufferAllocator?, baseColor: SIMD4<Float> = SIMD4<Float>(1, 1, 1, 1)) -> MDLAsset {
         
-        let mesh = MDLMesh(planeWithExtent: vector3(1, 0, 1), segments: vector2(1, 1), geometryType: .triangles, allocator: metalAllocator)
+        let mesh = MDLMesh(planeWithExtent: SIMD3<Float>(1, 0, 1), segments: SIMD2<UInt32>(1, 1), geometryType: .triangles, allocator: metalAllocator)
         let scatteringFunction = MDLScatteringFunction()
-        let material = MDLMaterial(name: "baseMaterial", scatteringFunction: scatteringFunction)
+        let material = MDLMaterial(name: "RealSurfaceAnchor - baseMaterial", scatteringFunction: scatteringFunction)
         let property = MDLMaterialProperty(name: "bsseColor", semantic: .baseColor, float4: baseColor) // Clear white
         material.setProperty(property)
         for submesh in mesh.submeshes!  {

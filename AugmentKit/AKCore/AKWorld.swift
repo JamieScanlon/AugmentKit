@@ -320,7 +320,7 @@ open class AKWorld: NSObject {
         
         let groundTransform: matrix_float4x4 = {
             
-            if let lowestPlane = renderer.lowestHorizPlaneAnchor {
+            if let lowestPlane = renderer.groundPlaneAnchor {
                 let metersToGround = Float((currentLocation.floor?.level ?? 0) * 3)
                 return lowestPlane.transform.translate(x: 0, y: -metersToGround, z: 0)
             } else {
@@ -813,7 +813,7 @@ extension AKWorld {
             return nil
         }
         
-        let translation = float4( currentWorldLocation.transform.columns.3.x + Float(offsetX),
+        let translation = SIMD4<Float>( currentWorldLocation.transform.columns.3.x + Float(offsetX),
                                   currentWorldLocation.transform.columns.3.y + Float(offsetY),
                                   currentWorldLocation.transform.columns.3.z + Float(offsetZ),
                                   1
@@ -849,7 +849,7 @@ extension AKWorld {
         }
         let offsetX = -1 * metersRelMinusZ * sin(rotation) + metersRelX * cos(rotation)
         let offsetZ = -1 * metersRelMinusZ * cos(rotation) - metersRelX * sin(rotation)
-        let translation = float4( currentWorldLocation.transform.columns.3.x + Float(offsetX),
+        let translation = SIMD4<Float>( currentWorldLocation.transform.columns.3.x + Float(offsetX),
                                   currentWorldLocation.transform.columns.3.y + Float(metersRelY),
                                   currentWorldLocation.transform.columns.3.z + Float(offsetZ),
                                   1

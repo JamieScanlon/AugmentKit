@@ -53,7 +53,7 @@ vertex ShadowOutput shadowVertexShader( ShadowVertex in [[stage_in]],
     float4 position = float4(in.position, 1.0);
     int argumentBufferIndex = drawCallIndex;
     
-    float4x4 modelMatrix = arguments[argumentBufferIndex].scaledModelMatrix;
+    float4x4 modelMatrix = arguments[argumentBufferIndex].modelMatrix;
     
     float4x4 directionalLightMVP = arguments[argumentBufferIndex].directionalLightMVP;
     

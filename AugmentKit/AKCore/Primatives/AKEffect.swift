@@ -205,13 +205,13 @@ public struct ConstantTintEffect: AKEffect {
     public var effectType: AKEffectType {
         return .tint
     }
-    private var tintValue: simd_float3
+    private var tintValue: SIMD3<Float>
     /**
      Initialize the object with an tint color.
      - Parameters:
         - tintValue: A color value that will be applied to the model.
      */
-    public init(tintValue: simd_float3) {
+    public init(tintValue: SIMD3<Float>) {
         self.tintValue = tintValue
     }
     /**

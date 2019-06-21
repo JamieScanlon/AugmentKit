@@ -72,6 +72,8 @@ open class PathSegmentAnchor: AKPathSegmentAnchor {
      If `true`, the current base color texture of the entity has changed since the last time it was rendered and the pixel data needs to be updated. This flag can be used to achieve dynamically updated textures for rendered objects.
      */
     public var needsColorTextureUpdate: Bool = false
+    /// If `true` the underlying mesh for this geometry has changed and the renderer needs to update. This can be used to achieve dynamically generated geometries that change over time.
+    public var needsMeshUpdate: Bool = false
     /**
      An `ARAnchor` that will be tracked in the AR world by `ARKit`
      */

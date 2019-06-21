@@ -79,11 +79,11 @@
                                 <constraints>
                                     <constraint firstAttribute="width" constant="50" id="j1g-p5-TUt"/>
                                 </constraints>
-                                <state key="normal" title="Max">
+                                <state key="normal" title="TV">
                                     <color key="titleColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                 </state>
                                 <connections>
-                                    <action selector="maxTapped:" destination="EpA-MI-b9A" eventType="touchUpInside" id="W2d-Da-cjy"/>
+                                    <action selector="tvTapped:" destination="EpA-MI-b9A" eventType="touchUpInside" id="kx7-hf-rXF"/>
                                 </connections>
                             </button>
                             <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="asU-oj-Xdj">
@@ -311,8 +311,8 @@
                             <textView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" textAlignment="natural" translatesAutoresizingMaskIntoConstraints="NO" id="usV-bT-bSZ">
                                 <rect key="frame" x="16" y="179" width="343" height="468"/>
                                 <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
-                                <mutableString key="text">A way out west there was a fella, fella I want to tell you about, fella by the name of Jeff Lebowski. At least, that was the handle his lovin' parents gave him, but he never had much use for it himself. This
- Lebowski, he called himself the Dude. Now, Dude, that's a name no one would self-apply where I come from. But then, there was a lot about the Dude that didn't make a whole lot of sense to me. And a lot about where he lived, like- wise. But then again, maybe that's why I found the place s'durned innarestin'...</mutableString>
+                                <string key="text">A way out west there was a fella, fella I want to tell you about, fella by the name of Jeff Lebowski. At least, that was the handle his lovin' parents gave him, but he never had much use for it himself. This
+ Lebowski, he called himself the Dude. Now, Dude, that's a name no one would self-apply where I come from. But then, there was a lot about the Dude that didn't make a whole lot of sense to me. And a lot about where he lived, like- wise. But then again, maybe that's why I found the place s'durned innarestin'...</string>
                                 <fontDescription key="fontDescription" name="Rockwell-Regular" family="Rockwell" pointSize="21"/>
                                 <textInputTraits key="textInputTraits" autocapitalizationType="sentences"/>
                             </textView>

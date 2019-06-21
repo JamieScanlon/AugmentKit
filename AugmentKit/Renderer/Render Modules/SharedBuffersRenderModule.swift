@@ -45,7 +45,7 @@ class SharedBuffersRenderModule: SharedRenderModule {
     var renderLayer: Int {
         return -1
     }
-    var isInitialized: Bool = false
+    var state: ShaderModuleState = .uninitialized
     var sharedModuleIdentifiers: [String]? = nil
     var renderDistance: Double = 500
     var errors = [AKError]()
@@ -53,6 +53,8 @@ class SharedBuffersRenderModule: SharedRenderModule {
     // MARK: - RenderModule
     
     func initializeBuffers(withDevice device: MTLDevice, maxInFlightFrames: Int, maxInstances: Int) {
+        
+        state = .initializing
         
         // Calculate our uniform buffer sizes. We allocate `maxInFlightFrames` instances for uniform
         // storage in a single buffer. This allows us to update uniforms in a ring (i.e. triple
@@ -73,9 +75,9 @@ class SharedBuffersRenderModule: SharedRenderModule {
         completion()
     }
     
-    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, forRenderPass renderPass: RenderPass? = nil) -> [DrawCallGroup]{
-        isInitialized = true
-        return []
+    func loadPipeline(withModuleEntities: [AKEntity], metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, renderPass: RenderPass? = nil, completion: (([DrawCallGroup]) -> Void)? = nil) {
+        state = .ready
+        completion?([])
     }
     
     //

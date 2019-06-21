@@ -116,6 +116,22 @@ public struct RenderStats {
     public var numPathSegments: Int
 }
 
+// MARK: - RenderOptions
+/**
+ Options that change the behavior of the `Renderer`. These options are mainly useful for debugging purposes.
+ */
+public struct RenderOptions: OptionSet {
+    public let rawValue: Int
+    
+    static let showTrackingPoints       = RenderOptions(rawValue: 1 << 0)
+    static let showDetectedSurfaces     = RenderOptions(rawValue: 1 << 1)
+    static let renderTriangles          = RenderOptions(rawValue: 1 << 1)
+    
+    public init(rawValue: Int) {
+        self.rawValue = rawValue
+    }
+}
+
 // MARK: - RenderMonitor
 /**
  Describes an object that can be updated with the latest statistics and errors
@@ -182,7 +198,7 @@ public struct CameraProperties {
     /**
      Position relative to the world origin
      */
-    var position: float3
+    var position: SIMD3<Float>
     /**
      Heading as a rotation arount the y axis
      */
@@ -223,7 +239,7 @@ public struct CameraProperties {
         - frame: The current `ARFrame`
         - frameRate: The frame rate
      */
-    init(orientation: UIInterfaceOrientation, viewportSize: CGSize, viewportSizeDidChange: Bool, position: float3, heading: Double, currentFrame: UInt, frame: ARFrame, frameRate: Double = 60) {
+    init(orientation: UIInterfaceOrientation, viewportSize: CGSize, viewportSizeDidChange: Bool, position: SIMD3<Float>, heading: Double, currentFrame: UInt, frame: ARFrame, frameRate: Double = 60) {
         self.orientation = orientation
         self.viewportSize = viewportSize
         self.viewportSizeDidChange = viewportSizeDidChange
@@ -254,7 +270,7 @@ public struct EnvironmentProperties {
     /**
      The direction the primary light source is pointing
      */
-    var directionalLightDirection: float3 = float3(0, -1, 0)
+    var directionalLightDirection: SIMD3<Float> = SIMD3<Float>(0, -1, 0)
     /**
      The Model View Projection matrix of the primary light
      */
@@ -436,9 +452,9 @@ open class Renderer: NSObject {
     /**
      Guides for debugging. Turning this on will show the tracking points used by ARKit as well as detected surfaces. Setting this to true might affect performance.
      */
-    public var showGuides = false {
+    public var options: RenderOptions = [] {
         didSet {
-            if showGuides {
+            if options.contains(.showTrackingPoints) {
                 if renderModules.filter({$0 is TrackingPointsRenderModule}).isEmpty {
                     var updatedRenderModules: [RenderModule] = renderModules
                     updatedRenderModules.append(TrackingPointsRenderModule())
@@ -483,9 +499,9 @@ open class Renderer: NSObject {
      */
     public fileprivate(set) var currentCameraHeading: Double?
     /**
-     The horizontal plane anchor that has the lowest y value and therefore assumed to be ground.
+     The anchor the ARKit has identified as the ground.
      */
-    public fileprivate(set) var lowestHorizPlaneAnchor: ARPlaneAnchor?
+    public fileprivate(set) var groundPlaneAnchor: ARPlaneAnchor?
     public var currentFrameNumber: UInt {
         guard worldInitiationTime > 0 && lastFrameTime > 0 else {
             return 0
@@ -528,8 +544,8 @@ open class Renderer: NSObject {
             hasDetectedSurfaces = hasDetectedSurfaces || infinitePlaneResults.count > 0
             
             for infinitePlaneResult in infinitePlaneResults {
-                if let planeAnchor = infinitePlaneResult.anchor as? ARPlaneAnchor, planeAnchor.alignment == .horizontal {
-                    if let lowestHorizPlaneAnchor = lowestHorizPlaneAnchor, planeAnchor.identifier == lowestHorizPlaneAnchor.identifier {
+                if let groundPlaneAnchor = groundPlaneAnchor, let planeAnchor = infinitePlaneResult.anchor as? ARPlaneAnchor, planeAnchor.alignment == .horizontal {
+                    if case .floor = planeAnchor.classification, planeAnchor.identifier == groundPlaneAnchor.identifier {
                         return infinitePlaneResult
                     }
                 }
@@ -597,7 +613,9 @@ open class Renderer: NSObject {
         
         loadMetal()
         
-        if let _ = renderModules.first(where: {$0.isInitialized == false}) {
+        addModule(forModuelIdentifier: CameraPlaneRenderModule.identifier)
+        
+        if let _ = renderModules.first(where: {$0.state == .uninitialized}) {
             hasUninitializedModules = true
         }
         
@@ -661,7 +679,7 @@ open class Renderer: NSObject {
         
         lastFrameTime = currentFrame.timestamp
         
-        hasDetectedSurfaces = hasDetectedSurfaces || (lowestHorizPlaneAnchor != nil) || (realAnchors.count > 0)
+        hasDetectedSurfaces = hasDetectedSurfaces || (groundPlaneAnchor != nil) || (realAnchors.count > 0)
         
         // Update current camera position and heading
         //
@@ -693,11 +711,11 @@ open class Renderer: NSObject {
         if surfacesRenderModule == nil && realAnchors.count > 0  {
             
             let metalAllocator = MTKMeshBufferAllocator(device: device)
-            if showGuides {
-                modelProvider?.registerAsset(GuideSurfaceAnchor.createModelAsset(inBundle: textureBundle, withAllocator: metalAllocator)!, forObjectType: "AnySurface", identifier: nil)
+            if options.contains(.showDetectedSurfaces) {
+                modelProvider?.registerAsset(DetectedSurfaceAnchor.createModelAsset(inBundle: textureBundle, withAllocator: metalAllocator)!, forObjectType: "AnySurface", identifier: nil)
             } else {
                 // The base color is clear black. The alpha channel will be adjusted according to the shadow map.
-                modelProvider?.registerAsset(RealSurfaceAnchor.createModelAsset(withAllocator: metalAllocator, baseColor: float4(0, 0, 0, 0)), forObjectType: "AnySurface", identifier: nil)
+                modelProvider?.registerAsset(RealSurfaceAnchor.createModelAsset(withName: "Default Real Surface base amterial", allocator: metalAllocator, baseColor: SIMD4<Float>(0, 0, 0, 0)), forObjectType: "AnySurface", identifier: nil)
             }
             
             realAnchors.forEach { anAnchor in
@@ -707,7 +725,7 @@ open class Renderer: NSObject {
                     var mutableExistingGeometries = existingGeometries
                     mutableExistingGeometries.append(anAnchor)
                     entitiesForRenderModule[SurfacesRenderModule.identifier] = mutableExistingGeometries
-                    anchorsRenderModule?.isInitialized = false
+                    anchorsRenderModule?.state = .uninitialized
                     hasUninitializedModules = true
                 } else {
                     entitiesForRenderModule[SurfacesRenderModule.identifier] = [anAnchor]
@@ -727,7 +745,7 @@ open class Renderer: NSObject {
                     var mutableExistingGeometries = existingGeometries
                     mutableExistingGeometries.append(anAnchor)
                     entitiesForRenderModule[SurfacesRenderModule.identifier] = mutableExistingGeometries
-                    anchorsRenderModule?.isInitialized = false
+                    anchorsRenderModule?.state = .uninitialized
                     hasUninitializedModules = true
                 } else {
                     entitiesForRenderModule[SurfacesRenderModule.identifier] = [anAnchor]
@@ -816,11 +834,11 @@ open class Renderer: NSObject {
         // Camera Properties
         //
         
-        let cameraPosition: float3 = {
+        let cameraPosition: SIMD3<Float> = {
             if let currentCameraPositionTransform = currentCameraPositionTransform {
-                return float3(currentCameraPositionTransform.columns.3.x, currentCameraPositionTransform.columns.3.y, currentCameraPositionTransform.columns.3.z)
+                return SIMD3<Float>(currentCameraPositionTransform.columns.3.x, currentCameraPositionTransform.columns.3.y, currentCameraPositionTransform.columns.3.z)
             } else {
-                return float3(0, 0, 0)
+                return SIMD3<Float>(0, 0, 0)
             }
         }()
         
@@ -872,12 +890,12 @@ open class Renderer: NSObject {
             
             // Update Buffer States
             renderModules.forEach { module in
-                if module.isInitialized {
+                if module.state == .ready {
                     module.updateBufferState(withBufferIndex: uniformBufferIndex)
                 }
             }
             computeModules.forEach { module in
-                if module.isInitialized {
+                if module.state == .ready {
                     module.updateBufferState(withBufferIndex: uniformBufferIndex)
                 }
             }
@@ -1034,7 +1052,7 @@ open class Renderer: NSObject {
             var mutableExistingGeometries = existingGeometries
             mutableExistingGeometries.append(akAnchor)
             entitiesForRenderModule[AnchorsRenderModule.identifier] = mutableExistingGeometries
-            anchorsRenderModule?.isInitialized = false
+            anchorsRenderModule?.state = .uninitialized
             hasUninitializedModules = true
         } else {
             entitiesForRenderModule[AnchorsRenderModule.identifier] = [akAnchor]
@@ -1236,7 +1254,7 @@ open class Renderer: NSObject {
     fileprivate var lastFrameTime: Double = 0
     
     // Modules
-    fileprivate var renderModules: [RenderModule] = [CameraPlaneRenderModule()]
+    fileprivate var renderModules: [RenderModule] = []
     fileprivate var computeModules = [ComputeModule]()
     fileprivate var sharedModulesForModule = [String: [SharedRenderModule]]()
     fileprivate var cameraRenderModule: CameraPlaneRenderModule?
@@ -1386,7 +1404,7 @@ open class Renderer: NSObject {
         // Create shadow render pass
         shadowRenderPass = RenderPass(withDevice: device, renderPassDescriptor: shadowRenderPassDescriptor)
         shadowRenderPass?.name = "Shadow Render Pass"
-        shadowRenderPass?.usesGeomentry = true
+        shadowRenderPass?.usesGeometry = true
         shadowRenderPass?.usesLighting = false
         shadowRenderPass?.usesEffects = true
         shadowRenderPass?.usesEnvironment = true
@@ -1420,7 +1438,7 @@ open class Renderer: NSObject {
         // Create main render pass
         mainRenderPass = RenderPass(withDevice: device)
         mainRenderPass?.name = "Main Render Pass"
-        mainRenderPass?.usesGeomentry = true
+        mainRenderPass?.usesGeometry = true
         mainRenderPass?.usesLighting = true
         mainRenderPass?.usesEffects = true
         mainRenderPass?.usesEnvironment = true
@@ -1557,12 +1575,14 @@ open class Renderer: NSObject {
         
         gatherModules()
         
-        let uninitializedCount = renderModules.filter({!$0.isInitialized}).count + computeModules.filter({!$0.isInitialized}).count
+        let uninitializedCount = renderModules.filter({$0.state == .uninitialized}).count + computeModules.filter({$0.state == .uninitialized}).count
         var loadedCount = 0
+        var modulesLoaded = [String]()
         
         renderModules.forEach { module in
             
-            if !module.isInitialized {
+            if module.state == .uninitialized {
+                modulesLoaded.append(module.moduleIdentifier)
                 // Initialize the module
                 module.initializeBuffers(withDevice: device, maxInFlightFrames: Constants.maxInFlightFrames, maxInstances: Constants.maxInstances)
                 
@@ -1607,7 +1627,7 @@ open class Renderer: NSObject {
                     }
                     
                     if loadedCount == uninitializedCount {
-                        loadPipelines()
+                        loadPipelines(for: modulesLoaded)
                     }
                 })
             }
@@ -1615,12 +1635,13 @@ open class Renderer: NSObject {
         }
         
         computeModules.forEach { module in
-            if !module.isInitialized {
+            if module.state == .uninitialized {
+                modulesLoaded.append(module.moduleIdentifier)
                 // Initialize the module
                 module.initializeBuffers(withDevice: device, maxInFlightFrames: Constants.maxInFlightFrames, maxInstances: Constants.maxInstances)
                 loadedCount += 1
                 if loadedCount == uninitializedCount {
-                    loadPipelines()
+                    loadPipelines(for: modulesLoaded)
                 }
             }
         }
@@ -1629,25 +1650,41 @@ open class Renderer: NSObject {
         
     }
     
-    fileprivate func loadPipelines() {
-        shadowRenderPass?.drawCallGroups = []
-        mainRenderPass?.drawCallGroups = []
+    fileprivate func loadPipelines(for moduleIdentifiers: [String]) {
+        
+        guard !moduleIdentifiers.isEmpty else {
+            return
+        }
         
         guard let defaultLibrary = defaultLibrary else {
             return
         }
         
-        renderModules.forEach { module in
-            shadowRenderPass?.drawCallGroups.append(contentsOf: module.loadPipeline(withMetalLibrary: defaultLibrary, renderDestination: renderDestination, textureBundle: textureBundle, forRenderPass: shadowRenderPass))
-            mainRenderPass?.drawCallGroups.append(contentsOf: module.loadPipeline(withMetalLibrary: defaultLibrary, renderDestination: renderDestination, textureBundle: textureBundle, forRenderPass: mainRenderPass))
+        var mutableShadowPassDrawCallGroups = shadowRenderPass?.drawCallGroups ?? []
+        var mutableMainPassDrawCallGroups = mainRenderPass?.drawCallGroups ?? []
+        
+        renderModules.filter({moduleIdentifiers.contains($0.moduleIdentifier)}).forEach { module in
+            module.loadPipeline(withModuleEntities: entitiesForRenderModule[module.moduleIdentifier] ?? [], metalLibrary: defaultLibrary, renderDestination: renderDestination, textureBundle: textureBundle, renderPass: shadowRenderPass) { [weak self] drawCallGroups in
+                let removeIDs = drawCallGroups.map({$0.uuid})
+                mutableShadowPassDrawCallGroups.removeAll(where: {removeIDs.contains($0.uuid)})
+                mutableShadowPassDrawCallGroups.append(contentsOf: drawCallGroups)
+                self?.shadowRenderPass?.drawCallGroups = mutableShadowPassDrawCallGroups
+            }
+            module.loadPipeline(withModuleEntities: entitiesForRenderModule[module.moduleIdentifier] ?? [], metalLibrary: defaultLibrary, renderDestination: renderDestination, textureBundle: textureBundle, renderPass: mainRenderPass) { [weak self] drawCallGroups in
+                let removeIDs = drawCallGroups.map({$0.uuid})
+                mutableMainPassDrawCallGroups.removeAll(where: {removeIDs.contains($0.uuid)})
+                mutableMainPassDrawCallGroups.append(contentsOf: drawCallGroups)
+                self?.mainRenderPass?.drawCallGroups = mutableMainPassDrawCallGroups
+            }
         }
-        computeModules.forEach { module in
+        computeModules.filter({moduleIdentifiers.contains($0.moduleIdentifier)}).forEach { module in
             if let precalculationModule = module as? PrecalculationModule {
                 precalculationPass?.threadGroup = precalculationModule.loadPipeline(withMetalLibrary: defaultLibrary, renderDestination: renderDestination, textureBundle: textureBundle, forComputePass: precalculationPass)
                 vertexArgumentBuffer = precalculationModule.argumentOutputBuffer
                 vertexArgumentBufferSize = precalculationModule.argumentOutputBufferSize
             }
         }
+        
     }
     
     fileprivate func prepareToDraw(forCameraProperties cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, renderPass: RenderPass?) {
@@ -1657,7 +1694,7 @@ open class Renderer: NSObject {
         }
         // Update Buffers
         computeModules.forEach { module in
-            if let preRenderComputeModule = module as? PreRenderComputeModule, let precalculationPass = precalculationPass, preRenderComputeModule.isInitialized {
+            if let preRenderComputeModule = module as? PreRenderComputeModule, let precalculationPass = precalculationPass, preRenderComputeModule.state == .ready {
                 preRenderComputeModule.prepareToDraw(withAllEntities: allEntities, cameraProperties: cameraProperties, environmentProperties: environmentProperties, shadowProperties: shadowProperties, computePass: precalculationPass, renderPass: renderPass)
             }
         }
@@ -1667,7 +1704,7 @@ open class Renderer: NSObject {
         
         // Update Buffers
         renderModules.forEach { module in
-            if module.isInitialized {
+            if module.state == .ready {
                 module.updateBuffers(withModuleEntities: entitiesForRenderModule[module.moduleIdentifier] ?? [], cameraProperties: cameraProperties, environmentProperties: environmentProperties, shadowProperties: shadowProperties, argumentBufferProperties: argumentBufferProperties, forRenderPass: renderPass)
             }
         }
@@ -1698,7 +1735,7 @@ open class Renderer: NSObject {
         
         // Draw
         renderModules.forEach { module in
-            if let shadowRenderPass = shadowRenderPass, module.isInitialized {
+            if let shadowRenderPass = shadowRenderPass, module.state == .ready {
                  module.draw(withRenderPass: shadowRenderPass, sharedModules: sharedModulesForModule[module.moduleIdentifier])
             }
         }
@@ -1712,7 +1749,7 @@ open class Renderer: NSObject {
         
         // Draw
         renderModules.forEach { module in
-            if let mainRenderPass = mainRenderPass, module.isInitialized {
+            if let mainRenderPass = mainRenderPass, module.state == .ready {
                 module.draw(withRenderPass: mainRenderPass, sharedModules: sharedModulesForModule[module.moduleIdentifier])
             }
         }
@@ -1729,7 +1766,7 @@ open class Renderer: NSObject {
         
         // Dispatch
         computeModules.forEach { module in
-            if let precalculationModule = module as? PrecalculationModule, let precalculationPass = precalculationPass, precalculationModule.isInitialized {
+            if let precalculationModule = module as? PrecalculationModule, let precalculationPass = precalculationPass, precalculationModule.state == .ready {
                 precalculationModule.dispatch(withComputePass: precalculationPass, sharedModules: sharedModulesForModule[precalculationModule.moduleIdentifier])
             }
         }
@@ -1745,7 +1782,7 @@ open class Renderer: NSObject {
         // identifiers of the AKAnchors that fall inside
         environmentAnchorsWithReatedAnchors = [:]
         environmentProbeAnchors.forEach { environmentAnchor in
-            let environmentPosition = simd_float3(environmentAnchor.transform.columns.3.x, environmentAnchor.transform.columns.3.y, environmentAnchor.transform.columns.3.z)
+            let environmentPosition = SIMD3<Float>(environmentAnchor.transform.columns.3.x, environmentAnchor.transform.columns.3.y, environmentAnchor.transform.columns.3.z)
             let cube = AKCube(position: AKVector(environmentPosition), extent: AKVector(environmentAnchor.extent))
             let anchorIDs: [UUID] = augmentedAnchors.compactMap{ normalAnchor in
                 let anchorPosition = AKVector(x: normalAnchor.worldLocation.transform.columns.3.x, y: normalAnchor.worldLocation.transform.columns.3.y, z: normalAnchor.worldLocation.transform.columns.3.z)
@@ -1781,15 +1818,22 @@ extension Renderer: ARSessionDelegate {
     
      /// :nodoc:
     public func session(_ session: ARSession, didAdd anchors: [ARAnchor]) {
+        
+        var modulesToUpdate = Set<String>()
+        
         anchors.forEach { anchor in
             if let planeAnchor = anchor as? ARPlaneAnchor {
                 
-                if let akAnchor = realAnchors.first(where: { k in
+                modulesToUpdate.insert(SurfacesRenderModule.identifier)
+                
+                if var akAnchor = realAnchors.first(where: { k in
                     k.identifier == planeAnchor.identifier
-                }) {
+                }) as? AKRealSurfaceAnchor {
                     akAnchor.setARAnchor(planeAnchor)
+                    akAnchor.planeGeometry = planeAnchor.geometry
+                    akAnchor.needsMeshUpdate = true
                 } else {
-                    let newRealAnchor = RealSurfaceAnchor(at: WorldLocation(transform: planeAnchor.transform))
+                    let newRealAnchor = RealSurfaceAnchor(at: WorldLocation(transform: planeAnchor.transform), planeGeometry: planeAnchor.geometry)
                     newRealAnchor.setARAnchor(planeAnchor)
                     newRealAnchor.identifier = planeAnchor.identifier
                     if let existingGeometries = entitiesForRenderModule[SurfacesRenderModule.identifier] {
@@ -1805,18 +1849,8 @@ extension Renderer: ARSessionDelegate {
                 // Update the lowest surface plane
                 //
                 
-                for index in 0..<realAnchors.count {
-                    let realAnchor = realAnchors[index]
-                    if let plane = realAnchor as? AKRealSurfaceAnchor, plane.orientation == .horizontal {
-                        // Keep track of the lowest horizontal plane. This can be assumed to be the ground.
-                        if lowestHorizPlaneAnchor != nil {
-                            if plane.worldLocation.transform.columns.1.y < lowestHorizPlaneAnchor?.transform.columns.1.y ?? 0 {
-                                lowestHorizPlaneAnchor = plane.arAnchor as? ARPlaneAnchor
-                            }
-                        } else {
-                            lowestHorizPlaneAnchor = plane.arAnchor as? ARPlaneAnchor
-                        }
-                    }
+                if case .floor = planeAnchor.classification {
+                    groundPlaneAnchor = planeAnchor
                 }
                 
             } else if let environmentProbeAnchor = anchor as? AREnvironmentProbeAnchor {
@@ -1834,38 +1868,35 @@ extension Renderer: ARSessionDelegate {
                 }) {
                     akAnchor.setARAnchor(anchor)
                 }
+                modulesToUpdate.insert(AnchorsRenderModule.identifier)
                 remapEnvironmentProbes()
             }
         }
+        
+        loadPipelines(for: Array(modulesToUpdate))
+        
     }
     
     /// :nodoc:
     public func session(_ session: ARSession, didUpdate anchors: [ARAnchor]) {
+        
         anchors.forEach { anchor in
             if let planeAnchor = anchor as? ARPlaneAnchor {
                 
-                if let akAnchor = realAnchors.first(where: { k in
+                if var akAnchor = realAnchors.first(where: { k in
                     k.identifier == planeAnchor.identifier
-                }) {
+                }) as? AKRealSurfaceAnchor {
                     akAnchor.setARAnchor(planeAnchor)
+                    akAnchor.planeGeometry = planeAnchor.geometry
+                    akAnchor.needsMeshUpdate = true
                 }
                 
                 //
                 // Update the lowest surface plane
                 //
                 
-                for index in 0..<realAnchors.count {
-                    let realAnchor = realAnchors[index]
-                    if let plane = realAnchor as? AKRealSurfaceAnchor, plane.orientation == .horizontal {
-                        // Keep track of the lowest horizontal plane. This can be assumed to be the ground.
-                        if lowestHorizPlaneAnchor != nil {
-                            if plane.worldLocation.transform.columns.1.y < lowestHorizPlaneAnchor?.transform.columns.1.y ?? 0 {
-                                lowestHorizPlaneAnchor = plane.arAnchor as? ARPlaneAnchor
-                            }
-                        } else {
-                            lowestHorizPlaneAnchor = plane.arAnchor as? ARPlaneAnchor
-                        }
-                    }
+                if case .floor = planeAnchor.classification {
+                    groundPlaneAnchor = planeAnchor
                 }
                 
             } else if let environmentProbeAnchor = anchor as? AREnvironmentProbeAnchor {
@@ -1893,8 +1924,13 @@ extension Renderer: ARSessionDelegate {
     
     /// :nodoc:
     public func session(_ session: ARSession, didRemove anchors: [ARAnchor]) {
+        
+        var modulesToUpdate = Set<String>()
+        
         anchors.forEach { anchor in
             if let planeAnchor = anchor as? ARPlaneAnchor {
+                
+                modulesToUpdate.insert(SurfacesRenderModule.identifier)
                 
                 if let anchorIndex = realAnchors.firstIndex(where: { k in
                     k.identifier == planeAnchor.identifier
@@ -1908,22 +1944,9 @@ extension Renderer: ARSessionDelegate {
                 // Update the lowest surface plane
                 //
                 
-                if lowestHorizPlaneAnchor?.identifier == planeAnchor.identifier {
-                    for index in 0..<realAnchors.count {
-                        let realAnchor = realAnchors[index]
-                        if let plane = realAnchor as? AKRealSurfaceAnchor, plane.orientation == .horizontal {
-                            // Keep track of the lowest horizontal plane. This can be assumed to be the ground.
-                            if lowestHorizPlaneAnchor != nil {
-                                if plane.worldLocation.transform.columns.1.y < lowestHorizPlaneAnchor?.transform.columns.1.y ?? 0 {
-                                    lowestHorizPlaneAnchor = plane.arAnchor as? ARPlaneAnchor
-                                }
-                            } else {
-                                lowestHorizPlaneAnchor = plane.arAnchor as? ARPlaneAnchor
-                            }
-                        }
-                    }
+                if case .floor = planeAnchor.classification {
+                    groundPlaneAnchor = planeAnchor
                 }
-                
                 
             } else if let environmentProbeAnchor = anchor as? AREnvironmentProbeAnchor {
                 
@@ -1939,7 +1962,10 @@ extension Renderer: ARSessionDelegate {
                 
             } else {
                 //
+                modulesToUpdate.insert(AnchorsRenderModule.identifier)
             }
+            
+            loadPipelines(for: Array(modulesToUpdate))
         }
     }
     
@@ -1967,6 +1993,7 @@ fileprivate class InterpolatingAugmentedAnchor: AKAugmentedAnchor {
     var shaderPreference: ShaderPreference = .pbr
     var generatesShadows: Bool = true
     var needsColorTextureUpdate: Bool = false
+    var needsMeshUpdate: Bool = false
     var arAnchor: ARAnchor?
 
     init(withAKAugmentedAnchor akAugmentedAnchor: AKAugmentedAnchor) {

@@ -75,7 +75,7 @@ public struct AKVector: Equatable {
     /**
      Initialize with a `SIMD3<Float>` object
      */
-    public init(_ float3: float3) {
+    public init(_ float3: SIMD3<Float>) {
         self.x = Double(float3.x)
         self.y = Double(float3.y)
         self.z = Double(float3.z)
@@ -84,7 +84,7 @@ public struct AKVector: Equatable {
     /**
      Initialize with a `SIMD3<Double>` object
      */
-    public init(_ double3: double3) {
+    public init(_ double3: SIMD3<Double>) {
         self.x = double3.x
         self.y = double3.y
         self.z = double3.z
@@ -94,7 +94,7 @@ public struct AKVector: Equatable {
      Normalize the vector
      */
     public mutating func normalize() {
-        let newVecor = simd.normalize(double3(x, y, z))
+        let newVecor = simd.normalize(SIMD3<Double>(x, y, z))
         x = newVecor.x
         y = newVecor.y
         z = newVecor.z
@@ -103,15 +103,15 @@ public struct AKVector: Equatable {
      Creates a normalized vector from the current vector
      */
     public func normalized() -> AKVector {
-        let newVecor = simd.normalize(double3(x, y, z))
+        let newVecor = simd.normalize(SIMD3<Double>(x, y, z))
         return AKVector(x: newVecor.x, y: newVecor.y, z: newVecor.z)
     }
     
     /**
      Returns a `SIMD3<Double>` representation of the vector
      */
-    public func simdRepresentation() -> double3 {
-        return double3(x, y, z)
+    public func simdRepresentation() -> SIMD3<Double> {
+        return SIMD3<Double>(x, y, z)
     }
     
 }

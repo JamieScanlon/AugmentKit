@@ -45,7 +45,7 @@ class TrackingPointsRenderModule: RenderModule {
     var renderLayer: Int {
         return Int.max
     }
-    var isInitialized: Bool = false
+    var state: ShaderModuleState = .uninitialized
     var sharedModuleIdentifiers: [String]? = [SharedBuffersRenderModule.identifier]
     var renderDistance: Double = 500
     var errors = [AKError]()
@@ -54,6 +54,8 @@ class TrackingPointsRenderModule: RenderModule {
     private(set) var trackingPointCount: Int = 0
 
     func initializeBuffers(withDevice aDevice: MTLDevice, maxInFlightFrames: Int, maxInstances: Int) {
+        
+        state = .initializing
         
         device = aDevice
         
@@ -76,14 +78,15 @@ class TrackingPointsRenderModule: RenderModule {
     
     // This funciton should set up the vertex descriptors, pipeline / depth state descriptors,
     // textures, etc.
-    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, forRenderPass renderPass: RenderPass? = nil) -> [DrawCallGroup] {
+    func loadPipeline(withModuleEntities: [AKEntity], metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, renderPass: RenderPass? = nil, completion: (([DrawCallGroup]) -> Void)? = nil) {
         
         guard let pointVertexShader = metalLibrary.makeFunction(name: "pointVertexShader") else {
             print("Serious Error - failed to create the pointVertexShader function")
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeShaderInitializationFailed, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return []
+            completion?([])
+            return
         }
         
         guard let pointFragmentShader = metalLibrary.makeFunction(name: "pointFragmentShader") else {
@@ -91,56 +94,61 @@ class TrackingPointsRenderModule: RenderModule {
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeShaderInitializationFailed, userInfo: nil)
             let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
             recordNewError(newError)
-            return []
+            completion?([])
+            return
         }
         
-        // Create a vertex descriptor for our image plane vertex buffer
-        let trackingPointVertexDescriptor = MTLVertexDescriptor()
+        DispatchQueue.global(qos: .default).async { [weak self] in
         
-        // Positions
-        trackingPointVertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)].format = .float4
-        trackingPointVertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)].offset = 0
-        trackingPointVertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)].bufferIndex = Int(kBufferIndexTrackingPointData.rawValue)
-        
-        // Color
-        trackingPointVertexDescriptor.attributes[Int(kVertexAttributeColor.rawValue)].format = .float4
-        trackingPointVertexDescriptor.attributes[Int(kVertexAttributeColor.rawValue)].offset = 16
-        trackingPointVertexDescriptor.attributes[Int(kVertexAttributeColor.rawValue)].bufferIndex = Int(kBufferIndexTrackingPointData.rawValue)
-        
-        // Buffer Layout
-        trackingPointVertexDescriptor.layouts[Int(kBufferIndexTrackingPointData.rawValue)].stride = 32
-        trackingPointVertexDescriptor.layouts[Int(kBufferIndexTrackingPointData.rawValue)].stepRate = 1
-        trackingPointVertexDescriptor.layouts[Int(kBufferIndexTrackingPointData.rawValue)].stepFunction = .perVertex
-        
-        let trackingPointPipelineStateDescriptor = MTLRenderPipelineDescriptor()
-        trackingPointPipelineStateDescriptor.label = "TrackingPointPipeline"
-        trackingPointPipelineStateDescriptor.vertexFunction = pointVertexShader
-        trackingPointPipelineStateDescriptor.fragmentFunction = pointFragmentShader
-        trackingPointPipelineStateDescriptor.vertexDescriptor = trackingPointVertexDescriptor
-        trackingPointPipelineStateDescriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
-        trackingPointPipelineStateDescriptor.colorAttachments[0].isBlendingEnabled = true
-        trackingPointPipelineStateDescriptor.colorAttachments[0].destinationRGBBlendFactor = .one
-        trackingPointPipelineStateDescriptor.colorAttachments[0].destinationAlphaBlendFactor = .one
-        trackingPointPipelineStateDescriptor.colorAttachments[0].rgbBlendOperation = .add
-        trackingPointPipelineStateDescriptor.colorAttachments[0].alphaBlendOperation = .add
-        trackingPointPipelineStateDescriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-        trackingPointPipelineStateDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-        trackingPointPipelineStateDescriptor.sampleCount = renderDestination.sampleCount
-        
-        let trackingPointDepthStateDescriptor = MTLDepthStencilDescriptor()
-        trackingPointDepthStateDescriptor.depthCompareFunction = .always
-        trackingPointDepthStateDescriptor.isDepthWriteEnabled = true
-        
-        var drawCallGroups = [DrawCallGroup]()
-        if let drawCall = renderPass?.drawCall(withRenderPipelineDescriptor: trackingPointPipelineStateDescriptor, depthStencilDescriptor: trackingPointDepthStateDescriptor) {
-            let drawCallGroup = DrawCallGroup(drawCalls: [drawCall])
-            drawCallGroup.moduleIdentifier = moduleIdentifier
-            drawCallGroups = [drawCallGroup]
+            // Create a vertex descriptor for our image plane vertex buffer
+            let trackingPointVertexDescriptor = MTLVertexDescriptor()
+            
+            // Positions
+            trackingPointVertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)].format = .float4
+            trackingPointVertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)].offset = 0
+            trackingPointVertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)].bufferIndex = Int(kBufferIndexTrackingPointData.rawValue)
+            
+            // Color
+            trackingPointVertexDescriptor.attributes[Int(kVertexAttributeColor.rawValue)].format = .float4
+            trackingPointVertexDescriptor.attributes[Int(kVertexAttributeColor.rawValue)].offset = 16
+            trackingPointVertexDescriptor.attributes[Int(kVertexAttributeColor.rawValue)].bufferIndex = Int(kBufferIndexTrackingPointData.rawValue)
+            
+            // Buffer Layout
+            trackingPointVertexDescriptor.layouts[Int(kBufferIndexTrackingPointData.rawValue)].stride = 32
+            trackingPointVertexDescriptor.layouts[Int(kBufferIndexTrackingPointData.rawValue)].stepRate = 1
+            trackingPointVertexDescriptor.layouts[Int(kBufferIndexTrackingPointData.rawValue)].stepFunction = .perVertex
+            
+            let trackingPointPipelineStateDescriptor = MTLRenderPipelineDescriptor()
+            trackingPointPipelineStateDescriptor.label = "TrackingPointPipeline"
+            trackingPointPipelineStateDescriptor.vertexFunction = pointVertexShader
+            trackingPointPipelineStateDescriptor.fragmentFunction = pointFragmentShader
+            trackingPointPipelineStateDescriptor.vertexDescriptor = trackingPointVertexDescriptor
+            trackingPointPipelineStateDescriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
+            trackingPointPipelineStateDescriptor.colorAttachments[0].isBlendingEnabled = true
+            trackingPointPipelineStateDescriptor.colorAttachments[0].destinationRGBBlendFactor = .one
+            trackingPointPipelineStateDescriptor.colorAttachments[0].destinationAlphaBlendFactor = .one
+            trackingPointPipelineStateDescriptor.colorAttachments[0].rgbBlendOperation = .add
+            trackingPointPipelineStateDescriptor.colorAttachments[0].alphaBlendOperation = .add
+            trackingPointPipelineStateDescriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
+            trackingPointPipelineStateDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
+            trackingPointPipelineStateDescriptor.sampleCount = renderDestination.sampleCount
+            
+            let trackingPointDepthStateDescriptor = MTLDepthStencilDescriptor()
+            trackingPointDepthStateDescriptor.depthCompareFunction = .always
+            trackingPointDepthStateDescriptor.isDepthWriteEnabled = true
+            
+            var drawCallGroups = [DrawCallGroup]()
+            if let drawCall = renderPass?.drawCall(withRenderPipelineDescriptor: trackingPointPipelineStateDescriptor, depthStencilDescriptor: trackingPointDepthStateDescriptor) {
+                let drawCallGroup = DrawCallGroup(drawCalls: [drawCall])
+                drawCallGroup.moduleIdentifier = TrackingPointsRenderModule.identifier
+                drawCallGroups = [drawCallGroup]
+            }
+            
+            DispatchQueue.main.async { [weak self] in
+                self?.state = .ready
+                completion?(drawCallGroups)
+            }
         }
-        
-        isInitialized = true
-        
-        return drawCallGroups
         
     }
     
@@ -179,11 +187,11 @@ class TrackingPointsRenderModule: RenderModule {
              */
             
             let point = rawFeaturePoints.points[index]
-            let trackingPointData = trackingPointDataBufferAddress?.assumingMemoryBound(to: float4.self).advanced(by: index * 2)
-            trackingPointData?.pointee = vector4(point, 1.0)
+            let trackingPointData = trackingPointDataBufferAddress?.assumingMemoryBound(to: SIMD4<Float>.self).advanced(by: index * 2)
+            trackingPointData?.pointee = SIMD4<Float>(point.x, point.y, point.z, 1.0)
             
-            let colorData = trackingPointDataBufferAddress?.assumingMemoryBound(to: float4.self).advanced(by: index * 2 + 1)
-            colorData?.pointee = vector4(0.5, 1.0, 1.0, 1.0) // Light blue
+            let colorData = trackingPointDataBufferAddress?.assumingMemoryBound(to: SIMD4<Float>.self).advanced(by: index * 2 + 1)
+            colorData?.pointee = SIMD4<Float>(0.5, 1.0, 1.0, 1.0) // Light blue
             
             trackingPointCount += 1
             
@@ -253,7 +261,7 @@ class TrackingPointsRenderModule: RenderModule {
     
     private enum Constants {
         static let maxTrackingPointCount = 256
-        static let alignedTrackingPointDataSize = ((MemoryLayout<float3>.stride * maxTrackingPointCount) & ~0xFF) + 0x100
+        static let alignedTrackingPointDataSize = ((MemoryLayout<SIMD3<Float>>.stride * maxTrackingPointCount) & ~0xFF) + 0x100
     }
     
     private var device: MTLDevice?

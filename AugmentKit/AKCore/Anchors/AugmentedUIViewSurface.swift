@@ -57,7 +57,7 @@ open class AugmentedUIViewSurface: AugmentedSurfaceAnchor {
         let maxDimension = max(width, height)
         let normalizedWidth = width / maxDimension
         let normalizedHeight = height / maxDimension
-        let extent = vector_float3(Float(normalizedWidth), Float(normalizedHeight), 0)
+        let extent = SIMD3<Float>(Float(normalizedWidth), Float(normalizedHeight), 0)
 
         let buffer = AugmentedUIViewSurface.viewTextureData(with: textureSize, view: self.view)
 
@@ -90,8 +90,8 @@ open class AugmentedUIViewSurface: AugmentedSurfaceAnchor {
         var bytesPerRow: Int {
             return AugmentedUIViewSurface.TextureSize.numChannels * width
         }
-        var dimensions: vector_int2 {
-            return vector_int2(Int32(width), Int32(height))
+        var dimensions: SIMD2<Int32> {
+            return SIMD2<Int32>(Int32(width), Int32(height))
         }
     }
     

@@ -35,6 +35,8 @@ import AugmentKit
 class ViewController: UIViewController {
     
     var world: AKWorld?
+    var usdzAsset: MDLAsset?
+    var rkAsset: MDLAsset?
     var pinAsset: MDLAsset?
     var shipAsset: MDLAsset?
     var maxAsset: MDLAsset?
@@ -56,7 +58,6 @@ class ViewController: UIViewController {
             let myWorld = AKWorld(renderDestination: view, configuration: worldConfiguration)
             
             // Debugging
-            myWorld.renderer.showGuides = false // Change to `true` to enable rendering of tracking points and surface planes.
             myWorld.monitor = self
             
             // Set the initial orientation
@@ -232,17 +233,17 @@ class ViewController: UIViewController {
         // Example:
         // Render a UINavigationViewController stack as a surface in the AR World 2 meters in from of the current location. Use an AlwaysFacingMeHeading
         // This is still a work in progress. In order for mapkit to render, it must be in the view heirarchy but I still haven't found a great way to render with animations (Core Animation) because it automatically turns off animations if it is not on screen.
-        if demoVC == nil {
-            demoVC = storyboard?.instantiateViewController(withIdentifier: "AutoNavigationController")
-            demoVC!.view.frame = CGRect(x: 0, y: -view.bounds.height, width: view.bounds.width, height: view.bounds.height)
-            view.addSubview(demoVC!.view)
-        }
-        let location = world.worldLocationWithDistanceFromMe(metersAbove: 0, metersInFront: 2)!
-        let heading = AlwaysFacingMeHeading(withWorldLocaiton: location)
-        if let demoView = demoVC?.view {
-            let viewSurface = AugmentedUIViewSurface(withView: demoView, at: location, heading: heading)
-            world.add(anchor: viewSurface)
-        }
+//        if demoVC == nil {
+//            demoVC = storyboard?.instantiateViewController(withIdentifier: "AutoNavigationController")
+//            demoVC!.view.frame = CGRect(x: 0, y: -view.bounds.height, width: view.bounds.width, height: view.bounds.height)
+//            view.addSubview(demoVC!.view)
+//        }
+//        let location = world.worldLocationWithDistanceFromMe(metersAbove: 0, metersInFront: 2)!
+//        let heading = AlwaysFacingMeHeading(withWorldLocaiton: location)
+//        if let demoView = demoVC?.view {
+//            let viewSurface = AugmentedUIViewSurface(withView: demoView, at: location, heading: heading)
+//            world.add(anchor: viewSurface)
+//        }
         
         
     }
@@ -278,20 +279,18 @@ class ViewController: UIViewController {
             return
         }
         
-//        let anchorLocation = GroundFixedWorldLocation(worldLocation: location, world: world)
-//        let newObject = AugmentedAnchor(withModelAsset: anchorModel, at: anchorLocation)
-        let newObject = AugmentedAnchor(withModelAsset: anchorModel, at: location)
-        let scaleEffect = ConstantScaleEffect(scaleValue: 0.01)
-        newObject.effects = [AnyEffect(scaleEffect)]
+        let anchorLocation = GroundFixedWorldLocation(worldLocation: location, world: world)
+        let newObject = AugmentedAnchor(withModelAsset: anchorModel, at: anchorLocation)
+        newObject.shaderPreference = .blinn
         world.add(anchor: newObject)
         
     }
     
-    @IBAction fileprivate func maxTapped(_ sender: UIButton) {
+    @IBAction fileprivate func tvTapped(_ sender: UIButton) {
         
         // Create a new anchor at the current locaiton
         
-        guard let anchorModel = maxAsset else {
+        guard let anchorModel = usdzAsset else {
             return
         }
         
@@ -305,6 +304,8 @@ class ViewController: UIViewController {
         
         let anchorLocation = GroundFixedWorldLocation(worldLocation: location, world: world)
         let newObject = AugmentedAnchor(withModelAsset: anchorModel, at: anchorLocation)
+        let scaleEffect = ConstantScaleEffect(scaleValue: 0.01)
+        newObject.effects = [AnyEffect(scaleEffect)]
         world.add(anchor: newObject)
         
     }
@@ -355,12 +356,12 @@ class ViewController: UIViewController {
             return
         }
         
-        //        guard let aPinAsset = AKSceneKitUtils.mdlAssetFromScene(named: "Pin.scn", world: world) else {
-        //            print("ERROR: Could not load the SceneKit model")
-        //            return
-        //        }
+        guard let aPinAsset = AKSceneKitUtils.mdlAssetFromScene(named: "Pin.scn", world: world) else {
+            print("ERROR: Could not load the SceneKit model")
+            return
+        }
         
-        guard let aPinAsset = MDLAssetTools.asset(named: "retrotv.usdz", inBundle: Bundle.main) else {
+        guard let aUSDZAsset = MDLAssetTools.asset(named: "toy_drummer.usdz", inBundle: Bundle.main) else {
             print("ERROR: Could not load the USDZ model")
             return
         }
@@ -375,9 +376,16 @@ class ViewController: UIViewController {
             return
         }
         
+//        guard let aRKAsset = MDLAssetTools.asset(named: "RedBall.reality", inBundle: Bundle.main) else {
+//            print("ERROR: Could not load the USDZ model")
+//            return
+//        }
+        
+        usdzAsset = aUSDZAsset
         pinAsset = aPinAsset
         shipAsset = aShipAsset
         maxAsset = aMaxAsset
+//        rkAsset = aRKAsset
         
     }
     

@@ -65,8 +65,8 @@ vertex SurfaceVertexOutput surfaceGeometryVertexTransform(SurfaceVertex in [[sta
     float4 position = float4(in.position, 1.0);
     int argumentBufferIndex = drawCallIndex;
     
-    float3x3 normalMatrix = arguments[argumentBufferIndex].scaledNormalMatrix;
-    float4x4 modelMatrix = arguments[argumentBufferIndex].scaledModelMatrix;
+    float3x3 normalMatrix = arguments[argumentBufferIndex].normalMatrix;
+    float4x4 modelMatrix = arguments[argumentBufferIndex].modelMatrix;
     float4x4 modelViewProjectionMatrix = arguments[argumentBufferIndex].modelViewProjectionMatrix;
     
     out.position = modelViewProjectionMatrix * position;
@@ -80,6 +80,45 @@ vertex SurfaceVertexOutput surfaceGeometryVertexTransform(SurfaceVertex in [[sta
     //   in our fragment function, if we need it
     if (has_base_color_map) {
         out.texCoord = float2(in.texCoord.x, 1.0f - in.texCoord.y);
+    }
+    
+    // Shadow Coord
+    float4x4 directionalLightMVP = arguments[argumentBufferIndex].directionalLightMVP;
+    out.shadowCoord = (arguments[argumentBufferIndex].shadowMVPTransformMatrix * directionalLightMVP * modelMatrix * position).xyz;
+    
+    out.iid = iid;
+    
+    return out;
+}
+
+vertex SurfaceVertexOutput rawSurfaceGeometryVertexTransform(SurfaceVertex in [[stage_in]],
+                                                             device RawVertexBuffer *vertexData [[ buffer(kBufferIndexRawVertexData) ]],
+                                                             device PrecalculatedParameters *arguments [[ buffer(kBufferIndexPrecalculationOutputBuffer) ]],
+                                                             constant int &drawCallIndex [[ buffer(kBufferIndexDrawCallIndex) ]],
+                                                             constant int &drawCallGroupIndex [[ buffer(kBufferIndexDrawCallGroupIndex) ]],
+                                                             uint vid [[vertex_id]],
+                                                             ushort iid [[instance_id]]) {
+    SurfaceVertexOutput out;
+    
+    // Make position a float4 to perform 4x4 matrix math on it
+    float4 position = float4(vertexData[vid].position, 1.0);
+    int argumentBufferIndex = drawCallIndex;
+    
+    float3x3 normalMatrix = arguments[argumentBufferIndex].normalMatrix;
+    float4x4 modelMatrix = arguments[argumentBufferIndex].modelMatrix;
+    float4x4 modelViewProjectionMatrix = arguments[argumentBufferIndex].modelViewProjectionMatrix;
+    
+    out.position = modelViewProjectionMatrix * position;
+    
+    // Rotate our normals to world coordinates
+    out.normal = normalMatrix * vertexData[vid].normal;
+    out.tangent = normalMatrix * vertexData[vid].tangent;
+    
+    // Texture Coord
+    // Pass along the texture coordinate of our vertex such which we'll use to sample from texture's
+    //   in our fragment function, if we need it
+    if (has_base_color_map) {
+        out.texCoord = float2(vertexData[vid].texCoord.x, 1.0f - vertexData[vid].texCoord.y);
     }
     
     // Shadow Coord
@@ -111,7 +150,7 @@ fragment float4 surfaceFragmentLightingSimple(SurfaceVertexOutput in [[stage_in]
     // frame of reference.  If the sample is occluded, it will be zero.
     float shadowSample = shadowMap.sample_compare(shadowSampler, in.shadowCoord.xy, in.shadowCoord.z);
     // Lighten shadow to account for ambient light
-    float shadowContribution = shadowSample + 0.2;
+    float shadowContribution = shadowSample + 0.4;
     // Clamp shadow values to 1;
     shadowContribution = min(1.0, shadowContribution);
     float4 shadowColor = float4(0.0, 0.0, 0.0, 1 - shadowContribution); // Black

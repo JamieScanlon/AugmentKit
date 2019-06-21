@@ -29,6 +29,7 @@
 
 import Foundation
 import simd
+import ARKit
 import CoreLocation
 import MetalKit
 
@@ -201,7 +202,7 @@ extension MDLObject {
     
     /// :nodoc:
     override open var debugDescription: String {
-        var myDescription = "<\(type(of: self)): \(Unmanaged.passUnretained(self).toOpaque())> Name: \(name), Path:\(path), Hidden: \(hidden), Components: \(components), Transform: \(transform?.debugDescription ?? "none")"
+        var myDescription = "<\(type(of: self)): \(Unmanaged.passUnretained(self).toOpaque())> Name: \(name), Path:\(path), Hidden: \(hidden), Components (\(components.count)): \(components), Transform: \(transform?.debugDescription ?? "none"), Children (\(children.count)):"
         for childIndex in 0..<children.count {
             myDescription += "\n"
             myDescription += "    Child \(childIndex) - \(children[childIndex])"
@@ -220,7 +221,7 @@ extension MDLAsset {
     
     /// :nodoc:
     override open var debugDescription: String {
-        var myDescription = "<\(type(of: self)): \(Unmanaged.passUnretained(self).toOpaque())> URL: \(url?.absoluteString ?? "none"), Count: \(count), VertedDescriptor: \(vertexDescriptor?.debugDescription ?? "none"), Masters: \(masters)"
+        var myDescription = "<\(type(of: self)): \(Unmanaged.passUnretained(self).toOpaque())> URL: \(url?.absoluteString ?? "none"), Count: \(count), VertedDescriptor: \(vertexDescriptor?.debugDescription ?? "none"), Masters (\(masters.count)): \(masters)"
         for childIndex in 0..<self.count {
             myDescription += "\n"
             myDescription += "    Child \(childIndex) - \(self.object(at: childIndex))"
@@ -457,6 +458,20 @@ extension MDLObjectContainer {
     
 }
 
+extension MDLTexture {
+    /// :nodoc:
+    override open var description: String {
+        return debugDescription
+    }
+    
+    /// :nodoc:
+    override open var debugDescription: String {
+        let myDescription = "<\(type(of: self)): \(Unmanaged.passUnretained(self).toOpaque())> dimensions: \(dimensions), rowStride: \(rowStride), channelCount: \(channelCount), channelEncoding: \(channelEncoding), isCube: \(isCube), mipLevelCount: \(mipLevelCount)"
+        return myDescription
+    }
+    
+}
+
 extension CGColor: CustomDebugStringConvertible, CustomStringConvertible {
     /// :nodoc:
     public var description: String {
@@ -528,3 +543,14 @@ extension simd_double4x4: CustomStringConvertible {
     }
 }
 
+extension ARPlaneGeometry {
+    /// :nodoc:
+    override open var description: String {
+        return debugDescription
+    }
+    /// :nodoc:
+    override open var debugDescription: String {
+        let myDescription = "<\(type(of: self)): \(Unmanaged.passUnretained(self).toOpaque())> triangleCount: \(triangleCount), vertices: \(vertices), textureCoordinates: \(textureCoordinates), triangleIndices: \(triangleIndices), boundaryVertices: \(boundaryVertices)"
+        return myDescription
+    }
+}

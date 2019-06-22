@@ -254,7 +254,7 @@ This project is in Alpha having completed all of the base pre-release functional
 - [x] Support per-instance models
 
 #### Beta-Release Project Goals
-- [ ] Test and fix animation for models
+- [x] Test and fix animation for models
 - [x] Animated AugmentedUIViewSurface
 - [ ] Improve jerky movements with smoothing
 - [ ] Surface culling

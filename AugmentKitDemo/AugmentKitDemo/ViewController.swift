@@ -361,7 +361,7 @@ class ViewController: UIViewController {
             return
         }
         
-        guard let aUSDZAsset = MDLAssetTools.asset(named: "toy_drummer.usdz", inBundle: Bundle.main) else {
+        guard let aUSDZAsset = MDLAssetTools.asset(named: "toy_robot_vintage.usdz", inBundle: Bundle.main) else {
             print("ERROR: Could not load the USDZ model")
             return
         }

@@ -322,7 +322,7 @@ class ModelIOTools {
                         if transform.keyTimes.count > 1 {
                             return sampleTimes.map { transform.localTransform?(atTime: $0) ?? matrix_identity_float4x4 }
                         } else {
-                            return [matrix_float4x4](repeating: matrix_identity_float4x4, count: sampleTimes.count)
+                            return [matrix_float4x4](repeating: transform.matrix, count: sampleTimes.count)
                         }
                     } else {
                         return [matrix_float4x4](repeating: matrix_identity_float4x4, count: sampleTimes.count)

@@ -78,8 +78,10 @@ kernel void precalculationComputeShader(constant SharedUniforms &sharedUniforms 
     out[index].locationTransform = locationTransform;
     out[index].modelMatrix = modelMatrix;
     out[index].normalMatrix = normalMatrix;
+    out[index].projectionMatrix = sharedUniforms.projectionMatrix;
     out[index].modelViewMatrix = modelViewMatrix;
     out[index].modelViewProjectionMatrix = modelViewProjectionMatrix;
     out[index].shadowMVPTransformMatrix = shadowMVPTransformMatrix;
     out[index].directionalLightMVP = directionalLightMVP;
+    out[index].useDepth = sharedUniforms.useDepth;
 }

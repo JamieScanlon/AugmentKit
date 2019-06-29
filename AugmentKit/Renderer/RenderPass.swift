@@ -36,7 +36,16 @@ class RenderPass {
         case preferInstance
     }
     
-    struct DepthBias {
+    struct DepthBias: CustomStringConvertible, CustomDebugStringConvertible {
+        var description: String {
+            return debugDescription
+        }
+        
+        var debugDescription: String {
+            let myDescription = "DepthBias - bias: \(bias), slopeScale: \(slopeScale), clamp: \(clamp)"
+            return myDescription
+        }
+        
         var bias: Float
         var slopeScale: Float
         var clamp: Float
@@ -199,7 +208,7 @@ extension RenderPass: CustomStringConvertible, CustomDebugStringConvertible {
     }
     /// :nodoc:
     public var debugDescription: String {
-        let myDescription = "<\(type(of: self)): \(Unmanaged.passUnretained(self).toOpaque())> name: \(name ?? "none"), uuid: \(uuid), drawCallGroups: \(drawCallGroups), usesGeometry: \(usesGeometry), usesLighting: \(usesLighting), usesSharedBuffer: \(usesSharedBuffer), usesEnvironment: \(usesEnvironment), usesEffects: \(usesEffects), usesCameraOutput: \(usesCameraOutput), usesShadows: \(usesShadows)"
+        let myDescription = "<\(type(of: self)): \(Unmanaged.passUnretained(self).toOpaque())> name: \(name ?? "none"), uuid: \(uuid), drawCallGroups: \(drawCallGroups), usesGeometry: \(usesGeometry), usesLighting: \(usesLighting), usesSharedBuffer: \(usesSharedBuffer), usesEnvironment: \(usesEnvironment), usesEffects: \(usesEffects), usesCameraOutput: \(usesCameraOutput), usesShadows: \(usesShadows), templateRenderPipelineDescriptor: \(templateRenderPipelineDescriptor?.debugDescription ?? "none"), vertexDescriptorMergePolicy: \(vertexDescriptorMergePolicy), vertexFunctionMergePolicy: \(vertexFunctionMergePolicy), fragmentFunctionMergePolicy: \(fragmentFunctionMergePolicy), depthCompareFunction: \(depthCompareFunction?.debugDescription ?? "none"), depthCompareFunctionMergePolicy: \(depthCompareFunctionMergePolicy), isDepthWriteEnabled: \(isDepthWriteEnabled), isDepthWriteEnabledMergePolicy: \(isDepthWriteEnabledMergePolicy), cullMode: \(cullMode), depthBias: \(depthBias?.debugDescription ?? "none")"
         return myDescription
     }
 }

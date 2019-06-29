@@ -49,6 +49,12 @@ class CameraPlaneRenderModule: RenderModule {
     var renderDistance: Double = 500
     var errors = [AKError]()
     
+    // Buffers
+    fileprivate(set) var imagePlaneVertexBuffer: MTLBuffer?
+    fileprivate(set) var scenePlaneVertexBuffer: MTLBuffer?
+    fileprivate(set) var capturedImageTextureY: CVMetalTexture?
+    fileprivate(set) var capturedImageTextureCbCr: CVMetalTexture?
+    
     func initializeBuffers(withDevice aDevice: MTLDevice, maxInFlightFrames: Int, maxInstances: Int) {
         
         state = .initializing
@@ -59,6 +65,9 @@ class CameraPlaneRenderModule: RenderModule {
         let imagePlaneVertexDataCount = Constants.imagePlaneVertexData.count * MemoryLayout<Float>.size
         imagePlaneVertexBuffer = device?.makeBuffer(bytes: Constants.imagePlaneVertexData, length: imagePlaneVertexDataCount, options: [])
         imagePlaneVertexBuffer?.label = "ImagePlaneVertexBuffer"
+        
+        scenePlaneVertexBuffer = device?.makeBuffer(bytes: Constants.imagePlaneVertexData, length: imagePlaneVertexDataCount, options: [])
+        scenePlaneVertexBuffer?.label = "ScenePlaneVertexBuffer"
         
     }
     
@@ -175,17 +184,25 @@ class CameraPlaneRenderModule: RenderModule {
             // Update the texture coordinates of our image plane to aspect fill the viewport
             let displayToCameraTransform = cameraProperties.displayTransform.inverted()
             
-            if let vertexData = imagePlaneVertexBuffer?.contents().assumingMemoryBound(to: Float.self) {
-                for index in 0...3 {
-                    let textureCoordIndex = 4 * index + 2
-                    let textureCoord = CGPoint(x: CGFloat(Constants.imagePlaneVertexData[textureCoordIndex]), y: CGFloat(Constants.imagePlaneVertexData[textureCoordIndex + 1]))
-                    let transformedCoord = textureCoord.applying(displayToCameraTransform)
-                    vertexData[textureCoordIndex] = Float(transformedCoord.x)
-                    vertexData[textureCoordIndex + 1] = Float(transformedCoord.y)
-                }
+            guard let vertexData = imagePlaneVertexBuffer?.contents().assumingMemoryBound(to: Float.self) else {
+                return
+            }
+            
+            guard let compositeVertexData = scenePlaneVertexBuffer?.contents().assumingMemoryBound(to: Float.self) else {
+                return
+            }
+            
+            for index in 0...3 {
+                let textureCoordIndex = 4 * index + 2
+                let textureCoord = CGPoint(x: CGFloat(Constants.imagePlaneVertexData[textureCoordIndex]), y: CGFloat(Constants.imagePlaneVertexData[textureCoordIndex + 1]))
+                let transformedCoord = textureCoord.applying(displayToCameraTransform)
+                vertexData[textureCoordIndex] = Float(transformedCoord.x)
+                vertexData[textureCoordIndex + 1] = Float(transformedCoord.y)
+                
+                compositeVertexData[textureCoordIndex] = Constants.imagePlaneVertexData[textureCoordIndex]
+                compositeVertexData[textureCoordIndex + 1] = Constants.imagePlaneVertexData[textureCoordIndex + 1]
             }
         }
-        
     }
     
     func draw(withRenderPass renderPass: RenderPass, sharedModules: [SharedRenderModule]?) {
@@ -260,10 +277,7 @@ class CameraPlaneRenderModule: RenderModule {
     }
     
     private var device: MTLDevice?
-    private var imagePlaneVertexBuffer: MTLBuffer?
     private var capturedImageTextureCache: CVMetalTextureCache?
-    private var capturedImageTextureY: CVMetalTexture?
-    private var capturedImageTextureCbCr: CVMetalTexture?
     
     private var textureReferences = [CVMetalTexture?]()
     

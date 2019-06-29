@@ -47,6 +47,7 @@ class PrecalculationModule: PreRenderComputeModule {
     
     fileprivate(set) var argumentOutputBuffer: MTLBuffer?
     fileprivate(set) var argumentOutputBufferSize: Int = 0
+    fileprivate(set) var argumentOutputBufferOffset: Int = 0
     
     func initializeBuffers(withDevice device: MTLDevice, maxInFlightFrames: Int, maxInstances: Int) {
         
@@ -123,7 +124,7 @@ class PrecalculationModule: PreRenderComputeModule {
         paletteBufferOffset = Constants.alignedPaletteSize * Constants.maxPaletteCount * bufferIndex
         effectsUniformBufferOffset = alignedEffectsUniformSize * bufferIndex
         environmentUniformBufferOffset = alignedEnvironmentUniformSize * bufferIndex
-        outputBufferOffset = argumentOutputBufferSize * bufferIndex
+        argumentOutputBufferOffset = argumentOutputBufferSize * bufferIndex
         
         geometryUniformBufferAddress = geometryUniformBuffer?.contents().advanced(by: geometryUniformBufferOffset)
         paletteBufferAddress = paletteBuffer?.contents().advanced(by: paletteBufferOffset)
@@ -455,7 +456,7 @@ class PrecalculationModule: PreRenderComputeModule {
         
         // Output Buffer
         computeEncoder.pushDebugGroup("Output Buffer")
-        computeEncoder.setBuffer(argumentOutputBuffer, offset: outputBufferOffset, index: Int(kBufferIndexPrecalculationOutputBuffer.rawValue))
+        computeEncoder.setBuffer(argumentOutputBuffer, offset: argumentOutputBufferOffset, index: Int(kBufferIndexPrecalculationOutputBuffer.rawValue))
         computeEncoder.popDebugGroup()
         
         threadGroup.prepareThreadGroup(withComputePass: computePass)
@@ -503,8 +504,6 @@ class PrecalculationModule: PreRenderComputeModule {
     fileprivate var effectsUniformBufferOffset: Int = 0
     // Offset within environmentUniformBuffer to set for the current frame
     fileprivate var environmentUniformBufferOffset: Int = 0
-    // Offset within argumentOutputBuffer to set for the current frame
-    fileprivate var outputBufferOffset = 0
     // Addresses to write geometry uniforms to each frame
     fileprivate var geometryUniformBufferAddress: UnsafeMutableRawPointer?
     // Addresses to write palette to each frame

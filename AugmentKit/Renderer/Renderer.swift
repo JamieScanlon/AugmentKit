@@ -227,6 +227,8 @@ public struct CameraProperties {
      The feature points detected by `ARKit`
      */
     var rawFeaturePoints: ARPointCloud?
+    /// Should be `true` when `ARSession` configureation's `frameSemantics` is  `personSegmentationWithDepth` so that the shader can perform depth-based occlusion.
+    var useDepth: Bool
     /**
      Initialize e new object with a `UIInterfaceOrientation`, view port size, a viewport size change state, a position, a heading, a current frame number, a `ARFrame`, and the frame rate
      - Parameters:
@@ -239,7 +241,7 @@ public struct CameraProperties {
         - frame: The current `ARFrame`
         - frameRate: The frame rate
      */
-    init(orientation: UIInterfaceOrientation, viewportSize: CGSize, viewportSizeDidChange: Bool, position: SIMD3<Float>, heading: Double, currentFrame: UInt, frame: ARFrame, frameRate: Double = 60) {
+    init(orientation: UIInterfaceOrientation, viewportSize: CGSize, viewportSizeDidChange: Bool, position: SIMD3<Float>, heading: Double, currentFrame: UInt, frame: ARFrame, frameRate: Double = 60, useDepth: Bool = false) {
         self.orientation = orientation
         self.viewportSize = viewportSize
         self.viewportSizeDidChange = viewportSizeDidChange
@@ -251,6 +253,7 @@ public struct CameraProperties {
         self.capturedImage = frame.capturedImage
         self.displayTransform = frame.displayTransform(for: orientation, viewportSize: viewportSize)
         self.rawFeaturePoints = frame.rawFeaturePoints
+        self.useDepth = useDepth
     }
 }
 
@@ -584,6 +587,7 @@ open class Renderer: NSObject {
         self.renderDestination = renderDestination
         self.textureBundle = textureBundle
         self.textureLoader = MTKTextureLoader(device: device)
+        self.matteGenerator = ARMatteGenerator(device: device, matteResolution: .half)
         super.init()
         
         self.session.delegate = self
@@ -621,7 +625,10 @@ open class Renderer: NSObject {
         
         initializeModules()
         
+        captureScope = sharedCaptureManager.makeCaptureScope(device: device)
+        
         state = .initialized
+        
         
     }
     /**
@@ -842,7 +849,15 @@ open class Renderer: NSObject {
             }
         }()
         
-        let cameraProperties = CameraProperties(orientation: orientation, viewportSize: viewportSize, viewportSizeDidChange: viewportSizeDidChange, position: cameraPosition, heading: currentCameraHeading ?? 0, currentFrame: currentFrameNumber, frame: currentFrame, frameRate: frameRate)
+        let useDepth: Bool = {
+             if #available(iOS 13.0, *) {
+                return session.configuration?.frameSemantics == ARConfiguration.FrameSemantics.personSegmentationWithDepth
+             } else {
+                return false
+            }
+        }()
+        
+        let cameraProperties = CameraProperties(orientation: orientation, viewportSize: viewportSize, viewportSizeDidChange: viewportSizeDidChange, position: cameraPosition, heading: currentCameraHeading ?? 0, currentFrame: currentFrameNumber, frame: currentFrame, frameRate: frameRate, useDepth: useDepth)
         
         //
         // Environment Properties
@@ -880,8 +895,17 @@ open class Renderer: NSObject {
         // pipeline (App, Metal, Drivers, GPU, etc)
         let _ = inFlightSemaphore.wait(timeout: DispatchTime.distantFuture)
         
+        captureScope?.begin()
+        
         // Create a new command buffer for each frame
         if let commandBuffer = commandQueue.makeCommandBuffer() {
+            
+            //
+            // Matte Textures
+            //
+            
+            alphaTexture = matteGenerator.generateMatte(from: currentFrame, commandBuffer: commandBuffer)
+            dilatedDepthTexture = matteGenerator.generateDilatedDepth(from: currentFrame, commandBuffer: commandBuffer)
             
             commandBuffer.label = "RenderCommandBuffer"
             var renderPasses = [RenderPass]()
@@ -956,17 +980,55 @@ open class Renderer: NSObject {
                 // close as possible to presenting it with the command buffer. The currentDrawable is
                 // a scarce resource and holding on to it too long may affect performance
                 if let mainRenderPassDescriptor = renderDestination.currentRenderPassDescriptor, let currentDrawable = renderDestination.currentDrawable {
-
-                    mainRenderPass.renderPassDescriptor = mainRenderPassDescriptor
+                    
+                    // First setup offline draw pass
+                    guard let sceneRenderDescriptor = mainRenderPassDescriptor.copy() as? MTLRenderPassDescriptor else {
+                        fatalError("Unable to create a render pass descriptor.")
+                    }
+                    
+                    sceneRenderDescriptor.colorAttachments[0].texture = sceneColorTexture
+                    sceneRenderDescriptor.colorAttachments[0].clearColor = MTLClearColor(red: 0.0, green: 0.0, blue: 0.0, alpha: 0.0)
+                    sceneRenderDescriptor.colorAttachments[0].loadAction = .clear
+                    sceneRenderDescriptor.colorAttachments[0].storeAction = .store
+                    
+                    sceneRenderDescriptor.depthAttachment.texture = sceneDepthTexture
+                    sceneRenderDescriptor.stencilAttachment.texture = sceneDepthTexture
+                    sceneRenderDescriptor.depthAttachment.clearDepth = 1.0
+                    sceneRenderDescriptor.depthAttachment.loadAction = .clear
+                    sceneRenderDescriptor.depthAttachment.storeAction = .store
+                    
+                    mainRenderPass.renderPassDescriptor = sceneRenderDescriptor
                     mainRenderPass.prepareRenderCommandEncoder(withCommandBuffer: commandBuffer)
-
+                    
                     // Draw
                     if let renderEncoder = mainRenderPass.renderCommandEncoder {
                         drawMainPass(with: renderEncoder)
                     } else {
                         print("WARNING: Could not create MTLRenderCommandEncoder. Aborting draw pass.")
                     }
+                    
+                    // Perform final composite pass
+                    // Here we take the targets we just rendered camera and scene into and decide whether
+                    // to hide or show virtual content.
+                    if let compositeRenderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: mainRenderPassDescriptor) {
+                        
+                        compositeRenderEncoder.label = "Composite Render Pass"
+                        
+                        // Composite images to final render targets
+                        drawCompositePass(with: compositeRenderEncoder)
+                        
+                    }
 
+//                    mainRenderPass.renderPassDescriptor = mainRenderPassDescriptor
+//                    mainRenderPass.prepareRenderCommandEncoder(withCommandBuffer: commandBuffer)
+//
+//                    // Draw
+//                    if let renderEncoder = mainRenderPass.renderCommandEncoder {
+//                        drawMainPass(with: renderEncoder)
+//                    } else {
+//                        print("WARNING: Could not create MTLRenderCommandEncoder. Aborting draw pass.")
+//                    }
+//
                     // Schedule a present once the framebuffer is complete using the current drawable
                     commandBuffer.present(currentDrawable)
 
@@ -983,12 +1045,6 @@ open class Renderer: NSObject {
             
             //
             // Setup Bloom Blur pass
-            //
-            
-            // TODO: implement
-            
-            //
-            // Setup Composite Pass
             //
             
             // TODO: implement
@@ -1011,6 +1067,8 @@ open class Renderer: NSObject {
             }
             
             commandBuffer.commit()
+            
+            captureScope?.end()
             
         }
         
@@ -1247,6 +1305,7 @@ open class Renderer: NSObject {
     
     fileprivate var hasUninitializedModules = false
     fileprivate var renderDestination: RenderDestinationProvider
+    fileprivate var matteGenerator: ARMatteGenerator
     fileprivate let inFlightSemaphore = DispatchSemaphore(value: Constants.maxInFlightFrames)
     // This is the current frame number modulo `maxInFlightFrames`
     fileprivate var uniformBufferIndex: Int = 0
@@ -1277,9 +1336,11 @@ open class Renderer: NSObject {
     // Precalculation Pass
     fileprivate var precalculationPass: ComputePass?
     fileprivate var vertexArgumentBuffer: MTLBuffer?
-    fileprivate var fragmentArgumentBuffer: MTLBuffer?
     fileprivate var vertexArgumentBufferSize: Int = 0
+    fileprivate var vertexArgumentBufferOffset: Int = 0
+    fileprivate var fragmentArgumentBuffer: MTLBuffer?
     fileprivate var fragmentArgumentBufferSize: Int = 0
+    fileprivate var fragmentArgumentBufferOffset: Int = 0
     
     // Main Pass
     fileprivate var mainRenderPass: RenderPass?
@@ -1287,6 +1348,16 @@ open class Renderer: NSObject {
     // Shadow Render Pass
     fileprivate var shadowMap: MTLTexture?
     fileprivate var shadowRenderPass: RenderPass?
+    
+    // Matting textures to be filled by ARMattingGenerator
+    fileprivate var alphaTexture: MTLTexture?
+    fileprivate var dilatedDepthTexture: MTLTexture?
+    
+    // Composite Pass
+    fileprivate var sceneColorTexture: MTLTexture?
+    fileprivate var sceneDepthTexture: MTLTexture?
+    fileprivate var compositePipelineState: MTLRenderPipelineState?
+    fileprivate var compositeDepthState: MTLDepthStencilState?
     
     // Keeping track of objects to render
     fileprivate var entitiesForRenderModule = [String: [AKEntity]]()
@@ -1308,6 +1379,9 @@ open class Renderer: NSObject {
     
     fileprivate var moduleErrors = [AKError]()
     
+    fileprivate let sharedCaptureManager = MTLCaptureManager.shared()
+    fileprivate var captureScope: MTLCaptureScope?
+    
     // MARK: ARKit Session Configuration
     
     fileprivate func createNewConfiguration() -> ARWorldTrackingConfiguration {
@@ -1320,6 +1394,11 @@ open class Renderer: NSObject {
         
         // Enable environment texturing
         configuration.environmentTexturing = .automatic
+        
+        // Enable people occlusion
+        if #available(iOS 13.0, *) {
+            configuration.frameSemantics.insert(.personSegmentationWithDepth)
+        }
         
         if let worldMap = worldMap {
             configuration.initialWorldMap = worldMap
@@ -1458,6 +1537,50 @@ open class Renderer: NSObject {
         mainRenderPipelineDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
         mainRenderPipelineDescriptor.sampleCount = renderDestination.sampleCount
         mainRenderPass?.templateRenderPipelineDescriptor = mainRenderPipelineDescriptor
+        
+        //
+        // Setup Composite Pass
+        //
+        
+        // Create render targets for offscreen camera image and scene render
+        let width = renderDestination.currentDrawable?.texture.width ?? 0
+        let height = renderDestination.currentDrawable?.texture.height ?? 0
+        
+        let colorDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: renderDestination.colorPixelFormat, width: width, height: height, mipmapped: false)
+        colorDesc.usage = [.renderTarget, .shaderRead]
+        colorDesc.resourceOptions = .storageModePrivate
+        sceneColorTexture = device.makeTexture(descriptor: colorDesc)
+        sceneColorTexture?.label = "Composite Color"
+        
+        let depthDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: renderDestination.depthStencilPixelFormat, width: width, height: height, mipmapped: false)
+        depthDesc.usage = [.renderTarget, .shaderRead]
+        depthDesc.resourceOptions = .storageModePrivate
+        sceneDepthTexture = device.makeTexture(descriptor: depthDesc)
+        sceneDepthTexture?.label = "Composite Depth"
+        
+        // Create composite pipeline
+        let compositeImageVertexFunction = defaultLibrary?.makeFunction(name: "compositeImageVertexTransform")
+        let compositeImageFragmentFunction = defaultLibrary?.makeFunction(name: "compositeImageFragmentShader")
+        
+        let compositePipelineStateDescriptor = MTLRenderPipelineDescriptor()
+        compositePipelineStateDescriptor.label = "Composite Pipeline"
+        compositePipelineStateDescriptor.sampleCount = renderDestination.sampleCount
+        compositePipelineStateDescriptor.vertexFunction = compositeImageVertexFunction
+        compositePipelineStateDescriptor.fragmentFunction = compositeImageFragmentFunction
+        compositePipelineStateDescriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
+        compositePipelineStateDescriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
+        compositePipelineStateDescriptor.stencilAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
+        
+        do {
+            try compositePipelineState = device.makeRenderPipelineState(descriptor: compositePipelineStateDescriptor)
+        } catch let error {
+            print("Failed to create composite pipeline state, error \(error)")
+        }
+        
+        let compositeDepthStateDescriptor = MTLDepthStencilDescriptor()
+        compositeDepthStateDescriptor.depthCompareFunction = .always
+        compositeDepthStateDescriptor.isDepthWriteEnabled = false
+        compositeDepthState = device.makeDepthStencilState(descriptor: compositeDepthStateDescriptor)
         
     }
     
@@ -1682,6 +1805,7 @@ open class Renderer: NSObject {
                 precalculationPass?.threadGroup = precalculationModule.loadPipeline(withMetalLibrary: defaultLibrary, renderDestination: renderDestination, textureBundle: textureBundle, forComputePass: precalculationPass)
                 vertexArgumentBuffer = precalculationModule.argumentOutputBuffer
                 vertexArgumentBufferSize = precalculationModule.argumentOutputBufferSize
+                vertexArgumentBufferOffset = precalculationModule.argumentOutputBufferOffset
             }
         }
         
@@ -1772,6 +1896,64 @@ open class Renderer: NSObject {
         }
         
         commandEncoder.endEncoding()
+    }
+    
+    // MARK: Composite Pass
+    
+    fileprivate func drawCompositePass(with commandEncoder: MTLRenderCommandEncoder) {
+        
+//        guard let compositRenderPass = compositRenderPass else {
+//            return
+//        }
+        
+        guard let cameraRenderModule = cameraRenderModule else {
+            return
+        }
+        
+        guard let sharedBuffersRenderModule = sharedBuffersRenderModule else {
+            return
+        }
+        
+        guard let textureY = cameraRenderModule.capturedImageTextureY, let textureCbCr = cameraRenderModule.capturedImageTextureCbCr else {
+            return
+        }
+        
+        guard let compositePipelineState = compositePipelineState, let compositeDepthState = compositeDepthState else {
+            return
+        }
+                
+        // Push a debug group allowing us to identify render commands in the GPU Frame Capture tool
+        commandEncoder.pushDebugGroup("CompositePass")
+                
+                // Set render command encoder state
+        commandEncoder.setCullMode(.none)
+        commandEncoder.setRenderPipelineState(compositePipelineState)
+        commandEncoder.setDepthStencilState(compositeDepthState)
+                
+                // Setup plane vertex buffers
+        commandEncoder.setVertexBuffer(sharedBuffersRenderModule.sharedUniformBuffer, offset: sharedBuffersRenderModule.sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
+        commandEncoder.setVertexBuffer(cameraRenderModule.imagePlaneVertexBuffer, offset: 0, index: Int(kBufferIndexCameraVertices.rawValue))
+        commandEncoder.setVertexBuffer(cameraRenderModule.scenePlaneVertexBuffer, offset: 0, index: Int(kBufferIndexSceneVerticies.rawValue))
+                
+        // Set any textures read/sampled from our render pipeline
+        commandEncoder.setFragmentTexture(CVMetalTextureGetTexture(textureY), index: Int(kTextureIndexY.rawValue))
+        commandEncoder.setFragmentTexture(CVMetalTextureGetTexture(textureCbCr), index: Int(kTextureIndexCbCr.rawValue))
+        
+        commandEncoder.setFragmentTexture(CVMetalTextureGetTexture(textureY), index: Int(kTextureIndexY.rawValue))
+        commandEncoder.setFragmentTexture(CVMetalTextureGetTexture(textureCbCr), index: Int(kTextureIndexCbCr.rawValue))
+        commandEncoder.setFragmentTexture(sceneColorTexture, index: Int(kTextureIndexSceneColor.rawValue))
+        commandEncoder.setFragmentTexture(sceneDepthTexture, index: Int(kTextureIndexSceneDepth.rawValue))
+        commandEncoder.setFragmentTexture(alphaTexture, index: Int(kTextureIndexAlpha.rawValue))
+        commandEncoder.setFragmentTexture(dilatedDepthTexture, index: Int(kTextureIndexDialatedDepth.rawValue))
+        
+        // Draw each submesh of our mesh
+        commandEncoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
+        
+        commandEncoder.popDebugGroup()
+        
+        // We're done encoding commands
+        commandEncoder.endEncoding()
+        
     }
     
     // MARK: Environment maps

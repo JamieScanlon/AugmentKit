@@ -233,6 +233,7 @@ class PrecalculationModule: PreRenderComputeModule {
                         }
                     }()
                     
+                    environmentUniforms?.pointee.ambientLightIntensity = ambientIntensity
                     environmentUniform.pointee.ambientLightColor = ambientLightColor// * ambientIntensity
                     
                     var directionalLightDirection : SIMD3<Float> = environmentProperties.directionalLightDirection
@@ -240,7 +241,7 @@ class PrecalculationModule: PreRenderComputeModule {
                     environmentUniform.pointee.directionalLightDirection = directionalLightDirection
                     
                     let directionalLightColor: SIMD3<Float> = SIMD3<Float>(0.6, 0.6, 0.6)
-                    environmentUniform.pointee.directionalLightColor = directionalLightColor * ambientIntensity
+                    environmentUniform.pointee.directionalLightColor = directionalLightColor// * ambientIntensity
                     
                     environmentUniform.pointee.directionalLightMVP = environmentProperties.directionalLightMVP
                     environmentUniform.pointee.shadowMVPTransformMatrix = shadowProperties.shadowMVPTransformMatrix

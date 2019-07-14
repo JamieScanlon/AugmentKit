@@ -82,6 +82,8 @@
 		96CACF7C2156A051009A8A20 /* RenderUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96CACF7B2156A051009A8A20 /* RenderUtilities.swift */; };
 		96CACF7E2156D3C9009A8A20 /* GeometryUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96CACF7D2156D3C9009A8A20 /* GeometryUtilities.swift */; };
 		96E0B5B121914B3300140317 /* ShadowShader.metal in Sources */ = {isa = PBXBuildFile; fileRef = 96E0B5B021914B3300140317 /* ShadowShader.metal */; };
+		96F611BB22DA50230081EBB4 /* GPUPassBuffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96F611BA22DA50230081EBB4 /* GPUPassBuffer.swift */; };
+		96F611BD22DAE2870081EBB4 /* DefaultComputeModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96F611BC22DAE2870081EBB4 /* DefaultComputeModule.swift */; };
 		96F79E3922B6E68A001F4B94 /* RenderModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96F79E3822B6E68A001F4B94 /* RenderModule.swift */; };
 		96F79E3B22B6E735001F4B94 /* ComputeModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96F79E3A22B6E735001F4B94 /* ComputeModule.swift */; };
 		96F79E3D22B6FE9E001F4B94 /* DrawCall.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96F79E3C22B6FE9E001F4B94 /* DrawCall.swift */; };
@@ -180,6 +182,8 @@
 		96CACF7B2156A051009A8A20 /* RenderUtilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RenderUtilities.swift; sourceTree = "<group>"; };
 		96CACF7D2156D3C9009A8A20 /* GeometryUtilities.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = GeometryUtilities.swift; sourceTree = "<group>"; };
 		96E0B5B021914B3300140317 /* ShadowShader.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = ShadowShader.metal; sourceTree = "<group>"; };
+		96F611BA22DA50230081EBB4 /* GPUPassBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GPUPassBuffer.swift; path = "/Users/marvinscanlon/Library/CloudStorage/iCloud Drive/Documents/AugmentKit/AugmentKit/Renderer/GPUPassBuffer.swift"; sourceTree = "<absolute>"; };
+		96F611BC22DAE2870081EBB4 /* DefaultComputeModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DefaultComputeModule.swift; sourceTree = "<group>"; };
 		96F79E3822B6E68A001F4B94 /* RenderModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RenderModule.swift; sourceTree = "<group>"; };
 		96F79E3A22B6E735001F4B94 /* ComputeModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComputeModule.swift; sourceTree = "<group>"; };
 		96F79E3C22B6FE9E001F4B94 /* DrawCall.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrawCall.swift; sourceTree = "<group>"; };
@@ -227,13 +231,11 @@
 				7D6E6B731F8F283C00EFC667 /* module.modulemap */,
 				7D88D7AE1F0AFD550009A154 /* ShaderTypes.h */,
 				7D5FDA3D1FC9FB4400BAE104 /* Renderer.swift */,
+				96F611BA22DA50230081EBB4 /* GPUPassBuffer.swift */,
 				7DAA7254211D48EE00AA11AF /* BRDFFunctions.h */,
 				7DAA7255211D4A3B00AA11AF /* Common.h */,
 				96CACF7B2156A051009A8A20 /* RenderUtilities.swift */,
-				965F894E2186BD5E00D1B195 /* RenderPass.swift */,
-				961D705C21FCCB00006DF951 /* ComputePass.swift */,
-				96F79E3C22B6FE9E001F4B94 /* DrawCall.swift */,
-				96F79E3E22B6FF6A001F4B94 /* DrawCallGroup.swift */,
+				96F611B922DA1BF80081EBB4 /* Passes */,
 			);
 			path = Renderer;
 			sourceTree = "<group>";
@@ -253,12 +255,12 @@
 				7DFCF6021FC08CD300E8A560 /* ImageCaptureShaders.metal */,
 				7DFCF6041FC096A900E8A560 /* PointShader.metal */,
 				7D53471E203A961A00714A6F /* PathShader.metal */,
-				7DAA7250211D370400AA11AF /* BRDFFunctions.metal */,
 				7DAA7252211D395900AA11AF /* Common.metal */,
 				96E0B5B021914B3300140317 /* ShadowShader.metal */,
 				964EF2A621C5C51C00967FD6 /* SurfaceShader.metal */,
 				961D705A21FCC4F7006DF951 /* PrecalculationComputeShader.metal */,
 				9681309522C1C8B000AE9EE9 /* CompositeShaders.metal */,
+				7DAA7250211D370400AA11AF /* BRDFFunctions.metal */,
 			);
 			path = Shaders;
 			sourceTree = "<group>";
@@ -277,6 +279,7 @@
 				7D5FDA391FC9CFA400BAE104 /* TrackingPointsRenderModule.swift */,
 				7D818908201EB5DB0021694F /* PathsRenderModule.swift */,
 				965A0B1421F4D57A009D4E7F /* PrecalculationModule.swift */,
+				96F611BC22DAE2870081EBB4 /* DefaultComputeModule.swift */,
 			);
 			path = "Render Modules";
 			sourceTree = "<group>";
@@ -432,6 +435,17 @@
 			path = Libraries;
 			sourceTree = "<group>";
 		};
+		96F611B922DA1BF80081EBB4 /* Passes */ = {
+			isa = PBXGroup;
+			children = (
+				965F894E2186BD5E00D1B195 /* RenderPass.swift */,
+				961D705C21FCCB00006DF951 /* ComputePass.swift */,
+				96F79E3C22B6FE9E001F4B94 /* DrawCall.swift */,
+				96F79E3E22B6FF6A001F4B94 /* DrawCallGroup.swift */,
+			);
+			path = Passes;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXHeadersBuildPhase section */
@@ -550,6 +564,7 @@
 				7D697A00212881DB000106DF /* AugmentedUIViewSurface.swift in Sources */,
 				7D5B25A72069626900EFA3C6 /* AKRealSurfaceAnchor.swift in Sources */,
 				7D8A0A822013D143006CAAAD /* AKHeading.swift in Sources */,
+				96F611BD22DAE2870081EBB4 /* DefaultComputeModule.swift in Sources */,
 				7D1FC692213C5EA7006CB649 /* AKWorldMap.swift in Sources */,
 				96904C582294F5EB00584D4F /* AKCube.swift in Sources */,
 				7D6E6B6E1F8F1CDB00EFC667 /* LocalStoreManager.swift in Sources */,
@@ -576,6 +591,7 @@
 				7D5FDA341FC7333200BAE104 /* SharedBuffersRenderModule.swift in Sources */,
 				7D5FDA361FC73AD000BAE104 /* CameraPlaneRenderModule.swift in Sources */,
 				7D6979F621287CF3000106DF /* AKAugmentedAnchor.swift in Sources */,
+				96F611BB22DA50230081EBB4 /* GPUPassBuffer.swift in Sources */,
 				7D6E6B701F8F1CDB00EFC667 /* WorldLocationManager.swift in Sources */,
 				96F79E3B22B6E735001F4B94 /* ComputeModule.swift in Sources */,
 				7D6E6B641F8F1CBC00EFC667 /* AKWorld.swift in Sources */,

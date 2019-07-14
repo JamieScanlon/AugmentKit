@@ -361,6 +361,7 @@ class SurfacesRenderModule: RenderModule {
                     }
                 }()
                 
+                environmentUniforms?.pointee.ambientLightIntensity = ambientIntensity
                 environmentUniforms?.pointee.ambientLightColor = ambientLightColor// * ambientIntensity
                 
                 var directionalLightDirection : SIMD3<Float> = environmentProperties.directionalLightDirection
@@ -368,7 +369,7 @@ class SurfacesRenderModule: RenderModule {
                 environmentUniforms?.pointee.directionalLightDirection = directionalLightDirection
                 
                 let directionalLightColor: SIMD3<Float> = SIMD3<Float>(0.6, 0.6, 0.6)
-                environmentUniforms?.pointee.directionalLightColor = directionalLightColor * ambientIntensity
+                environmentUniforms?.pointee.directionalLightColor = directionalLightColor// * ambientIntensity
                 
                 environmentUniforms?.pointee.directionalLightMVP = environmentProperties.directionalLightMVP
                 environmentUniforms?.pointee.shadowMVPTransformMatrix = shadowProperties.shadowMVPTransformMatrix

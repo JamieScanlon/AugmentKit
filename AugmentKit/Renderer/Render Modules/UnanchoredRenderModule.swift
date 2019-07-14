@@ -437,6 +437,7 @@ class UnanchoredRenderModule: RenderModule {
                         
                         let environmentUniforms = environmentUniformBufferAddress?.assumingMemoryBound(to: EnvironmentUniforms.self).advanced(by: index)
                         
+                        environmentUniforms?.pointee.ambientLightIntensity = ambientIntensity
                         environmentUniforms?.pointee.ambientLightColor = ambientLightColor ?? SIMD3<Float>(0.5, 0.5, 0.5)
                         
                         var directionalLightDirection : SIMD3<Float> = environmentProperties.directionalLightDirection
@@ -444,7 +445,7 @@ class UnanchoredRenderModule: RenderModule {
                         environmentUniforms?.pointee.directionalLightDirection = directionalLightDirection
                         
                         let directionalLightColor: SIMD3<Float> = SIMD3<Float>(0.6, 0.6, 0.6)
-                        environmentUniforms?.pointee.directionalLightColor = directionalLightColor * (ambientIntensity ?? 1)
+                        environmentUniforms?.pointee.directionalLightColor = directionalLightColor// * (ambientIntensity ?? 1)
                         
                         environmentUniforms?.pointee.directionalLightMVP = environmentProperties.directionalLightMVP
                         environmentUniforms?.pointee.shadowMVPTransformMatrix = shadowProperties.shadowMVPTransformMatrix
@@ -581,6 +582,7 @@ class UnanchoredRenderModule: RenderModule {
                         
                         let environmentUniforms = environmentUniformBufferAddress?.assumingMemoryBound(to: EnvironmentUniforms.self).advanced(by: index)
                         
+                        environmentUniforms?.pointee.ambientLightIntensity = ambientIntensity
                         environmentUniforms?.pointee.ambientLightColor = ambientLightColor ?? SIMD3<Float>(0.5, 0.5, 0.5)
                         
                         var directionalLightDirection : SIMD3<Float> = environmentProperties.directionalLightDirection

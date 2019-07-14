@@ -1342,6 +1342,11 @@ open class Renderer: NSObject {
     fileprivate var fragmentArgumentBufferSize: Int = 0
     fileprivate var fragmentArgumentBufferOffset: Int = 0
     
+    // IBL Passes
+    fileprivate var computeBDRFLookupPass: ComputePass?
+    fileprivate var diffuseIBLCubePass: ComputePass?
+    fileprivate var specularIBLCubePass: ComputePass?
+    
     // Main Pass
     fileprivate var mainRenderPass: RenderPass?
     
@@ -1455,6 +1460,29 @@ open class Renderer: NSObject {
         precalculationPass?.usesEffects = true
         precalculationPass?.usesCameraOutput = false
         precalculationPass?.usesShadows = false
+        
+        let preComputeModule = PrecalculationModule()
+        var mutableComputeModules = computeModules
+        mutableComputeModules.append(preComputeModule)
+        computeModules = mutableComputeModules
+        hasUninitializedModules = true
+        
+        //
+        // Setup IBL Passes
+        //
+        
+        fileprivate var diffuseIBLCubePass: ComputePass?
+        fileprivate var specularIBLCubePass: ComputePass?
+        
+        computeBDRFLookupPass = ComputePass(withDevice: device)
+        computeBDRFLookupPass?.name = "BDRF Lookup Pass"
+        computeBDRFLookupPass?.usesGeometry = false
+        computeBDRFLookupPass?.usesLighting = false
+        computeBDRFLookupPass?.usesSharedBuffer = false
+        computeBDRFLookupPass?.usesEnvironment = true
+        computeBDRFLookupPass?.usesEffects = false
+        computeBDRFLookupPass?.usesCameraOutput = false
+        computeBDRFLookupPass?.usesShadows = false
         
         let preComputeModule = PrecalculationModule()
         var mutableComputeModules = computeModules

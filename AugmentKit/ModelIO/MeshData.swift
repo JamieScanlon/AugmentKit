@@ -294,4 +294,7 @@ public struct AnimatedSkeleton: JointPathRemappable {
 public struct EnvironmentData {
     var hasEnvironmentMap = false
     var environmentTexture: MTLTexture?
+    var diffuseIBLTexture: MTLTexture?
+    var specularIBLTexture: MTLTexture?
+    var bdrfLookupTexture: MTLTexture?
 }

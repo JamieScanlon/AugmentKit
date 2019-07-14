@@ -90,7 +90,7 @@ extension PreRenderComputeModule {
             blue = 255
         }
         
-        let clamped = clamp(SIMD3<Float>(red, green, blue), min: 0, max: 255)
+        let clamped = clamp(SIMD3<Float>(red, green, blue), min: 0, max: 255) / 255
         return SIMD3<Float>(clamped.x, clamped.y, clamped.z)
         
     }

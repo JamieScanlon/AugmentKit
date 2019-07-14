@@ -32,35 +32,35 @@
 #include <simd/simd.h>
 
 vector_float3 Fresnel(vector_float3 f0, float lDoth);
-float distribution(float linearRoughness, float nDoth);
+float distribution(float roughness, float nDoth);
 float distributionAnisotropic(float at, float ab, float tDoth, float bDoth, float nDoth);
-float distributionClearCoat(float linearRoughness, float nDoth);
-float distributionCloth(float linearRoughness, float nDoth);
-float visibility(float linearRoughness, float nDotv, float nDotl);
-float visibilityAnisotropic(float linearRoughness, float at, float ab, float tDotv, float bDotv, float tDotl, float bDotl, float nDotv, float nDotl);
-float visibilityClearCoat(float roughness, float linearRoughness, float lDoth);
+float distributionClearCoat(float roughness, float nDoth);
+float distributionCloth(float roughness, float nDoth);
+float visibility(float roughness, float nDotv, float nDotl);
+float visibilityAnisotropic(float roughness, float at, float ab, float tDotv, float bDotv, float tDotl, float bDotl, float nDotv, float nDotl);
+float visibilityClearCoat(float lDoth);
 float visibilityCloth(float nDotv, float nDotl);
 
-float D_TrowbridgeReitz(float linearRoughness, float nDoth);
+float D_TrowbridgeReitz(float roughness, float nDoth);
 float D_GTR2_aniso(float nDoth, float hDotx, float hDoty, float ax, float ay);
-float D_GGX(float linearRoughness, float nDoth);
+float D_GGX(float roughness, float nDoth);
 float D_GGX_Anisotropic(float at, float ab, float tDoth, float bDoth, float nDoth);
-float D_Ashikhmin(float linearRoughness, float nDoth);
-float D_Charlie(float linearRoughness, float nDoth);
-float V_SmithG_GGX(float linearRoughness, float nDotl, float nDotv);
-float V_SmithGGXCorrelated(float linearRoughness, float nDotv, float nDotl);
-float V_SmithGGXCorrelated_Fast(float linearRoughness, float nDotv, float nDotl);
+float D_Ashikhmin(float roughness, float nDoth);
+float D_Charlie(float roughness, float nDoth);
+float V_SmithG_GGX(float roughness, float nDotl, float nDotv);
+float V_SmithGGXCorrelated(float roughness, float nDotv, float nDotl);
+float V_SmithGGXCorrelated_Fast(float roughness, float nDotv, float nDotl);
 float V_SmithGGXCorrelated_Anisotropic(float at, float ab, float tDotv, float bDotv, float tDotl, float bDotl, float nDotv, float nDotl);
 float V_Kelemen(float lDoth);
-float V_Neubelt(float linearRoughness, float nDotv, float nDotl);
+float V_Neubelt(float roughness, float nDotv, float nDotl);
 vector_float3 F_Schlick3(vector_float3 f0, float f90, float vDoth);
 float F_Schlick(float f0, float f90, float vDoth);
 
 float Fd_Lambert();
-float Fd_Burley(float linearRoughness, float nDotv, float nDotl, float lDoth);
+float Fd_Burley(float roughness, float nDotv, float nDotl, float lDoth);
 float Fd_Wrap(float nDotl, float w);
 
-float diffuse(float linearRoughness, float nDotv, float nDotl, float lDoth);
+float diffuse(float roughness, float nDotv, float nDotl, float lDoth);
 
 float iorToF0(float transmittedIor, float incidentIor);
 float f0ToIor(float f0);

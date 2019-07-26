@@ -1,8 +1,27 @@
 //
 //  GPUPassBuffer.swift
 //  
+//  MIT License
 //
-//  Created by Marvin Scanlon on 7/13/19.
+//  Copyright (c) 2019 JamieScanlon
+//
+//  Permission is hereby granted, free of charge, to any person obtaining a copy
+//  of this software and associated documentation files (the "Software"), to deal
+//  in the Software without restriction, including without limitation the rights
+//  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+//  copies of the Software, and to permit persons to whom the Software is
+//  furnished to do so, subject to the following conditions:
+//
+//  The above copyright notice and this permission notice shall be included in all
+//  copies or substantial portions of the Software.
+//
+//  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+//  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+//  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+//  SOFTWARE.
 //
 
 import Foundation
@@ -22,6 +41,7 @@ class GPUPassBuffer<T> {
     var instanceCount: Int = 1
     var label: String?
     var resourceOptions: MTLResourceOptions = []
+    var shaderAttributeIndex: Int
     
     /// Get a pointer to the beginning og the current frame
     var currentBufferFramePointer: UnsafeMutablePointer<T>? {
@@ -34,10 +54,12 @@ class GPUPassBuffer<T> {
     }
     
     /// Initialize with the number of instances of `T` per frame and the number of frames. Creating a `GPUPassBuffer` instance does not create the buffer. This lets you control when and how this is done. To create the buffer you can either call `initialize(withDevice device:, options:)` or you can create an `MTLBuffer` yourself and assign it ti the `buffer` property. Until a buffer is initialized, all of the pointer methods will return nil.
+    /// - Parameter shaderAttributeIndex: The metal buffer attribute index. This index should correspond with the shader argument definition (i.e. `device T *myBuffer [[buffer(shaderAttributeIndex)]]`)
     /// - Parameter instanceCount: The number of instances of `T` per pass. Defaults to `1`
     /// - Parameter frameCount: The number of frames worth of data that the buffer contains. Defaults to `1`
     /// - Parameter label: A label used for helping to identify this buffer. If a label is provided, it will be assigned to the buffers label property when calling `initialize(withDevice device:, options:)`
-    init(instanceCount: Int = 1, frameCount: Int = 1, label: String? = nil) {
+    init(shaderAttributeIndex: Int, instanceCount: Int = 1, frameCount: Int = 1, label: String? = nil) {
+        self.shaderAttributeIndex = shaderAttributeIndex
         self.instanceCount = instanceCount
         self.frameCount = frameCount
         self.label = label
@@ -56,14 +78,16 @@ class GPUPassBuffer<T> {
         
     }
     
-    /// Update the current frame index. This will cause subsequent calls to `currentBufferFramePointer` and `currentBufferInstancePointer(withInstanceIndex:)` to return updated pointer addresses.
+    /// Update the current frame index. When `resourceOptions` is `.storageModeShared`, this will cause subsequent calls to `currentBufferFramePointer` and `currentBufferInstancePointer(withInstanceIndex:)` to return updated pointer addresses. When `resourceOptions` is `.storageModePrivate` or `.storageModeMemoryless` access to the buffer is restricted and attempting to retrieve a pointer fails.
     /// - Parameter frameIndex: The frame index. Must be less than the frame count.
     func update(toFrame frameIndex: Int) {
         guard frameIndex < frameCount else {
             return
         }
         currentBufferFrameOffset = alignedSize * frameIndex
-        currentBufferFrameAddress = buffer?.contents().advanced(by: currentBufferFrameOffset)
+        if resourceOptions == .storageModeShared {
+            currentBufferFrameAddress = buffer?.contents().advanced(by: currentBufferFrameOffset)
+        }
     }
     
     /// Returns a pointer to the onstance of the `T` object at the given inxex. This method takes into account the frame index as set by `update(toFrame:)`

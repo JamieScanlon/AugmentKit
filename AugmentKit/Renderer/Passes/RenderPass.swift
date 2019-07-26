@@ -91,7 +91,7 @@ class RenderPass {
         self.uuid = uuid
     }
     
-    func prepareRenderCommandEncoder(withCommandBuffer commandBuffer: MTLCommandBuffer) {
+    func prepareCommandEncoder(withCommandBuffer commandBuffer: MTLCommandBuffer) {
         
         guard let renderPassDescriptor = renderPassDescriptor else {
             return

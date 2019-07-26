@@ -885,7 +885,7 @@ open class Renderer: NSObject {
         //
         // Shadow Properties
         //
-        let argumentBufferProperties = ArgumentBufferProperties(vertexArgumentBuffer: vertexArgumentBuffer, fragmentArgumentBuffer: fragmentArgumentBuffer, vertexArgumentBufferSize: vertexArgumentBufferSize, fragmentArgumentBufferSize: fragmentArgumentBufferSize)
+        let argumentBufferProperties = ArgumentBufferProperties(vertexArgumentBuffer: precalculationOutputBuffer?.buffer, fragmentArgumentBuffer: nil, vertexArgumentBufferSize: precalculationOutputBuffer?.alignedSize ?? 0, fragmentArgumentBufferSize: 0)
         
         //
         // Encode Cammand Buffer
@@ -919,7 +919,7 @@ open class Renderer: NSObject {
                 }
             }
             computeModules.forEach { module in
-                if module.state == .ready {
+                if  module.state == .ready {
                     module.updateBufferState(withBufferIndex: uniformBufferIndex)
                 }
             }
@@ -937,7 +937,7 @@ open class Renderer: NSObject {
                 prepareToDraw(forCameraProperties: cameraProperties, environmentProperties: environmentProperties, shadowProperties: shadowProperties, renderPass: mainRenderPass)
                 
                 // Draw
-                precalculationPass.prepareRenderCommandEncoder(withCommandBuffer: commandBuffer)
+                precalculationPass.prepareCommandEncoder(withCommandBuffer: commandBuffer)
                 if let myComputeCommandEncoder = precalculationPass.computeCommandEncoder {
                     dispatchComputePass(with: myComputeCommandEncoder)
                 } else {
@@ -956,7 +956,7 @@ open class Renderer: NSObject {
                 updateBuffers(forCameraProperties: cameraProperties, environmentProperties: environmentProperties, shadowProperties: shadowProperties, argumentBufferProperties: argumentBufferProperties, renderPass: shadowRenderPass)
                 
                 // Draw
-                shadowRenderPass.prepareRenderCommandEncoder(withCommandBuffer: commandBuffer)
+                shadowRenderPass.prepareCommandEncoder(withCommandBuffer: commandBuffer)
                 if let shadowRenderEncoder = shadowRenderPass.renderCommandEncoder {
                     drawShadowPass(with: shadowRenderEncoder)
                 } else {
@@ -998,7 +998,7 @@ open class Renderer: NSObject {
                     sceneRenderDescriptor.depthAttachment.storeAction = .store
                     
                     mainRenderPass.renderPassDescriptor = sceneRenderDescriptor
-                    mainRenderPass.prepareRenderCommandEncoder(withCommandBuffer: commandBuffer)
+                    mainRenderPass.prepareCommandEncoder(withCommandBuffer: commandBuffer)
                     
                     // Draw
                     if let renderEncoder = mainRenderPass.renderCommandEncoder {
@@ -1020,7 +1020,7 @@ open class Renderer: NSObject {
                     }
 
 //                    mainRenderPass.renderPassDescriptor = mainRenderPassDescriptor
-//                    mainRenderPass.prepareRenderCommandEncoder(withCommandBuffer: commandBuffer)
+//                    mainRenderPass.prepareCommandEncoder(withCommandBuffer: commandBuffer)
 //
 //                    // Draw
 //                    if let renderEncoder = mainRenderPass.renderCommandEncoder {
@@ -1314,7 +1314,7 @@ open class Renderer: NSObject {
     
     // Modules
     fileprivate var renderModules: [RenderModule] = []
-    fileprivate var computeModules = [ComputeModule]()
+    fileprivate var computeModules = [ShaderModule]()
     fileprivate var sharedModulesForModule = [String: [SharedRenderModule]]()
     fileprivate var cameraRenderModule: CameraPlaneRenderModule?
     fileprivate var sharedBuffersRenderModule: SharedBuffersRenderModule?
@@ -1334,18 +1334,23 @@ open class Renderer: NSObject {
     fileprivate var commandQueue: MTLCommandQueue?
     
     // Precalculation Pass
-    fileprivate var precalculationPass: ComputePass?
-    fileprivate var vertexArgumentBuffer: MTLBuffer?
-    fileprivate var vertexArgumentBufferSize: Int = 0
-    fileprivate var vertexArgumentBufferOffset: Int = 0
-    fileprivate var fragmentArgumentBuffer: MTLBuffer?
-    fileprivate var fragmentArgumentBufferSize: Int = 0
-    fileprivate var fragmentArgumentBufferOffset: Int = 0
+    fileprivate var precalculationComputeModule: PrecalculationModule?
+    fileprivate var precalculationPass: ComputePass<PrecalculatedParameters>?
+    fileprivate var precalculationOutputBuffer: GPUPassBuffer<PrecalculatedParameters>?
+//    fileprivate var vertexArgumentBuffer: MTLBuffer?
+//    fileprivate var vertexArgumentBufferSize: Int = 0
+//    fileprivate var vertexArgumentBufferOffset: Int = 0
+//    fileprivate var fragmentArgumentBuffer: MTLBuffer?
+//    fileprivate var fragmentArgumentBufferSize: Int = 0
+//    fileprivate var fragmentArgumentBufferOffset: Int = 0
     
     // IBL Passes
-    fileprivate var computeBDRFLookupPass: ComputePass?
-    fileprivate var diffuseIBLCubePass: ComputePass?
-    fileprivate var specularIBLCubePass: ComputePass?
+    fileprivate var diffuseIBLCubePass: ComputePass<Any>?
+    fileprivate var specularIBLCubePass: ComputePass<Any>?
+    fileprivate var computeBDRFLookupPass: ComputePass<Any>?
+    fileprivate var diffuseIBLCube: MTLTexture?
+    fileprivate var specularIBLCube: MTLTexture?
+    fileprivate var brdfLUT: MTLTexture?
     
     // Main Pass
     fileprivate var mainRenderPass: RenderPass?
@@ -1448,8 +1453,12 @@ open class Renderer: NSObject {
         commandQueue = device.makeCommandQueue()
         
         //
-        // Setup Precalculation Pass
+        // Compute Passes
         //
+        
+        var mutableComputeModules = computeModules
+        
+        // Precalculation Pass
         
         precalculationPass = ComputePass(withDevice: device)
         precalculationPass?.name = "Precalculation Pass"
@@ -1461,18 +1470,63 @@ open class Renderer: NSObject {
         precalculationPass?.usesCameraOutput = false
         precalculationPass?.usesShadows = false
         
+        precalculationOutputBuffer = GPUPassBuffer<PrecalculatedParameters>(shaderAttributeIndex: Int(kBufferIndexPrecalculationOutputBuffer.rawValue), instanceCount: Constants.maxInstances, frameCount: Constants.maxInFlightFrames, label: "Precalculation Pass Output Buffer")
+        precalculationPass?.outputBuffer = precalculationOutputBuffer
+        
         let preComputeModule = PrecalculationModule()
-        var mutableComputeModules = computeModules
-        mutableComputeModules.append(preComputeModule)
-        computeModules = mutableComputeModules
-        hasUninitializedModules = true
+        preComputeModule.computePass = precalculationPass
+        mutableComputeModules.append(AnyComputeModule(preComputeModule))
+        precalculationComputeModule = preComputeModule
         
-        //
-        // Setup IBL Passes
-        //
+        // Diffuse IBL
         
-        fileprivate var diffuseIBLCubePass: ComputePass?
-        fileprivate var specularIBLCubePass: ComputePass?
+        diffuseIBLCubePass = ComputePass(withDevice: device)
+        diffuseIBLCubePass?.name = "Diffuse IBL Pass"
+        diffuseIBLCubePass?.usesGeometry = false
+        diffuseIBLCubePass?.usesLighting = false
+        diffuseIBLCubePass?.usesSharedBuffer = false
+        diffuseIBLCubePass?.usesEnvironment = true
+        diffuseIBLCubePass?.usesEffects = false
+        diffuseIBLCubePass?.usesCameraOutput = false
+        diffuseIBLCubePass?.usesShadows = false
+        
+        let diffuseIBLTextureDesc = MTLTextureDescriptor.textureCubeDescriptor(pixelFormat: .rgba16Float, size: 64, mipmapped: false)
+        diffuseIBLTextureDesc.resourceOptions = .storageModePrivate
+        diffuseIBLTextureDesc.usage = [.shaderRead, .shaderWrite]
+        diffuseIBLCube = device.makeTexture(descriptor: diffuseIBLTextureDesc)
+        diffuseIBLCube?.label = "Diffuse IBL Cubemap"
+        diffuseIBLCubePass?.outputTexture = diffuseIBLCube
+        
+        let diffuseIBLComputeModule = DefaultComputeModule<Any>()
+        diffuseIBLComputeModule.instanceCount = 256 // Produces a thread group size of 16x16x1
+        diffuseIBLComputeModule.threadgroupDepth = 6
+        diffuseIBLComputeModule.computePass = diffuseIBLCubePass
+        mutableComputeModules.append(AnyComputeModule(diffuseIBLComputeModule))
+        
+        // Specular IBL
+        
+        specularIBLCubePass = ComputePass(withDevice: device)
+        specularIBLCubePass?.name = "Specular IBL Pass"
+        specularIBLCubePass?.usesGeometry = false
+        specularIBLCubePass?.usesLighting = false
+        specularIBLCubePass?.usesSharedBuffer = false
+        specularIBLCubePass?.usesEnvironment = true
+        specularIBLCubePass?.usesEffects = false
+        specularIBLCubePass?.usesCameraOutput = false
+        specularIBLCubePass?.usesShadows = false
+        
+        let specularIBLTextureDesc = MTLTextureDescriptor.textureCubeDescriptor(pixelFormat: .rgba16Float, size: 256, mipmapped: true)
+        specularIBLTextureDesc.resourceOptions = .storageModePrivate
+        specularIBLTextureDesc.usage = [.shaderRead, .shaderWrite]
+        specularIBLCube = device.makeTexture(descriptor: specularIBLTextureDesc)
+        specularIBLCube?.label = "Specular IBL Cubemap"
+        specularIBLCubePass?.outputTexture = specularIBLCube
+        
+        let specularIBLComputeModule = DefaultComputeModule<Any>()
+        specularIBLComputeModule.computePass = specularIBLCubePass
+        mutableComputeModules.append(AnyComputeModule(specularIBLComputeModule))
+        
+        // BRDF Lookup Table
         
         computeBDRFLookupPass = ComputePass(withDevice: device)
         computeBDRFLookupPass?.name = "BDRF Lookup Pass"
@@ -1484,11 +1538,21 @@ open class Renderer: NSObject {
         computeBDRFLookupPass?.usesCameraOutput = false
         computeBDRFLookupPass?.usesShadows = false
         
-        let preComputeModule = PrecalculationModule()
-        var mutableComputeModules = computeModules
-        mutableComputeModules.append(preComputeModule)
-        computeModules = mutableComputeModules
+        let brdfLUTTextureDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rg16Float, width: 128, height: 128, mipmapped: false)
+        brdfLUTTextureDesc.resourceOptions = .storageModeMemoryless
+        brdfLUTTextureDesc.usage = [.shaderRead, .shaderWrite]
+        brdfLUT = device.makeTexture(descriptor: brdfLUTTextureDesc)
+        brdfLUT?.label = "BDRF Lookup"
+        computeBDRFLookupPass?.outputTexture = brdfLUT
+        
+        let computeBDRFLookupComputeModule = DefaultComputeModule<Any>()
+        computeBDRFLookupComputeModule.instanceCount = 256 // Produces a thread group size of 16x16x1
+        computeBDRFLookupComputeModule.threadgroupDepth = 6
+        computeBDRFLookupComputeModule.computePass = computeBDRFLookupPass
+        mutableComputeModules.append(AnyComputeModule(computeBDRFLookupComputeModule))
+        
         hasUninitializedModules = true
+        computeModules = mutableComputeModules
         
         //
         // Setup Shadow Pass
@@ -1829,11 +1893,11 @@ open class Renderer: NSObject {
             }
         }
         computeModules.filter({moduleIdentifiers.contains($0.moduleIdentifier)}).forEach { module in
-            if let precalculationModule = module as? PrecalculationModule {
+            if let precalculationModule = module as? AnyComputeModule<PrecalculatedParameters> {
                 precalculationPass?.threadGroup = precalculationModule.loadPipeline(withMetalLibrary: defaultLibrary, renderDestination: renderDestination, textureBundle: textureBundle, forComputePass: precalculationPass)
-                vertexArgumentBuffer = precalculationModule.argumentOutputBuffer
-                vertexArgumentBufferSize = precalculationModule.argumentOutputBufferSize
-                vertexArgumentBufferOffset = precalculationModule.argumentOutputBufferOffset
+//                vertexArgumentBuffer = precalculationModule.argumentOutputBuffer
+//                vertexArgumentBufferSize = precalculationModule.argumentOutputBufferSize
+//                vertexArgumentBufferOffset = precalculationModule.argumentOutputBufferOffset
             }
         }
         
@@ -1844,11 +1908,9 @@ open class Renderer: NSObject {
         let allEntities: [AKEntity] = entitiesForRenderModule.flatMap { (key, value) in
             return value
         }
-        // Update Buffers
-        computeModules.forEach { module in
-            if let preRenderComputeModule = module as? PreRenderComputeModule, let precalculationPass = precalculationPass, preRenderComputeModule.state == .ready {
-                preRenderComputeModule.prepareToDraw(withAllEntities: allEntities, cameraProperties: cameraProperties, environmentProperties: environmentProperties, shadowProperties: shadowProperties, computePass: precalculationPass, renderPass: renderPass)
-            }
+        // Update precalculation module
+        if let preRenderComputeModule = precalculationComputeModule, let precalculationPass = precalculationPass, preRenderComputeModule.state == .ready {
+            preRenderComputeModule.prepareToDraw(withAllEntities: allEntities, cameraProperties: cameraProperties, environmentProperties: environmentProperties, shadowProperties: shadowProperties, computePass: precalculationPass, renderPass: renderPass)
         }
     }
     
@@ -1918,8 +1980,10 @@ open class Renderer: NSObject {
         
         // Dispatch
         computeModules.forEach { module in
-            if let precalculationModule = module as? PrecalculationModule, let precalculationPass = precalculationPass, precalculationModule.state == .ready {
+            if let precalculationModule = module as? AnyComputeModule<PrecalculatedParameters>, let precalculationPass = precalculationPass, precalculationModule.state == .ready {
                 precalculationModule.dispatch(withComputePass: precalculationPass, sharedModules: sharedModulesForModule[precalculationModule.moduleIdentifier])
+            } else if let aModule = module as? DefaultComputeModule<Any> {
+                aModule.dispatch(withComputePass: nil, sharedModules: nil)
             }
         }
         

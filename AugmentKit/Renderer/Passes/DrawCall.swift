@@ -139,7 +139,7 @@ struct DrawCall {
     }
     
     /// Prepares the Render Command Encoder with the draw call state.
-    /// You must call `prepareRenderCommandEncoder(withCommandBuffer:)` before calling this method
+    /// You must call `prepareCommandEncoder(withCommandBuffer:)` before calling this method
     func prepareDrawCall(withRenderPass renderPass: RenderPass) {
         
         guard let renderCommandEncoder = renderPass.renderCommandEncoder else {

@@ -26,6 +26,7 @@
 //
 
 import Foundation
+import AugmentKitShader
 
 // MARK: - ThreadGroup
 
@@ -64,23 +65,11 @@ struct ThreadGroup {
         
     }
     
-    /// Prepares the Compute Command Encoder with the compute pipeline state.
-    /// You must call `prepareRenderCommandEncoder(withCommandBuffer:)` before calling this method
-    func prepareThreadGroup(withComputePass computePass: ComputePass) {
-        
-        guard let computeCommandEncoder = computePass.computeCommandEncoder else {
-            return
-        }
-        
-        computeCommandEncoder.setComputePipelineState(computePipelineState)
-        
-    }
-    
 }
 
 // MARK: - ComputePass
 
-class ComputePass {
+class ComputePass<Out> {
     
     fileprivate(set) var computeCommandEncoder: MTLComputeCommandEncoder?
     
@@ -88,6 +77,7 @@ class ComputePass {
     var name: String?
     var uuid: UUID
     var threadGroup: ThreadGroup?
+    var functionName: String?
     
     var usesGeometry = true
     var usesLighting = false
@@ -97,12 +87,26 @@ class ComputePass {
     var usesCameraOutput = false
     var usesShadows = false
     
+    var geometryBuffer: GPUPassBuffer<AnchorInstanceUniforms>?
+    var paletteBuffer: GPUPassBuffer<AnchorInstanceUniforms>?
+    var materialBuffer: GPUPassBuffer<MaterialUniforms>?
+    var sharedBuffer: GPUPassBuffer<SharedUniforms>?
+    var environmentBuffer: GPUPassBuffer<EnvironmentUniforms>?
+    var effectsBuffer: GPUPassBuffer<AnchorEffectsUniforms>?
+    
+    var outputBuffer: GPUPassBuffer<Out>?
+    var outputReourceOptions: MTLResourceOptions?
+    
+    var inputTexture: MTLTexture?
+    var outputTexture: MTLTexture?
+    var outputMipLevels: Int = 1
+    
     init(withDevice device: MTLDevice, uuid: UUID = UUID()) {
         self.device = device
         self.uuid = uuid
     }
     
-    func prepareRenderCommandEncoder(withCommandBuffer commandBuffer: MTLCommandBuffer) {
+    func prepareCommandEncoder(withCommandBuffer commandBuffer: MTLCommandBuffer) {
         
         let commandEncoder = commandBuffer.makeComputeCommandEncoder()
         commandEncoder?.label = name
@@ -125,6 +129,227 @@ class ComputePass {
     func threadGroup(withComputeFunction computeFunction: MTLFunction? = nil, size: (width: Int, height: Int, depth: Int) = (width: 16, height: 16, depth: 1)) -> ThreadGroup {
         let computePipelineDescriptor = self.computePipelineDescriptor(withComputeFunction: computeFunction)
         return ThreadGroup(withDevice: device, computePipelineDescriptor: computePipelineDescriptor, size: size)
+    }
+    
+    /// Prepares the Compute Command Encoder with the compute pipeline state.
+    /// You must call `prepareCommandEncoder(withCommandBuffer:)` before calling this method
+    func prepareThreadGroup() {
+        guard let computeCommandEncoder = computeCommandEncoder, let threadGroup = threadGroup else {
+            return
+        }
+        computeCommandEncoder.setComputePipelineState(threadGroup.computePipelineState)
+    }
+    
+    // MARK: - Lifecycle
+    
+    func initializeBuffers(withDevice device: MTLDevice?) {
+        
+        guard let device = device else {
+            return
+        }
+        
+        if usesGeometry == true {
+            geometryBuffer?.initialize(withDevice: device, options: .storageModeShared)
+            paletteBuffer?.initialize(withDevice: device, options: .storageModeShared)
+        }
+        if usesSharedBuffer == true {
+            sharedBuffer?.initialize(withDevice: device, options: .storageModeShared)
+        }
+        if usesLighting == true {
+            materialBuffer?.initialize(withDevice: device, options: .storageModeShared)
+        }
+        if usesEffects == true {
+            effectsBuffer?.initialize(withDevice: device, options: .storageModeShared)
+        }
+        if usesLighting == true {
+            materialBuffer?.initialize(withDevice: device, options: .storageModeShared)
+        }
+        if usesEnvironment == true {
+            environmentBuffer?.initialize(withDevice: device, options: .storageModeShared)
+        }
+        
+        outputBuffer?.initialize(withDevice: device, options: outputReourceOptions ?? .storageModePrivate)
+        
+    }
+    
+    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, instanceCount: Int = 1, threadgroupDepth: Int = 1) {
+        
+        guard let functionName = functionName else {
+            print("Serious Error - tried to load ComputePass pipleine but functionName is undefined. Check your setup.")
+            return
+        }
+        
+        guard let computeFunction = metalLibrary.makeFunction(name: functionName) else {
+            print("Serious Error - failed to create the compute function")
+//            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeShaderInitializationFailed, userInfo: nil)
+//            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
+//            recordNewError(newError)
+//            state = .uninitialized
+            return
+        }
+        
+        // If all of the instances are layed out in a square, how big is that square.
+        let gridSize = Int(Double(instanceCount).squareRoot())
+        threadGroup = self.threadGroup(withComputeFunction: computeFunction, size: (width: gridSize, height: gridSize, depth: threadgroupDepth))
+        generateMippedOutputTextures()
+        
+    }
+    
+    func updateBuffers(withFrameIndex index: Int) {
+        
+        if usesGeometry == true {
+            geometryBuffer?.update(toFrame: index)
+            paletteBuffer?.update(toFrame: index)
+        }
+        if usesSharedBuffer == true {
+            sharedBuffer?.update(toFrame: index)
+        }
+        if usesLighting == true {
+            materialBuffer?.update(toFrame: index)
+        }
+        if usesEffects == true {
+            effectsBuffer?.update(toFrame: index)
+        }
+        if usesEnvironment == true {
+            environmentBuffer?.update(toFrame: index)
+        }
+        
+        outputBuffer?.update(toFrame: index)
+        
+    }
+    
+    func dispatch(lod: Int = 0) {
+        
+        guard let computeEncoder = computeCommandEncoder else {
+            return
+        }
+        
+        guard let threadGroup = threadGroup else {
+            return
+        }
+        
+        guard lod < outputMipLevels else {
+            return
+        }
+        
+        computeEncoder.pushDebugGroup("Dispatch \(name ?? "Compute Pass") Level: \(lod)")
+        
+        //
+        // Textures
+        //
+        
+        // Input Texture
+        if let inputTexture = inputTexture {
+            computeEncoder.pushDebugGroup("Input Texture")
+            computeEncoder.setTexture(inputTexture, index: 0)
+            computeEncoder.popDebugGroup()
+        }
+        
+        // Input Texture
+        if outputTexture != nil {
+            computeEncoder.pushDebugGroup("Output Texture")
+            computeEncoder.setTexture(mippedOutputTextures[lod], index: 1)
+            computeEncoder.popDebugGroup()
+        }
+        
+        //
+        // Buffers
+        //
+        
+        if let geometryBuffer = geometryBuffer, usesGeometry {
+            computeEncoder.pushDebugGroup(geometryBuffer.label ?? "Geometry Buffer")
+            computeEncoder.setBuffer(geometryBuffer.buffer, offset: geometryBuffer.currentBufferFrameOffset, index: geometryBuffer.shaderAttributeIndex)
+            computeEncoder.popDebugGroup()
+        }
+        
+        if let paletteBuffer = paletteBuffer, usesGeometry {
+            computeEncoder.pushDebugGroup(paletteBuffer.label ?? "Palette Buffer")
+            computeEncoder.setBuffer(paletteBuffer.buffer, offset: paletteBuffer.currentBufferFrameOffset, index: paletteBuffer.shaderAttributeIndex)
+            computeEncoder.popDebugGroup()
+        }
+        
+        if let sharedBuffer = sharedBuffer, usesSharedBuffer {
+            computeEncoder.pushDebugGroup(sharedBuffer.label ?? "Shared Buffer")
+            computeEncoder.setBuffer(sharedBuffer.buffer, offset: sharedBuffer.currentBufferFrameOffset, index: sharedBuffer.shaderAttributeIndex)
+            computeEncoder.popDebugGroup()
+        }
+        
+        if let materialBuffer = materialBuffer, usesLighting {
+            computeEncoder.pushDebugGroup(materialBuffer.label ?? "material Buffer")
+            computeEncoder.setBuffer(materialBuffer.buffer, offset: materialBuffer.currentBufferFrameOffset, index: materialBuffer.shaderAttributeIndex)
+            computeEncoder.popDebugGroup()
+        }
+        
+        if let environmentBuffer = environmentBuffer, usesEnvironment {
+            computeEncoder.pushDebugGroup(environmentBuffer.label ?? "Environment Buffer")
+            computeEncoder.setBuffer(environmentBuffer.buffer, offset: environmentBuffer.currentBufferFrameOffset, index: environmentBuffer.shaderAttributeIndex)
+            computeEncoder.popDebugGroup()
+        }
+        
+        if let effectsBuffer = effectsBuffer, usesEffects {
+            computeEncoder.pushDebugGroup(effectsBuffer.label ?? "Effects Buffer")
+            computeEncoder.setBuffer(effectsBuffer.buffer, offset: effectsBuffer.currentBufferFrameOffset, index: effectsBuffer.shaderAttributeIndex)
+            computeEncoder.popDebugGroup()
+        }
+        
+        // Output Buffer
+        if let outputBuffer = outputBuffer {
+            computeEncoder.pushDebugGroup(outputBuffer.label ?? "Output Buffer")
+            computeEncoder.setBuffer(outputBuffer.buffer, offset: outputBuffer.currentBufferFrameOffset, index: outputBuffer.shaderAttributeIndex)
+            computeEncoder.popDebugGroup()
+        }
+        
+        //
+        // LOD
+        //
+        
+        computeEncoder.setBytes(&mippedRougnessValues[lod], length: MemoryLayout<Float>.size, index: Int(kBufferIndexLODRoughness.rawValue))
+        
+        //
+        // Dispatch
+        //
+        
+        prepareThreadGroup()
+        
+        // Requires the device supports non-uniform threadgroup sizes
+        computeEncoder.dispatchThreads(MTLSize(width: threadGroup.size.width, height: threadGroup.size.height, depth: threadGroup.size.depth), threadsPerThreadgroup: MTLSize(width: threadGroup.threadsPerGroup.width, height: threadGroup.threadsPerGroup.height, depth: 1))
+        
+        computeEncoder.popDebugGroup()
+    }
+    
+    // MARK: - Private
+    
+    fileprivate var mippedOutputTextures = [MTLTexture]()
+    fileprivate var mippedThreadgroups = [ThreadGroup]()
+    fileprivate var mippedRougnessValues = [Float]()
+    
+    fileprivate func generateMippedOutputTextures() {
+            
+        guard let threadGroup = threadGroup else {
+            mippedOutputTextures = []
+            mippedThreadgroups = []
+            mippedRougnessValues = []
+            return
+        }
+        
+        guard let outputTexture = outputTexture else {
+            mippedOutputTextures = []
+            mippedThreadgroups = []
+            mippedRougnessValues = []
+            return
+        }
+        
+        var mipSize = max(outputTexture.width, outputTexture.height)
+        for lod in 0..<outputMipLevels {
+            let roughness = Float(lod) / Float(outputMipLevels - 1)
+            if let mippedTexture = outputTexture.makeTextureView(pixelFormat: .rgba16Float, textureType: .typeCube, levels: lod..<(lod + 1), slices: 0..<threadGroup.size.depth) {
+                mippedRougnessValues.append(roughness)
+                mippedOutputTextures.append(mippedTexture)
+                let aThreadgroup = ThreadGroup(computePipelineState: threadGroup.computePipelineState, size: (width: mipSize, height: mipSize, depth: threadGroup.size.depth))
+                mippedThreadgroups.append(aThreadgroup)
+            }
+            mipSize = mipSize / 2
+        }
     }
     
 }

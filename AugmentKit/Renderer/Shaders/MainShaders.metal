@@ -242,25 +242,25 @@ float3 computeSpecular(LightingParameters parameters) {
     
 }
 
-float3 computeIBLSpecular(LightingParameters parameters, texturecube<float> specularEnvTexture, , texturecube<float> brdfLUT) {
-    
-    float mipCount = SPECULAR_ENV_MIP_LEVELS;
-    float lod = parameters.perceptualRoughness * (mipCount - 1);
-    float2 brdf = brdfLUT.sample(cubeSampler, float2(parameters.nDotv, parameters.perceptualRoughness)).xy;
-    
-    float3 specularLight(0);
-    if (mipCount > 1) {
-        specularLight = specularEnvTexture.sample(cubeSampler, parameters.reflectedVector, level(lod)).rgb;
-    } else {
-        specularLight = specularEnvTexture.sample(cubeSampler, parameters.reflectedVector).rgb;
-    }
-    specularLight *= parameters.ambientIntensity;
-    
-    float3 specularColor = mix(0.04, parameters.baseColor.rgb, parameters.metalness);
-    
-    float3 iblContribution = specularLight * ((specularColor * brdf.x) + brdf.y);
-    return iblContribution;
-}
+//float3 computeIBLSpecular(LightingParameters parameters, texturecube<float> specularEnvTexture, texturecube<float> brdfLUT) {
+//    
+//    float mipCount = SPECULAR_ENV_MIP_LEVELS;
+//    float lod = parameters.perceptualRoughness * (mipCount - 1);
+//    float2 brdf = brdfLUT.sample(cubeSampler, float2(parameters.nDotv, parameters.perceptualRoughness)).xy;
+//    
+//    float3 specularLight(0);
+//    if (mipCount > 1) {
+//        specularLight = specularEnvTexture.sample(cubeSampler, parameters.reflectedVector, level(lod)).rgb;
+//    } else {
+//        specularLight = specularEnvTexture.sample(cubeSampler, parameters.reflectedVector).rgb;
+//    }
+//    specularLight *= parameters.ambientIntensity;
+//    
+//    float3 specularColor = mix(0.04, parameters.baseColor.rgb, parameters.metalness);
+//    
+//    float3 iblContribution = specularLight * ((specularColor * brdf.x) + brdf.y);
+//    return iblContribution;
+//}
 
 /// From filament implementation
 float2 computeClearcoatLobe(LightingParameters parameters) {
@@ -406,7 +406,7 @@ LightingParameters calculateParameters(ColorInOut in,
     parameters.ambientOcclusion = has_ambient_occlusion_map ? max(srgbToLinear(ambientOcclusionMap.sample(linearSampler, in.texCoord.xy)).x, 0.001f) : materialUniforms.ambientOcclusion;
     parameters.directionalLightCol = environmentUniforms[in.iid].directionalLightColor;
     parameters.ambientLightCol = environmentUniforms[in.iid].ambientLightColor;
-    parameters.ambientIntensity = environmentUniforms[in.iid].ambientIntensity;
+    parameters.ambientIntensity = environmentUniforms[in.iid].ambientLightIntensity;
     parameters.lightDirection = normalize(in.eyePosition - environmentUniforms[in.iid].directionalLightDirection);
     // Light falls off based on how closely aligned the surface normal is to the light direction.
     // This is the dot product of the light direction vector and vertex normal.

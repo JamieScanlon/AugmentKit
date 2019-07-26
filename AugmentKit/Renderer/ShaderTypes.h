@@ -54,6 +54,7 @@ enum BufferIndices {
     kBufferIndexRawVertexData,
     kBufferIndexCameraVertices,
     kBufferIndexSceneVerticies,
+    kBufferIndexLODRoughness,
 };
 
 /**

@@ -437,7 +437,7 @@ class UnanchoredRenderModule: RenderModule {
                         
                         let environmentUniforms = environmentUniformBufferAddress?.assumingMemoryBound(to: EnvironmentUniforms.self).advanced(by: index)
                         
-                        environmentUniforms?.pointee.ambientLightIntensity = ambientIntensity
+                        environmentUniforms?.pointee.ambientLightIntensity = ambientIntensity ?? 1
                         environmentUniforms?.pointee.ambientLightColor = ambientLightColor ?? SIMD3<Float>(0.5, 0.5, 0.5)
                         
                         var directionalLightDirection : SIMD3<Float> = environmentProperties.directionalLightDirection
@@ -582,7 +582,7 @@ class UnanchoredRenderModule: RenderModule {
                         
                         let environmentUniforms = environmentUniformBufferAddress?.assumingMemoryBound(to: EnvironmentUniforms.self).advanced(by: index)
                         
-                        environmentUniforms?.pointee.ambientLightIntensity = ambientIntensity
+                        environmentUniforms?.pointee.ambientLightIntensity = ambientIntensity ?? 1
                         environmentUniforms?.pointee.ambientLightColor = ambientLightColor ?? SIMD3<Float>(0.5, 0.5, 0.5)
                         
                         var directionalLightDirection : SIMD3<Float> = environmentProperties.directionalLightDirection

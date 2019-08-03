@@ -1324,6 +1324,13 @@ open class Renderer: NSObject {
     fileprivate var surfacesRenderModule: SurfacesRenderModule?
     fileprivate var trackingPointRenderModule: TrackingPointsRenderModule?
     
+    // Shared Uniforms Buffer
+    fileprivate var sharedUniformsBuffer: GPUPassBuffer<SharedUniforms>?
+    
+    // Camera buffers
+    fileprivate var imagePlaneVertexBuffer: GPUPassBuffer<Float>?
+    fileprivate var scenePlaneVertexBuffer: GPUPassBuffer<Float>?
+    
     // Viewport
     fileprivate var viewportSize: CGSize = CGSize()
     fileprivate var viewportSizeDidChange: Bool = false
@@ -1337,12 +1344,6 @@ open class Renderer: NSObject {
     fileprivate var precalculationComputeModule: PrecalculationModule?
     fileprivate var precalculationPass: ComputePass<PrecalculatedParameters>?
     fileprivate var precalculationOutputBuffer: GPUPassBuffer<PrecalculatedParameters>?
-//    fileprivate var vertexArgumentBuffer: MTLBuffer?
-//    fileprivate var vertexArgumentBufferSize: Int = 0
-//    fileprivate var vertexArgumentBufferOffset: Int = 0
-//    fileprivate var fragmentArgumentBuffer: MTLBuffer?
-//    fileprivate var fragmentArgumentBufferSize: Int = 0
-//    fileprivate var fragmentArgumentBufferOffset: Int = 0
     
     // IBL Passes
     fileprivate var diffuseIBLCubePass: ComputePass<Any>?
@@ -1453,6 +1454,19 @@ open class Renderer: NSObject {
         commandQueue = device.makeCommandQueue()
         
         //
+        // Buffers
+        //
+        
+        sharedUniformsBuffer = GPUPassBuffer<SharedUniforms>(shaderAttributeIndex: Int(kBufferIndexSharedUniforms.rawValue), instanceCount: 1, frameCount: Constants.maxInFlightFrames, label: "Shared Uniforms Buffer")
+        sharedUniformsBuffer?.resourceOptions = .storageModeShared
+        
+        precalculationOutputBuffer = GPUPassBuffer<PrecalculatedParameters>(shaderAttributeIndex: Int(kBufferIndexPrecalculationOutputBuffer.rawValue), instanceCount: Constants.maxInstances, frameCount: Constants.maxInFlightFrames, label: "Precalculation Pass Output Buffer")
+        
+        imagePlaneVertexBuffer = GPUPassBuffer<Float>(shaderAttributeIndex: Int(kBufferIndexCameraVertices.rawValue), instanceCount: 1, frameCount: 1, label: "Image Plane Vertex Buffer")
+        scenePlaneVertexBuffer = GPUPassBuffer<Float>(shaderAttributeIndex: Int(kBufferIndexSceneVerticies.rawValue), instanceCount: 1, frameCount: 1, label: "Scene Plane Vertex Buffer")
+                
+        
+        //
         // Compute Passes
         //
         
@@ -1469,8 +1483,6 @@ open class Renderer: NSObject {
         precalculationPass?.usesEffects = true
         precalculationPass?.usesCameraOutput = false
         precalculationPass?.usesShadows = false
-        
-        precalculationOutputBuffer = GPUPassBuffer<PrecalculatedParameters>(shaderAttributeIndex: Int(kBufferIndexPrecalculationOutputBuffer.rawValue), instanceCount: Constants.maxInstances, frameCount: Constants.maxInFlightFrames, label: "Precalculation Pass Output Buffer")
         precalculationPass?.outputBuffer = precalculationOutputBuffer
         
         let preComputeModule = PrecalculationModule()
@@ -1687,6 +1699,8 @@ open class Renderer: NSObject {
             if cameraRenderModule == nil {
                 let newCameraModule = CameraPlaneRenderModule()
                 cameraRenderModule = newCameraModule
+                cameraRenderModule?.imagePlaneVertexBuffer = imagePlaneVertexBuffer
+                cameraRenderModule?.scenePlaneVertexBuffer = scenePlaneVertexBuffer
                 updatedRenderModules.append(newCameraModule)
                 hasUninitializedModules = true
             }
@@ -1694,6 +1708,7 @@ open class Renderer: NSObject {
             if sharedBuffersRenderModule == nil {
                 let newSharedModule = SharedBuffersRenderModule()
                 sharedBuffersRenderModule = newSharedModule
+                sharedBuffersRenderModule?.sharedUniformsBuffer = sharedUniformsBuffer
                 updatedRenderModules.append(newSharedModule)
                 hasUninitializedModules = true
             }
@@ -1935,6 +1950,7 @@ open class Renderer: NSObject {
             } else {
                 let newSharedModule = SharedBuffersRenderModule()
                 sharedBuffersRenderModule = newSharedModule
+                sharedBuffersRenderModule?.sharedUniformsBuffer = sharedUniformsBuffer
                 return newSharedModule
             }
         default:
@@ -1994,15 +2010,7 @@ open class Renderer: NSObject {
     
     fileprivate func drawCompositePass(with commandEncoder: MTLRenderCommandEncoder) {
         
-//        guard let compositRenderPass = compositRenderPass else {
-//            return
-//        }
-        
         guard let cameraRenderModule = cameraRenderModule else {
-            return
-        }
-        
-        guard let sharedBuffersRenderModule = sharedBuffersRenderModule else {
             return
         }
         
@@ -2017,15 +2025,18 @@ open class Renderer: NSObject {
         // Push a debug group allowing us to identify render commands in the GPU Frame Capture tool
         commandEncoder.pushDebugGroup("CompositePass")
                 
-                // Set render command encoder state
+        // Set render command encoder state
         commandEncoder.setCullMode(.none)
         commandEncoder.setRenderPipelineState(compositePipelineState)
         commandEncoder.setDepthStencilState(compositeDepthState)
                 
-                // Setup plane vertex buffers
-        commandEncoder.setVertexBuffer(sharedBuffersRenderModule.sharedUniformBuffer, offset: sharedBuffersRenderModule.sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
-        commandEncoder.setVertexBuffer(cameraRenderModule.imagePlaneVertexBuffer, offset: 0, index: Int(kBufferIndexCameraVertices.rawValue))
-        commandEncoder.setVertexBuffer(cameraRenderModule.scenePlaneVertexBuffer, offset: 0, index: Int(kBufferIndexSceneVerticies.rawValue))
+        // Setup plane vertex buffers
+        let sharedBuffer = sharedUniformsBuffer?.buffer
+        let sharedBufferOffset = sharedUniformsBuffer?.currentBufferFrameOffset ?? 0
+        let sharedBufferIndex = sharedUniformsBuffer?.shaderAttributeIndex ?? 0
+        commandEncoder.setVertexBuffer(sharedBuffer, offset: sharedBufferOffset, index: sharedBufferIndex)
+        commandEncoder.setVertexBuffer(cameraRenderModule.imagePlaneVertexBuffer?.buffer, offset: 0, index: Int(kBufferIndexCameraVertices.rawValue))
+        commandEncoder.setVertexBuffer(cameraRenderModule.scenePlaneVertexBuffer?.buffer, offset: 0, index: Int(kBufferIndexSceneVerticies.rawValue))
                 
         // Set any textures read/sampled from our render pipeline
         commandEncoder.setFragmentTexture(CVMetalTextureGetTexture(textureY), index: Int(kTextureIndexY.rawValue))

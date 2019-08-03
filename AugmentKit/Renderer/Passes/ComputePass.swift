@@ -90,7 +90,7 @@ class ComputePass<Out> {
     var geometryBuffer: GPUPassBuffer<AnchorInstanceUniforms>?
     var paletteBuffer: GPUPassBuffer<AnchorInstanceUniforms>?
     var materialBuffer: GPUPassBuffer<MaterialUniforms>?
-    var sharedBuffer: GPUPassBuffer<SharedUniforms>?
+    var sharedUniformsBuffer: GPUPassBuffer<SharedUniforms>?
     var environmentBuffer: GPUPassBuffer<EnvironmentUniforms>?
     var effectsBuffer: GPUPassBuffer<AnchorEffectsUniforms>?
     
@@ -153,7 +153,7 @@ class ComputePass<Out> {
             paletteBuffer?.initialize(withDevice: device, options: .storageModeShared)
         }
         if usesSharedBuffer == true {
-            sharedBuffer?.initialize(withDevice: device, options: .storageModeShared)
+            sharedUniformsBuffer?.initialize(withDevice: device, options: .storageModeShared)
         }
         if usesLighting == true {
             materialBuffer?.initialize(withDevice: device, options: .storageModeShared)
@@ -202,7 +202,7 @@ class ComputePass<Out> {
             paletteBuffer?.update(toFrame: index)
         }
         if usesSharedBuffer == true {
-            sharedBuffer?.update(toFrame: index)
+            sharedUniformsBuffer?.update(toFrame: index)
         }
         if usesLighting == true {
             materialBuffer?.update(toFrame: index)
@@ -268,7 +268,7 @@ class ComputePass<Out> {
             computeEncoder.popDebugGroup()
         }
         
-        if let sharedBuffer = sharedBuffer, usesSharedBuffer {
+        if let sharedBuffer = sharedUniformsBuffer, usesSharedBuffer {
             computeEncoder.pushDebugGroup(sharedBuffer.label ?? "Shared Buffer")
             computeEncoder.setBuffer(sharedBuffer.buffer, offset: sharedBuffer.currentBufferFrameOffset, index: sharedBuffer.shaderAttributeIndex)
             computeEncoder.popDebugGroup()

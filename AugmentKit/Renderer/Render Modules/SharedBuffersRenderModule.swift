@@ -50,24 +50,16 @@ class SharedBuffersRenderModule: SharedRenderModule {
     var renderDistance: Double = 500
     var errors = [AKError]()
     
+    // MARK: - SharedRenderModule
+        
+    var sharedUniformsBuffer: GPUPassBuffer<SharedUniforms>?
+    
     // MARK: - RenderModule
     
     func initializeBuffers(withDevice device: MTLDevice, maxInFlightFrames: Int, maxInstances: Int) {
         
         state = .initializing
-        
-        // Calculate our uniform buffer sizes. We allocate `maxInFlightFrames` instances for uniform
-        // storage in a single buffer. This allows us to update uniforms in a ring (i.e. triple
-        // buffer the uniforms) so that the GPU reads from one slot in the ring wil the CPU writes
-        // to another. Anchor uniforms should be specified with a max instance count for instancing.
-        // Also uniform storage must be aligned (to 256 bytes) to meet the requirements to be an
-        // argument in the constant address space of our shading functions.
-        let sharedUniformBufferSize = Constants.alignedSharedUniformsSize * maxInFlightFrames
-        
-        // Create and allocate our uniform buffer objects. Indicate shared storage so that both the
-        // CPU can access the buffer
-        sharedUniformBuffer = device.makeBuffer(length: sharedUniformBufferSize, options: .storageModeShared)
-        sharedUniformBuffer?.label = "SharedUniformBuffer"
+        sharedUniformsBuffer?.initialize(withDevice: device)
         
     }
     
@@ -85,12 +77,11 @@ class SharedBuffersRenderModule: SharedRenderModule {
     //
     
     func updateBufferState(withBufferIndex bufferIndex: Int) {
-        sharedUniformBufferOffset = Constants.alignedSharedUniformsSize * bufferIndex
-        sharedUniformBufferAddress = sharedUniformBuffer?.contents().advanced(by: sharedUniformBufferOffset)
+        sharedUniformsBuffer?.update(toFrame: bufferIndex)
     }
     
     func updateBuffers(withModuleEntities: [AKEntity], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, argumentBufferProperties: ArgumentBufferProperties, forRenderPass renderPass: RenderPass) {
-        let uniforms = sharedUniformBufferAddress?.assumingMemoryBound(to: SharedUniforms.self)
+        let uniforms = sharedUniformsBuffer?.currentBufferInstancePointer()
         uniforms?.pointee.viewMatrix = cameraProperties.arCamera.viewMatrix(for: cameraProperties.orientation)
         uniforms?.pointee.projectionMatrix = cameraProperties.arCamera.projectionMatrix(for: cameraProperties.orientation, viewportSize: cameraProperties.viewportSize, zNear: 0.001, zFar: CGFloat(renderDistance))
         uniforms?.pointee.useDepth = cameraProperties.useDepth ? 1 : 0
@@ -112,24 +103,4 @@ class SharedBuffersRenderModule: SharedRenderModule {
     func recordNewError(_ akError: AKError) {
         errors.append(akError)
     }
-    
-    // MARK: - SharedRenderModule
-    
-    var sharedUniformBuffer: MTLBuffer?
-    
-    // Offset within _sharedUniformBuffer to set for the current frame
-    var sharedUniformBufferOffset: Int = 0
-    
-    // Addresses to write shared uniforms to each frame
-    var sharedUniformBufferAddress: UnsafeMutableRawPointer?
-    
-    // MARK: - Private
-    
-    private enum Constants {
-        
-        // The 16 byte aligned size of our uniform structures
-        static let alignedSharedUniformsSize = (MemoryLayout<SharedUniforms>.stride & ~0xFF) + 0x100
-       
-    }
-    
 }

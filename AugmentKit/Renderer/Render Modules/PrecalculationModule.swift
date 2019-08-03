@@ -48,10 +48,6 @@ class PrecalculationModule: PreRenderComputeModule {
     var renderDistance: Double = 500
     var sharedModuleIdentifiers: [String]? = [SharedBuffersRenderModule.identifier]
     
-//    fileprivate(set) var argumentOutputBuffer: MTLBuffer?
-//    fileprivate(set) var argumentOutputBufferSize: Int = 0
-//    fileprivate(set) var argumentOutputBufferOffset: Int = 0
-    
     func initializeBuffers(withDevice device: MTLDevice, maxInFlightFrames: Int, maxInstances: Int) {
         
         state = .initializing
@@ -63,10 +59,6 @@ class PrecalculationModule: PreRenderComputeModule {
         alignedGeometryInstanceUniformsSize = ((MemoryLayout<AnchorInstanceUniforms>.stride * instanceCount) & ~0xFF) + 0x100
         alignedEffectsUniformSize = ((MemoryLayout<AnchorEffectsUniforms>.stride * instanceCount) & ~0xFF) + 0x100
         alignedEnvironmentUniformSize = ((MemoryLayout<EnvironmentUniforms>.stride * instanceCount) & ~0xFF) + 0x100
-        
-        // Output buffer
-//        argumentOutputBufferSize = MemoryLayout<PrecalculatedParameters>.stride * instanceCount
-//        argumentOutputBuffer = device.makeBuffer(length: argumentOutputBufferSize * maxInFlightFrames, options: .storageModePrivate)
         
         // Calculate our uniform buffer sizes. We allocate `maxInFlightFrames` instances for uniform
         // storage in a single buffer. This allows us to update uniforms in a ring (i.e. triple
@@ -97,15 +89,6 @@ class PrecalculationModule: PreRenderComputeModule {
     
     func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, forComputePass computePass: ComputePass<PrecalculatedParameters>?) -> ThreadGroup? {
         
-        guard let precalculationFunction = metalLibrary.makeFunction(name: "precalculationComputeShader") else {
-            print("Serious Error - failed to create the precalculationComputeShader function")
-            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeShaderInitializationFailed, userInfo: nil)
-            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-            recordNewError(newError)
-            state = .uninitialized
-            return nil
-        }
-        
         guard let computePass = computePass else {
             print("Warning (PrecalculationModule) - a ComputePass was not found. Aborting.")
             let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeModelNotFound, userInfo: nil)
@@ -115,17 +98,12 @@ class PrecalculationModule: PreRenderComputeModule {
             return nil
         }
         
-        // If all of the instances are layed out in a square, how big is that square.
-//        let gridSize = Int(Double(instanceCount).squareRoot())
-//        let threadGroup = computePass.threadGroup(withComputeFunction: precalculationFunction, size: (width: gridSize, height: gridSize, depth: 1))
-        
         self.computePass = computePass
         self.computePass?.functionName = "precalculationComputeShader"
         self.computePass?.initializeBuffers(withDevice: device)
         self.computePass?.loadPipeline(withMetalLibrary: metalLibrary, instanceCount: instanceCount, threadgroupDepth: 1)
         
         state = .ready
-//        return threadGroup
         return self.computePass?.threadGroup
     }
     
@@ -135,7 +113,6 @@ class PrecalculationModule: PreRenderComputeModule {
         paletteBufferOffset = Constants.alignedPaletteSize * Constants.maxPaletteCount * bufferIndex
         effectsUniformBufferOffset = alignedEffectsUniformSize * bufferIndex
         environmentUniformBufferOffset = alignedEnvironmentUniformSize * bufferIndex
-//        argumentOutputBufferOffset = argumentOutputBufferSize * bufferIndex
         
         geometryUniformBufferAddress = geometryUniformBuffer?.contents().advanced(by: geometryUniformBufferOffset)
         paletteBufferAddress = paletteBuffer?.contents().advanced(by: paletteBufferOffset)
@@ -438,10 +415,10 @@ class PrecalculationModule: PreRenderComputeModule {
         
         computeEncoder.pushDebugGroup("Dispatch Precalculation")
         
-        if let sharedBuffer = sharedModules?.first(where: {$0.moduleIdentifier == SharedBuffersRenderModule.identifier}), computePass.usesSharedBuffer {
+        if let sharedRenderModule = sharedModules?.first(where: {$0.moduleIdentifier == SharedBuffersRenderModule.identifier}), let sharedBuffer = sharedRenderModule.sharedUniformsBuffer?.buffer, let sharedBufferOffset = sharedRenderModule.sharedUniformsBuffer?.currentBufferFrameOffset, computePass.usesSharedBuffer {
             
             computeEncoder.pushDebugGroup("Shared Uniforms")
-            computeEncoder.setBuffer(sharedBuffer.sharedUniformBuffer, offset: sharedBuffer.sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
+            computeEncoder.setBuffer(sharedBuffer, offset: sharedBufferOffset, index: sharedRenderModule.sharedUniformsBuffer?.shaderAttributeIndex ?? 0)
             computeEncoder.popDebugGroup()
             
         }

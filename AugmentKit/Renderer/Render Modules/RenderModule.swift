@@ -290,7 +290,5 @@ enum RenderModuleConstants {
 
 /// A shared render module is a `RenderModule` responsible for setting up and updating shared buffers. Although it does have a draw() method, typically this method does not do anything. Instead, the module that uses this shared module is responsible for encoding the shared buffer and issuing the draw call
 protocol SharedRenderModule: RenderModule {
-    var sharedUniformBuffer: MTLBuffer? { get }
-    var sharedUniformBufferOffset: Int { get }
-    var sharedUniformBufferAddress: UnsafeMutableRawPointer? { get }
+    var sharedUniformsBuffer: GPUPassBuffer<SharedUniforms>? { get }
 }

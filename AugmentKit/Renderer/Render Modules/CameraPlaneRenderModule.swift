@@ -50,8 +50,10 @@ class CameraPlaneRenderModule: RenderModule {
     var errors = [AKError]()
     
     // Buffers
-    fileprivate(set) var imagePlaneVertexBuffer: MTLBuffer?
-    fileprivate(set) var scenePlaneVertexBuffer: MTLBuffer?
+//    fileprivate(set) var imagePlaneVertexBuffer: MTLBuffer?
+//    fileprivate(set) var scenePlaneVertexBuffer: MTLBuffer?
+    var imagePlaneVertexBuffer: GPUPassBuffer<Float>?
+    var scenePlaneVertexBuffer: GPUPassBuffer<Float>?
     fileprivate(set) var capturedImageTextureY: CVMetalTexture?
     fileprivate(set) var capturedImageTextureCbCr: CVMetalTexture?
     
@@ -62,12 +64,21 @@ class CameraPlaneRenderModule: RenderModule {
         device = aDevice
         
         // Create a vertex buffer with our image plane vertex data.
-        let imagePlaneVertexDataCount = Constants.imagePlaneVertexData.count * MemoryLayout<Float>.size
-        imagePlaneVertexBuffer = device?.makeBuffer(bytes: Constants.imagePlaneVertexData, length: imagePlaneVertexDataCount, options: [])
-        imagePlaneVertexBuffer?.label = "ImagePlaneVertexBuffer"
+//        let imagePlaneVertexDataCount = Constants.imagePlaneVertexData.count * MemoryLayout<Float>.size
+//        imagePlaneVertexBuffer = device?.makeBuffer(bytes: Constants.imagePlaneVertexData, length: imagePlaneVertexDataCount, options: [])
+//        imagePlaneVertexBuffer?.label = "ImagePlaneVertexBuffer"
+        imagePlaneVertexBuffer?.instanceCount = Constants.imagePlaneVertexData.count
+        imagePlaneVertexBuffer?.initialize(withDevice: aDevice, options: .storageModeShared)
         
-        scenePlaneVertexBuffer = device?.makeBuffer(bytes: Constants.imagePlaneVertexData, length: imagePlaneVertexDataCount, options: [])
-        scenePlaneVertexBuffer?.label = "ScenePlaneVertexBuffer"
+//        scenePlaneVertexBuffer = device?.makeBuffer(bytes: Constants.imagePlaneVertexData, length: imagePlaneVertexDataCount, options: [])
+//        scenePlaneVertexBuffer?.label = "ScenePlaneVertexBuffer"
+        scenePlaneVertexBuffer?.instanceCount = Constants.imagePlaneVertexData.count
+        scenePlaneVertexBuffer?.initialize(withDevice: aDevice, options: .storageModeShared)
+        
+        // There is only a single frames worth of image plane geometry data in the buffer so always provide an index of 0.
+        // The geometry of the image plane only changes if the view port changes so there is no need to maintain multiple frames.
+        imagePlaneVertexBuffer?.update(toFrame: 0)
+        scenePlaneVertexBuffer?.update(toFrame: 0)
         
     }
     
@@ -158,14 +169,13 @@ class CameraPlaneRenderModule: RenderModule {
     // Per Frame Updates
     //
     
-    func updateBufferState(withBufferIndex: Int) {
+    func updateBufferState(withBufferIndex bufferIndex: Int) {
         
         // Retain our CVMetalTextures for the duration of the rendering cycle. The MTLTextures
         // we use from the CVMetalTextures are not valid unless their parent CVMetalTextures
         // are retained. Since we may release our CVMetalTexture ivars during the rendering
         // cycle, we must retain them separately here.
         textureReferences = [capturedImageTextureY, capturedImageTextureCbCr]
-        
     }
     
     func updateBuffers(withModuleEntities: [AKEntity], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, argumentBufferProperties: ArgumentBufferProperties, forRenderPass renderPass: RenderPass) {
@@ -184,13 +194,21 @@ class CameraPlaneRenderModule: RenderModule {
             // Update the texture coordinates of our image plane to aspect fill the viewport
             let displayToCameraTransform = cameraProperties.displayTransform.inverted()
             
-            guard let vertexData = imagePlaneVertexBuffer?.contents().assumingMemoryBound(to: Float.self) else {
+            guard let vertexData = imagePlaneVertexBuffer?.currentBufferFramePointer else {
                 return
             }
             
-            guard let compositeVertexData = scenePlaneVertexBuffer?.contents().assumingMemoryBound(to: Float.self) else {
+            guard let compositeVertexData = scenePlaneVertexBuffer?.currentBufferFramePointer else {
                 return
             }
+            
+//            guard let vertexData = imagePlaneVertexBuffer?.contents().assumingMemoryBound(to: Float.self) else {
+//                return
+//            }
+//
+//            guard let compositeVertexData = scenePlaneVertexBuffer?.contents().assumingMemoryBound(to: Float.self) else {
+//                return
+//            }
             
             for index in 0...3 {
                 let textureCoordIndex = 4 * index + 2
@@ -231,7 +249,7 @@ class CameraPlaneRenderModule: RenderModule {
                 drawCall.prepareDrawCall(withRenderPass: renderPass)
                 
                 // Set mesh's vertex buffers
-                renderEncoder.setVertexBuffer(imagePlaneVertexBuffer, offset: 0, index: Int(kBufferIndexMeshPositions.rawValue))
+                renderEncoder.setVertexBuffer(imagePlaneVertexBuffer?.buffer, offset: 0, index: 0)
                 
                 // Set any textures read/sampled from our render pipeline
                 renderEncoder.setFragmentTexture(CVMetalTextureGetTexture(textureY), index: Int(kTextureIndexY.rawValue))

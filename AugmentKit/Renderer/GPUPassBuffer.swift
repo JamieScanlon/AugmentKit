@@ -86,11 +86,11 @@ class GPUPassBuffer<T> {
         }
         currentBufferFrameOffset = alignedSize * frameIndex
         if resourceOptions == .storageModeShared {
-            currentBufferFrameAddress = buffer?.contents().advanced(by: currentBufferFrameOffset)
+             currentBufferFrameAddress = buffer?.contents().advanced(by: currentBufferFrameOffset)
         }
     }
     
-    /// Returns a pointer to the onstance of the `T` object at the given inxex. This method takes into account the frame index as set by `update(toFrame:)`
+    /// Returns a pointer to the instance of the `T` object at the given inxex. This method takes into account the frame index as set by `update(toFrame:)`
     /// - Parameter instanceIndex: The index of the `T` object
     func currentBufferInstancePointer(withInstanceIndex instanceIndex: Int = 0) -> UnsafeMutablePointer<T>? {
         guard instanceIndex < instanceCount else {

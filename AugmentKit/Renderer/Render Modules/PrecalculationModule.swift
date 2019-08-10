@@ -83,7 +83,7 @@ class PrecalculationModule: PreRenderComputeModule {
         effectsUniformBuffer?.label = "EffectsUniformBuffer"
         
         environmentUniformBuffer = device.makeBuffer(length: environmentUniformBufferSize, options: .storageModeShared)
-        environmentUniformBuffer?.label = "EnvironemtUniformBuffer"
+        environmentUniformBuffer?.label = "EnvironmentUniformBuffer"
         
     }
     
@@ -414,6 +414,8 @@ class PrecalculationModule: PreRenderComputeModule {
         }
         
         computeEncoder.pushDebugGroup("Dispatch Precalculation")
+        
+        computeEncoder.setBytes(&instanceCount, length: MemoryLayout<Int>.size, index: Int(kBufferIndexInstanceCount.rawValue))
         
         if let sharedRenderModule = sharedModules?.first(where: {$0.moduleIdentifier == SharedBuffersRenderModule.identifier}), let sharedBuffer = sharedRenderModule.sharedUniformsBuffer?.buffer, let sharedBufferOffset = sharedRenderModule.sharedUniformsBuffer?.currentBufferFrameOffset, computePass.usesSharedBuffer {
             

@@ -95,11 +95,9 @@ class ComputePass<Out> {
     var effectsBuffer: GPUPassBuffer<AnchorEffectsUniforms>?
     
     var outputBuffer: GPUPassBuffer<Out>?
-    var outputReourceOptions: MTLResourceOptions?
     
-    var inputTexture: MTLTexture?
-    var outputTexture: MTLTexture?
-    var outputMipLevels: Int = 1
+    var inputTextures = [GPUPassTexture]()
+    var outputTexture: GPUPassTexture?
     
     init(withDevice device: MTLDevice, uuid: UUID = UUID()) {
         self.device = device
@@ -149,26 +147,26 @@ class ComputePass<Out> {
         }
         
         if usesGeometry == true {
-            geometryBuffer?.initialize(withDevice: device, options: .storageModeShared)
-            paletteBuffer?.initialize(withDevice: device, options: .storageModeShared)
+            geometryBuffer?.initialize(withDevice: device)
+            paletteBuffer?.initialize(withDevice: device)
         }
         if usesSharedBuffer == true {
-            sharedUniformsBuffer?.initialize(withDevice: device, options: .storageModeShared)
+            sharedUniformsBuffer?.initialize(withDevice: device)
         }
         if usesLighting == true {
-            materialBuffer?.initialize(withDevice: device, options: .storageModeShared)
+            materialBuffer?.initialize(withDevice: device)
         }
         if usesEffects == true {
-            effectsBuffer?.initialize(withDevice: device, options: .storageModeShared)
+            effectsBuffer?.initialize(withDevice: device)
         }
         if usesLighting == true {
-            materialBuffer?.initialize(withDevice: device, options: .storageModeShared)
+            materialBuffer?.initialize(withDevice: device)
         }
         if usesEnvironment == true {
-            environmentBuffer?.initialize(withDevice: device, options: .storageModeShared)
+            environmentBuffer?.initialize(withDevice: device)
         }
         
-        outputBuffer?.initialize(withDevice: device, options: outputReourceOptions ?? .storageModePrivate)
+        outputBuffer?.initialize(withDevice: device)
         
     }
     
@@ -189,10 +187,14 @@ class ComputePass<Out> {
         }
         
         // If all of the instances are layed out in a square, how big is that square.
-        let gridSize = Int(Double(instanceCount).squareRoot())
+        let instancesPerLayer = ceil(Double(instanceCount) / Double(threadgroupDepth))
+        let gridSize = Int(ceil(instancesPerLayer.squareRoot()))
+//        let gridSize = Int(Float(instanceCount).squareRoot())
         threadGroup = self.threadGroup(withComputeFunction: computeFunction, size: (width: gridSize, height: gridSize, depth: threadgroupDepth))
-        generateMippedOutputTextures()
-        
+        inputTextures.forEach {
+            $0.generateMippedTextures()
+        }
+        outputTexture?.generateMippedTextures()
     }
     
     func updateBuffers(withFrameIndex index: Int) {
@@ -220,15 +222,15 @@ class ComputePass<Out> {
     
     func dispatch(lod: Int = 0) {
         
+        defer {
+            computeCommandEncoder?.endEncoding()
+        }
+        
         guard let computeEncoder = computeCommandEncoder else {
             return
         }
         
         guard let threadGroup = threadGroup else {
-            return
-        }
-        
-        guard lod < outputMipLevels else {
             return
         }
         
@@ -238,17 +240,21 @@ class ComputePass<Out> {
         // Textures
         //
         
-        // Input Texture
-        if let inputTexture = inputTexture {
-            computeEncoder.pushDebugGroup("Input Texture")
-            computeEncoder.setTexture(inputTexture, index: 0)
-            computeEncoder.popDebugGroup()
+        // Input Textures
+        inputTextures.forEach {
+            if lod < $0.mippedTextures.count {
+                computeEncoder.pushDebugGroup($0.label ?? "Input Texture")
+                computeEncoder.setTexture($0.mippedTextures[lod], index: $0.shaderAttributeIndex)
+                computeEncoder.popDebugGroup()
+            }
         }
         
-        // Input Texture
-        if outputTexture != nil {
-            computeEncoder.pushDebugGroup("Output Texture")
-            computeEncoder.setTexture(mippedOutputTextures[lod], index: 1)
+        // Output Texture
+        if let outputTexture = outputTexture, lod < outputTexture.mippedTextures.count {
+            computeEncoder.pushDebugGroup(outputTexture.label ?? "Output Texture")
+            computeEncoder.setTexture(outputTexture.mippedTextures[lod], index: outputTexture.shaderAttributeIndex)
+            var roughness = outputTexture.roughness(for: lod)
+            computeEncoder.setBytes(&roughness, length: MemoryLayout<Float>.size, index: Int(kBufferIndexLODRoughness.rawValue))
             computeEncoder.popDebugGroup()
         }
         
@@ -300,12 +306,6 @@ class ComputePass<Out> {
         }
         
         //
-        // LOD
-        //
-        
-        computeEncoder.setBytes(&mippedRougnessValues[lod], length: MemoryLayout<Float>.size, index: Int(kBufferIndexLODRoughness.rawValue))
-        
-        //
         // Dispatch
         //
         
@@ -315,41 +315,9 @@ class ComputePass<Out> {
         computeEncoder.dispatchThreads(MTLSize(width: threadGroup.size.width, height: threadGroup.size.height, depth: threadGroup.size.depth), threadsPerThreadgroup: MTLSize(width: threadGroup.threadsPerGroup.width, height: threadGroup.threadsPerGroup.height, depth: 1))
         
         computeEncoder.popDebugGroup()
+        
     }
     
     // MARK: - Private
-    
-    fileprivate var mippedOutputTextures = [MTLTexture]()
-    fileprivate var mippedThreadgroups = [ThreadGroup]()
-    fileprivate var mippedRougnessValues = [Float]()
-    
-    fileprivate func generateMippedOutputTextures() {
-            
-        guard let threadGroup = threadGroup else {
-            mippedOutputTextures = []
-            mippedThreadgroups = []
-            mippedRougnessValues = []
-            return
-        }
-        
-        guard let outputTexture = outputTexture else {
-            mippedOutputTextures = []
-            mippedThreadgroups = []
-            mippedRougnessValues = []
-            return
-        }
-        
-        var mipSize = max(outputTexture.width, outputTexture.height)
-        for lod in 0..<outputMipLevels {
-            let roughness = Float(lod) / Float(outputMipLevels - 1)
-            if let mippedTexture = outputTexture.makeTextureView(pixelFormat: .rgba16Float, textureType: .typeCube, levels: lod..<(lod + 1), slices: 0..<threadGroup.size.depth) {
-                mippedRougnessValues.append(roughness)
-                mippedOutputTextures.append(mippedTexture)
-                let aThreadgroup = ThreadGroup(computePipelineState: threadGroup.computePipelineState, size: (width: mipSize, height: mipSize, depth: threadGroup.size.depth))
-                mippedThreadgroups.append(aThreadgroup)
-            }
-            mipSize = mipSize / 2
-        }
-    }
     
 }

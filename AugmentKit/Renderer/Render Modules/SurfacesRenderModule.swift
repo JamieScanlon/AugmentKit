@@ -81,7 +81,7 @@ class SurfacesRenderModule: RenderModule {
         effectsUniformBuffer?.label = "EffectsUniformBuffer"
         
         environmentUniformBuffer = device?.makeBuffer(length: environmentUniformBufferSize, options: .storageModeShared)
-        environmentUniformBuffer?.label = "EnvironemtUniformBuffer"
+        environmentUniformBuffer?.label = "EnvironmentUniformBuffer"
         
     }
     

@@ -14,6 +14,98 @@ using namespace metal;
 #ifndef AK_SHADERS_IBLFUNCTIONS
 #define AK_SHADERS_IBLFUNCTIONS
 
+float radicalInverse_VdC(uint bits) {
+    
+    bits = (bits << 16u) | (bits >> 16u);
+    bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
+    bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
+    bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
+    bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
+    return float(bits) * 2.3283064365386963e-10; // / 0x100000000
+}
+
+float2 hammersley(uint i, uint N) {
+    return float2(float(i) / float(N), radicalInverse_VdC(i));
+}
+
+float3 importanceSampleGGX(float2 xi, float3 N, float roughness) {
+    float a = roughness * roughness;
+    float phi = 2 * M_PI_F * xi.x;
+    float cosTheta = sqrt((1 - xi.y) / (1 + (a * a - 1) * xi.y));
+    float sinTheta = sqrt(1 - cosTheta * cosTheta);
+    
+    float3 H(sinTheta * cos(phi), sinTheta * sin(phi), cosTheta);
+    
+    float3 up = fabs(N.z) < 0.999 ? float3(0, 0, 1) : float3(1, 0, 0);
+    float3 tangent = normalize(cross(up, N));
+    float3 bitangent = cross(N, tangent);
+
+    return normalize(tangent * H.x + bitangent * H.y + N * H.z);
+}
+
+float geometrySchlickGGX(float nDotv, float roughness) {
+    float a = roughness;
+    float k = (a * a) / 2.0;
+    return nDotv / (nDotv * (1.0 - k) + k);
+}
+
+float geometrySmith(float nDotl, float nDotv, float roughness) {
+    float ggx2 = geometrySchlickGGX(nDotv, roughness);
+    float ggx1 = geometrySchlickGGX(nDotl, roughness);
+    return ggx1 * ggx2;
+}
+
+float2 integrateBRDF(float roughness, float nDotv) {
+    float3 N(0, 0, 1);
+    float3 V(sqrt(1.0 - nDotv * nDotv), 0, nDotv);
+    float A = 0;
+    float B = 0;
+
+    const uint sampleCount = 1024;
+    for(uint i = 0; i < sampleCount; ++i) {
+        float2 x = hammersley(i, sampleCount);
+        float3 H = importanceSampleGGX(x, N, roughness);
+        float3 L = normalize(2 * dot(V, H) * H - V);
+        
+        float nDotl = saturate(L.z);
+        float nDoth = saturate(H.z);
+        float vDoth = saturate(dot(V, H));
+        
+        if(nDotl > 0) {
+            float G = geometrySmith(nDotl, nDotv, roughness);
+            float G_Vis = G * vDoth / (nDoth * nDotv);
+            float Fc = powr(1 - vDoth, 5);
+            A += (1 - Fc) * G_Vis;
+            B += Fc * G_Vis;
+        }
+    }
+
+    return float2(A, B) / float(sampleCount);
+}
+
+float3 cubeDirectionFromUVAndFace(float2 uv, int face) {
+    float u = uv.x;
+    float v = uv.y;
+    float3 dir = float3(0);
+    switch (face) {
+        case 0:
+            dir = float3(-1,  v, -u); break; // +X
+        case 1:
+            dir = float3( 1,  v,  u); break; // -X
+        case 2:
+            dir = float3(-u, -1,  v); break; // +Y
+        case 3:
+            dir = float3(-u,  1, -v); break; // -Y
+        case 4:
+            dir = float3(-u,  v,  1); break; // +Z
+        case 5:
+            dir = float3( u,  v, -1); break; // -Z
+    }
+    
+    dir = normalize(dir);
+    return dir;
+}
+
 //------------------------------------------------------------------------------
 // IBL utilities
 //------------------------------------------------------------------------------
@@ -26,67 +118,67 @@ float3 decodeDataForIBL(float4 data) {
 // IBL prefiltered DFG term implementations
 //------------------------------------------------------------------------------
 
-float3 PrefilteredDFG_LUT(float lod, float NoV) {
-    // coord = sqrt(linear_roughness), which is the mapping used by cmgen.
-    return textureLod(light_iblDFG, float2(NoV, lod), 0.0).rgb;
-}
+//float3 PrefilteredDFG_LUT(float lod, float nDotv) {
+//    // coord = sqrt(linear_roughness), which is the mapping used by cmgen.
+//    return textureLod(light_iblDFG, float2(nDotv, lod), 0.0).rgb;
+//}
 
 //------------------------------------------------------------------------------
 // IBL environment BRDF dispatch
 //------------------------------------------------------------------------------
 
-float3 prefilteredDFG(float perceptualRoughness, float NoV) {
-    // PrefilteredDFG_LUT() takes a LOD, which is sqrt(roughness) = perceptualRoughness
-    return PrefilteredDFG_LUT(perceptualRoughness, NoV);
-}
+//float3 prefilteredDFG(float perceptualRoughness, float nDotv) {
+//    // PrefilteredDFG_LUT() takes a LOD, which is sqrt(roughness) = perceptualRoughness
+//    return PrefilteredDFG_LUT(perceptualRoughness, nDotv);
+//}
 
 //------------------------------------------------------------------------------
 // IBL irradiance implementations
 //------------------------------------------------------------------------------
 
-float3 Irradiance_SphericalHarmonics(float3 n) {
-    return max(
-               frameUniforms.iblSH[0]
-               + frameUniforms.iblSH[4] * (n.y * n.x)
-               + frameUniforms.iblSH[5] * (n.y * n.z)
-               + frameUniforms.iblSH[6] * (3.0 * n.z * n.z - 1.0)
-               + frameUniforms.iblSH[7] * (n.z * n.x)
-               + frameUniforms.iblSH[8] * (n.x * n.x - n.y * n.y)
-               , 0.0);
-}
+//float3 Irradiance_SphericalHarmonics(float3 n) {
+//    return max(
+//               frameUniforms.iblSH[0]
+//               + frameUniforms.iblSH[4] * (n.y * n.x)
+//               + frameUniforms.iblSH[5] * (n.y * n.z)
+//               + frameUniforms.iblSH[6] * (3.0 * n.z * n.z - 1.0)
+//               + frameUniforms.iblSH[7] * (n.z * n.x)
+//               + frameUniforms.iblSH[8] * (n.x * n.x - n.y * n.y)
+//               , 0.0);
+//}
 
 //------------------------------------------------------------------------------
 // IBL irradiance dispatch
 //------------------------------------------------------------------------------
 
-float3 diffuseIrradiance(float3 n) {
-    return Irradiance_SphericalHarmonics(n);
-}
+//float3 diffuseIrradiance(float3 n) {
+//    return Irradiance_SphericalHarmonics(n);
+//}
 
 //------------------------------------------------------------------------------
 // IBL specular
 //------------------------------------------------------------------------------
 
-float3 prefilteredRadiance(float3 r, float perceptualRoughness) {
-    // lod = lod_count * sqrt(roughness), which is the mapping used by cmgen
-    // where roughness = perceptualRoughness^2
-    // using all the mip levels requires seamless cubemap sampling
-    float lod = frameUniforms.iblMaxMipLevel.x * perceptualRoughness;
-    return decodeDataForIBL(textureLod(light_iblSpecular, r, lod));
-}
+//float3 prefilteredRadiance(float3 r, float perceptualRoughness) {
+//    // lod = lod_count * sqrt(roughness), which is the mapping used by cmgen
+//    // where roughness = perceptualRoughness^2
+//    // using all the mip levels requires seamless cubemap sampling
+//    float lod = frameUniforms.iblMaxMipLevel.x * perceptualRoughness;
+//    return decodeDataForIBL(textureLod(light_iblSpecular, r, lod));
+//}
 
-float3 prefilteredRadiance(float3 r, float roughness, float offset) {
-    float lod = frameUniforms.iblMaxMipLevel.x * roughness;
-    return decodeDataForIBL(textureLod(light_iblSpecular, r, lod + offset));
-}
+//float3 prefilteredRadiance(float3 r, float roughness, float offset) {
+//    float lod = frameUniforms.iblMaxMipLevel.x * roughness;
+//    return decodeDataForIBL(textureLod(light_iblSpecular, r, lod + offset));
+//}
 
-float3 specularDFG(PixelParams pixel) {
-    // Cloth
-//    return pixel.f0 * pixel.dfg.z;
-    // without multi-scattering compensation
-//    return pixel.f0 * pixel.dfg.x + pixel.dfg.y;
-    return mix(pixel.dfg.xxx, pixel.dfg.yyy, pixel.f0);
-}
+//float3 specularDFG(PixelParams pixel) {
+//    // Cloth
+////    return pixel.f0 * pixel.dfg.z;
+//    // without multi-scattering compensation
+////    return pixel.f0 * pixel.dfg.x + pixel.dfg.y;
+//    return mix(pixel.dfg.xxx, pixel.dfg.yyy, pixel.f0);
+//}
 
 /**
  * Returns the reflected vector at the current shading point. The reflected vector
@@ -97,29 +189,29 @@ float3 specularDFG(PixelParams pixel) {
  *   direction to match reference renderings when the roughness increases
  */
 
-float3 getReflectedVector(PixelParams pixel, float3 v, float3 n) {
-    // HAS ANISOTROPY
-//    float3  anisotropyDirection = pixel.anisotropy >= 0.0 ? pixel.anisotropicB : pixel.anisotropicT;
-//    float3  anisotropicTangent  = cross(anisotropyDirection, v);
-//    float3  anisotropicNormal   = cross(anisotropicTangent, anisotropyDirection);
-//    float bendFactor          = abs(pixel.anisotropy) * saturate(5.0 * pixel.perceptualRoughness);
-//    float3  bentNormal          = normalize(mix(n, anisotropicNormal, bendFactor));
+//float3 getReflectedVector(PixelParams pixel, float3 v, float3 n) {
+//    // HAS ANISOTROPY
+////    float3  anisotropyDirection = pixel.anisotropy >= 0.0 ? pixel.anisotropicB : pixel.anisotropicT;
+////    float3  anisotropicTangent  = cross(anisotropyDirection, v);
+////    float3  anisotropicNormal   = cross(anisotropicTangent, anisotropyDirection);
+////    float bendFactor          = abs(pixel.anisotropy) * saturate(5.0 * pixel.perceptualRoughness);
+////    float3  bentNormal          = normalize(mix(n, anisotropicNormal, bendFactor));
+////
+////    float3 r = reflect(-v, bentNormal);
+//    // Without ANISOTROPY
+//    float3 r = reflect(-v, n);
 //
-//    float3 r = reflect(-v, bentNormal);
-    // Without ANISOTROPY
-    float3 r = reflect(-v, n);
+//    return r;
+//}
 
-    return r;
-}
-
-float3 getReflectedVector(PixelParams pixel, float3 n) {
-    // HAS ANISOTROPY
-//    float3 r = getReflectedVector(pixel, shading_view, n);
-    // Without ANISOTROPY
-    float3 r = shading_reflected;
-
-    return r;
-}
+//float3 getReflectedVector(PixelParams pixel, float3 n) {
+//    // HAS ANISOTROPY
+////    float3 r = getReflectedVector(pixel, shading_view, n);
+//    // Without ANISOTROPY
+//    float3 r = shading_reflected;
+//
+//    return r;
+//}
 
 //------------------------------------------------------------------------------
 // Prefiltered importance sampling
@@ -277,74 +369,74 @@ float3 getReflectedVector(PixelParams pixel, float3 n) {
 // IBL evaluation
 //------------------------------------------------------------------------------
 
-float evaluateClothIndirectDiffuseBRDF(PixelParams pixel, float diffuseIn) {
-    // Simulate subsurface scattering with a wrap diffuse term
-    float diffuseOut = diffuseIn * Fd_Wrap(shading_nDotv, 0.5);
-    return diffuseOut;
-}
+//float evaluateClothIndirectDiffuseBRDF(PixelParams pixel, float diffuseIn) {
+//    // Simulate subsurface scattering with a wrap diffuse term
+//    float diffuseOut = diffuseIn * Fd_Wrap(shading_nDotv, 0.5);
+//    return diffuseOut;
+//}
 
-float3x3 evaluateClearCoatIBL(PixelParams pixel, float specularAO, float3 Fd_in, float3 Fr_in) {
-    // We want to use the geometric normal for the clear coat layer
-    float clearCoatnDotv = clampnDotv(dot(shading_clearCoatNormal, shading_view));
-    float3 clearCoatR = reflect(-shading_view, shading_clearCoatNormal);
-    // The clear coat layer assumes an IOR of 1.5 (4% reflectance)
-    float Fc = F_Schlick(0.04, 1.0, clearCoatnDotv) * pixel.clearCoat;
-    float attenuation = 1.0 - Fc;
-    float3 Fr_out = Fr_in * sq(attenuation);
-    Fr_out += prefilteredRadiance(clearCoatR, pixel.clearCoatPerceptualRoughness) * (specularAO * Fr_out);
-    float3 Fd_out = Fd_in * attenuation;
-    return float3x3(Fd_out, Fr_out, float3(0));
-}
+//float3x3 evaluateClearCoatIBL(PixelParams pixel, float specularAO, float3 Fd_in, float3 Fr_in) {
+//    // We want to use the geometric normal for the clear coat layer
+//    float clearCoatnDotv = clampnDotv(dot(shading_clearCoatNormal, shading_view));
+//    float3 clearCoatR = reflect(-shading_view, shading_clearCoatNormal);
+//    // The clear coat layer assumes an IOR of 1.5 (4% reflectance)
+//    float Fc = F_Schlick(0.04, 1.0, clearCoatnDotv) * pixel.clearCoat;
+//    float attenuation = 1.0 - Fc;
+//    float3 Fr_out = Fr_in * sq(attenuation);
+//    Fr_out += prefilteredRadiance(clearCoatR, pixel.clearCoatPerceptualRoughness) * (specularAO * Fr_out);
+//    float3 Fd_out = Fd_in * attenuation;
+//    return float3x3(Fd_out, Fr_out, float3(0));
+//}
 
-float3 evaluateSubsurfaceIBL(PixelParams pixel, float3 diffuseIrradiance, float3 Fd_in) {
-    // Subsurface
-    float3 viewIndependent = diffuseIrradiance;
-    float3 viewDependent = prefilteredRadiance(-shading_view, pixel.roughness, 1.0 + pixel.thickness);
-    float attenuation = (1.0 - pixel.thickness) / (2.0 * PI);
-    float3 Fd_out = Fd_in + pixel.subsurfaceColor * (viewIndependent + viewDependent) * attenuation;
-    // Cloth or subsurface color
-//    Fd *= saturate(pixel.subsurfaceColor + shading_nDotv);
-    return Fd_out;
-    
-}
+//float3 evaluateSubsurfaceIBL(PixelParams pixel, float3 diffuseIrradiance, float3 Fd_in) {
+//    // Subsurface
+//    float3 viewIndependent = diffuseIrradiance;
+//    float3 viewDependent = prefilteredRadiance(-shading_view, pixel.roughness, 1.0 + pixel.thickness);
+//    float attenuation = (1.0 - pixel.thickness) / (2.0 * PI);
+//    float3 Fd_out = Fd_in + pixel.subsurfaceColor * (viewIndependent + viewDependent) * attenuation;
+//    // Cloth or subsurface color
+////    Fd *= saturate(pixel.subsurfaceColor + shading_nDotv);
+//    return Fd_out;
+//
+//}
 
-float3 evaluateIBL(MaterialInputs material, PixelParams pixel, float3 color_in) {
-    // Apply transform here if we wanted to rotate the IBL
-    float3 n = shading_normal;
-    float3 r = getReflectedVector(pixel, n);
-    
-    float ssao = evaluateSSAO();
-    float diffuseAO = min(material.ambientOcclusion, ssao);
-    float specularAO = computeSpecularAO(shading_nDotv, diffuseAO, pixel.roughness);
-    
-    // diffuse indirect
-    float diffuseBRDF = singleBounceAO(diffuseAO);// Fd_Lambert() is baked in the SH below
-    evaluateClothIndirectDiffuseBRDF(pixel, diffuseBRDF);
-    
-    float3 diffuseIrradiance = diffuseIrradiance(n);
-    float3 Fd = pixel.diffuseColor * diffuseIrradiance * diffuseBRDF;
-    
-    // specular indirect
-    float3 Fr;
-    // IBL Cubemap
-    Fr = specularDFG(pixel) * prefilteredRadiance(r, pixel.perceptualRoughness);
-    Fr *= singleBounceAO(specularAO) * pixel.energyCompensation;
-    evaluateClearCoatIBL(pixel, specularAO, Fd, Fr);
-    // IBL _IMPORTANCE_SAMPLING
-//    Fr = isEvaluateIBL(pixel, shading_normal, shading_view, shading_nDotv);
+//float3 evaluateIBL(MaterialInputs material, PixelParams pixel, float3 color_in) {
+//    // Apply transform here if we wanted to rotate the IBL
+//    float3 n = shading_normal;
+//    float3 r = getReflectedVector(pixel, n);
+//
+//    float ssao = evaluateSSAO();
+//    float diffuseAO = min(material.ambientOcclusion, ssao);
+//    float specularAO = computeSpecularAO(shading_nDotv, diffuseAO, pixel.roughness);
+//
+//    // diffuse indirect
+//    float diffuseBRDF = singleBounceAO(diffuseAO);// Fd_Lambert() is baked in the SH below
+//    evaluateClothIndirectDiffuseBRDF(pixel, diffuseBRDF);
+//
+//    float3 diffuseIrradiance = diffuseIrradiance(n);
+//    float3 Fd = pixel.diffuseColor * diffuseIrradiance * diffuseBRDF;
+//
+//    // specular indirect
+//    float3 Fr;
+//    // IBL Cubemap
+//    Fr = specularDFG(pixel) * prefilteredRadiance(r, pixel.perceptualRoughness);
 //    Fr *= singleBounceAO(specularAO) * pixel.energyCompensation;
-//    isEvaluateClearCoatIBL(pixel, specularAO, Fd, Fr);
-
-    evaluateSubsurfaceIBL(pixel, diffuseIrradiance, Fd, Fr);
-    
-    multiBounceAO(diffuseAO, pixel.diffuseColor, Fd);
-    multiBounceSpecularAO(specularAO, pixel.f0, Fr);
-    
-    // Note: iblLuminance is already premultiplied by the exposure
-    float3 color_out = color_in + (Fd + Fr) * frameUniforms.iblLuminance;
-    return color_out;
-    
-}
+//    evaluateClearCoatIBL(pixel, specularAO, Fd, Fr);
+//    // IBL _IMPORTANCE_SAMPLING
+////    Fr = isEvaluateIBL(pixel, shading_normal, shading_view, shading_nDotv);
+////    Fr *= singleBounceAO(specularAO) * pixel.energyCompensation;
+////    isEvaluateClearCoatIBL(pixel, specularAO, Fd, Fr);
+//
+//    evaluateSubsurfaceIBL(pixel, diffuseIrradiance, Fd, Fr);
+//
+//    multiBounceAO(diffuseAO, pixel.diffuseColor, Fd);
+//    multiBounceSpecularAO(specularAO, pixel.f0, Fr);
+//
+//    // Note: iblLuminance is already premultiplied by the exposure
+//    float3 color_out = color_in + (Fd + Fr) * frameUniforms.iblLuminance;
+//    return color_out;
+//
+//}
 
 
 #endif /* AK_SHADERS_IBLFUNCTIONS */

@@ -85,7 +85,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         effectsUniformBuffer?.label = "EffectsUniformBuffer"
         
         environmentUniformBuffer = device?.makeBuffer(length: environmentUniformBufferSize, options: .storageModeShared)
-        environmentUniformBuffer?.label = "EnvironemtUniformBuffer"
+        environmentUniformBuffer?.label = "EnvironmentUniformBuffer"
         
         geometricEntities = []
         

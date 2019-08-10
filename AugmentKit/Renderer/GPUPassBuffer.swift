@@ -58,20 +58,25 @@ class GPUPassBuffer<T> {
     /// - Parameter instanceCount: The number of instances of `T` per pass. Defaults to `1`
     /// - Parameter frameCount: The number of frames worth of data that the buffer contains. Defaults to `1`
     /// - Parameter label: A label used for helping to identify this buffer. If a label is provided, it will be assigned to the buffers label property when calling `initialize(withDevice device:, options:)`
-    init(shaderAttributeIndex: Int, instanceCount: Int = 1, frameCount: Int = 1, label: String? = nil) {
+    init(shaderAttributeIndex: Int, instanceCount: Int = 1, frameCount: Int = 1, label: String? = nil, resourceOptions: MTLResourceOptions = []) {
         self.shaderAttributeIndex = shaderAttributeIndex
         self.instanceCount = instanceCount
         self.frameCount = frameCount
         self.label = label
+        self.resourceOptions = resourceOptions
     }
     
     /// Initialize a new buffer with the `MTLDevice` and `MTLResourceOptions` provided. If a buffer was previously initialized, calling this again will replace the existing buffer
     /// - Parameter device: the `MTLDevice` that will be used to create the buffer
     /// - Parameter options: the `MTLResourceOptions` that will be used to create the buffer
-    func initialize(withDevice device: MTLDevice, options: MTLResourceOptions = []) {
-        resourceOptions = options
+    /// - Parameter bytes: an optional`UnsafeRawPointer`pointing to bytes in memory that will be copied into the buffer
+    func initialize(withDevice device: MTLDevice, bytes: UnsafeRawPointer? = nil) {
         alignedSize = ((MemoryLayout<T>.stride * instanceCount) & ~0xFF) + 0x100
-        buffer = device.makeBuffer(length: totalBufferSize, options: resourceOptions)
+        if let bytes = bytes {
+            buffer = device.makeBuffer(bytes: bytes, length: totalBufferSize, options: resourceOptions)
+        } else {
+            buffer = device.makeBuffer(length: totalBufferSize, options: resourceOptions)
+        }
         if let label = label {
             buffer?.label = label
         }

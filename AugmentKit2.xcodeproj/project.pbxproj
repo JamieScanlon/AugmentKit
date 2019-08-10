@@ -79,6 +79,10 @@
 		9662BA7422BDDC5100FF6F36 /* readme.md in Resources */ = {isa = PBXBuildFile; fileRef = 9662BA7322BDDC5100FF6F36 /* readme.md */; };
 		9681309622C1C8B000AE9EE9 /* CompositeShaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = 9681309522C1C8B000AE9EE9 /* CompositeShaders.metal */; };
 		96904C582294F5EB00584D4F /* AKCube.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96904C572294F5EB00584D4F /* AKCube.swift */; };
+		96BEB2CB22F67D60003CA9C3 /* IBLShaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = 96BEB2CA22F67D60003CA9C3 /* IBLShaders.metal */; };
+		96BEB2CD22F67EA5003CA9C3 /* IBLFunctions.metal in Sources */ = {isa = PBXBuildFile; fileRef = 96BEB2CC22F67EA4003CA9C3 /* IBLFunctions.metal */; };
+		96BEB2CF22F67F68003CA9C3 /* IBLFunctions.h in Headers */ = {isa = PBXBuildFile; fileRef = 96BEB2CE22F67F68003CA9C3 /* IBLFunctions.h */; };
+		96BEB2D122FA7BAB003CA9C3 /* GPUPassTexture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96BEB2D022FA7BAB003CA9C3 /* GPUPassTexture.swift */; };
 		96CACF7C2156A051009A8A20 /* RenderUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96CACF7B2156A051009A8A20 /* RenderUtilities.swift */; };
 		96CACF7E2156D3C9009A8A20 /* GeometryUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96CACF7D2156D3C9009A8A20 /* GeometryUtilities.swift */; };
 		96E0B5B121914B3300140317 /* ShadowShader.metal in Sources */ = {isa = PBXBuildFile; fileRef = 96E0B5B021914B3300140317 /* ShadowShader.metal */; };
@@ -179,6 +183,10 @@
 		9662BA7322BDDC5100FF6F36 /* readme.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = readme.md; sourceTree = "<group>"; };
 		9681309522C1C8B000AE9EE9 /* CompositeShaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = CompositeShaders.metal; sourceTree = "<group>"; };
 		96904C572294F5EB00584D4F /* AKCube.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AKCube.swift; sourceTree = "<group>"; };
+		96BEB2CA22F67D60003CA9C3 /* IBLShaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = IBLShaders.metal; sourceTree = "<group>"; };
+		96BEB2CC22F67EA4003CA9C3 /* IBLFunctions.metal */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.metal; path = IBLFunctions.metal; sourceTree = "<group>"; };
+		96BEB2CE22F67F68003CA9C3 /* IBLFunctions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IBLFunctions.h; sourceTree = "<group>"; };
+		96BEB2D022FA7BAB003CA9C3 /* GPUPassTexture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GPUPassTexture.swift; sourceTree = "<group>"; };
 		96CACF7B2156A051009A8A20 /* RenderUtilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RenderUtilities.swift; sourceTree = "<group>"; };
 		96CACF7D2156D3C9009A8A20 /* GeometryUtilities.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = GeometryUtilities.swift; sourceTree = "<group>"; };
 		96E0B5B021914B3300140317 /* ShadowShader.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = ShadowShader.metal; sourceTree = "<group>"; };
@@ -231,8 +239,8 @@
 				7D6E6B731F8F283C00EFC667 /* module.modulemap */,
 				7D88D7AE1F0AFD550009A154 /* ShaderTypes.h */,
 				7D5FDA3D1FC9FB4400BAE104 /* Renderer.swift */,
-				96F611BA22DA50230081EBB4 /* GPUPassBuffer.swift */,
 				7DAA7254211D48EE00AA11AF /* BRDFFunctions.h */,
+				96BEB2CE22F67F68003CA9C3 /* IBLFunctions.h */,
 				7DAA7255211D4A3B00AA11AF /* Common.h */,
 				96CACF7B2156A051009A8A20 /* RenderUtilities.swift */,
 				96F611B922DA1BF80081EBB4 /* Passes */,
@@ -252,6 +260,7 @@
 			isa = PBXGroup;
 			children = (
 				7D88D7AC1F0AFD550009A154 /* MainShaders.metal */,
+				96BEB2CA22F67D60003CA9C3 /* IBLShaders.metal */,
 				7DFCF6021FC08CD300E8A560 /* ImageCaptureShaders.metal */,
 				7DFCF6041FC096A900E8A560 /* PointShader.metal */,
 				7D53471E203A961A00714A6F /* PathShader.metal */,
@@ -261,6 +270,7 @@
 				961D705A21FCC4F7006DF951 /* PrecalculationComputeShader.metal */,
 				9681309522C1C8B000AE9EE9 /* CompositeShaders.metal */,
 				7DAA7250211D370400AA11AF /* BRDFFunctions.metal */,
+				96BEB2CC22F67EA4003CA9C3 /* IBLFunctions.metal */,
 			);
 			path = Shaders;
 			sourceTree = "<group>";
@@ -438,6 +448,8 @@
 		96F611B922DA1BF80081EBB4 /* Passes */ = {
 			isa = PBXGroup;
 			children = (
+				96F611BA22DA50230081EBB4 /* GPUPassBuffer.swift */,
+				96BEB2D022FA7BAB003CA9C3 /* GPUPassTexture.swift */,
 				965F894E2186BD5E00D1B195 /* RenderPass.swift */,
 				961D705C21FCCB00006DF951 /* ComputePass.swift */,
 				96F79E3C22B6FE9E001F4B94 /* DrawCall.swift */,
@@ -454,6 +466,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				7D6E6B571F8F19C400EFC667 /* AugmentKit.h in Headers */,
+				96BEB2CF22F67F68003CA9C3 /* IBLFunctions.h in Headers */,
 				7D6E6B721F8F267100EFC667 /* ShaderTypes.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -593,6 +606,7 @@
 				7D6979F621287CF3000106DF /* AKAugmentedAnchor.swift in Sources */,
 				96F611BB22DA50230081EBB4 /* GPUPassBuffer.swift in Sources */,
 				7D6E6B701F8F1CDB00EFC667 /* WorldLocationManager.swift in Sources */,
+				96BEB2CB22F67D60003CA9C3 /* IBLShaders.metal in Sources */,
 				96F79E3B22B6E735001F4B94 /* ComputeModule.swift in Sources */,
 				7D6E6B641F8F1CBC00EFC667 /* AKWorld.swift in Sources */,
 				7D6E6B651F8F1CBC00EFC667 /* AugmentedAnchor.swift in Sources */,
@@ -611,6 +625,7 @@
 				9681309622C1C8B000AE9EE9 /* CompositeShaders.metal in Sources */,
 				7DAD06C22071520F00B62B61 /* AKTarget.swift in Sources */,
 				7D5FDA321FC72AAE00BAE104 /* ShaderModule.swift in Sources */,
+				96BEB2D122FA7BAB003CA9C3 /* GPUPassTexture.swift in Sources */,
 				9614CC13216A5C9100427C6D /* AKAugmentedTracker.swift in Sources */,
 				963B72A42257AA4C007E95C2 /* AKSphere.swift in Sources */,
 				7D6979F821287D60000106DF /* AKRealAnchor.swift in Sources */,
@@ -626,6 +641,7 @@
 				7D5FDA3E1FC9FB4400BAE104 /* Renderer.swift in Sources */,
 				7D6E6B6C1F8F1CDB00EFC667 /* LocationManager.swift in Sources */,
 				7D53471F203A961A00714A6F /* PathShader.metal in Sources */,
+				96BEB2CD22F67EA5003CA9C3 /* IBLFunctions.metal in Sources */,
 				7DF697EB1FCD26F500292F66 /* AKModelProvider.swift in Sources */,
 				7DFCF6031FC08CD300E8A560 /* ImageCaptureShaders.metal in Sources */,
 				7DB72CD5202424D70050C61D /* AKPathSegmentAnchor.swift in Sources */,

@@ -66,7 +66,7 @@ class GPUPassTexture {
         }
         
         for lod in 0..<mipLevels {
-            if let mippedTexture = texture.makeTextureView(pixelFormat: .rgba16Float, textureType: .typeCube, levels: lod..<(lod + 1), slices: 0..<6) {
+            if let mippedTexture = texture.makeTextureView(pixelFormat: texture.pixelFormat, textureType: .typeCube, levels: lod..<(lod + 1), slices: 0..<6) {
                 mippedTextures.append(mippedTexture)
 //                let aThreadgroup = ThreadGroup(computePipelineState: threadGroup.computePipelineState, size: (width: mipSize, height: mipSize, depth: threadGroup.size.depth))
 //                mippedThreadgroups.append(aThreadgroup)

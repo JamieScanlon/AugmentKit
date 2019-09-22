@@ -56,6 +56,12 @@ enum BufferIndices {
     kBufferIndexSceneVerticies,
     kBufferIndexLODRoughness,
     kBufferIndexInstanceCount,
+    kBufferIndexCommandBufferContainer,
+};
+
+/// Argument buffer ID for the ICB encoded by the compute kernel
+enum ICBArgumentBufferIndices {
+    kICBArgumentBufferIndexCommandBuffer,
 };
 
 /**

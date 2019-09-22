@@ -609,7 +609,10 @@ fragment float4 anchorGeometryFragmentLighting(ColorInOut in [[stage_in]],
                                                texture2d<float> clearcoatMap [[  texture(kTextureIndexClearcoatMap), function_constant(has_clearcoat_map) ]],
                                                texture2d<float> clearcoatGlossMap [[  texture(kTextureIndexClearcoatGlossMap), function_constant(has_clearcoatGloss_map) ]],
                                                texturecube<float> environmentCubemap [[  texture(kTextureIndexEnvironmentMap) ]],
-                                               depth2d<float> shadowMap [[ texture(kTextureIndexShadowMap) ]]
+                                               depth2d<float> shadowMap [[ texture(kTextureIndexShadowMap) ]],
+                                               texturecube<float> diffuseEnvTexture [[ texture(kTextureIndexDiffuseIBLMap) ]],
+                                               texturecube<float> specularEnvTexture [[ texture(kTextureIndexSpecularIBLMap) ]],
+                                               texture2d<float> brdfLUT [[ texture(kTextureIndexBDRFLookupMap)] ]
                                                ) {
     
     ushort iid = in.iid;

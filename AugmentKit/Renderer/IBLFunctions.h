@@ -32,10 +32,17 @@
 #include <simd/simd.h>
 
 vector_float2 hammersley(uint i, uint N);
-vector_float3 importanceSampleGGX(float2 xi, float3 N, float roughness);
+//vector_float3 importanceSampleGGX(vector_float2 xi, vector_float3 N, float roughness);
 float geometrySchlickGGX(float nDotv, float roughness);
 float geometrySmith(float nDotl, float nDotv, float roughness);
 vector_float2 integrateBRDF(float roughness, float nDotv);
-vector_float3 cubeDirectionFromUVAndFace(float2 uv, int face);
+vector_float3 cubeDirectionFromUVAndFace(vector_float2 uv, int face);
+
+//------------------------------------------------------------------------------
+
+vector_float3 importanceSamplingNdfDggx(float2 u, float3 n, float roughness);
+vector_float3 importanceSamplingVNdfDggx(vector_float2 u, float roughness, vector_float3 v);
+float GDFG(float nDotv, float nDotl, float a);
+float prefilteredImportanceSampling(float ipdf, float2 iblMaxMipLevel);
 
 #endif /* IBLFunctions_h */

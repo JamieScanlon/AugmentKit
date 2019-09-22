@@ -894,10 +894,46 @@ open class Renderer: NSObject {
         // Wait to ensure only `maxInFlightFrames` are getting proccessed by any stage in the Metal
         // pipeline (App, Metal, Drivers, GPU, etc)
         let _ = inFlightSemaphore.wait(timeout: DispatchTime.distantFuture)
+        uniformBufferIndex = (uniformBufferIndex + 1) % Constants.maxInFlightFrames
+        
+        // Update Buffer States
+        renderModules.forEach { module in
+            if module.state == .ready {
+                module.updateBufferState(withBufferIndex: uniformBufferIndex)
+            }
+        }
+        computeModules.forEach { module in
+            if  module.state == .ready {
+                module.updateBufferState(withBufferIndex: uniformBufferIndex)
+            }
+        }
         
         captureScope?.begin()
         
-        // Create a new command buffer for each frame
+        // Create a new command buffer to process the IBL pre-render if necessary
+        // TODO: Kernels to precalculate values for IBL
+//        if let computeCommandBuffer = commandQueue.makeCommandBuffer(), let environmentTexture = environmentTexture, hasEnvironmentTextureChanged {
+//
+//            computeCommandBuffer.label = "IBLCommandBuffer"
+//
+//            // Update Textures
+//            diffuseIBLCubePass?.inputTextures = [environmentTexture]
+//            diffuseIBLCubePass?.prepareTextures()
+//            specularIBLCubePass?.inputTextures = [environmentTexture]
+//            specularIBLCubePass?.prepareTextures()
+//
+//            //
+//            // Dispatch IBL Passes
+//            //
+//
+//            dispatchIBLPasses(withCommandBuffer: computeCommandBuffer)
+//
+//            computeCommandBuffer.commit()
+//            hasEnvironmentTextureChanged = false
+//
+//        }
+        
+        // Create a new command buffer for the frame render
         if let commandBuffer = commandQueue.makeCommandBuffer() {
             
             //
@@ -909,20 +945,6 @@ open class Renderer: NSObject {
             
             commandBuffer.label = "RenderCommandBuffer"
             var renderPasses = [RenderPass]()
-            
-            uniformBufferIndex = (uniformBufferIndex + 1) % Constants.maxInFlightFrames
-            
-            // Update Buffer States
-            renderModules.forEach { module in
-                if module.state == .ready {
-                    module.updateBufferState(withBufferIndex: uniformBufferIndex)
-                }
-            }
-            computeModules.forEach { module in
-                if  module.state == .ready {
-                    module.updateBufferState(withBufferIndex: uniformBufferIndex)
-                }
-            }
             
             // TODO: Dispatch compute and render passes in render layer order
             //
@@ -1063,9 +1085,9 @@ open class Renderer: NSObject {
             
             commandBuffer.commit()
             
-            captureScope?.end()
-            
         }
+        
+        captureScope?.end()
         
         // Update viewportSizeDidChange state
         if viewportSizeDidChange {
@@ -1321,6 +1343,7 @@ open class Renderer: NSObject {
     
     // Environment
     fileprivate var environmentTexture: GPUPassTexture?
+    fileprivate var hasEnvironmentTextureChanged = false
     
     // Shared Uniforms Buffer
     fileprivate var sharedUniformsBuffer: GPUPassBuffer<SharedUniforms>?
@@ -1347,9 +1370,9 @@ open class Renderer: NSObject {
     fileprivate var diffuseIBLCubePass: ComputePass<Any>?
     fileprivate var specularIBLCubePass: ComputePass<Any>?
     fileprivate var computeBDRFLookupPass: ComputePass<Any>?
-    fileprivate var diffuseIBLCube: MTLTexture?
-    fileprivate var specularIBLCube: MTLTexture?
-    fileprivate var brdfLUT: MTLTexture?
+    fileprivate var diffuseIBLCubeTexture: GPUPassTexture?
+    fileprivate var specularIBLCubeTexture:GPUPassTexture?
+    fileprivate var brdfLUTTexture: GPUPassTexture?
     
     // Main Pass
     fileprivate var mainRenderPass: RenderPass?
@@ -1504,13 +1527,13 @@ open class Renderer: NSObject {
         let diffuseIBLTextureDesc = MTLTextureDescriptor.textureCubeDescriptor(pixelFormat: .rgba16Float, size: 64, mipmapped: false)
         diffuseIBLTextureDesc.resourceOptions = .storageModePrivate
         diffuseIBLTextureDesc.usage = [.shaderRead, .shaderWrite]
-        diffuseIBLCube = device.makeTexture(descriptor: diffuseIBLTextureDesc)
+        let diffuseIBLCube = device.makeTexture(descriptor: diffuseIBLTextureDesc)
         diffuseIBLCube?.label = "Diffuse IBL Cubemap"
-        let diffuseIBLCubeTexture = GPUPassTexture(texture: diffuseIBLCube, label: "Diffuse IBL Cubemap", shaderAttributeIndex: Int(kTextureIndexDiffuseIBLMap.rawValue))
+        diffuseIBLCubeTexture = GPUPassTexture(texture: diffuseIBLCube, label: "Diffuse IBL Cubemap", shaderAttributeIndex: Int(kTextureIndexDiffuseIBLMap.rawValue))
         diffuseIBLCubePass?.outputTexture = diffuseIBLCubeTexture
         
         let diffuseIBLComputeModule = DefaultComputeModule<Any>()
-        diffuseIBLComputeModule.instanceCount = 64
+        diffuseIBLComputeModule.instanceCount = 64 * 64 * 6
         diffuseIBLComputeModule.threadgroupDepth = 6
         diffuseIBLComputeModule.computePass = diffuseIBLCubePass
         mutableComputeModules.append(AnyComputeModule(diffuseIBLComputeModule))
@@ -1531,13 +1554,13 @@ open class Renderer: NSObject {
         let specularIBLTextureDesc = MTLTextureDescriptor.textureCubeDescriptor(pixelFormat: .rgba16Float, size: 256, mipmapped: true)
         specularIBLTextureDesc.resourceOptions = .storageModePrivate
         specularIBLTextureDesc.usage = [.shaderRead, .shaderWrite]
-        specularIBLCube = device.makeTexture(descriptor: specularIBLTextureDesc)
+        let specularIBLCube = device.makeTexture(descriptor: specularIBLTextureDesc)
         specularIBLCube?.label = "Specular IBL Cubemap"
-        let specularIBLCubeTexture = GPUPassTexture(texture: specularIBLCube, label: "Specular IBL Cubemap", shaderAttributeIndex: Int(kTextureIndexSpecularIBLMap.rawValue), mipLevels: 9)
+        specularIBLCubeTexture = GPUPassTexture(texture: specularIBLCube, label: "Specular IBL Cubemap", shaderAttributeIndex: Int(kTextureIndexSpecularIBLMap.rawValue), mipLevels: 9)
         specularIBLCubePass?.outputTexture = specularIBLCubeTexture
         
         let specularIBLComputeModule = DefaultComputeModule<Any>()
-        specularIBLComputeModule.instanceCount = 256
+        specularIBLComputeModule.instanceCount = 256 * 256 * 6
         specularIBLComputeModule.threadgroupDepth = 6
         specularIBLComputeModule.computePass = specularIBLCubePass
         mutableComputeModules.append(AnyComputeModule(specularIBLComputeModule))
@@ -1558,13 +1581,13 @@ open class Renderer: NSObject {
         let brdfLUTTextureDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rg16Float, width: 128, height: 128, mipmapped: false)
         brdfLUTTextureDesc.resourceOptions = .storageModePrivate
         brdfLUTTextureDesc.usage = [.shaderRead, .shaderWrite]
-        brdfLUT = device.makeTexture(descriptor: brdfLUTTextureDesc)
+        let brdfLUT = device.makeTexture(descriptor: brdfLUTTextureDesc)
         brdfLUT?.label = "BDRF Lookup"
-        let brdfLUTTexture = GPUPassTexture(texture: brdfLUT, label: "BDRF Lookup", shaderAttributeIndex: Int(kTextureIndexBDRFLookupMap.rawValue))
+        brdfLUTTexture = GPUPassTexture(texture: brdfLUT, label: "BDRF Lookup", shaderAttributeIndex: Int(kTextureIndexBDRFLookupMap.rawValue))
         computeBDRFLookupPass?.outputTexture = brdfLUTTexture
         
         let computeBDRFLookupComputeModule = DefaultComputeModule<Any>()
-        computeBDRFLookupComputeModule.instanceCount = 256 // Produces a thread group size of 16x16x1
+        computeBDRFLookupComputeModule.instanceCount = 128 * 128
         computeBDRFLookupComputeModule.threadgroupDepth = 1
         computeBDRFLookupComputeModule.computePass = computeBDRFLookupPass
         mutableComputeModules.append(AnyComputeModule(computeBDRFLookupComputeModule))
@@ -1963,6 +1986,19 @@ open class Renderer: NSObject {
         }
     }
     
+    // MARK: IBL Prerender Passes
+    
+    /// Draw to the depth texture from the directional lights point of view to generate the shadow map
+    fileprivate func dispatchIBLPasses(withCommandBuffer commandBuffer: MTLCommandBuffer) {
+        diffuseIBLCubePass?.prepareCommandEncoder(withCommandBuffer: commandBuffer)
+        diffuseIBLCubePass?.dispatch()
+        specularIBLCubePass?.prepareCommandEncoder(withCommandBuffer: commandBuffer)
+        specularIBLCubePass?.dispatch()
+        computeBDRFLookupPass?.prepareCommandEncoder(withCommandBuffer: commandBuffer)
+        computeBDRFLookupPass?.dispatch()
+        
+    }
+    
     // MARK: Shadow Pass
     
     /// Draw to the depth texture from the directional lights point of view to generate the shadow map
@@ -2007,14 +2043,6 @@ open class Renderer: NSObject {
                 precalculationPass.computeCommandEncoder?.endEncoding()
             }
         }
-        
-//        diffuseIBLCubePass?.prepareCommandEncoder(withCommandBuffer: commandBuffer)
-//        diffuseIBLCubePass?.dispatch()
-//        specularIBLCubePass?.prepareCommandEncoder(withCommandBuffer: commandBuffer)
-//        specularIBLCubePass?.dispatch()
-//        computeBDRFLookupPass?.prepareCommandEncoder(withCommandBuffer: commandBuffer)
-//        computeBDRFLookupPass?.dispatch()
-        
     }
     
     // MARK: Composite Pass
@@ -2149,14 +2177,13 @@ extension Renderer: ARSessionDelegate {
                     groundPlaneAnchor = planeAnchor
                 }
                 
-            } else if let environmentProbeAnchor = anchor as? AREnvironmentProbeAnchor {
+            } else if let environmentProbeAnchor = anchor as? AREnvironmentProbeAnchor, let environmentCubeMap = environmentProbeAnchor.environmentTexture {
                 environmentProbeAnchors.append(environmentProbeAnchor)
                 remapEnvironmentProbes()
                 if environmentProbeAnchor.extent.x.isInfinite {
-                    let aGPUTexture = GPUPassTexture(texture: environmentProbeAnchor.environmentTexture, label: "Global Environment Texture", shaderAttributeIndex: Int(kTextureIndexEnvironmentMap.rawValue))
-                    diffuseIBLCubePass?.inputTextures = [aGPUTexture]
-                    specularIBLCubePass?.inputTextures = [aGPUTexture]
+                    let aGPUTexture = GPUPassTexture(texture: environmentCubeMap, label: "Global Environment Texture", shaderAttributeIndex: Int(kTextureIndexEnvironmentMap.rawValue))
                     environmentTexture = aGPUTexture
+                    hasEnvironmentTextureChanged = true
                 }
             } else if let _ = anchor as? ARObjectAnchor {
                 
@@ -2201,11 +2228,16 @@ extension Renderer: ARSessionDelegate {
                     groundPlaneAnchor = planeAnchor
                 }
                 
-            } else if let environmentProbeAnchor = anchor as? AREnvironmentProbeAnchor {
+            } else if let environmentProbeAnchor = anchor as? AREnvironmentProbeAnchor, let environmentCubeMap = environmentProbeAnchor.environmentTexture {
                 
                 if let index = environmentProbeAnchors.firstIndex(of: environmentProbeAnchor) {
                     environmentProbeAnchors.replaceSubrange(index..<(index + 1), with: [environmentProbeAnchor])
                     remapEnvironmentProbes()
+                }
+                if environmentProbeAnchor.extent.x.isInfinite {
+                    let aGPUTexture = GPUPassTexture(texture: environmentCubeMap, label: "Global Environment Texture", shaderAttributeIndex: Int(kTextureIndexEnvironmentMap.rawValue))
+                    environmentTexture = aGPUTexture
+                    hasEnvironmentTextureChanged = true
                 }
             } else if let _ = anchor as? ARObjectAnchor {
                 

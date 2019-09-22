@@ -41,8 +41,6 @@ float visibilityAnisotropic(float roughness, float at, float ab, float tDotv, fl
 float visibilityClearCoat(float lDoth);
 float visibilityCloth(float nDotv, float nDotl);
 
-float D_TrowbridgeReitz(float roughness, float nDoth);
-float D_GTR2_aniso(float nDoth, float hDotx, float hDoty, float ax, float ay);
 float D_GGX(float roughness, float nDoth);
 float D_GGX_Anisotropic(float at, float ab, float tDoth, float bDoth, float nDoth);
 float D_Ashikhmin(float roughness, float nDoth);

@@ -40,20 +40,6 @@ using namespace metal;
 // Specular BRDF implementations
 //------------------------------------------------------------------------------
 
-/// Generalized Trowbridge-Reitz to calculate Specular D
-/// DGGX(h) = α² / π((n⋅h)²(α²−1)+1)²
-float D_TrowbridgeReitz(float roughness, float nDoth) {
-    if (roughness >= 1.0) return 1.0 / M_PI_F;
-    float a² = sqr(roughness);
-    float d = sqr(nDoth) * (a² - 1) + 1;
-    return a² / (M_PI_F * sqr(d));
-}
-
-/// Generalized Trowbridge-Reitz, with GGX divided out
-float D_GTR2_aniso(float nDoth, float hDotx, float hDoty, float ax, float ay) {
-    return 1.0 / ( M_PI_F * ax*ay * sqr( sqr(hDotx/ax) + sqr(hDoty/ay) + nDoth * nDoth ));
-}
-
 /// Walter et al. 2007, "Microfacet Models for Refraction through Rough Surfaces"
 /// equivalent to the Trowbridge-Reitz distribution
 float D_GGX(float roughness, float nDoth) {
@@ -69,16 +55,6 @@ float D_GGX_Anisotropic(float at, float ab, float tDoth, float bDoth, float nDot
     float a2 = at * ab;
     float3 d = float3(ab * tDoth, at * bDoth, a2 * nDoth);
     return min(a2 * sqr(a2 / dot(d, d)) * (1.0 / M_PI_F), MAXFLOAT);
-}
-
-/// Ashikhmin 2007, "Distribution-based BRDFs"
-float D_Ashikhmin(float roughness, float nDoth) {
-    float a2 = roughness * roughness;
-    float cos2h = nDoth * nDoth;
-    float sin2h = max(1.0 - cos2h, 0.0078125); // 2^(-14/2), so sin2h^2 > 0 in fp16
-    float sin4h = sin2h * sin2h;
-    float cot2 = -cos2h / (a2 * sin2h);
-    return 1.0 / (M_PI_F * (4.0 * a2 + 1.0) * sin4h) * (4.0 * exp(cot2) + sin4h);
 }
 
 /// Estevez and Kulla 2017, "Production Friendly Microfacet Sheen BRDF". Used for Cloth.
@@ -178,8 +154,6 @@ float distributionClearCoat(float roughness, float nDoth) {
 }
 
 float distributionCloth(float roughness, float nDoth) {
-    // Ashikhmin
-//    return D_Ashikhmin(roughness, nDoth);
     // Charlie
     return D_Charlie(roughness, nDoth);
 }

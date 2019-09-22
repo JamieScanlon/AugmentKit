@@ -1,14 +1,14 @@
 ## AugmentKit
 
-ARKit, released by Apple, is an amazing foundation for building AR apps. AugmentKit is built on top of ARKit and provides additional tools for app developers building augmented reality apps. AugmentKit uses the Metal flavor or ARKit and provides it's own physically based render (PBR) engine which eliminates the dependancy on SceneKit for most AR apps and is tailored for rendering AR. 
+ARKit, released by Apple, is an amazing foundation for building AR apps. AugmentKit is built on top of ARKit and provides additional tools for app developers building augmented reality apps. AugmentKit uses the Metal flavor or ARKit and provides it's own physically based render (PBR) engine which eliminates the dependancy on SceneKit and RealityKit for most AR apps and is tailored for rendering AR. 
 
 #### AugmentKit vs ARKit
 
-Apple's ARKit provides three ways to create augmented reality apps. You can use SpriteKit, an unattractive choice for most because SpriteKit is a 2D game and render engine and AR is fundamentally a 3D technology. The second option is SceneKit, a full 3D renderer and game engine. And finally Metal, the most powerful and flexible option, but it is also the most difficult to learn and use. 
-
-If you are developing a game, or is you have a significant investment in using SceneKit, you probably have enough tools with Apple's frameworks to reach your goals. Unfortunately SceneKit is a large, general purpose, game and render engine that not only adds complexity, but is often times overkill for most AR apps that just want to render a few models, not entire worlds. If you are an app developer, you may not be interested in immersing your self in the game development techniques in order to build an app, and this is the problem AugmentKit wants to solve. AugmentKit seeks to be an easy to implement and light weight alrenative to using SceneKit for developing AR apps.
-
 Along with being simple and light weight, AugmentKit provides more contextual awareness into ARKit. ARKit just deals with tracking the _relative_ position of objects (anchors) in 3D space. But chances are that more sophisticated AR apps are want to integrate things like location awareness and compass direction so that two people running two instances of the app will be able to see and share the same objects, or somebody can 'save' and object in world space and come back to see it days later.
+
+Apple's ARKit provides a number of ways to create and render augmented reality apps. You can use SpriteKit, an unattractive choice for most because SpriteKit is a 2D game and render engine and AR is fundamentally a 3D technology. RealityKit and SceneKit provide full 3D renderer and game engine. Alternatively there is Metal, the most powerful and flexible option, but it is also the most difficult to learn and use and requires builing your own 3D rendering engine.
+
+Apple's SceneKit and RealityKit provide enough to reach the goals of most developers. AugmentKit seeks to be an open source alternalive to these libraries and makes different choices for modeling out a 3D augmented world. AugmentKit may also bee of interest to those interested in learning more about Metal. Written in Swift, and utilizing some of the more advanced concepts in Metal and 3D rendering, AugmentKit aims to be a reference for anybody interested in what a modern, production-ready render engine for Swift looks like. The long term goal is to continue to develop the render engine and break it off into a separate project that would hopefully be the first, production-ready, open-source PBR render engine based in Metal. This project will be called Mirage.
 
 ### What Can AugmentKit Do?
 
@@ -219,20 +219,20 @@ A path in AugmentKit is a special type of augmented anchor. It is a anchor that 
 
 AugmentedUIViewSurface is an augmented anchor with the geometry of a plane or surface. On to this surface is drawn the contents of ant UIView. In this way it can be thought of as a AR screen that you can build just like you build any screen in UIKit. An because AugmentKit does not have it's own text rendering engine, this is also the best way to render text in the AR world. Anything you can do in a UIView, you can render in the AR world. Animation is not supported yet but will be soon.
 
-### Alpha-Release
+### Beta-Release
 
-This project is in Alpha having completed all of the base pre-release functionality. There are _plenty_ of bugs and untested areas especially around improving the renderer to reliably support and render a broad variety of models (currently it's only been tested with a few types of SceneKit models). Also animation is theoretically supported but untested. AugmentedUIViewSurface (a way to render arbitrary UIView's in the AR world) has the potential to unlock some powerful capabilities but needs to support real-time rendered animation to be considered done. More can be done to improve jerky rendering by smoothing out the raw positioning that ARKit spits out. Surface culling (having AR objects apear to go behind objects that are in front of them) would be a huge win but this is relatively unexplored territory. Also the long term goal is to continue to develop the render engine and break it off into a separate project that would hopefully be the first, production-ready, open-source PBR render engine based in Metal. This project will be called Candelabra and will aim to be an open source alternative to using the SceneKit render engine. By doing this I hope to make it easier for developers interested in Metal to find a good source of production-ready code that can be learned from and extended.
+This project is in Beta having completed all of the base pre-release and alpha-release functionality. More can be done to improve jerky rendering by smoothing out the raw positioning that ARKit spits out. Surface culling (having AR objects apear to go behind objects that are in front of them) would be a huge win but this is relatively unexplored territory. 
 
 ### Features
 
-* Written in Swift 5, ARKit 2, and Metal 2
+* Written in Swift 5, ARKit 3, and Metal
 
 ### Requirements
 
 * A8 or higher iOS devices
-* iOS 12.0 or higher
+* iOS 13.0 or higher
 * Cameras require 60fps support
-* Xcode 10 or higher to build
+* Xcode 11 or higher to build
 
 ### Goals
 
@@ -256,11 +256,16 @@ This project is in Alpha having completed all of the base pre-release functional
 #### Beta-Release Project Goals
 - [x] Test and fix animation for models
 - [x] Animated AugmentedUIViewSurface
-- [ ] Improve jerky movements with smoothing
-- [ ] Surface culling
 - [x] Offload many per-frame calculations to GPU Kernel function
 - [x] Improve render engine
 - [x] Add support for shadow maps
+- [x] Performance optimizations
+
+#### Version 1.0 Project Goals
+
+- [ ] Image Based Lighting
+- [ ] Improve jerky movements with smoothing
+- [ ] Surface culling
 
 #### _Stretch Goals_
 

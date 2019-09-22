@@ -138,6 +138,14 @@ class ComputePass<Out> {
         computeCommandEncoder.setComputePipelineState(threadGroup.computePipelineState)
     }
     
+    /// Prepares the input and output textures for rendering by generating mipmaps. This should be called once before rendering and every time the input / output textures change.
+    func prepareTextures() {
+        inputTextures.forEach {
+            $0.generateMippedTextures()
+        }
+        outputTexture?.generateMippedTextures()
+    }
+    
     // MARK: - Lifecycle
     
     func initializeBuffers(withDevice device: MTLDevice?) {
@@ -191,10 +199,7 @@ class ComputePass<Out> {
         let gridSize = Int(ceil(instancesPerLayer.squareRoot()))
 //        let gridSize = Int(Float(instanceCount).squareRoot())
         threadGroup = self.threadGroup(withComputeFunction: computeFunction, size: (width: gridSize, height: gridSize, depth: threadgroupDepth))
-        inputTextures.forEach {
-            $0.generateMippedTextures()
-        }
-        outputTexture?.generateMippedTextures()
+        prepareTextures()
     }
     
     func updateBuffers(withFrameIndex index: Int) {

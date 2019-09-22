@@ -190,7 +190,7 @@
 		96CACF7B2156A051009A8A20 /* RenderUtilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RenderUtilities.swift; sourceTree = "<group>"; };
 		96CACF7D2156D3C9009A8A20 /* GeometryUtilities.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = GeometryUtilities.swift; sourceTree = "<group>"; };
 		96E0B5B021914B3300140317 /* ShadowShader.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = ShadowShader.metal; sourceTree = "<group>"; };
-		96F611BA22DA50230081EBB4 /* GPUPassBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GPUPassBuffer.swift; path = "/Users/marvinscanlon/Library/CloudStorage/iCloud Drive/Documents/AugmentKit/AugmentKit/Renderer/GPUPassBuffer.swift"; sourceTree = "<absolute>"; };
+		96F611BA22DA50230081EBB4 /* GPUPassBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GPUPassBuffer.swift; sourceTree = "<group>"; };
 		96F611BC22DAE2870081EBB4 /* DefaultComputeModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DefaultComputeModule.swift; sourceTree = "<group>"; };
 		96F79E3822B6E68A001F4B94 /* RenderModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RenderModule.swift; sourceTree = "<group>"; };
 		96F79E3A22B6E735001F4B94 /* ComputeModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComputeModule.swift; sourceTree = "<group>"; };

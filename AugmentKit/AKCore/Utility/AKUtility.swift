@@ -472,6 +472,60 @@ extension MDLTexture {
     
 }
 
+extension MTLCullMode: CustomDebugStringConvertible, CustomStringConvertible {
+    /// :nodoc:
+    public var description: String {
+        return debugDescription
+    }
+    /// :nodoc:
+    public var debugDescription: String {
+        var myDescription = "MTLCullMode."
+        switch self {
+        case .back:
+            myDescription += "back"
+        case .front:
+            myDescription += "back"
+        case .none:
+            myDescription += "none"
+        default:
+            break
+        }
+        return myDescription
+    }
+}
+
+extension MTLCompareFunction: CustomDebugStringConvertible, CustomStringConvertible {
+    /// :nodoc:
+    public var description: String {
+        return debugDescription
+    }
+    /// :nodoc:
+    public var debugDescription: String {
+        var myDescription = "MTLCompareFunction."
+        switch self {
+        case .always:
+            myDescription += "always"
+        case .equal:
+            myDescription += "equal"
+        case .greater:
+            myDescription += "greater"
+        case .greaterEqual:
+            myDescription += "greaterEqual"
+        case .less:
+            myDescription += "less"
+        case .lessEqual:
+            myDescription += "lessEqual"
+        case .never:
+            myDescription += "never"
+        case .notEqual:
+            myDescription += "notEqual"
+        default:
+            break
+        }
+        return myDescription
+    }
+}
+
 extension CGColor: CustomDebugStringConvertible, CustomStringConvertible {
     /// :nodoc:
     public var description: String {

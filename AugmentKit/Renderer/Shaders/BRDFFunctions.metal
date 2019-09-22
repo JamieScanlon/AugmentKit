@@ -42,9 +42,9 @@ using namespace metal;
 
 /// Generalized Trowbridge-Reitz to calculate Specular D
 /// DGGX(h) = α² / π((n⋅h)²(α²−1)+1)²
-float D_TrowbridgeReitz(float linearRoughness, float nDoth) {
-    if (linearRoughness >= 1.0) return 1.0 / M_PI_F;
-    float a² = sqr(linearRoughness);
+float D_TrowbridgeReitz(float roughness, float nDoth) {
+    if (roughness >= 1.0) return 1.0 / M_PI_F;
+    float a² = sqr(roughness);
     float d = sqr(nDoth) * (a² - 1) + 1;
     return a² / (M_PI_F * sqr(d));
 }
@@ -56,10 +56,10 @@ float D_GTR2_aniso(float nDoth, float hDotx, float hDoty, float ax, float ay) {
 
 /// Walter et al. 2007, "Microfacet Models for Refraction through Rough Surfaces"
 /// equivalent to the Trowbridge-Reitz distribution
-float D_GGX(float linearRoughness, float nDoth) {
+float D_GGX(float roughness, float nDoth) {
     float oneMinusNDotHSquared = 1.0 - nDoth * nDoth;
-    float a = nDoth * linearRoughness;
-    float k = linearRoughness / (oneMinusNDotHSquared + a * a);
+    float a = nDoth * roughness;
+    float k = roughness / (oneMinusNDotHSquared + a * a);
     float d = k * k * (1.0 / M_PI_F);
     return min(d, MAXFLOAT);
 }
@@ -72,8 +72,8 @@ float D_GGX_Anisotropic(float at, float ab, float tDoth, float bDoth, float nDot
 }
 
 /// Ashikhmin 2007, "Distribution-based BRDFs"
-float D_Ashikhmin(float linearRoughness, float nDoth) {
-    float a2 = linearRoughness * linearRoughness;
+float D_Ashikhmin(float roughness, float nDoth) {
+    float a2 = roughness * roughness;
     float cos2h = nDoth * nDoth;
     float sin2h = max(1.0 - cos2h, 0.0078125); // 2^(-14/2), so sin2h^2 > 0 in fp16
     float sin4h = sin2h * sin2h;
@@ -82,15 +82,15 @@ float D_Ashikhmin(float linearRoughness, float nDoth) {
 }
 
 /// Estevez and Kulla 2017, "Production Friendly Microfacet Sheen BRDF". Used for Cloth.
-float D_Charlie(float linearRoughness, float nDoth) {
-    float invAlpha  = 1.0 / linearRoughness;
+float D_Charlie(float roughness, float nDoth) {
+    float invAlpha  = 1.0 / roughness;
     float cos2h = nDoth * nDoth;
     float sin2h = max(1.0 - cos2h, 0.0078125); // 2^(-14/2), so sin2h^2 > 0 in fp16
     return (2.0 + invAlpha) * pow(sin2h, invAlpha * 0.5) / (2.0 * M_PI_F);
 }
 
-float V_SmithG_GGX(float linearRoughness, float nDotl, float nDotv) {
-    float roughnessAlpha = sqr(linearRoughness * 0.5 + 0.5);
+float V_SmithG_GGX(float roughness, float nDotl, float nDotv) {
+    float roughnessAlpha = sqr(roughness * 0.5 + 0.5);
     float a² = sqr(roughnessAlpha);
     float bL = sqr(nDotl);
     float bV = sqr(nDotv);
@@ -100,8 +100,8 @@ float V_SmithG_GGX(float linearRoughness, float nDotl, float nDotv) {
 }
 
 /// Heitz 2014, "Understanding the Masking-Shadowing Function in Microfacet-Based BRDFs"
-float V_SmithGGXCorrelated(float linearRoughness, float nDotv, float nDotl) {
-    float a² = sqr(linearRoughness);
+float V_SmithGGXCorrelated(float roughness, float nDotv, float nDotl) {
+    float a² = sqr(roughness);
     // TODO: lambdaV can be pre-computed for all the lights, it should be moved out of this function
     float lambdaV = nDotl * sqrt((nDotv - a² * nDotv) * nDotv + a²);
     float lambdaL = nDotv * sqrt((nDotl - a² * nDotl) * nDotl + a²);
@@ -113,8 +113,8 @@ float V_SmithGGXCorrelated(float linearRoughness, float nDotv, float nDotl) {
 }
 
 /// Hammon 2017, "PBR Diffuse Lighting for GGX+Smith Microsurfaces"
-float V_SmithGGXCorrelated_Fast(float linearRoughness, float nDotv, float nDotl) {
-    float v = 0.5 / mix(2.0 * nDotl * nDotv, nDotl + nDotv, linearRoughness);
+float V_SmithGGXCorrelated_Fast(float roughness, float nDotv, float nDotl) {
+    float v = 0.5 / mix(2.0 * nDotl * nDotv, nDotl + nDotv, roughness);
     return min(v, MAXFLOAT);
 }
 
@@ -133,7 +133,7 @@ float V_Kelemen(float lDoth) {
 }
 
 /// Neubelt and Pettineo 2013, "Crafting a Next-gen Material Pipeline for The Order: 1886". Used for Cloth.
-float V_Neubelt(float linearRoughness, float nDotv, float nDotl) {
+float V_Neubelt(float roughness, float nDotv, float nDotl) {
     return min(1.0 / (4.0 * (nDotl + nDotv - nDotl * nDotv)), MAXFLOAT);
 }
 
@@ -165,44 +165,44 @@ float3 Fresnel(float3 f0, float vDoth) {
     return F_Schlick3(f0, f90, vDoth);
 }
 
-float distribution(float linearRoughness, float nDoth) {
-    return D_GGX(linearRoughness, nDoth);
+float distribution(float roughness, float nDoth) {
+    return D_GGX(roughness, nDoth);
 }
 
 float distributionAnisotropic(float at, float ab, float tDoth, float bDoth, float nDoth) {
     return D_GGX_Anisotropic(at, ab, tDoth, bDoth, nDoth);
 }
 
-float distributionClearCoat(float linearRoughness, float nDoth) {
-    return D_GGX(linearRoughness, nDoth);
+float distributionClearCoat(float roughness, float nDoth) {
+    return D_GGX(roughness, nDoth);
 }
 
-float distributionCloth(float linearRoughness, float nDoth) {
+float distributionCloth(float roughness, float nDoth) {
     // Ashikhmin
-//    return D_Ashikhmin(linearRoughness, nDoth);
+//    return D_Ashikhmin(roughness, nDoth);
     // Charlie
-    return D_Charlie(linearRoughness, nDoth);
+    return D_Charlie(roughness, nDoth);
 }
 
-float visibility(float linearRoughness, float nDotv, float nDotl) {
+float visibility(float roughness, float nDotv, float nDotl) {
     // Correct
-//    return V_SmithGGXCorrelated(linearRoughness, nDotv, nDotl);
+    return V_SmithGGXCorrelated(roughness, nDotv, nDotl);
     // Fast
-//    return V_SmithGGXCorrelated_Fast(linearRoughness, nDotv, nDotl);
+//    return V_SmithGGXCorrelated_Fast(roughness, nDotv, nDotl);
     // Less shiney
-    return V_SmithG_GGX(linearRoughness, nDotv, nDotl);
+//    return V_SmithG_GGX(roughness, nDotv, nDotl);
 }
 
-float visibilityAnisotropic(float linearRoughness, float at, float ab, float tDotv, float bDotv, float tDotl, float bDotl, float nDotv, float nDotl) {
+float visibilityAnisotropic(float roughness, float at, float ab, float tDotv, float bDotv, float tDotl, float bDotl, float nDotv, float nDotl) {
     return V_SmithGGXCorrelated_Anisotropic(at, ab, tDotv, bDotv, tDotl, bDotl, nDotv, nDotl);
 }
 
-float visibilityClearCoat(float roughness, float linearRoughness, float lDoth) {
+float visibilityClearCoat(float lDoth) {
     return V_Kelemen(lDoth);
 }
 
-float visibilityCloth(float linearRoughness, float nDotv, float nDotl) {
-    return V_Neubelt(linearRoughness, nDotv, nDotl);
+float visibilityCloth(float roughness, float nDotv, float nDotl) {
+    return V_Neubelt(roughness, nDotv, nDotl);
 }
 
 //------------------------------------------------------------------------------
@@ -214,8 +214,8 @@ float Fd_Lambert() {
 }
 
 /// Burley 2012, "Physically-Based Shading at Disney"
-float Fd_Burley(float linearRoughness, float nDotv, float nDotl, float lDoth) {
-    float f90 = 0.5 + 2.0 * linearRoughness * lDoth * lDoth;
+float Fd_Burley(float roughness, float nDotv, float nDotl, float lDoth) {
+    float f90 = 0.5 + 2.0 * roughness * lDoth * lDoth;
     float lightScatter = F_Schlick(1.0, f90, nDotl);
     float viewScatter  = F_Schlick(1.0, f90, nDotv);
     return lightScatter * viewScatter * (1.0 / M_PI_F);
@@ -230,11 +230,11 @@ float Fd_Wrap(float nDotl, float w) {
 // Diffuse BRDF dispatch
 //------------------------------------------------------------------------------
 
-float diffuse(float linearRoughness, float nDotv, float nDotl, float lDoth) {
+float diffuse(float roughness, float nDotv, float nDotl, float lDoth) {
     // LAMBERT
 //    return Fd_Lambert();
     // BURLEY
-    return Fd_Burley(linearRoughness, nDotv, nDotl, lDoth);
+    return Fd_Burley(roughness, nDotv, nDotl, lDoth);
 }
 
 //------------------------------------------------------------------------------

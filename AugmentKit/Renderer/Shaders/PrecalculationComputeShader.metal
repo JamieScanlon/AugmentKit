@@ -19,6 +19,7 @@ kernel void precalculationComputeShader(constant SharedUniforms &sharedUniforms 
                                         constant AnchorEffectsUniforms *anchorEffectsUniforms [[ buffer(kBufferIndexAnchorEffectsUniforms) ]],
                                         constant EnvironmentUniforms &environmentUniforms [[ buffer(kBufferIndexEnvironmentUniforms) ]],
                                         device PrecalculatedParameters *out [[ buffer(kBufferIndexPrecalculationOutputBuffer) ]],
+                                        constant uint &instanceCount [[buffer(kBufferIndexInstanceCount)]],
                                         uint2 gid [[thread_position_in_grid]],
                                         uint2 tid [[thread_position_in_threadgroup]],
                                         uint2 size [[threads_per_grid]]
@@ -26,6 +27,9 @@ kernel void precalculationComputeShader(constant SharedUniforms &sharedUniforms 
     
     uint w = size.x;
     uint index = gid.y * w + gid.x;
+    if (index >= instanceCount) {
+        return;
+    }
     
     // TODO: Add check for render distance
     
@@ -78,8 +82,10 @@ kernel void precalculationComputeShader(constant SharedUniforms &sharedUniforms 
     out[index].locationTransform = locationTransform;
     out[index].modelMatrix = modelMatrix;
     out[index].normalMatrix = normalMatrix;
+    out[index].projectionMatrix = sharedUniforms.projectionMatrix;
     out[index].modelViewMatrix = modelViewMatrix;
     out[index].modelViewProjectionMatrix = modelViewProjectionMatrix;
     out[index].shadowMVPTransformMatrix = shadowMVPTransformMatrix;
     out[index].directionalLightMVP = directionalLightMVP;
+    out[index].useDepth = sharedUniforms.useDepth;
 }

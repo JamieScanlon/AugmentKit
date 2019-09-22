@@ -59,13 +59,15 @@ using namespace metal;
 // • metallic - the metallic-ness (0 = dielectric, 1 = metallic). This is a linear blend between two different models. The metallic model has no diffuse component and also has a tinted incident specular, equal to the base color.
 // • specular - incident specular amount. This is in lieu of an explicit index-of-refraction. 12
 // • specularTint - a concession for artistic control that tints incident specular towards the base color. Grazing specular is still achromatic.
-// • roughness - surface roughness, controls both diffuse and specular response.
+// • roughness - surface roughness, controls both diffuse and specular response. This is perceptual Roughness. actual roughness = (perceptual roughness)^2
 // • anisotropic - degree of anisotropy. This controls the aspect ratio of the specular highlight. (0 = isotropic, 1 = maximally anisotropic).
 // • sheen - an additional grazing component, primarily intended for cloth.
 // • sheenTint - amount to tint sheen towards base color.
 // • clearcoat - a second, special-purpose specular lobe.
-// • clearcoatGloss - controls clearcoat glossiness (0 = a “satin” appearance, 1 = a “gloss” appearance).
+// • clearcoatGloss - controls clearcoat glossiness (0 = a “satin” appearance, 1 = a “gloss” appearance). Roughness is 1 - glossiness.
 //
+
+#define SPECULAR_ENV_MIP_LEVELS 6
 
 // MARK: - Constants
 
@@ -126,6 +128,7 @@ constexpr sampler linearSampler (address::repeat, min_filter::linear, mag_filter
 constexpr sampler nearestSampler(address::repeat, min_filter::linear, mag_filter::linear, mip_filter::none);
 //constexpr sampler mipSampler(address::clamp_to_edge, min_filter::linear, mag_filter::linear, mip_filter::linear);
 constexpr sampler reflectiveEnvironmentSampler(address::clamp_to_edge, min_filter::nearest, mag_filter::linear, mip_filter::none);
+constexpr sampler cubeSampler(coord::normalized, filter::linear, mip_filter::linear);
 
 float3 computeNormalMap(ColorInOut in, texture2d<float> normalMapTexture) {
     float4 normalMap = float4((float4(normalMapTexture.sample(nearestSampler, float2(in.texCoord)).rgb, 0.0)));
@@ -135,15 +138,15 @@ float3 computeNormalMap(ColorInOut in, texture2d<float> normalMapTexture) {
 
 float3 computeIsotropicSpecular(LightingParameters parameters) {
     
-    float D = distribution(parameters.linearRoughness, parameters.nDoth);
-    float V = visibility(parameters.linearRoughness, parameters.nDotv, parameters.nDotl);
+    float D = distribution(parameters.roughness, parameters.nDoth);
+    float V = visibility(parameters.roughness, parameters.nDotv, parameters.nDotl);
     float3 F = Fresnel(parameters.f0, parameters.lDoth);
     
     return (D * V) * F;
 }
 
 /// From Filament implementation
-// TODO: Implement. Needs camer position and vertex world position to be passed
+// TODO: Implement. Needs camera position and vertex world position to be passed
 //float3 computeAnisotropicSpecular(LightingParameters parameters) {
 //
 //    float3 l = parameters.lightDirection;
@@ -163,12 +166,12 @@ float3 computeIsotropicSpecular(LightingParameters parameters) {
 //    // to simplify materials, we derive them from a single roughness parameter
 //    // Kulla 2017, "Revisiting Physically Based Shading at Imageworks"
 //    // MIN_LINEAR_ROUGHNESS = 0.002025
-//    float at = max(parameters.linearRoughness * (1.0 + pixel.anisotropy), 0.002025);
-//    float ab = max(pixel.linearRoughness * (1.0 - pixel.anisotropy), 0.002025);
+//    float at = max(parameters.roughness * (1.0 + pixel.anisotropy), 0.002025);
+//    float ab = max(pixel.roughness * (1.0 - pixel.anisotropy), 0.002025);
 //
 //    // specular anisotropic BRDF
 //    float D = distributionAnisotropic(at, ab, tDoth, bDoth, parameters.nDoth);
-//    float V = visibilityAnisotropic(parameters.linearRoughness, at, ab, tDotv, bDotv, tDotl, bDotl, parameters.nDotv, parameters.nDotl);
+//    float V = visibilityAnisotropic(parameters.roughness, at, ab, tDotv, bDotv, tDotl, bDotl, parameters.nDotv, parameters.nDotl);
 //    float3  F = fresnel(parameters.f0, parameters.lDoth);
 //
 //    return (D * V) * F;
@@ -178,12 +181,22 @@ float3 computeDiffuse(LightingParameters parameters) {
     
     // Method: 1
     // Filament implementation
+    // For Cloth or Clearcoat Gloss use the following
     float3 diffuseColor = (1.0 - parameters.metalness) * parameters.baseColor.rgb;
-    float3 diffuseLightColor = parameters.ambientLightCol;
-    diffuseColor = diffuseColor * diffuse(parameters.linearRoughness, parameters.nDotv, parameters.nDotl, parameters.lDoth) * diffuseLightColor;
+    diffuseColor = diffuseColor * diffuse(parameters.roughness, parameters.nDotv, parameters.nDotl, parameters.lDoth);
     
     return diffuseColor;
     
+}
+
+float3 computeIBLDiffuse(LightingParameters parameters, texturecube<float> diffuseEnvTexture) {
+    
+    float3 diffuseColor = (1.0 - parameters.metalness) * parameters.baseColor.rgb;
+    float3 diffuseLight = diffuseEnvTexture.sample(cubeSampler, parameters.normal).rgb;
+    diffuseLight *= parameters.ambientIntensity;
+    
+    float3 iblContribution = diffuseLight * diffuseColor;
+    return iblContribution;
 }
 
 float3 computeSpecular(LightingParameters parameters) {
@@ -206,7 +219,7 @@ float3 computeSpecular(LightingParameters parameters) {
     // Normal Distribution Function (NDF):
     // The NDF, also known as the specular distribution, describes the distribution of microfacets for the surface.
     // Determines the size and shape of the highlight.
-    float Ds = distribution(parameters.linearRoughness, parameters.nDoth);
+    float Ds = distribution(parameters.roughness, parameters.nDoth);
 
     // Fresnel Reflectance:
     // The fraction of incoming light that is reflected as opposed to refracted from a flat surface at a given lighting angle.
@@ -219,21 +232,43 @@ float3 computeSpecular(LightingParameters parameters) {
     // This means ideally it should depend on roughness and the microfacet distribution.
     // The following geometric shadowing models use Smith's method for their respective NDF.
     // Smith breaks G into two components: light and view, and uses the same equation for both.
-    float Gs = visibility(parameters.linearRoughness, parameters.nDotl, parameters.nDotv);
+    float Gs = visibility(parameters.roughness, parameters.nDotl, parameters.nDotv);
 
     // All the other terms asside from Ds * Gs * Fs are just a way of encorporating the environment into the specular reflection but the better way to do this would be to fullt implement IBL
     float3 specularOutput = (Ds * Gs * Fs * parameters.reflectedColor) * (1.0 + parameters.metalness * parameters.baseColor.rgb) + parameters.reflectedColor * parameters.metalness * parameters.baseColor.rgb;
+    // This is how it should look
+//    float3 specularOutput = (Ds * Gs) * Fs;
     return specularOutput;
     
 }
+
+//float3 computeIBLSpecular(LightingParameters parameters, texturecube<float> specularEnvTexture, texturecube<float> brdfLUT) {
+//    
+//    float mipCount = SPECULAR_ENV_MIP_LEVELS;
+//    float lod = parameters.perceptualRoughness * (mipCount - 1);
+//    float2 brdf = brdfLUT.sample(cubeSampler, float2(parameters.nDotv, parameters.perceptualRoughness)).xy;
+//    
+//    float3 specularLight(0);
+//    if (mipCount > 1) {
+//        specularLight = specularEnvTexture.sample(cubeSampler, parameters.reflectedVector, level(lod)).rgb;
+//    } else {
+//        specularLight = specularEnvTexture.sample(cubeSampler, parameters.reflectedVector).rgb;
+//    }
+//    specularLight *= parameters.ambientIntensity;
+//    
+//    float3 specularColor = mix(0.04, parameters.baseColor.rgb, parameters.metalness);
+//    
+//    float3 iblContribution = specularLight * ((specularColor * brdf.x) + brdf.y);
+//    return iblContribution;
+//}
 
 /// From filament implementation
 float2 computeClearcoatLobe(LightingParameters parameters) {
     
     // clear coat specular lobe
-    float clearCoatLinearRoughness = parameters.clearcoatGloss * (1.0 - parameters.metalness) + parameters.metalness;
-    float D = distributionClearCoat(clearCoatLinearRoughness, parameters.nDoth);
-    float V = visibilityClearCoat(parameters.clearcoatGloss, clearCoatLinearRoughness, parameters.lDoth);
+    float clearCoatRoughness = (1.0 - parameters.clearcoatGloss) * (1.0 - parameters.clearcoatGloss);
+    float D = distributionClearCoat(clearCoatRoughness, parameters.nDoth);
+    float V = visibilityClearCoat(parameters.lDoth);
     float F = F_Schlick(0.04, 1.0, parameters.lDoth) * parameters.clearcoat; // fix IOR to 1.5
     
     float clearCoat = D * V * F;
@@ -243,9 +278,11 @@ float2 computeClearcoatLobe(LightingParameters parameters) {
 
 float3 computeClearcoat(LightingParameters parameters) {
     
+    return float3(0);
+    
     // Method 1: filament implementation:
-    float clearCoat = computeClearcoatLobe(parameters).x;
-    return float3(clearCoat);
+//    float clearCoat = computeClearcoatLobe(parameters).x;
+//    return float3(clearCoat);
     
     // Method 2
     
@@ -281,17 +318,41 @@ float4 illuminate(LightingParameters parameters) {
     
     // DIFFUSE
     float3 diffuseOut = computeDiffuse(parameters);
-
-    // CLEARCOAT
-    float3 clearcoatOut = computeClearcoat(parameters);
-
+    
     // SPECULAR
     float3 specularOut = computeSpecular(parameters);
+    
+//    float3 color;
+//    if clearcoat {
+//        float2 ccResult = computeClearcoatLobe(parameters)
+//        float Fcc = ccResult.y;
+//        float clearCoat = ccResult.x;
+//        // Energy compensation and absorption; the clear coat Fresnel term is
+//        // squared to take into account both entering through and exiting through
+//        // the clear coat layer
+//        float attenuation = 1.0 - Fcc;
+//
+//        if hasNormal {
+//            float3 color = (diffuseOut + specularOut * (parameters.energyCompensation * attenuation)) * attenuation * parameters.nDotl;
+//
+//            // If the material has a normal map, we want to use the geometric normal
+//            // instead to avoid applying the normal map details to the clear coat layer
+//            float clearCoatNoL = saturate(dot(shading_clearCoatNormal, light.l));
+//            color += clearCoat * clearCoatNoL;
+//
+//            // Early exit to avoid the extra multiplication by NoL
+//            return (color * parameters.colorIntensity.rgb) * (parameters.colorIntensity.w * parameters.attenuation * parameters.ambientOcclusion);
+//        } else {
+//            color = (diffuseOut + specularOut * (parameters.energyCompensation * attenuation)) * attenuation + clearCoat;
+//        }
+//    } else {
+//        // The energy compensation term is used to counteract the darkening effect
+//        // at high roughness
+//        color = diffuseOut + specularOut * parameters.energyCompensation;
+//    }
+//    return (color * parameters.colorIntensity.rgb) * (parameters.colorIntensity.w * parameters.attenuation * parameters.nDotl * parameters.ambientOcclusion);
 
-    // SHEEN
-    float3 sheenOut = computeSheen(parameters);
-
-    return float4(parameters.ambientOcclusion, 1) * float4(diffuseOut + clearcoatOut + specularOut + sheenOut + parameters.emissionColor.xyz, 1) * float4(1.0, 1.0, 1.0, parameters.baseColor.w);
+    return float4(parameters.ambientOcclusion, 1) * float4(diffuseOut + specularOut + parameters.emissionColor.xyz, 1) * float4(1.0, 1.0, 1.0, parameters.baseColor.w);
 
 }
 
@@ -333,15 +394,19 @@ LightingParameters calculateParameters(ColorInOut in,
     parameters.viewDir = -normalize(in.eyePosition);
     parameters.reflectedVector = reflect(-parameters.viewDir, parameters.normal);
     parameters.reflectedColor = (environmentUniforms[in.iid].hasEnvironmentMap == 1) ? environmentCubemap.sample(reflectiveEnvironmentSampler, parameters.reflectedVector).xyz : float3(0, 0, 0);
-    parameters.roughness = has_roughness_map ? max(roughnessMap.sample(linearSampler, in.texCoord.xy).x, 0.001f) : materialUniforms.roughness;
+    // clamp to minimum roucgness. MIN_PERCEPTUAL_ROUGHNESS = 0.045, MIN_ROUGHNESS = 0.002025
+    float perceptualRoughness = has_roughness_map ? max(roughnessMap.sample(linearSampler, in.texCoord.xy).x, 0.001f) : materialUniforms.roughness;
+    parameters.perceptualRoughness = clamp(perceptualRoughness, 0.045, 1.0);
+    float roughness = parameters.perceptualRoughness * parameters.perceptualRoughness;
+    parameters.roughness = clamp(roughness, 0.002025, 1.0);
     parameters.metalness = has_metallic_map ? metallicMap.sample(linearSampler, in.texCoord.xy).x : materialUniforms.metalness;
-    parameters.linearRoughness = parameters.roughness * (1.0 - parameters.metalness) + parameters.metalness;
 //    uint8_t mipLevel = parameters.roughness * emissionMap.get_num_mip_levels();
 //    parameters.emissionColor = has_emission_map ? emissionMap.sample(mipSampler, parameters.reflectedVector, level(mipLevel)).xyz : materialUniforms.emissionColor.xyz;
     parameters.emissionColor = has_emission_map ? emissionMap.sample(linearSampler, in.texCoord.xy) : materialUniforms.emissionColor;
     parameters.ambientOcclusion = has_ambient_occlusion_map ? max(srgbToLinear(ambientOcclusionMap.sample(linearSampler, in.texCoord.xy)).x, 0.001f) : materialUniforms.ambientOcclusion;
     parameters.directionalLightCol = environmentUniforms[in.iid].directionalLightColor;
-    parameters.ambientLightCol = environmentUniforms[in.iid].ambientLightColor / 255.0;
+    parameters.ambientLightCol = environmentUniforms[in.iid].ambientLightColor;
+    parameters.ambientIntensity = environmentUniforms[in.iid].ambientLightIntensity;
     parameters.lightDirection = normalize(in.eyePosition - environmentUniforms[in.iid].directionalLightDirection);
     // Light falls off based on how closely aligned the surface normal is to the light direction.
     // This is the dot product of the light direction vector and vertex normal.

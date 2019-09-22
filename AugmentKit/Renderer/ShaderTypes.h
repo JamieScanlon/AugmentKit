@@ -52,6 +52,10 @@ enum BufferIndices {
     kBufferIndexDrawCallIndex, // The index into the draw call. Used for the precalcualted arguments buffer
     kBufferIndexDrawCallGroupIndex, // The index into the draw call group. Used for the environment and effects buffers
     kBufferIndexRawVertexData,
+    kBufferIndexCameraVertices,
+    kBufferIndexSceneVerticies,
+    kBufferIndexLODRoughness,
+    kBufferIndexInstanceCount,
 };
 
 /**
@@ -99,8 +103,16 @@ enum TextureIndices {
     kTextureIndexClearcoatGlossMap,
     // Environment
     kTextureIndexEnvironmentMap,
+    kTextureIndexDiffuseIBLMap,
+    kTextureIndexSpecularIBLMap,
+    kTextureIndexBDRFLookupMap,
     // Shadow
     kTextureIndexShadowMap,
+    // Composite
+    kTextureIndexSceneColor,
+    kTextureIndexSceneDepth,
+    kTextureIndexAlpha,
+    kTextureIndexDialatedDepth,
     kNumTextureIndices,
 };
 
@@ -168,11 +180,15 @@ struct SharedUniforms {
     // Camera (eye) Position Uniforms
     matrix_float4x4 projectionMatrix; // A transform matrix to convert to 'clip space' for the devices screen taking into account the properties of the camera.
     matrix_float4x4 viewMatrix; // A transform matrix for converting from world space to camera (eye) space.
+    
+    // Matting
+    int useDepth;
 };
 
 /// Structure shared between shader and C code that contains information about the environment like lighting and environment texture cubemaps
 struct EnvironmentUniforms {
     // Lighting Properties
+    float ambientLightIntensity;
     vector_float3 ambientLightColor;
     vector_float3 directionalLightDirection;
     vector_float3 directionalLightColor;
@@ -192,8 +208,6 @@ struct AnchorInstanceUniforms {
     
     matrix_float4x4 locationTransform;
     matrix_float4x4 worldTransform; // A transform matrix for the anchor model in world space.
-//    matrix_float4x4 modelMatrix; // A transform matrix for the anchor model in world space.
-//    matrix_float3x3 normalMatrix;
 };
 
 /// Structure shared between shader and C code that contains information about effects that should be applied to a model
@@ -228,6 +242,7 @@ struct LightingParameters {
     vector_float3   lightDirection;
     vector_float3   directionalLightCol;
     vector_float3   ambientLightCol;
+    float           ambientIntensity;
     vector_float3   viewDir;
     vector_float3   halfVector;
     vector_float3   reflectedVector;
@@ -248,7 +263,7 @@ struct LightingParameters {
     vector_float3   f0;
     float           metalness;
     float           roughness;
-    float           linearRoughness;
+    float           perceptualRoughness;
     float           subsurface;
     float           specular;
     float           specularTint;
@@ -271,12 +286,16 @@ struct PrecalculatedParameters {
     matrix_float4x4 coordinateSpaceTransform; // calculated using worldTransform and headingTransform
     matrix_float4x4 locationTransform;
     
+    matrix_float4x4 projectionMatrix;
     matrix_float4x4 modelMatrix; // locationTransform * coordinateSpaceTransform. A transform matrix for the anchor model in world space.
     matrix_float3x3 normalMatrix;
     matrix_float4x4 modelViewMatrix; // scaledModelMatrix * viewMatrix
     matrix_float4x4 modelViewProjectionMatrix; // projectionMatrix * modelViewMatrix
     matrix_float4x4 shadowMVPTransformMatrix;
     matrix_float4x4 directionalLightMVP;
+    
+    // Matting
+    int useDepth;
 };
 
 // MARK: Argument Buffers

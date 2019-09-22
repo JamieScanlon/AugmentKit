@@ -184,10 +184,18 @@ extension RenderModule {
             renderEncoder.setFragmentTexture(clearcoatGlossTexture, index: Int(kTextureIndexClearcoatGlossMap.rawValue))
         }
         
-        if let environmentTexture = environmentData?.environmentTexture {
-            renderEncoder.setFragmentTexture(environmentTexture, index: Int(kTextureIndexEnvironmentMap.rawValue))
+        if let texture = environmentData?.environmentTexture {
+            renderEncoder.setFragmentTexture(texture, index: Int(kTextureIndexEnvironmentMap.rawValue))
         }
-        
+        if let texture = environmentData?.diffuseIBLTexture {
+            renderEncoder.setFragmentTexture(texture, index: Int(kTextureIndexDiffuseIBLMap.rawValue))
+        }
+        if let texture = environmentData?.specularIBLTexture {
+            renderEncoder.setFragmentTexture(texture, index: Int(kTextureIndexSpecularIBLMap.rawValue))
+        }
+        if let texture = environmentData?.bdrfLookupTexture {
+            renderEncoder.setFragmentTexture(texture, index: Int(kTextureIndexBDRFLookupMap.rawValue))
+        }
     }
     
     func createMTLTexture(inBundle bundle: Bundle, fromAssetPath assetPath: String, withTextureLoader textureLoader: MTKTextureLoader?) -> MTLTexture? {
@@ -265,7 +273,7 @@ extension RenderModule {
             blue = 255
         }
         
-        let clamped = clamp(SIMD3<Float>(red, green, blue), min: 0, max: 255)
+        let clamped = clamp(SIMD3<Float>(red, green, blue), min: 0, max: 255) / 255
         return SIMD3<Float>(clamped.x, clamped.y, clamped.z)
         
     }
@@ -282,7 +290,5 @@ enum RenderModuleConstants {
 
 /// A shared render module is a `RenderModule` responsible for setting up and updating shared buffers. Although it does have a draw() method, typically this method does not do anything. Instead, the module that uses this shared module is responsible for encoding the shared buffer and issuing the draw call
 protocol SharedRenderModule: RenderModule {
-    var sharedUniformBuffer: MTLBuffer? { get }
-    var sharedUniformBufferOffset: Int { get }
-    var sharedUniformBufferAddress: UnsafeMutableRawPointer? { get }
+    var sharedUniformsBuffer: GPUPassBuffer<SharedUniforms>? { get }
 }

@@ -33,6 +33,9 @@ import MetalKit
 
 class PrecalculationModule: PreRenderComputeModule {
     
+    weak var computePass: ComputePass<PrecalculatedParameters>?
+    var device: MTLDevice?
+    var frameCount: Int = 1
     var moduleIdentifier: String {
         return "PrecalculationModule"
     }
@@ -45,22 +48,17 @@ class PrecalculationModule: PreRenderComputeModule {
     var renderDistance: Double = 500
     var sharedModuleIdentifiers: [String]? = [SharedBuffersRenderModule.identifier]
     
-    fileprivate(set) var argumentOutputBuffer: MTLBuffer?
-    fileprivate(set) var argumentOutputBufferSize: Int = 0
-    
     func initializeBuffers(withDevice device: MTLDevice, maxInFlightFrames: Int, maxInstances: Int) {
         
         state = .initializing
         
+        self.device = device
+        frameCount = maxInFlightFrames
         instanceCount = maxInstances
         
         alignedGeometryInstanceUniformsSize = ((MemoryLayout<AnchorInstanceUniforms>.stride * instanceCount) & ~0xFF) + 0x100
         alignedEffectsUniformSize = ((MemoryLayout<AnchorEffectsUniforms>.stride * instanceCount) & ~0xFF) + 0x100
         alignedEnvironmentUniformSize = ((MemoryLayout<EnvironmentUniforms>.stride * instanceCount) & ~0xFF) + 0x100
-        
-        // Output buffer
-        argumentOutputBufferSize = MemoryLayout<PrecalculatedParameters>.stride * instanceCount
-        argumentOutputBuffer = device.makeBuffer(length: argumentOutputBufferSize * maxInFlightFrames, options: .storageModePrivate)
         
         // Calculate our uniform buffer sizes. We allocate `maxInFlightFrames` instances for uniform
         // storage in a single buffer. This allows us to update uniforms in a ring (i.e. triple
@@ -85,20 +83,11 @@ class PrecalculationModule: PreRenderComputeModule {
         effectsUniformBuffer?.label = "EffectsUniformBuffer"
         
         environmentUniformBuffer = device.makeBuffer(length: environmentUniformBufferSize, options: .storageModeShared)
-        environmentUniformBuffer?.label = "EnvironemtUniformBuffer"
+        environmentUniformBuffer?.label = "EnvironmentUniformBuffer"
         
     }
     
-    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, forComputePass computePass: ComputePass?) -> ThreadGroup? {
-        
-        guard let precalculationFunction = metalLibrary.makeFunction(name: "precalculationComputeShader") else {
-            print("Serious Error - failed to create the precalculationComputeShader function")
-            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeShaderInitializationFailed, userInfo: nil)
-            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-            recordNewError(newError)
-            state = .uninitialized
-            return nil
-        }
+    func loadPipeline(withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, forComputePass computePass: ComputePass<PrecalculatedParameters>?) -> ThreadGroup? {
         
         guard let computePass = computePass else {
             print("Warning (PrecalculationModule) - a ComputePass was not found. Aborting.")
@@ -109,12 +98,13 @@ class PrecalculationModule: PreRenderComputeModule {
             return nil
         }
         
-        // If all of the instances are layed out in a square, how big is that square.
-        let gridSize = Int(Double(instanceCount).squareRoot())
-        let threadGroup = computePass.threadGroup(withComputeFunction: precalculationFunction, size: (width: gridSize, height: gridSize, depth: 1))
+        self.computePass = computePass
+        self.computePass?.functionName = "precalculationComputeShader"
+        self.computePass?.initializeBuffers(withDevice: device)
+        self.computePass?.loadPipeline(withMetalLibrary: metalLibrary, instanceCount: instanceCount, threadgroupDepth: 1)
         
         state = .ready
-        return threadGroup
+        return self.computePass?.threadGroup
     }
     
     func updateBufferState(withBufferIndex bufferIndex: Int) {
@@ -123,16 +113,17 @@ class PrecalculationModule: PreRenderComputeModule {
         paletteBufferOffset = Constants.alignedPaletteSize * Constants.maxPaletteCount * bufferIndex
         effectsUniformBufferOffset = alignedEffectsUniformSize * bufferIndex
         environmentUniformBufferOffset = alignedEnvironmentUniformSize * bufferIndex
-        outputBufferOffset = argumentOutputBufferSize * bufferIndex
         
         geometryUniformBufferAddress = geometryUniformBuffer?.contents().advanced(by: geometryUniformBufferOffset)
         paletteBufferAddress = paletteBuffer?.contents().advanced(by: paletteBufferOffset)
         effectsUniformBufferAddress = effectsUniformBuffer?.contents().advanced(by: effectsUniformBufferOffset)
         environmentUniformBufferAddress = environmentUniformBuffer?.contents().advanced(by: environmentUniformBufferOffset)
         
+        computePass?.updateBuffers(withFrameIndex: bufferIndex)
+        
     }
     
-    func prepareToDraw(withAllEntities allEntities: [AKEntity], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, computePass: ComputePass, renderPass: RenderPass?) {
+    func prepareToDraw(withAllEntities allEntities: [AKEntity], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, computePass: ComputePass<PrecalculatedParameters>, renderPass: RenderPass?) {
         
         var drawCallGroupOffset = 0
         var drawCallGroupIndex = 0
@@ -232,6 +223,7 @@ class PrecalculationModule: PreRenderComputeModule {
                         }
                     }()
                     
+                    environmentUniforms?.pointee.ambientLightIntensity = ambientIntensity
                     environmentUniform.pointee.ambientLightColor = ambientLightColor// * ambientIntensity
                     
                     var directionalLightDirection : SIMD3<Float> = environmentProperties.directionalLightDirection
@@ -239,7 +231,7 @@ class PrecalculationModule: PreRenderComputeModule {
                     environmentUniform.pointee.directionalLightDirection = directionalLightDirection
                     
                     let directionalLightColor: SIMD3<Float> = SIMD3<Float>(0.6, 0.6, 0.6)
-                    environmentUniform.pointee.directionalLightColor = directionalLightColor * ambientIntensity
+                    environmentUniform.pointee.directionalLightColor = directionalLightColor// * ambientIntensity
                     
                     environmentUniform.pointee.directionalLightMVP = environmentProperties.directionalLightMVP
                     environmentUniform.pointee.shadowMVPTransformMatrix = shadowProperties.shadowMVPTransformMatrix
@@ -407,7 +399,11 @@ class PrecalculationModule: PreRenderComputeModule {
         }
     }
     
-    func dispatch(withComputePass computePass: ComputePass, sharedModules: [SharedRenderModule]?) {
+    func dispatch(withComputePass computePass: ComputePass<PrecalculatedParameters>?, sharedModules: [SharedRenderModule]?) {
+        
+        guard let computePass = computePass else {
+            return
+        }
         
         guard let computeEncoder = computePass.computeCommandEncoder else {
             return
@@ -419,10 +415,12 @@ class PrecalculationModule: PreRenderComputeModule {
         
         computeEncoder.pushDebugGroup("Dispatch Precalculation")
         
-        if let sharedBuffer = sharedModules?.first(where: {$0.moduleIdentifier == SharedBuffersRenderModule.identifier}), computePass.usesSharedBuffer {
+        computeEncoder.setBytes(&instanceCount, length: MemoryLayout<Int>.size, index: Int(kBufferIndexInstanceCount.rawValue))
+        
+        if let sharedRenderModule = sharedModules?.first(where: {$0.moduleIdentifier == SharedBuffersRenderModule.identifier}), let sharedBuffer = sharedRenderModule.sharedUniformsBuffer?.buffer, let sharedBufferOffset = sharedRenderModule.sharedUniformsBuffer?.currentBufferFrameOffset, computePass.usesSharedBuffer {
             
             computeEncoder.pushDebugGroup("Shared Uniforms")
-            computeEncoder.setBuffer(sharedBuffer.sharedUniformBuffer, offset: sharedBuffer.sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
+            computeEncoder.setBuffer(sharedBuffer, offset: sharedBufferOffset, index: sharedRenderModule.sharedUniformsBuffer?.shaderAttributeIndex ?? 0)
             computeEncoder.popDebugGroup()
             
         }
@@ -454,11 +452,13 @@ class PrecalculationModule: PreRenderComputeModule {
         }
         
         // Output Buffer
-        computeEncoder.pushDebugGroup("Output Buffer")
-        computeEncoder.setBuffer(argumentOutputBuffer, offset: outputBufferOffset, index: Int(kBufferIndexPrecalculationOutputBuffer.rawValue))
-        computeEncoder.popDebugGroup()
+        if let argumentOutputBuffer = computePass.outputBuffer?.buffer, let argumentOutputBufferOffset = computePass.outputBuffer?.currentBufferFrameOffset {
+            computeEncoder.pushDebugGroup("Output Buffer")
+            computeEncoder.setBuffer(argumentOutputBuffer, offset: argumentOutputBufferOffset, index: Int(kBufferIndexPrecalculationOutputBuffer.rawValue))
+            computeEncoder.popDebugGroup()
+        }
         
-        threadGroup.prepareThreadGroup(withComputePass: computePass)
+        computePass.prepareThreadGroup()
         
         // Requires the device supports non-uniform threadgroup sizes
         computeEncoder.dispatchThreads(MTLSize(width: threadGroup.size.width, height: threadGroup.size.height, depth: threadGroup.size.depth), threadsPerThreadgroup: MTLSize(width: threadGroup.threadsPerGroup.width, height: threadGroup.threadsPerGroup.height, depth: 1))
@@ -503,8 +503,6 @@ class PrecalculationModule: PreRenderComputeModule {
     fileprivate var effectsUniformBufferOffset: Int = 0
     // Offset within environmentUniformBuffer to set for the current frame
     fileprivate var environmentUniformBufferOffset: Int = 0
-    // Offset within argumentOutputBuffer to set for the current frame
-    fileprivate var outputBufferOffset = 0
     // Addresses to write geometry uniforms to each frame
     fileprivate var geometryUniformBufferAddress: UnsafeMutableRawPointer?
     // Addresses to write palette to each frame

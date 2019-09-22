@@ -227,9 +227,9 @@ class TrackingPointsRenderModule: RenderModule {
                 drawCall.prepareDrawCall(withRenderPass: renderPass)
                 
                 renderEncoder.setVertexBuffer(trackingPointDataBuffer, offset: trackingPointDataBufferOffset, index: Int(kBufferIndexTrackingPointData.rawValue))
-                if let sharedBuffer = sharedModules?.first(where: {$0.moduleIdentifier == SharedBuffersRenderModule.identifier}) {
+                if let sharedRenderModule = sharedModules?.first(where: {$0.moduleIdentifier == SharedBuffersRenderModule.identifier}), let sharedBuffer = sharedRenderModule.sharedUniformsBuffer?.buffer, let sharedBufferOffset = sharedRenderModule.sharedUniformsBuffer?.currentBufferFrameOffset {
                     renderEncoder.pushDebugGroup("Draw Shared Uniforms")
-                    renderEncoder.setVertexBuffer(sharedBuffer.sharedUniformBuffer, offset: sharedBuffer.sharedUniformBufferOffset, index: Int(kBufferIndexSharedUniforms.rawValue))
+                    renderEncoder.setVertexBuffer(sharedBuffer, offset: sharedBufferOffset, index: sharedRenderModule.sharedUniformsBuffer?.shaderAttributeIndex ?? 0)
                     renderEncoder.popDebugGroup()
                 }
                 renderEncoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: trackingPointCount)

@@ -1428,7 +1428,7 @@ open class Renderer: NSObject {
         configuration.environmentTexturing = .automatic
         
         // Enable people occlusion
-        if #available(iOS 13.0, *) {
+        if #available(iOS 13.0, *), ARConfiguration.supportsFrameSemantics(.personSegmentationWithDepth) {
             configuration.frameSemantics.insert(.personSegmentationWithDepth)
         }
         

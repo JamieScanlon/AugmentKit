@@ -757,7 +757,7 @@ class UnanchoredRenderModule: RenderModule {
                 }
                 
                 var mutableDrawData = drawData
-                mutableDrawData.instanceCount = trackerInstanceCount
+                mutableDrawData.instanceCount = geometryCount
                 
                 // Set the mesh's vertex data buffers and draw
                 draw(withDrawData: mutableDrawData, with: renderEncoder, baseIndex: baseIndex, includeGeometry: renderPass.usesGeometry, includeLighting: renderPass.usesLighting)

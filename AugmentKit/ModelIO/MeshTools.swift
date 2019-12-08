@@ -69,6 +69,40 @@ extension MDLAsset {
 
         return nil
     }
+    
+    /// Exports the `MDLAsset` to the given path as a USDZ file.
+    /// - Parameter url: A url to the final file location. The file must have a `.usdz` file extension
+    /// - Returns: `true` if successful, `false` otherwise
+    @discardableResult
+    public func exportAsUSDZ(to url: URL) -> Bool {
+        
+        guard url.isFileURL else {
+            return false
+        }
+        
+        guard !FileManager.default.fileExists(atPath: url.path), url.pathExtension == "usdz" else {
+            return false
+        }
+
+        // NOTE: At the time this was written, USDZ export is not supported.
+        if MDLAsset.canExportFileExtension("usdz") {
+            do {
+                try export(to: url)
+            } catch {
+                return false
+            }
+            return true
+        } else if MDLAsset.canExportFileExtension("usdc") {
+            let tempURL = url.deletingPathExtension().appendingPathExtension("usdc")
+            do {
+                try export(to: tempURL)
+                try FileManager.default.moveItem(at: tempURL, to: url)
+            } catch {
+                return false
+            }
+            return true
+        }
+    }
 }
 
 // MARK: - MDLAssetTools

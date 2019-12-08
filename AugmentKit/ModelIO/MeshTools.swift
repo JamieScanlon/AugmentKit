@@ -102,6 +102,7 @@ extension MDLAsset {
             }
             return true
         }
+        return false
     }
 }
 

@@ -46,7 +46,7 @@ public struct PlaneGeometry: ExportableGeometry {
     
     public var allocator: MTKMeshBufferAllocator
     public var asset: MDLAsset {
-
+        
         let mesh = MDLMesh.newPlane(withDimensions: SIMD2<Float>(width, height), segments: SIMD2<UInt32>(widthSegments, heightSegments), geometryType: .triangles, allocator: allocator)
         let scatteringFunction = MDLScatteringFunction()
         let material = MDLMaterial(name: "baseMaterial", scatteringFunction: scatteringFunction)
@@ -59,14 +59,15 @@ public struct PlaneGeometry: ExportableGeometry {
         let colorProperty = MDLMaterialProperty(name: "planeColor", semantic: .baseColor, float4: SIMD4<Float>(Float(red), Float(green), Float(blue), Float(alpha)))
         material.setProperty(colorProperty)
 
-         for submesh in mesh.submeshes!  {
-             if let submesh = submesh as? MDLSubmesh {
-                 submesh.material = material
-             }
-         }
+        for submesh in mesh.submeshes!  {
+            if let submesh = submesh as? MDLSubmesh {
+                submesh.material = material
+            }
+        }
 
-         let asset = MDLAsset(bufferAllocator: allocator)
-         asset.add(mesh)
+        let asset = MDLAsset(bufferAllocator: allocator)
+        asset.add(mesh)
+        return asset
     }
     public var width: Float = 0.5
     public var height: Float = 0.5
@@ -115,14 +116,15 @@ public struct BoxGeometry: ExportableGeometry {
         let colorProperty = MDLMaterialProperty(name: "boxColor", semantic: .baseColor, float4: SIMD4<Float>(Float(red), Float(green), Float(blue), Float(alpha)))
         material.setProperty(colorProperty)
 
-         for submesh in mesh.submeshes!  {
-             if let submesh = submesh as? MDLSubmesh {
-                 submesh.material = material
-             }
-         }
+        for submesh in mesh.submeshes!  {
+            if let submesh = submesh as? MDLSubmesh {
+                submesh.material = material
+            }
+        }
 
-         let asset = MDLAsset(bufferAllocator: allocator)
-         asset.add(mesh)
+        let asset = MDLAsset(bufferAllocator: allocator)
+        asset.add(mesh)
+        return asset
     }
     public var width: Float = 0.5
     public var height: Float = 0.5
@@ -177,14 +179,15 @@ public struct ShpereGeometry: ExportableGeometry {
         let colorProperty = MDLMaterialProperty(name: "sphereColor", semantic: .baseColor, float4: SIMD4<Float>(Float(red), Float(green), Float(blue), Float(alpha)))
         material.setProperty(colorProperty)
 
-         for submesh in mesh.submeshes!  {
-             if let submesh = submesh as? MDLSubmesh {
-                 submesh.material = material
-             }
-         }
+        for submesh in mesh.submeshes!  {
+            if let submesh = submesh as? MDLSubmesh {
+                submesh.material = material
+            }
+        }
 
-         let asset = MDLAsset(bufferAllocator: allocator)
-         asset.add(mesh)
+        let asset = MDLAsset(bufferAllocator: allocator)
+        asset.add(mesh)
+        return asset
     }
     public var radius: Float = 0.25
     public var color: UIColor = .white
@@ -227,14 +230,15 @@ public struct CylinderGeometry: ExportableGeometry {
         let colorProperty = MDLMaterialProperty(name: "cylinderColor", semantic: .baseColor, float4: SIMD4<Float>(Float(red), Float(green), Float(blue), Float(alpha)))
         material.setProperty(colorProperty)
 
-         for submesh in mesh.submeshes!  {
-             if let submesh = submesh as? MDLSubmesh {
-                 submesh.material = material
-             }
-         }
+        for submesh in mesh.submeshes!  {
+            if let submesh = submesh as? MDLSubmesh {
+                submesh.material = material
+            }
+        }
 
-         let asset = MDLAsset(bufferAllocator: allocator)
-         asset.add(mesh)
+        let asset = MDLAsset(bufferAllocator: allocator)
+        asset.add(mesh)
+        return asset
     }
     public var height: Float = 1
     public var radius: Float = 0.25
@@ -283,14 +287,15 @@ public struct ConeGeometry: ExportableGeometry {
         let colorProperty = MDLMaterialProperty(name: "cylinderColor", semantic: .baseColor, float4: SIMD4<Float>(Float(red), Float(green), Float(blue), Float(alpha)))
         material.setProperty(colorProperty)
 
-         for submesh in mesh.submeshes!  {
-             if let submesh = submesh as? MDLSubmesh {
-                 submesh.material = material
-             }
-         }
+        for submesh in mesh.submeshes!  {
+            if let submesh = submesh as? MDLSubmesh {
+                submesh.material = material
+            }
+        }
 
-         let asset = MDLAsset(bufferAllocator: allocator)
-         asset.add(mesh)
+        let asset = MDLAsset(bufferAllocator: allocator)
+        asset.add(mesh)
+        return asset
     }
     public var height: Float = 1
     public var radius: Float = 0.25
@@ -339,14 +344,15 @@ public struct CapsuleGeometry: ExportableGeometry {
         let colorProperty = MDLMaterialProperty(name: "cylinderColor", semantic: .baseColor, float4: SIMD4<Float>(Float(red), Float(green), Float(blue), Float(alpha)))
         material.setProperty(colorProperty)
 
-         for submesh in mesh.submeshes!  {
-             if let submesh = submesh as? MDLSubmesh {
-                 submesh.material = material
-             }
-         }
+        for submesh in mesh.submeshes!  {
+            if let submesh = submesh as? MDLSubmesh {
+                submesh.material = material
+            }
+        }
 
-         let asset = MDLAsset(bufferAllocator: allocator)
-         asset.add(mesh)
+        let asset = MDLAsset(bufferAllocator: allocator)
+        asset.add(mesh)
+        return asset
     }
     public var height: Float = 1
     public var radius: Float = 0.25

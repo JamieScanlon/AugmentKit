@@ -112,13 +112,24 @@ extension MDLAsset {
  Tools for creating ModelIO's `MDLAsset` objects
  */
 open class MDLAssetTools {
+    
+    /**
+     Creates an `MDLAsset` object from a `ModelIO` compatable model file. The method loads a file at the given URL and uses the specified `MTKMeshBufferAllocator` to create the `MDLAsset`.
+     - Parameters:
+        - url: The `URL` of the model file
+        - allocator: A `MTKMeshBufferAllocator` that will be used to create the `MDLAsset`
+     - Returns: A new `MDLAsset`
+     */
+    public static func asset(url: URL, allocator: MTKMeshBufferAllocator? = nil) -> MDLAsset? {
+        return MDLAsset(url: url, vertexDescriptor: RenderUtilities.createStandardVertexDescriptor(), bufferAllocator: allocator)
+    }
+    
     /**
      Creates an `MDLAsset` object from a `ModelIO` compatable model file. The method looks for a file with the specified name in the specified bundle and uses the specified `MTKMeshBufferAllocator` to create the `MDLAsset`.
      - Parameters:
          - named: The specified name of the file
          - inBundle: The `Bundle` where the asset can be found
          - allocator: A `MTKMeshBufferAllocator` that will be used to create the `MDLAsset`
-         - bundle: The bundle from which the asset is loaded
      - Returns: A new `MDLAsset`
      */
     public static func asset(named: String, inBundle bundle: Bundle, allocator: MTKMeshBufferAllocator? = nil) -> MDLAsset? {

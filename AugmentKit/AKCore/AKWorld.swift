@@ -48,13 +48,17 @@ public struct AKWorldConfiguration {
      */
     public var renderDistance: Double = 500
     /**
+     If `true` a coaching overlay view will automatically be created and added as a subview to the `renderDestination`
+     */
+    public var hasCoachingOverlay: Bool = true
+    /**
      Initialize the `AKWorldConfiguration` object
      - Parameters:
         - usesLocation: When true, AKWorld manager is able to translate postions to real work latitude and longitude. Defaults to `true`.
         - renderDistance: Sets the maximum distance (in meters) that will be rendred. Defaults to 500.
      
      */
-    public init(usesLocation: Bool = true, renderDistance: Double = 500) {
+    public init(usesLocation: Bool = true, renderDistance: Double = 500, hasCoachingOverlay: Bool = true) {
         
     }
 }
@@ -398,8 +402,23 @@ open class AKWorld: NSObject {
             WorldLocationManager.shared.startServices()
             
         }
-        self.configuration = configuration
         
+        if let parentView = renderDestination.superview, configuration.hasCoachingOverlay {
+            let coachingOverlay = ARCoachingOverlayView()
+            coachingOverlay.activatesAutomatically = true
+            coachingOverlay.delegate = self
+            coachingOverlay.goal = .horizontalPlane
+            coachingOverlay.translatesAutoresizingMaskIntoConstraints = false
+            parentView.addSubview(coachingOverlay)
+            NSLayoutConstraint.activate([
+                coachingOverlay.centerXAnchor.constraint(equalTo: parentView.centerXAnchor),
+                coachingOverlay.centerYAnchor.constraint(equalTo: parentView.centerYAnchor),
+                coachingOverlay.widthAnchor.constraint(equalTo: parentView.widthAnchor),
+                coachingOverlay.heightAnchor.constraint(equalTo: parentView.heightAnchor)
+            ])
+        }
+        
+        self.configuration = configuration
     }
     
     /**
@@ -962,4 +981,21 @@ extension AKWorld: RenderMonitor {
 
 extension MTKView : RenderDestinationProvider {
     
+}
+
+// MARK: - ARCoachingOverlayViewDelegate {
+
+extension AKWorld: ARCoachingOverlayViewDelegate {
+    
+    public func coachingOverlayViewWillActivate(_ coachingOverlayView: ARCoachingOverlayView) {
+        
+    }
+    
+    public func coachingOverlayViewDidDeactivate(_ coachingOverlayView: ARCoachingOverlayView) {
+        
+    }
+    
+    public func coachingOverlayViewDidRequestSessionReset(_ coachingOverlayView: ARCoachingOverlayView) {
+        
+    }
 }

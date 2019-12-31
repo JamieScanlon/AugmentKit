@@ -94,7 +94,8 @@ open class RealSurfaceAnchor: AKRealSurfaceAnchor {
     /**
      Initialize a new object with an `MDLAsset` and an `AKWorldLocation`
      - Parameters:.
-        - at: The location of the anchor
+        - at: The `AKWorldLocation` of the anchor
+        - planeGeometry: A `ARPlaneGeometry` that describes the shape of the plane if it is not rectangel
         - withAllocator: A `MTKMeshBufferAllocator` with wich to create the plane geometry
      */
     public init(at location: AKWorldLocation, planeGeometry: ARPlaneGeometry? = nil, withAllocator metalAllocator: MTKMeshBufferAllocator? = nil) {

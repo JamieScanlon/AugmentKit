@@ -1,10 +1,10 @@
 //
-//  AKAugmentedTracker.swift
+//  UserPosition.swift
 //  AugmentKit
 //
 //  MIT License
 //
-//  Copyright (c) 2018 JamieScanlon
+//  Copyright (c) 2020 JamieScanlon
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -24,13 +24,20 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 //
-//
 
 import Foundation
+import simd
+
+// MARK: - UserPosition
 
 /**
- Represents a tracker placed in the AR world. This tracker only exists in the AR world as opposed to an `AKRealTracker`, like a person or a car, which also exists in the physical world.
+ A relative position that is relative to the users current position
  */
-public protocol AKAugmentedTracker: AKTracker {
-    
+open class UserPosition: AKRelativePosition {
+    /**
+     Initialize a new object.
+     */
+    public init() {
+        super.init(withTransform: matrix_identity_float4x4)
+    }
 }

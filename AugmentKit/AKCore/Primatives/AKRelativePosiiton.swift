@@ -30,7 +30,7 @@ import simd
 
 // MARK: - AKRelativePosition
 /**
- A data structure that represents a position relative to another reference position in world space.
+ A data structure that represents a position relative to another reference position in world space. This class provides functionality for recursively updating itself when a `parentPosition` is provided. Since this operation can incur a CPU cost, this must be done through a call to `updateTransforms()`. The `transformHasChanged` property can be used to determine when the current position values are stale, requiring a call to `updateTransforms()` before position values can be considered current.
  */
 open class AKRelativePosition {
     
@@ -47,11 +47,11 @@ open class AKRelativePosition {
         }
     }
     /**
-     The transform that represents the `parentPosition`'s transform. The absolute transform that this object represents can be calulated by multiplying this 'referenceTransform' with the `transform` property. If `parentPosition` is not provided, this will be equal to `matrix_identity_float4x4`
+     The transform that represents the `parentPosition`'s transform. The absolute transform that this object represents can be calulated by multiplying this `referenceTransform` with the `transform` property. If `parentPosition` is not provided, this will be equal to `matrix_identity_float4x4`
      */
     public private(set) var referenceTransform: matrix_float4x4 = matrix_identity_float4x4
     /**
-     The transform that this object represents. If using heading, the matrix provided should NOT contain any rotation component.
+     The transform that this object represents. This transform is relative to the `parentPosition`'s transform if one is provided. If using `heading`, the matrix provided should **NOT** contain any rotational component.  The absolute transform that this object represents can be calulated by multiplying this `transform` with the `referenceTransform` property.
      */
     public var transform: matrix_float4x4 = matrix_identity_float4x4 {
         didSet {
@@ -59,7 +59,7 @@ open class AKRelativePosition {
         }
     }
     /**
-     When `true`, `referenceTransform` and `transform` don't represent the current state. In this case updateTransforms() should to be called before using `referenceTransform` and `transform` for any position calculations.
+     When `true`, `referenceTransform` and `transform` don't represent the current state. In this case `updateTransforms()` should to be called before using `referenceTransform` and `transform` for any position calculations.
      */
     public var transformHasChanged: Bool {
         return _transformHasChanged || (parentPosition?.transformHasChanged == true)

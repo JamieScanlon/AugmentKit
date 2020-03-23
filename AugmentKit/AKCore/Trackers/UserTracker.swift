@@ -1,10 +1,10 @@
 //
-//  AugmentedAnchor.swift
+//  UserTracker.swift
 //  AugmentKit
 //
 //  MIT License
 //
-//  Copyright (c) 2018 JamieScanlon
+//  Copyright (c) 2020 JamieScanlon
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -25,29 +25,22 @@
 //  SOFTWARE.
 //
 
-import ARKit
 import Foundation
 import ModelIO
+import simd
+
+// MARK: - UserTracker
 
 /**
- A generic implementation of `AKAugmentedAnchor`. An AR anchor that can be placed in the AR world. These can be created and given to the AR engine to render in the AR world.
+ An implementation of `AKAugmentedUserTracker`
  */
-open class AugmentedAnchor: AKAugmentedAnchor {
-    
+open class UserTracker: AKAugmentedUserTracker {
     /**
-     Returns "AugmentedAnchor"
+     A type string. Always returns "UserTracker"
      */
     public static var type: String {
-        return "AugmentedAnchor"
+        return "UserTracker"
     }
-    /**
-     The location of the anchor
-     */
-    public var worldLocation: AKWorldLocation
-    /**
-     The locaiton of the anchor
-     */
-    public var heading: AKHeading = NorthHeading()
     /**
      The `MDLAsset` associated with the entity.
      */
@@ -61,13 +54,13 @@ open class AugmentedAnchor: AKAugmentedAnchor {
      */
     public var effects: [AnyEffect<Any>]?
     /**
-     Specified a perfered renderer to use when rendering this enitity. Most will use the standard PBR renderer but some entities may prefer a simpiler renderer when they are not trying to achieve the look of real-world objects. Defaults to the PBR renderer.
+     Specified a perfered renderer to use when rendering this enitity. Most will use the standard PBR renderer but some entities may prefer a simpiler renderer when they are not trying to achieve the look of real-world objects. Defaults to `ShaderPreference.pbr`
      */
     public var shaderPreference: ShaderPreference = .pbr
     /**
-     Indicates whether this geometry participates in the generation of augmented shadows. Since this is an augmented geometry, it does generate shadows.
+     Indicates whether this geometry participates in the generation of augmented shadows. Defaults to `false`.
      */
-    public var generatesShadows: Bool = true
+    public var generatesShadows: Bool = false
     /**
      If `true`, the current base color texture of the entity has changed since the last time it was rendered and the pixel data needs to be updated. This flag can be used to achieve dynamically updated textures for rendered objects.
      */
@@ -75,45 +68,38 @@ open class AugmentedAnchor: AKAugmentedAnchor {
     /// If `true` the underlying mesh for this geometry has changed and the renderer needs to update. This can be used to achieve dynamically generated geometries that change over time.
     public var needsMeshUpdate: Bool = false
     /**
-     An `ARAnchor` that will be tracked in the AR world by `ARKit`
+     The position of the tracker. The position is relative to the user.
      */
-    public var arAnchor: ARAnchor?
+    public var position: AKRelativePosition
     /**
-     Initialize a new object with an `MDLAsset` and an `AKWorldLocation`
+     Initializes a new object with an `MDLAsset` and transform that represents a position relative to the current uses position.
      - Parameters:
-        - withModelAsset: The `MDLAsset` associated with the entity.
-        - at: The location of the anchor
+     - withModelAsset: The `MDLAsset` associated with the entity.
+     - withUserRelativeTransform: A transform used to create a `AKRelativePosition`
      */
-    public init(withModelAsset asset: MDLAsset, at location: AKWorldLocation) {
+    public init(withModelAsset asset: MDLAsset, withUserRelativeTransform relativeTransform: matrix_float4x4) {
         self.asset = asset
-        self.worldLocation = location
+        let myPosition = AKRelativePosition(withTransform: relativeTransform, relativeTo: UserPosition())
+        self.position = myPosition
     }
     /**
-     Sets a new `arAnchor`
-     - Parameters:
-        - _: An `ARAnchor`
+     Gets the updated users position.
+     - Returns: An `AKRelativePosition` eith the users current position in the world
      */
-    public func setARAnchor(_ arAnchor: ARAnchor) {
-        self.arAnchor = arAnchor
-        if identifier == nil {
-            identifier = arAnchor.identifier
-        }
-        worldLocation.transform = arAnchor.transform
+    public func userPosition() -> AKRelativePosition? {
+        return position.parentPosition
     }
-    
 }
 
-/// :nodoc:
-extension AugmentedAnchor: CustomDebugStringConvertible, CustomStringConvertible {
+extension UserTracker: CustomStringConvertible, CustomDebugStringConvertible {
     
     /// :nodoc:
     public var description: String {
         return debugDescription
     }
-    
     /// :nodoc:
     public var debugDescription: String {
-        let myDescription = "<AugmentedAnchor: \(Unmanaged.passUnretained(self).toOpaque())> worldLocation: \(worldLocation), identifier:\(identifier?.debugDescription ?? "None"), effects: \(effects?.debugDescription ?? "None"), arAnchor: \(arAnchor?.debugDescription ?? "None"), asset: \(asset)"
+        let myDescription = "<UserTracker: \(Unmanaged.passUnretained(self).toOpaque())> type: \(UserTracker.type), identifier: \(identifier?.debugDescription ?? "None"), position: \(position), asset: \(asset), effects: \(effects.debugDescription), shaderPreference: \(shaderPreference), generatesShadows: \(generatesShadows)"
         return myDescription
     }
     

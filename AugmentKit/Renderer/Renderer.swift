@@ -1166,6 +1166,8 @@ open class Renderer: NSObject {
             var mutableExistingGeometries = existingGeometries
             mutableExistingGeometries.append(akTracker)
             entitiesForRenderModule[UnanchoredRenderModule.identifier] = mutableExistingGeometries
+            unanchoredRenderModule?.state = .uninitialized
+            hasUninitializedModules = true
         } else {
             entitiesForRenderModule[UnanchoredRenderModule.identifier] = [akTracker]
         }
@@ -1232,6 +1234,8 @@ open class Renderer: NSObject {
             var mutableExistingGeometries = existingGeometries
             mutableExistingGeometries.append(gazeTarget)
             entitiesForRenderModule[UnanchoredRenderModule.identifier] = mutableExistingGeometries
+            unanchoredRenderModule?.state = .uninitialized
+            hasUninitializedModules = true
         } else {
             entitiesForRenderModule[UnanchoredRenderModule.identifier] = [gazeTarget]
         }

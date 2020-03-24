@@ -81,8 +81,10 @@ open class AKRelativePosition {
      Updates the `transform` and `referenceTransform` properties to represent the current state.
      */
     public func updateTransforms() {
-        if let parentPosition = parentPosition, parentPosition.transformHasChanged == true {
-            parentPosition.updateTransforms()
+        if let parentPosition = parentPosition {
+            if parentPosition.transformHasChanged  {
+                parentPosition.updateTransforms()
+            }
             referenceTransform = parentPosition.referenceTransform * parentPosition.transform
         }
         
@@ -123,4 +125,16 @@ open class AKRelativePosition {
     private var _transformHasChanged = false
     private var _headingHasChanged = false
     
+}
+
+extension AKRelativePosition: CustomStringConvertible, CustomDebugStringConvertible {
+    /// :nodoc:
+    public var description: String {
+        return debugDescription
+    }
+    /// :nodoc:
+    public var debugDescription: String {
+        let myDescription = "<KRelativePosition: \(Unmanaged.passUnretained(self).toOpaque())> transform: \(transform), referenceTransform: \(referenceTransform), parentPosition: \(parentPosition?.debugDescription ?? "None"), transformHasChanged: \(transformHasChanged)"
+        return myDescription
+    }
 }

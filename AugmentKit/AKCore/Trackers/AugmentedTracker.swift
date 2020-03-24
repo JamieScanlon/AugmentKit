@@ -83,3 +83,17 @@ open class AugmentedTracker: AKAugmentedTracker {
     }
     
 }
+
+extension AugmentedTracker: CustomStringConvertible, CustomDebugStringConvertible {
+    
+    /// :nodoc:
+    public var description: String {
+        return debugDescription
+    }
+    /// :nodoc:
+    public var debugDescription: String {
+        let myDescription = "<AugmentedTracker: \(Unmanaged.passUnretained(self).toOpaque())> type: \(AugmentedTracker.type), identifier: \(identifier?.debugDescription ?? "None"), position: \(position), asset: \(asset), effects: \(effects.debugDescription), shaderPreference: \(shaderPreference), generatesShadows: \(generatesShadows), needsColorTextureUpdate: \(needsColorTextureUpdate), needsMeshUpdate: \(needsMeshUpdate)"
+        return myDescription
+    }
+    
+}

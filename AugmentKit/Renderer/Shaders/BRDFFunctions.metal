@@ -206,9 +206,9 @@ float Fd_Wrap(float nDotl, float w) {
 
 float diffuse(float roughness, float nDotv, float nDotl, float lDoth) {
     // LAMBERT
-//    return Fd_Lambert();
+    return Fd_Lambert();
     // BURLEY
-    return Fd_Burley(roughness, nDotv, nDotl, lDoth);
+//    return Fd_Burley(roughness, nDotv, nDotl, lDoth);
 }
 
 //------------------------------------------------------------------------------

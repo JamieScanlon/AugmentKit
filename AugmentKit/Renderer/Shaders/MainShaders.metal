@@ -138,8 +138,22 @@ float3 computeNormalMap(ColorInOut in, texture2d<float> normalMapTexture) {
 
 float3 computeIsotropicSpecular(LightingParameters parameters) {
     
+    // Normal Distribution Function (NDF):
+    // The NDF, also known as the specular distribution, describes the distribution of microfacets for the surface.
+    // Determines the size and shape of the highlight.
     float D = distribution(parameters.roughness, parameters.nDoth);
+    
+    // Geometric Shadowing:
+    // The geometric shadowing term describes the shadowing from the microfacets.
+    // This means ideally it should depend on roughness and the microfacet distribution.
+    // The following geometric shadowing models use Smith's method for their respective NDF.
+    // Smith breaks G into two components: light and view, and uses the same equation for both.
     float V = visibility(parameters.roughness, parameters.nDotv, parameters.nDotl);
+    
+    // Fresnel Reflectance:
+    // The fraction of incoming light that is reflected as opposed to refracted from a flat surface at a given lighting angle.
+    // Fresnel Reflectance goes to 1 as the angle of incidence goes to 90º. The value of Fresnel Reflectance at 0º
+    // is the specular reflectance color.
     float3 F = Fresnel(parameters.f0, parameters.lDoth);
     
     return (D * V) * F;
@@ -179,12 +193,15 @@ float3 computeIsotropicSpecular(LightingParameters parameters) {
 
 float3 computeDiffuse(LightingParameters parameters) {
     
-    // Method: 1
     // Filament implementation
-    // For Cloth or Clearcoat Gloss use the following
-    float3 diffuseColor = (1.0 - parameters.metalness) * parameters.baseColor.rgb;
-    diffuseColor = diffuseColor * diffuse(parameters.roughness, parameters.nDotv, parameters.nDotl, parameters.lDoth);
     
+    // For Cloth or Clearcoat Gloss use the following
+//    float3 diffuseColor = (1.0 - parameters.metalness) * parameters.baseColor.rgb;
+    
+    // For standard model diffuse color use the following
+    float3 diffuseColor = parameters.baseColor.rgb;
+    
+    diffuseColor = diffuseColor * diffuse(parameters.roughness, parameters.nDotv, parameters.nDotl, parameters.lDoth);
     return diffuseColor;
     
 }
@@ -201,6 +218,8 @@ float3 computeIBLDiffuse(LightingParameters parameters, texturecube<float> diffu
 
 float3 computeSpecular(LightingParameters parameters) {
     
+    // Filament implementation
+    
     // Calculate BDRF
     // B-idirectional
     // R-eflectance
@@ -209,37 +228,9 @@ float3 computeSpecular(LightingParameters parameters) {
     // BDRF is a function of light direction and view (camera/eye) direction
     // See: https://www.youtube.com/watch?v=j-A0mwsJRmk
     
-    // Method: 1
-    // Filament implementation
     // TODO: Anisotropic
-//    return computeIsotropicSpecular(parameters);
     
-    // Method 2
-
-    // Normal Distribution Function (NDF):
-    // The NDF, also known as the specular distribution, describes the distribution of microfacets for the surface.
-    // Determines the size and shape of the highlight.
-    float Ds = distribution(parameters.roughness, parameters.nDoth);
-
-    // Fresnel Reflectance:
-    // The fraction of incoming light that is reflected as opposed to refracted from a flat surface at a given lighting angle.
-    // Fresnel Reflectance goes to 1 as the angle of incidence goes to 90º. The value of Fresnel Reflectance at 0º
-    // is the specular reflectance color.
-    float3 Fs = Fresnel(parameters.f0, parameters.lDoth);
-
-    // Geometric Shadowing:
-    // The geometric shadowing term describes the shadowing from the microfacets.
-    // This means ideally it should depend on roughness and the microfacet distribution.
-    // The following geometric shadowing models use Smith's method for their respective NDF.
-    // Smith breaks G into two components: light and view, and uses the same equation for both.
-    float Gs = visibility(parameters.roughness, parameters.nDotl, parameters.nDotv);
-
-    // All the other terms asside from Ds * Gs * Fs are just a way of encorporating the environment into the specular reflection but the better way to do this would be to fullt implement IBL
-    float3 specularOutput = (Ds * Gs * Fs * parameters.reflectedColor) * (1.0 + parameters.metalness * parameters.baseColor.rgb) + parameters.reflectedColor * parameters.metalness * parameters.baseColor.rgb;
-    // This is how it should look
-//    float3 specularOutput = (Ds * Gs) * Fs;
-    return specularOutput;
-    
+    return computeIsotropicSpecular(parameters);
 }
 
 //float3 computeIBLSpecular(LightingParameters parameters, texturecube<float> specularEnvTexture, texturecube<float> brdfLUT) {

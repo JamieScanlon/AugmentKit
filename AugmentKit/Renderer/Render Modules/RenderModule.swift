@@ -48,7 +48,7 @@ protocol RenderModule: ShaderModule {
     func loadAssets(forGeometricEntities: [AKGeometricEntity], fromModelProvider: ModelProvider?, textureLoader: MTKTextureLoader, completion: (() -> Void))
     
     /// After this function is called, The Render Pass Desciptors, Textures, Buffers, Render Pipeline State Descriptors, and Depth Stencil Descriptors should all be set up.
-    func loadPipeline(withModuleEntities: [AKEntity], metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, renderPass: RenderPass?, completion: (([DrawCallGroup]) -> Void)?)
+    func loadPipeline(withModuleEntities: [AKEntity], metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, renderPass: RenderPass?, numQualityLevels: Int, completion: (([DrawCallGroup]) -> Void)?)
     
     //
     // Per Frame Updates
@@ -102,10 +102,6 @@ extension RenderModule {
                 continue
             }
             
-            // Sets the weight of values sampled from a texture vs value from a material uniform
-            // for a transition between quality levels
-            //            submeshData.computeTextureWeights(for: currentQualityLevel, with: globalMapWeight)
-            
             let indexCount = Int(submeshData.indexCount)
             let indexType = submeshData.indexType
             
@@ -132,68 +128,68 @@ extension RenderModule {
             renderEncoder.setFragmentTexture(baseColorTexture, index: Int(kTextureIndexColor.rawValue))
         }
         
-        if let ambientOcclusionTexture = drawSubData.ambientOcclusionTexture {
+        if let ambientOcclusionTexture = drawSubData.ambientOcclusionTexture, AKCapabilities.AmbientOcclusionMap {
             renderEncoder.setFragmentTexture(ambientOcclusionTexture, index: Int(kTextureIndexAmbientOcclusion.rawValue))
         }
         
-        if let emissionTexture = drawSubData.emissionTexture {
+        if let emissionTexture = drawSubData.emissionTexture, AKCapabilities.EmissionMap {
             renderEncoder.setFragmentTexture(emissionTexture, index: Int(kTextureIndexEmissionMap.rawValue))
         }
         
-        if let normalTexture = drawSubData.normalTexture {
+        if let normalTexture = drawSubData.normalTexture, AKCapabilities.NormalMap {
             renderEncoder.setFragmentTexture(normalTexture, index: Int(kTextureIndexNormal.rawValue))
         }
         
-        if let roughnessTexture = drawSubData.roughnessTexture {
+        if let roughnessTexture = drawSubData.roughnessTexture, AKCapabilities.RoughnessMap {
             renderEncoder.setFragmentTexture(roughnessTexture, index: Int(kTextureIndexRoughness.rawValue))
         }
         
-        if let metallicTexture = drawSubData.metallicTexture {
+        if let metallicTexture = drawSubData.metallicTexture, AKCapabilities.MetallicMap {
             renderEncoder.setFragmentTexture(metallicTexture, index: Int(kTextureIndexMetallic.rawValue))
         }
         
-        if let subsurfaceTexture = drawSubData.subsurfaceTexture {
+        if let subsurfaceTexture = drawSubData.subsurfaceTexture, AKCapabilities.SubsurfaceMap {
             renderEncoder.setFragmentTexture(subsurfaceTexture, index: Int(kTextureIndexSubsurfaceMap.rawValue))
         }
         
-        if let specularTexture = drawSubData.specularTexture {
+        if let specularTexture = drawSubData.specularTexture, AKCapabilities.SpecularMap {
             renderEncoder.setFragmentTexture(specularTexture, index: Int(kTextureIndexSpecularMap.rawValue))
         }
         
-        if let specularTintTexture = drawSubData.specularTintTexture {
+        if let specularTintTexture = drawSubData.specularTintTexture, AKCapabilities.SpecularTintMap {
             renderEncoder.setFragmentTexture(specularTintTexture, index: Int(kTextureIndexSpecularTintMap.rawValue))
         }
         
-        if let anisotropicTexture = drawSubData.anisotropicTexture {
+        if let anisotropicTexture = drawSubData.anisotropicTexture, AKCapabilities.AnisotropicMap {
             renderEncoder.setFragmentTexture(anisotropicTexture, index: Int(kTextureIndexAnisotropicMap.rawValue))
         }
         
-        if let sheenTexture = drawSubData.sheenTexture {
+        if let sheenTexture = drawSubData.sheenTexture, AKCapabilities.SheenMap {
             renderEncoder.setFragmentTexture(sheenTexture, index: Int(kTextureIndexSheenMap.rawValue))
         }
         
-        if let sheenTintTexture = drawSubData.sheenTintTexture {
+        if let sheenTintTexture = drawSubData.sheenTintTexture, AKCapabilities.SheenTintMap {
             renderEncoder.setFragmentTexture(sheenTintTexture, index: Int(kTextureIndexSheenTintMap.rawValue))
         }
         
-        if let clearcoatTexture = drawSubData.clearcoatTexture {
+        if let clearcoatTexture = drawSubData.clearcoatTexture, AKCapabilities.ClearcoatMap {
             renderEncoder.setFragmentTexture(clearcoatTexture, index: Int(kTextureIndexClearcoatMap.rawValue))
         }
         
-        if let clearcoatGlossTexture = drawSubData.clearcoatGlossTexture {
+        if let clearcoatGlossTexture = drawSubData.clearcoatGlossTexture, AKCapabilities.ClearcoatGlossMap {
             renderEncoder.setFragmentTexture(clearcoatGlossTexture, index: Int(kTextureIndexClearcoatGlossMap.rawValue))
         }
         
-        if let texture = environmentData?.environmentTexture {
+        if let texture = environmentData?.environmentTexture, AKCapabilities.EnvironmentMap {
             renderEncoder.setFragmentTexture(texture, index: Int(kTextureIndexEnvironmentMap.rawValue))
         }
-        if let texture = environmentData?.diffuseIBLTexture {
+        if let texture = environmentData?.diffuseIBLTexture, AKCapabilities.ImageBasedLighting {
             renderEncoder.setFragmentTexture(texture, index: Int(kTextureIndexDiffuseIBLMap.rawValue))
         }
-        if let texture = environmentData?.specularIBLTexture {
+        if let texture = environmentData?.specularIBLTexture, AKCapabilities.ImageBasedLighting {
             renderEncoder.setFragmentTexture(texture, index: Int(kTextureIndexSpecularIBLMap.rawValue))
         }
-        if let texture = environmentData?.bdrfLookupTexture {
+        if let texture = environmentData?.bdrfLookupTexture, AKCapabilities.ImageBasedLighting {
             renderEncoder.setFragmentTexture(texture, index: Int(kTextureIndexBDRFLookupMap.rawValue))
         }
     }
@@ -275,9 +271,7 @@ extension RenderModule {
         
         let clamped = clamp(SIMD3<Float>(red, green, blue), min: 0, max: 255) / 255
         return SIMD3<Float>(clamped.x, clamped.y, clamped.z)
-        
     }
-    
 }
 
 // MARK: - RenderModuleConstants

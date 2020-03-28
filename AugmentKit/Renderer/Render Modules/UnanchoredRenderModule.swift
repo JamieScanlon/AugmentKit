@@ -182,7 +182,7 @@ class UnanchoredRenderModule: RenderModule {
         
     }
     
-    func loadPipeline(withModuleEntities: [AKEntity], metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, renderPass: RenderPass? = nil, completion: (([DrawCallGroup]) -> Void)? = nil) {
+    func loadPipeline(withModuleEntities: [AKEntity], metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, renderPass: RenderPass? = nil, numQualityLevels: Int = 1, completion: (([DrawCallGroup]) -> Void)? = nil) {
         
         guard let device = device else {
             print("Serious Error - device not found")
@@ -228,7 +228,7 @@ class UnanchoredRenderModule: RenderModule {
                 
                 let meshGPUData = ModelIOTools.meshGPUData(from: mdlAsset, device: device, vertexDescriptor: RenderUtilities.createStandardVertexDescriptor(), frameRate: 60, shaderPreference: shaderPreference, loadTextures: renderPass?.usesLighting ?? true, textureBundle: textureBundle)
                 
-                if let drawCallGroup = self?.createDrawCallGroup(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass, meshGPUData: meshGPUData, geometricEntity: geometricEntity) {
+                if let drawCallGroup = self?.createDrawCallGroup(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass, meshGPUData: meshGPUData, geometricEntity: geometricEntity, numQualityLevels: numQualityLevels) {
                     drawCallGroup.moduleIdentifier = UnanchoredRenderModule.identifier
                     drawCallGroups.append(drawCallGroup)
                 }
@@ -840,7 +840,7 @@ class UnanchoredRenderModule: RenderModule {
     // number of frames in the target animation by index
     private var targetAnimationFrameCount = [Int]()
     
-    private func createDrawCallGroup(forUUID uuid: UUID, withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, renderPass: RenderPass?, meshGPUData: MeshGPUData, geometricEntity: AKGeometricEntity) -> DrawCallGroup {
+    private func createDrawCallGroup(forUUID uuid: UUID, withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, renderPass: RenderPass?, meshGPUData: MeshGPUData, geometricEntity: AKGeometricEntity, numQualityLevels: Int) -> DrawCallGroup {
         
         guard let renderPass = renderPass else {
             print("Warning - Skipping all draw calls because the render pass is nil.")
@@ -874,7 +874,7 @@ class UnanchoredRenderModule: RenderModule {
                 }
             }()
             
-            let drawCall = DrawCall(metalLibrary: metalLibrary, renderPass: renderPass, vertexFunctionName: vertexShaderName, fragmentFunctionName: fragmentShaderName, vertexDescriptor: meshGPUData.vertexDescriptor, drawData: drawData)
+            let drawCall = DrawCall(metalLibrary: metalLibrary, renderPass: renderPass, vertexFunctionName: vertexShaderName, fragmentFunctionName: fragmentShaderName, vertexDescriptor: meshGPUData.vertexDescriptor, drawData: drawData, numQualityLevels: numQualityLevels)
             drawCalls.append(drawCall)
             
         }

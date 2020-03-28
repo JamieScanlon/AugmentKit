@@ -125,7 +125,6 @@ public struct RenderOptions: OptionSet {
     
     static let showTrackingPoints       = RenderOptions(rawValue: 1 << 0)
     static let showDetectedSurfaces     = RenderOptions(rawValue: 1 << 1)
-    static let renderTriangles          = RenderOptions(rawValue: 1 << 1)
     
     public init(rawValue: Int) {
         self.rawValue = rawValue
@@ -369,6 +368,10 @@ open class Renderer: NSObject {
          Maximim number of instances that will be rendered
          */
         static let maxInstances = 2048
+        /**
+         Used for Level Of Detail calculations to determaile the number of quality levels to set up. Quality levels requires `AKCapabilities.LevelOfDetail == true`
+         */
+        static let numQualityLevels = 3
     }
     /**
      State of the renderer
@@ -912,26 +915,28 @@ open class Renderer: NSObject {
         
         // Create a new command buffer to process the IBL pre-render if necessary
         // TODO: Kernels to precalculate values for IBL
-//        if let computeCommandBuffer = commandQueue.makeCommandBuffer(), let environmentTexture = environmentTexture, hasEnvironmentTextureChanged {
-//
-//            computeCommandBuffer.label = "IBLCommandBuffer"
-//
-//            // Update Textures
-//            diffuseIBLCubePass?.inputTextures = [environmentTexture]
-//            diffuseIBLCubePass?.prepareTextures()
-//            specularIBLCubePass?.inputTextures = [environmentTexture]
-//            specularIBLCubePass?.prepareTextures()
-//
-//            //
-//            // Dispatch IBL Passes
-//            //
-//
-//            dispatchIBLPasses(withCommandBuffer: computeCommandBuffer)
-//
-//            computeCommandBuffer.commit()
-//            hasEnvironmentTextureChanged = false
-//
-//        }
+        if AKCapabilities.ImageBasedLighting {
+            if let computeCommandBuffer = commandQueue.makeCommandBuffer(), let environmentTexture = environmentTexture, hasEnvironmentTextureChanged {
+
+                computeCommandBuffer.label = "IBLCommandBuffer"
+
+                // Update Textures
+                diffuseIBLCubePass?.inputTextures = [environmentTexture]
+                diffuseIBLCubePass?.prepareTextures()
+                specularIBLCubePass?.inputTextures = [environmentTexture]
+                specularIBLCubePass?.prepareTextures()
+
+                //
+                // Dispatch IBL Passes
+                //
+
+                dispatchIBLPasses(withCommandBuffer: computeCommandBuffer)
+
+                computeCommandBuffer.commit()
+                hasEnvironmentTextureChanged = false
+
+            }
+        }
         
         // Create a new command buffer for the frame render
         if let commandBuffer = commandQueue.makeCommandBuffer() {
@@ -1515,86 +1520,89 @@ open class Renderer: NSObject {
         mutableComputeModules.append(AnyComputeModule(preComputeModule))
         precalculationComputeModule = preComputeModule
         
-        // Diffuse IBL
-        
-        diffuseIBLCubePass = ComputePass(withDevice: device)
-        diffuseIBLCubePass?.name = "Diffuse IBL Pass"
-        diffuseIBLCubePass?.usesGeometry = false
-        diffuseIBLCubePass?.usesLighting = false
-        diffuseIBLCubePass?.usesSharedBuffer = false
-        diffuseIBLCubePass?.usesEnvironment = true
-        diffuseIBLCubePass?.usesEffects = false
-        diffuseIBLCubePass?.usesCameraOutput = false
-        diffuseIBLCubePass?.usesShadows = false
-        diffuseIBLCubePass?.functionName = "compute_irradiance"
-        
-        let diffuseIBLTextureDesc = MTLTextureDescriptor.textureCubeDescriptor(pixelFormat: .rgba16Float, size: 64, mipmapped: false)
-        diffuseIBLTextureDesc.resourceOptions = .storageModePrivate
-        diffuseIBLTextureDesc.usage = [.shaderRead, .shaderWrite]
-        let diffuseIBLCube = device.makeTexture(descriptor: diffuseIBLTextureDesc)
-        diffuseIBLCube?.label = "Diffuse IBL Cubemap"
-        diffuseIBLCubeTexture = GPUPassTexture(texture: diffuseIBLCube, label: "Diffuse IBL Cubemap", shaderAttributeIndex: Int(kTextureIndexDiffuseIBLMap.rawValue))
-        diffuseIBLCubePass?.outputTexture = diffuseIBLCubeTexture
-        
-        let diffuseIBLComputeModule = DefaultComputeModule<Any>()
-        diffuseIBLComputeModule.instanceCount = 64 * 64 * 6
-        diffuseIBLComputeModule.threadgroupDepth = 6
-        diffuseIBLComputeModule.computePass = diffuseIBLCubePass
-        mutableComputeModules.append(AnyComputeModule(diffuseIBLComputeModule))
-        
-        // Specular IBL
-        
-        specularIBLCubePass = ComputePass(withDevice: device)
-        specularIBLCubePass?.name = "Specular IBL Pass"
-        specularIBLCubePass?.usesGeometry = false
-        specularIBLCubePass?.usesLighting = false
-        specularIBLCubePass?.usesSharedBuffer = false
-        specularIBLCubePass?.usesEnvironment = true
-        specularIBLCubePass?.usesEffects = false
-        specularIBLCubePass?.usesCameraOutput = false
-        specularIBLCubePass?.usesShadows = false
-        specularIBLCubePass?.functionName = "compute_prefiltered_specular"
-        
-        let specularIBLTextureDesc = MTLTextureDescriptor.textureCubeDescriptor(pixelFormat: .rgba16Float, size: 256, mipmapped: true)
-        specularIBLTextureDesc.resourceOptions = .storageModePrivate
-        specularIBLTextureDesc.usage = [.shaderRead, .shaderWrite]
-        let specularIBLCube = device.makeTexture(descriptor: specularIBLTextureDesc)
-        specularIBLCube?.label = "Specular IBL Cubemap"
-        specularIBLCubeTexture = GPUPassTexture(texture: specularIBLCube, label: "Specular IBL Cubemap", shaderAttributeIndex: Int(kTextureIndexSpecularIBLMap.rawValue), mipLevels: 9)
-        specularIBLCubePass?.outputTexture = specularIBLCubeTexture
-        
-        let specularIBLComputeModule = DefaultComputeModule<Any>()
-        specularIBLComputeModule.instanceCount = 256 * 256 * 6
-        specularIBLComputeModule.threadgroupDepth = 6
-        specularIBLComputeModule.computePass = specularIBLCubePass
-        mutableComputeModules.append(AnyComputeModule(specularIBLComputeModule))
-        
-        // BRDF Lookup Table
-        
-        computeBDRFLookupPass = ComputePass(withDevice: device)
-        computeBDRFLookupPass?.name = "BDRF Lookup Pass"
-        computeBDRFLookupPass?.usesGeometry = false
-        computeBDRFLookupPass?.usesLighting = false
-        computeBDRFLookupPass?.usesSharedBuffer = false
-        computeBDRFLookupPass?.usesEnvironment = true
-        computeBDRFLookupPass?.usesEffects = false
-        computeBDRFLookupPass?.usesCameraOutput = false
-        computeBDRFLookupPass?.usesShadows = false
-        computeBDRFLookupPass?.functionName = "integrate_brdf"
-        
-        let brdfLUTTextureDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rg16Float, width: 128, height: 128, mipmapped: false)
-        brdfLUTTextureDesc.resourceOptions = .storageModePrivate
-        brdfLUTTextureDesc.usage = [.shaderRead, .shaderWrite]
-        let brdfLUT = device.makeTexture(descriptor: brdfLUTTextureDesc)
-        brdfLUT?.label = "BDRF Lookup"
-        brdfLUTTexture = GPUPassTexture(texture: brdfLUT, label: "BDRF Lookup", shaderAttributeIndex: Int(kTextureIndexBDRFLookupMap.rawValue))
-        computeBDRFLookupPass?.outputTexture = brdfLUTTexture
-        
-        let computeBDRFLookupComputeModule = DefaultComputeModule<Any>()
-        computeBDRFLookupComputeModule.instanceCount = 128 * 128
-        computeBDRFLookupComputeModule.threadgroupDepth = 1
-        computeBDRFLookupComputeModule.computePass = computeBDRFLookupPass
-        mutableComputeModules.append(AnyComputeModule(computeBDRFLookupComputeModule))
+        if AKCapabilities.ImageBasedLighting {
+            
+            // Diffuse IBL
+            
+            diffuseIBLCubePass = ComputePass(withDevice: device)
+            diffuseIBLCubePass?.name = "Diffuse IBL Pass"
+            diffuseIBLCubePass?.usesGeometry = false
+            diffuseIBLCubePass?.usesLighting = false
+            diffuseIBLCubePass?.usesSharedBuffer = false
+            diffuseIBLCubePass?.usesEnvironment = true
+            diffuseIBLCubePass?.usesEffects = false
+            diffuseIBLCubePass?.usesCameraOutput = false
+            diffuseIBLCubePass?.usesShadows = false
+            diffuseIBLCubePass?.functionName = "compute_irradiance"
+            
+            let diffuseIBLTextureDesc = MTLTextureDescriptor.textureCubeDescriptor(pixelFormat: .rgba16Float, size: 64, mipmapped: false)
+            diffuseIBLTextureDesc.resourceOptions = .storageModePrivate
+            diffuseIBLTextureDesc.usage = [.shaderRead, .shaderWrite]
+            let diffuseIBLCube = device.makeTexture(descriptor: diffuseIBLTextureDesc)
+            diffuseIBLCube?.label = "Diffuse IBL Cubemap"
+            diffuseIBLCubeTexture = GPUPassTexture(texture: diffuseIBLCube, label: "Diffuse IBL Cubemap", shaderAttributeIndex: Int(kTextureIndexDiffuseIBLMap.rawValue))
+            diffuseIBLCubePass?.outputTexture = diffuseIBLCubeTexture
+            
+            let diffuseIBLComputeModule = DefaultComputeModule<Any>()
+            diffuseIBLComputeModule.instanceCount = 64 * 64 * 6
+            diffuseIBLComputeModule.threadgroupDepth = 6
+            diffuseIBLComputeModule.computePass = diffuseIBLCubePass
+            mutableComputeModules.append(AnyComputeModule(diffuseIBLComputeModule))
+            
+            // Specular IBL
+            
+            specularIBLCubePass = ComputePass(withDevice: device)
+            specularIBLCubePass?.name = "Specular IBL Pass"
+            specularIBLCubePass?.usesGeometry = false
+            specularIBLCubePass?.usesLighting = false
+            specularIBLCubePass?.usesSharedBuffer = false
+            specularIBLCubePass?.usesEnvironment = true
+            specularIBLCubePass?.usesEffects = false
+            specularIBLCubePass?.usesCameraOutput = false
+            specularIBLCubePass?.usesShadows = false
+            specularIBLCubePass?.functionName = "compute_prefiltered_specular"
+            
+            let specularIBLTextureDesc = MTLTextureDescriptor.textureCubeDescriptor(pixelFormat: .rgba16Float, size: 256, mipmapped: true)
+            specularIBLTextureDesc.resourceOptions = .storageModePrivate
+            specularIBLTextureDesc.usage = [.shaderRead, .shaderWrite]
+            let specularIBLCube = device.makeTexture(descriptor: specularIBLTextureDesc)
+            specularIBLCube?.label = "Specular IBL Cubemap"
+            specularIBLCubeTexture = GPUPassTexture(texture: specularIBLCube, label: "Specular IBL Cubemap", shaderAttributeIndex: Int(kTextureIndexSpecularIBLMap.rawValue), mipLevels: 9)
+            specularIBLCubePass?.outputTexture = specularIBLCubeTexture
+            
+            let specularIBLComputeModule = DefaultComputeModule<Any>()
+            specularIBLComputeModule.instanceCount = 256 * 256 * 6
+            specularIBLComputeModule.threadgroupDepth = 6
+            specularIBLComputeModule.computePass = specularIBLCubePass
+            mutableComputeModules.append(AnyComputeModule(specularIBLComputeModule))
+            
+            // BRDF Lookup Table
+            
+            computeBDRFLookupPass = ComputePass(withDevice: device)
+            computeBDRFLookupPass?.name = "BDRF Lookup Pass"
+            computeBDRFLookupPass?.usesGeometry = false
+            computeBDRFLookupPass?.usesLighting = false
+            computeBDRFLookupPass?.usesSharedBuffer = false
+            computeBDRFLookupPass?.usesEnvironment = true
+            computeBDRFLookupPass?.usesEffects = false
+            computeBDRFLookupPass?.usesCameraOutput = false
+            computeBDRFLookupPass?.usesShadows = false
+            computeBDRFLookupPass?.functionName = "integrate_brdf"
+            
+            let brdfLUTTextureDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rg16Float, width: 128, height: 128, mipmapped: false)
+            brdfLUTTextureDesc.resourceOptions = .storageModePrivate
+            brdfLUTTextureDesc.usage = [.shaderRead, .shaderWrite]
+            let brdfLUT = device.makeTexture(descriptor: brdfLUTTextureDesc)
+            brdfLUT?.label = "BDRF Lookup"
+            brdfLUTTexture = GPUPassTexture(texture: brdfLUT, label: "BDRF Lookup", shaderAttributeIndex: Int(kTextureIndexBDRFLookupMap.rawValue))
+            computeBDRFLookupPass?.outputTexture = brdfLUTTexture
+            
+            let computeBDRFLookupComputeModule = DefaultComputeModule<Any>()
+            computeBDRFLookupComputeModule.instanceCount = 128 * 128
+            computeBDRFLookupComputeModule.threadgroupDepth = 1
+            computeBDRFLookupComputeModule.computePass = computeBDRFLookupPass
+            mutableComputeModules.append(AnyComputeModule(computeBDRFLookupComputeModule))
+        }
         
         hasUninitializedModules = true
         computeModules = mutableComputeModules
@@ -1925,15 +1933,22 @@ open class Renderer: NSObject {
         
         var mutableShadowPassDrawCallGroups = shadowRenderPass?.drawCallGroups ?? []
         var mutableMainPassDrawCallGroups = mainRenderPass?.drawCallGroups ?? []
+        let numQualityLevels: Int = {
+            if AKCapabilities.LevelOfDetail {
+                return Constants.numQualityLevels
+            } else {
+                return 1
+            }
+        }()
         
         renderModules.filter({moduleIdentifiers.contains($0.moduleIdentifier)}).forEach { module in
-            module.loadPipeline(withModuleEntities: entitiesForRenderModule[module.moduleIdentifier] ?? [], metalLibrary: defaultLibrary, renderDestination: renderDestination, textureBundle: textureBundle, renderPass: shadowRenderPass) { [weak self] drawCallGroups in
+            module.loadPipeline(withModuleEntities: entitiesForRenderModule[module.moduleIdentifier] ?? [], metalLibrary: defaultLibrary, renderDestination: renderDestination, textureBundle: textureBundle, renderPass: shadowRenderPass, numQualityLevels: numQualityLevels) { [weak self] drawCallGroups in
                 let removeIDs = drawCallGroups.map({$0.uuid})
                 mutableShadowPassDrawCallGroups.removeAll(where: {removeIDs.contains($0.uuid)})
                 mutableShadowPassDrawCallGroups.append(contentsOf: drawCallGroups)
                 self?.shadowRenderPass?.drawCallGroups = mutableShadowPassDrawCallGroups
             }
-            module.loadPipeline(withModuleEntities: entitiesForRenderModule[module.moduleIdentifier] ?? [], metalLibrary: defaultLibrary, renderDestination: renderDestination, textureBundle: textureBundle, renderPass: mainRenderPass) { [weak self] drawCallGroups in
+            module.loadPipeline(withModuleEntities: entitiesForRenderModule[module.moduleIdentifier] ?? [], metalLibrary: defaultLibrary, renderDestination: renderDestination, textureBundle: textureBundle, renderPass: mainRenderPass, numQualityLevels: numQualityLevels) { [weak self] drawCallGroups in
                 let removeIDs = drawCallGroups.map({$0.uuid})
                 mutableMainPassDrawCallGroups.removeAll(where: {removeIDs.contains($0.uuid)})
                 mutableMainPassDrawCallGroups.append(contentsOf: drawCallGroups)
@@ -1994,6 +2009,11 @@ open class Renderer: NSObject {
     
     /// Draw to the depth texture from the directional lights point of view to generate the shadow map
     fileprivate func dispatchIBLPasses(withCommandBuffer commandBuffer: MTLCommandBuffer) {
+        
+        guard AKCapabilities.ImageBasedLighting else {
+            return
+        }
+        
         diffuseIBLCubePass?.prepareCommandEncoder(withCommandBuffer: commandBuffer)
         diffuseIBLCubePass?.dispatch()
         specularIBLCubePass?.prepareCommandEncoder(withCommandBuffer: commandBuffer)

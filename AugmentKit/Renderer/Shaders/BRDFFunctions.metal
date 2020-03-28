@@ -120,7 +120,7 @@ float3 F_Schlick3(float3 f0, float f90, float vDoth) {
 }
 
 float F_Schlick(float f0, float f90, float vDoth) {
-    return f0 + (f90 - f0) * pow(clamp(1.0 - vDoth, 0.0, 1.0), 5.0);
+    return f0 + (1.0 - f0) * pow(clamp(1.0 - vDoth, 0.0, 1.0), 5.0);
 }
 
 //------------------------------------------------------------------------------

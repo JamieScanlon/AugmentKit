@@ -143,7 +143,7 @@ fragment float4 surfaceFragmentLightingSimple(SurfaceVertexOutput in [[stage_in]
     float4 final_color = float4(0);
     ushort iid = in.iid;
     
-    float4 baseColor = has_base_color_map ? srgbToLinear(baseColorMap.sample(linearSampler, in.texCoord.xy)) : materialUniforms.baseColor;
+    float4 baseColor = has_base_color_map ? baseColorMap.sample(linearSampler, in.texCoord.xy) : materialUniforms.baseColor;
     
     // Draw shadows
     // Compare the depth value in the shadow map to the depth value of the fragment in the sun's.

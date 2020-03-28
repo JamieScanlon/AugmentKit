@@ -85,7 +85,7 @@ open class AKRelativePosition {
             if parentPosition.transformHasChanged  {
                 parentPosition.updateTransforms()
             }
-            referenceTransform = parentPosition.referenceTransform * parentPosition.transform
+            referenceTransform = parentPosition.referenceTransform * matrix_identity_float4x4.translate(x: parentPosition.transform.columns.3.x, y: parentPosition.transform.columns.3.y, z: parentPosition.transform.columns.3.z)
         }
         
         if let heading = heading {

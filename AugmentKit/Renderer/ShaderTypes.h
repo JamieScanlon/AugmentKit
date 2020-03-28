@@ -89,7 +89,7 @@ enum VertexAttributes {
 /// Texture index values shared between shader and C code to ensure Metal shader texture indices match indices of Metal API texture set calls
 enum TextureIndices {
     // Base Color
-    kTextureIndexColor    = 0,
+    kTextureIndexColor = 0,
     // Vid Capture Color Space Conversion
     kTextureIndexY,
     kTextureIndexCbCr,
@@ -109,6 +109,7 @@ enum TextureIndices {
     kTextureIndexClearcoatGlossMap,
     // Environment
     kTextureIndexEnvironmentMap,
+    // IBL
     kTextureIndexDiffuseIBLMap,
     kTextureIndexSpecularIBLMap,
     kTextureIndexBDRFLookupMap,
@@ -214,6 +215,10 @@ struct AnchorInstanceUniforms {
     
     matrix_float4x4 locationTransform;
     matrix_float4x4 worldTransform; // A transform matrix for the anchor model in world space.
+    
+    // Used for LOD calculations to seamlessly transition from one LOD to another
+    // The lengh of the array should match the number of properties in MaterialUniforms
+    float mapWeights[14];
 };
 
 /// Structure shared between shader and C code that contains information about effects that should be applied to a model
@@ -302,6 +307,10 @@ struct PrecalculatedParameters {
     
     // Matting
     int useDepth;
+    
+    // Used for LOD calculations to seamlessly transition from one LOD to another
+    // The lengh of the array should match the number of properties in MaterialUniforms
+    float mapWeights[14];
 };
 
 // MARK: Argument Buffers

@@ -72,19 +72,6 @@ public struct DrawSubData {
     
     var materialUniforms = MaterialUniforms()
     var materialBuffer: MTLBuffer?
-
-    // TODO: Implement for Quality level
-    func computeTextureWeights(for quality: QualityLevel, with globalWeight:Float) {
-        for textureIndex in 0..<kNumTextureIndices.rawValue {
-            let constantIndex = DrawSubData.mapTextureBindPoint(to: TextureIndices(rawValue:textureIndex))
-
-            if RenderUtilities.isTexturedProperty(constantIndex, at: quality) && !RenderUtilities.isTexturedProperty(constantIndex, at: QualityLevel(rawValue: quality.rawValue + 1)) {
-                //materialUniforms.mapWeights[textureIndex] = globalWeight
-            } else {
-                //materialUniforms.mapWeights[textureIndex] = 1.0
-            }
-        }
-    }
     
     public mutating func updateMaterialTextures(from mdlMaterial: MDLMaterial, textureBundle: Bundle? = nil, textureLoader: MTKTextureLoader? = nil) {
         
@@ -95,19 +82,45 @@ public struct DrawSubData {
         
         // Encode the texture indexes corresponding to the texture maps. If a property has no texture map this value will be nil
         baseColorTexture = allProperties[.baseColor]?.texture
-        metallicTexture = allProperties[.metallic]?.texture
-        ambientOcclusionTexture = allProperties[.ambientOcclusion]?.texture
-        roughnessTexture = allProperties[.roughness]?.texture
-        normalTexture = allProperties[.tangentSpaceNormal]?.texture
-        emissionTexture = allProperties[.emission]?.texture
-        subsurfaceTexture = allProperties[.subsurface]?.texture
-        specularTexture = allProperties[.specular]?.texture
-        specularTintTexture = allProperties[.specularTint]?.texture
-        anisotropicTexture = allProperties[.anisotropic]?.texture
-        sheenTexture = allProperties[.sheen]?.texture
-        sheenTintTexture = allProperties[.sheenTint]?.texture
-        clearcoatTexture = allProperties[.clearcoat]?.texture
-        clearcoatGlossTexture = allProperties[.clearcoatGloss]?.texture
+        if AKCapabilities.MetallicMap {
+            metallicTexture = allProperties[.metallic]?.texture
+        }
+        if AKCapabilities.AmbientOcclusionMap {
+            ambientOcclusionTexture = allProperties[.ambientOcclusion]?.texture
+        }
+        if AKCapabilities.RoughnessMap {
+            roughnessTexture = allProperties[.roughness]?.texture
+        }
+        if AKCapabilities.NormalMap {
+            normalTexture = allProperties[.tangentSpaceNormal]?.texture
+        }
+        if AKCapabilities.EmissionMap {
+            emissionTexture = allProperties[.emission]?.texture
+        }
+        if AKCapabilities.SubsurfaceMap {
+            subsurfaceTexture = allProperties[.subsurface]?.texture
+        }
+        if AKCapabilities.SpecularMap {
+            specularTexture = allProperties[.specular]?.texture
+        }
+        if AKCapabilities.SpecularTintMap {
+            specularTintTexture = allProperties[.specularTint]?.texture
+        }
+        if AKCapabilities.AnisotropicMap {
+            anisotropicTexture = allProperties[.anisotropic]?.texture
+        }
+        if AKCapabilities.SheenMap {
+            sheenTexture = allProperties[.sheen]?.texture
+        }
+        if AKCapabilities.SheenTintMap {
+            sheenTintTexture = allProperties[.sheenTint]?.texture
+        }
+        if AKCapabilities.ClearcoatMap {
+            clearcoatTexture = allProperties[.clearcoat]?.texture
+        }
+        if AKCapabilities.ClearcoatGlossMap {
+            clearcoatGlossTexture = allProperties[.clearcoatGloss]?.texture
+        }
         
         // Encode the uniform values
         

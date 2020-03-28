@@ -331,14 +331,6 @@ class PrecalculationModule: PreRenderComputeModule {
                     
                     if let akAnchor = geometricEntity as? AKAnchor {
                         
-                        // Ignore anchors that are beyond the renderDistance
-                        let distance = anchorDistance(withTransform: akAnchor.worldLocation.transform, cameraProperties: cameraProperties)
-                        guard Double(distance) < renderDistance else {
-                            geometryUniform.pointee.hasGeometry = 0
-                            drawCallIndex += 1
-                            continue
-                        }
-                        
                         // Update Heading
                         let myHeadingTransform = akAnchor.heading.offsetRotation.quaternion.toMatrix4()
                         
@@ -351,35 +343,25 @@ class PrecalculationModule: PreRenderComputeModule {
                         
                         // Apply the transform of the target relative to the reference transform
                         let targetAbsoluteTransform = akTarget.position.referenceTransform * akTarget.position.transform
-                        
-                        // TODO: Move this logic to shader
-                        // Ignore anchors that are beyond the renderDistance
-                        let distance = anchorDistance(withTransform: targetAbsoluteTransform, cameraProperties: cameraProperties)
-                        guard Double(distance) < renderDistance else {
-                            drawCallIndex += 1
-                            geometryUniform.pointee.hasGeometry = 0
-                            continue
-                        }
-                        
                         locationTransform = targetAbsoluteTransform
                         
                     } else if let akTracker = geometricEntity as? AKTracker {
                         
                         // Apply the transform of the target relative to the reference transform
                         let trackerAbsoluteTransform = akTracker.position.referenceTransform * akTracker.position.transform
-                        
-                        // TODO: Move this logic to shader
-                        // Ignore anchors that are beyond the renderDistance
-                        let distance = anchorDistance(withTransform: trackerAbsoluteTransform, cameraProperties: cameraProperties)
-                        guard Double(distance) < renderDistance else {
-                            drawCallIndex += 1
-                            geometryUniform.pointee.hasGeometry = 0
-                            continue
-                        }
-                        
                         locationTransform = trackerAbsoluteTransform
-                        
                     }
+                    
+                    // Ignore anchors that are beyond the renderDistance
+                    let distance = anchorDistance(withTransform: locationTransform, cameraProperties: cameraProperties)
+                    guard Double(distance) < renderDistance else {
+                        geometryUniform.pointee.hasGeometry = 0
+                        drawCallIndex += 1
+                        continue
+                    }
+                    
+                    // Calculate LOD
+                    let lodMapWeights = computeTextureWeights(for: distance)
                     
                     geometryUniform.pointee.hasGeometry = 1
                     geometryUniform.pointee.hasHeading = hasHeading ? 1 : 0
@@ -387,6 +369,7 @@ class PrecalculationModule: PreRenderComputeModule {
                     geometryUniform.pointee.headingTransform = headingTransform
                     geometryUniform.pointee.worldTransform = worldTransform
                     geometryUniform.pointee.locationTransform = locationTransform
+                    geometryUniform.pointee.mapWeights = lodMapWeights
                 }
                 
                 drawCallIndex += 1
@@ -519,6 +502,166 @@ class PrecalculationModule: PreRenderComputeModule {
         }
         let point = SIMD3<Float>(transform.columns.3.x, transform.columns.3.x, transform.columns.3.z)
         return length(point - cameraProperties.position)
+    }
+    
+    fileprivate func computeTextureWeights(for distance: Float) -> (Float, Float, Float, Float, Float, Float, Float, Float, Float, Float, Float, Float, Float, Float) {
+        
+        guard AKCapabilities.LevelOfDetail else {
+            return (Float(1), Float(1), Float(1), Float(1), Float(1), Float(1), Float(1), Float(1), Float(1), Float(1), Float(1), Float(1), Float(1), Float(1))
+        }
+        
+        let quality = RenderUtilities.getQualityLevel(for: distance)
+        
+        // Escape hatch for performance. If the quality is low, exit with all 0 values
+        guard quality.rawValue < 2 else {
+            return (Float(0), Float(0), Float(0), Float(0), Float(0), Float(0), Float(0), Float(0), Float(0), Float(0), Float(0), Float(0), Float(0), Float(0))
+        }
+        
+        var baseMapWeight: Float = 1
+        var normalMapWeight: Float = 1
+        var metallicMapWeight: Float = 1
+        var roughnessMapWeight: Float = 1
+        var ambientOcclusionMapWeight: Float = 1
+        var emissionMapWeight: Float = 1
+        var subsurfaceMapWeight: Float = 1
+        var specularMapWeight: Float = 1
+        var specularTintMapWeight: Float = 1
+        var anisotropicMapWeight: Float = 1
+        var sheenMapWeight: Float = 1
+        var sheenTintMapWeight: Float = 1
+        var clearcoatMapWeight: Float = 1
+        var clearcoatMapWeightGlossMapWeight: Float = 1
+        
+        let nextLevel: QualityLevel = {
+            if quality == kQualityLevelHigh {
+                return kQualityLevelMedium
+            } else {
+                return kQualityLevelLow
+            }
+        }()
+        
+        let mapWeight = getMapWeight(for: quality, distance: distance)
+        
+        if !RenderUtilities.hasTexture(for: kTextureIndexColor, qualityLevel: quality) {
+            baseMapWeight = 0
+        } else if RenderUtilities.hasTexture(for: kTextureIndexColor, qualityLevel: quality) && !RenderUtilities.hasTexture(for: kTextureIndexColor, qualityLevel: nextLevel) {
+            baseMapWeight = mapWeight
+        }
+        
+        if !RenderUtilities.hasTexture(for: kTextureIndexNormal, qualityLevel: quality) {
+            normalMapWeight = 0
+        } else if RenderUtilities.hasTexture(for: kTextureIndexNormal, qualityLevel: quality) && !RenderUtilities.hasTexture(for: kTextureIndexNormal, qualityLevel: nextLevel) {
+            normalMapWeight = mapWeight
+        }
+        
+        if !RenderUtilities.hasTexture(for: kTextureIndexMetallic, qualityLevel: quality) {
+            metallicMapWeight = 0
+        } else if RenderUtilities.hasTexture(for: kTextureIndexMetallic, qualityLevel: quality) && !RenderUtilities.hasTexture(for: kTextureIndexMetallic, qualityLevel: nextLevel) {
+            metallicMapWeight = mapWeight
+        }
+        
+        if !RenderUtilities.hasTexture(for: kTextureIndexRoughness, qualityLevel: quality) {
+            roughnessMapWeight = 0
+        } else if RenderUtilities.hasTexture(for: kTextureIndexRoughness, qualityLevel: quality) && !RenderUtilities.hasTexture(for: kTextureIndexRoughness, qualityLevel: nextLevel) {
+            roughnessMapWeight = mapWeight
+        }
+        
+        if !RenderUtilities.hasTexture(for: kTextureIndexAmbientOcclusion, qualityLevel: quality) {
+            ambientOcclusionMapWeight = 0
+        } else if RenderUtilities.hasTexture(for: kTextureIndexAmbientOcclusion, qualityLevel: quality) && !RenderUtilities.hasTexture(for: kTextureIndexAmbientOcclusion, qualityLevel: nextLevel) {
+            ambientOcclusionMapWeight = mapWeight
+        }
+        
+        if !RenderUtilities.hasTexture(for: kTextureIndexEmissionMap, qualityLevel: quality) {
+            emissionMapWeight = 0
+        } else if RenderUtilities.hasTexture(for: kTextureIndexEmissionMap, qualityLevel: quality) && !RenderUtilities.hasTexture(for: kTextureIndexEmissionMap, qualityLevel: nextLevel) {
+            emissionMapWeight = mapWeight
+        }
+        
+        if !RenderUtilities.hasTexture(for: kTextureIndexSubsurfaceMap, qualityLevel: quality) {
+            subsurfaceMapWeight = 0
+        } else if RenderUtilities.hasTexture(for: kTextureIndexSubsurfaceMap, qualityLevel: quality) && !RenderUtilities.hasTexture(for: kTextureIndexSubsurfaceMap, qualityLevel: nextLevel) {
+            subsurfaceMapWeight = mapWeight
+        }
+        
+        if !RenderUtilities.hasTexture(for: kTextureIndexSpecularMap, qualityLevel: quality) {
+            specularMapWeight = 0
+        } else if RenderUtilities.hasTexture(for: kTextureIndexSpecularMap, qualityLevel: quality) && !RenderUtilities.hasTexture(for: kTextureIndexSpecularMap, qualityLevel: nextLevel) {
+            specularMapWeight = mapWeight
+        }
+        
+        if !RenderUtilities.hasTexture(for: kTextureIndexSpecularTintMap, qualityLevel: quality) {
+            specularTintMapWeight = 0
+        } else if RenderUtilities.hasTexture(for: kTextureIndexSpecularTintMap, qualityLevel: quality) && !RenderUtilities.hasTexture(for: kTextureIndexSpecularTintMap, qualityLevel: nextLevel) {
+            specularTintMapWeight = mapWeight
+        }
+        
+        if !RenderUtilities.hasTexture(for: kTextureIndexAnisotropicMap, qualityLevel: quality) {
+            anisotropicMapWeight = 0
+        } else if RenderUtilities.hasTexture(for: kTextureIndexAnisotropicMap, qualityLevel: quality) && !RenderUtilities.hasTexture(for: kTextureIndexAnisotropicMap, qualityLevel: nextLevel) {
+            anisotropicMapWeight = mapWeight
+        }
+        
+        if !RenderUtilities.hasTexture(for: kTextureIndexSheenMap, qualityLevel: quality) {
+            sheenMapWeight = 0
+        } else if RenderUtilities.hasTexture(for: kTextureIndexSheenMap, qualityLevel: quality) && !RenderUtilities.hasTexture(for: kTextureIndexSheenMap, qualityLevel: nextLevel) {
+            sheenMapWeight = mapWeight
+        }
+        
+        if !RenderUtilities.hasTexture(for: kTextureIndexSheenTintMap, qualityLevel: quality) {
+            sheenTintMapWeight = 0
+        } else if RenderUtilities.hasTexture(for: kTextureIndexSheenTintMap, qualityLevel: quality) && !RenderUtilities.hasTexture(for: kTextureIndexSheenTintMap, qualityLevel: nextLevel) {
+            sheenTintMapWeight = mapWeight
+        }
+        
+        if !RenderUtilities.hasTexture(for: kTextureIndexClearcoatMap, qualityLevel: quality) {
+            clearcoatMapWeight = 0
+        } else if RenderUtilities.hasTexture(for: kTextureIndexClearcoatMap, qualityLevel: quality) && !RenderUtilities.hasTexture(for: kTextureIndexClearcoatMap, qualityLevel: nextLevel) {
+            clearcoatMapWeight = mapWeight
+        }
+        
+        if !RenderUtilities.hasTexture(for: kTextureIndexClearcoatGlossMap, qualityLevel: quality) {
+            clearcoatMapWeightGlossMapWeight = 0
+        } else if RenderUtilities.hasTexture(for: kTextureIndexClearcoatGlossMap, qualityLevel: quality) && !RenderUtilities.hasTexture(for: kTextureIndexClearcoatGlossMap, qualityLevel: nextLevel) {
+            clearcoatMapWeightGlossMapWeight = mapWeight
+        }
+        
+        return (baseMapWeight, normalMapWeight, metallicMapWeight, roughnessMapWeight, ambientOcclusionMapWeight, emissionMapWeight, subsurfaceMapWeight, specularMapWeight, specularTintMapWeight, anisotropicMapWeight, sheenMapWeight, sheenTintMapWeight, clearcoatMapWeight, clearcoatMapWeightGlossMapWeight)
+    }
+    
+    fileprivate func getMapWeight(for level: QualityLevel, distance: Float) -> Float {
+        
+        guard AKCapabilities.LevelOfDetail else {
+            return 1
+        }
+        
+        guard distance > 0 else {
+            return 1
+        }
+        
+        // In meters
+        let MediumQualityDepth: Float = 15
+        let LowQualityDepth: Float = 65
+        let TransitionDepthAmount: Float = 50
+        
+        if level == kQualityLevelHigh {
+            let TransitionDepth = MediumQualityDepth - TransitionDepthAmount
+            if distance > TransitionDepth {
+                return 1 - ((distance - TransitionDepth) / TransitionDepthAmount)
+            } else {
+                return 1
+            }
+        } else if level == kQualityLevelMedium {
+            let TransitionDepth = LowQualityDepth - TransitionDepthAmount
+            if distance > TransitionDepth {
+                return 1 - ((distance - TransitionDepth) / TransitionDepthAmount)
+            } else {
+                return 1
+            }
+        } else {
+            return 0
+        }
+        
     }
     
 }

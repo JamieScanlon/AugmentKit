@@ -84,6 +84,7 @@
 		96BEB2CD22F67EA5003CA9C3 /* IBLFunctions.metal in Sources */ = {isa = PBXBuildFile; fileRef = 96BEB2CC22F67EA4003CA9C3 /* IBLFunctions.metal */; };
 		96BEB2CF22F67F68003CA9C3 /* IBLFunctions.h in Headers */ = {isa = PBXBuildFile; fileRef = 96BEB2CE22F67F68003CA9C3 /* IBLFunctions.h */; };
 		96BEB2D122FA7BAB003CA9C3 /* GPUPassTexture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96BEB2D022FA7BAB003CA9C3 /* GPUPassTexture.swift */; };
+		96BF8DCD2430037300D82378 /* AKCapabilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96BF8DCC2430037300D82378 /* AKCapabilities.swift */; };
 		96CACF7C2156A051009A8A20 /* RenderUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96CACF7B2156A051009A8A20 /* RenderUtilities.swift */; };
 		96CACF7E2156D3C9009A8A20 /* GeometryUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96CACF7D2156D3C9009A8A20 /* GeometryUtilities.swift */; };
 		96DBC68C24283528004F266F /* UserPosition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96DBC68B24283528004F266F /* UserPosition.swift */; };
@@ -192,6 +193,7 @@
 		96BEB2CC22F67EA4003CA9C3 /* IBLFunctions.metal */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.metal; path = IBLFunctions.metal; sourceTree = "<group>"; };
 		96BEB2CE22F67F68003CA9C3 /* IBLFunctions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IBLFunctions.h; sourceTree = "<group>"; };
 		96BEB2D022FA7BAB003CA9C3 /* GPUPassTexture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GPUPassTexture.swift; sourceTree = "<group>"; };
+		96BF8DCC2430037300D82378 /* AKCapabilities.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AKCapabilities.swift; sourceTree = "<group>"; };
 		96CACF7B2156A051009A8A20 /* RenderUtilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RenderUtilities.swift; sourceTree = "<group>"; };
 		96CACF7D2156D3C9009A8A20 /* GeometryUtilities.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = GeometryUtilities.swift; sourceTree = "<group>"; };
 		96DBC68B24283528004F266F /* UserPosition.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UserPosition.swift; sourceTree = "<group>"; };
@@ -327,6 +329,7 @@
 		7D6E6B481F8F19C300EFC667 /* AugmentKit */ = {
 			isa = PBXGroup;
 			children = (
+				96BF8DCC2430037300D82378 /* AKCapabilities.swift */,
 				7D6E6B491F8F19C300EFC667 /* AugmentKit.h */,
 				7D3EAC121F7EEDAD0076635C /* SceneKit */,
 				7D3EAC0D1F7EA7E40076635C /* Renderer */,
@@ -634,6 +637,7 @@
 				7D6979FA21287DB5000106DF /* AugmentedSurfaceAnchor.swift in Sources */,
 				96F79E3D22B6FE9E001F4B94 /* DrawCall.swift in Sources */,
 				965A0B1521F4D57A009D4E7F /* PrecalculationModule.swift in Sources */,
+				96BF8DCD2430037300D82378 /* AKCapabilities.swift in Sources */,
 				96F79E3F22B6FF6A001F4B94 /* DrawCallGroup.swift in Sources */,
 				7DAD06BE2071505E00B62B61 /* AKTracker.swift in Sources */,
 				7D5FDA3C1FC9E70E00BAE104 /* SurfacesRenderModule.swift in Sources */,

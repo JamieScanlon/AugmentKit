@@ -34,7 +34,69 @@ import MetalKit
 ///  Metal utility functions for setting up the render engine state
 class RenderUtilities {
     
-    static func getFuncConstants(forDrawData drawData: DrawData?) -> MTLFunctionConstantValues {
+    static func hasTexture(for textureIndex: TextureIndices, qualityLevel: QualityLevel) -> Bool {
+        let qualityLevelRawValue = qualityLevel.rawValue
+        switch textureIndex {
+        case kTextureIndexColor:
+            return qualityLevelRawValue < 2 // Render texture up to medium quality
+        case kTextureIndexEmissionMap:
+            return qualityLevelRawValue < 2 // Render texture up to medium quality
+        case kTextureIndexNormal:
+            return qualityLevelRawValue < 1 // Render texture in high quality only
+        case kTextureIndexMetallic:
+            return qualityLevelRawValue < 1 // Render texture in high quality only
+        case kTextureIndexRoughness:
+            return qualityLevelRawValue < 1 // Render texture in high quality only
+        case kTextureIndexAmbientOcclusion:
+            return qualityLevelRawValue < 1 // Render texture in high quality only
+        case kTextureIndexSubsurfaceMap:
+            return qualityLevelRawValue < 1 // Render texture in high quality only
+        case kTextureIndexSpecularMap:
+            return qualityLevelRawValue < 1 // Render texture in high quality only
+        case kTextureIndexSpecularTintMap:
+            return qualityLevelRawValue < 1 // Render texture in high quality only
+        case kTextureIndexAnisotropicMap:
+            return qualityLevelRawValue < 1 // Render texture in high quality only
+        case kTextureIndexSheenMap:
+            return qualityLevelRawValue < 1 // Render texture in high quality only
+        case kTextureIndexSheenTintMap:
+            return qualityLevelRawValue < 1 // Render texture in high quality only
+        case kTextureIndexClearcoatMap:
+            return qualityLevelRawValue < 1 // Render texture in high quality only
+        case kTextureIndexClearcoatGlossMap:
+            return qualityLevelRawValue < 1 // Render texture in high quality only
+        default:
+            return true
+        }
+    }
+    
+    /// Determine the quality level we want given the model's distance from the camera, Also, when close to a the bounds of a quality level, calculate a weight to transition between the two quality levels
+    /// - Parameter distance: Distance in meters from the camera. Can not be negative
+    /// - Returns: A `QualityLevel`
+    static func getQualityLevel(for distance: Float) -> QualityLevel {
+        
+        guard AKCapabilities.LevelOfDetail else {
+            return kQualityLevelHigh
+        }
+        
+        guard distance > 0 else {
+            return kQualityLevelHigh
+        }
+        
+        // In meters
+        let MediumQualityDepth: Float = 15
+        let LowQualityDepth: Float = 65
+        
+        if distance < MediumQualityDepth {
+            return kQualityLevelHigh
+        } else if distance < LowQualityDepth {
+            return kQualityLevelMedium
+        } else {
+            return kQualityLevelLow
+        }
+    }
+    
+    static func getFuncConstants(forDrawData drawData: DrawData?, qualityLevel: QualityLevel = kQualityLevelHigh) -> MTLFunctionConstantValues {
         
         var has_base_color_map = false
         var has_normal_map = false
@@ -52,20 +114,20 @@ class RenderUtilities {
         var has_clearcoatGloss_map = false
         
         if let drawData = drawData {
-            has_base_color_map = has_base_color_map || drawData.hasBaseColorMap
-            has_normal_map = has_normal_map || drawData.hasNormalMap
-            has_metallic_map = has_metallic_map || drawData.hasMetallicMap
-            has_roughness_map = has_roughness_map || drawData.hasRoughnessMap
-            has_ambient_occlusion_map = has_ambient_occlusion_map || drawData.hasAmbientOcclusionMap
-            has_emission_map = has_emission_map || drawData.hasEmissionMap
-            has_subsurface_map = has_subsurface_map || drawData.hasSubsurfaceMap
-            has_specular_map = has_specular_map || drawData.hasSpecularMap
-            has_specularTint_map = has_specularTint_map || drawData.hasSpecularTintMap
-            has_anisotropic_map = has_anisotropic_map || drawData.hasAnisotropicMap
-            has_sheen_map = has_sheen_map || drawData.hasSheenMap
-            has_sheenTint_map = has_sheenTint_map || drawData.hasSheenTintMap
-            has_clearcoat_map = has_clearcoat_map || drawData.hasClearcoatMap
-            has_clearcoatGloss_map = has_clearcoatGloss_map || drawData.hasClearcoatGlossMap
+            has_base_color_map = drawData.hasBaseColorMap && hasTexture(for: kTextureIndexColor, qualityLevel: qualityLevel)
+            has_emission_map = drawData.hasEmissionMap && hasTexture(for: kTextureIndexEmissionMap, qualityLevel: qualityLevel)
+            has_normal_map = drawData.hasNormalMap && hasTexture(for: kTextureIndexNormal, qualityLevel: qualityLevel)
+            has_metallic_map = drawData.hasMetallicMap && hasTexture(for: kTextureIndexMetallic, qualityLevel: qualityLevel)
+            has_roughness_map = drawData.hasRoughnessMap && hasTexture(for: kTextureIndexRoughness, qualityLevel: qualityLevel)
+            has_ambient_occlusion_map = drawData.hasAmbientOcclusionMap && hasTexture(for: kTextureIndexAmbientOcclusion, qualityLevel: qualityLevel)
+            has_subsurface_map = drawData.hasSubsurfaceMap && hasTexture(for: kTextureIndexSubsurfaceMap, qualityLevel: qualityLevel)
+            has_specular_map = drawData.hasSpecularMap && hasTexture(for: kTextureIndexSpecularMap, qualityLevel: qualityLevel)
+            has_specularTint_map = drawData.hasSpecularTintMap && hasTexture(for: kTextureIndexSpecularTintMap, qualityLevel: qualityLevel)
+            has_anisotropic_map = drawData.hasAnisotropicMap && hasTexture(for: kTextureIndexAnisotropicMap, qualityLevel: qualityLevel)
+            has_sheen_map = drawData.hasSheenMap && hasTexture(for: kTextureIndexSheenMap, qualityLevel: qualityLevel)
+            has_sheenTint_map = drawData.hasSheenTintMap && hasTexture(for: kTextureIndexSheenTintMap, qualityLevel: qualityLevel)
+            has_clearcoat_map = drawData.hasClearcoatMap && hasTexture(for: kTextureIndexClearcoatMap, qualityLevel: qualityLevel)
+            has_clearcoatGloss_map = drawData.hasClearcoatGlossMap && hasTexture(for: kTextureIndexClearcoatGlossMap, qualityLevel: qualityLevel)
         }
         
         let constantValues = MTLFunctionConstantValues()
@@ -102,19 +164,6 @@ class RenderUtilities {
         @unknown default:
             fatalError("Unhandled mdlIndexBitDepth")
         }
-    }
-    
-    static func isTexturedProperty(_ propertyIndex: FunctionConstantIndices, at quality: QualityLevel) -> Bool {
-        var minLevelForProperty = kQualityLevelHigh
-        switch propertyIndex {
-        case kFunctionConstantBaseColorMapIndex:
-            fallthrough
-        case kFunctionConstantEmissionMapIndex:
-            minLevelForProperty = kQualityLevelMedium
-        default:
-            break
-        }
-        return quality.rawValue <= minLevelForProperty.rawValue
     }
     
     //  Create a vertex descriptor for our Metal pipeline. Specifies the layout of vertices the

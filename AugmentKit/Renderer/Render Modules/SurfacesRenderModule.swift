@@ -123,7 +123,7 @@ class SurfacesRenderModule: RenderModule {
         
     }
     
-    func loadPipeline(withModuleEntities moduleEntities: [AKEntity], metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, renderPass: RenderPass? = nil, completion: (([DrawCallGroup]) -> Void)? = nil) {
+    func loadPipeline(withModuleEntities moduleEntities: [AKEntity], metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, renderPass: RenderPass? = nil, numQualityLevels: Int = 1, completion: (([DrawCallGroup]) -> Void)? = nil) {
         
         guard let device = device else {
             print("Serious Error - device not found")
@@ -154,7 +154,7 @@ class SurfacesRenderModule: RenderModule {
                     
                     let meshGPUData = ModelIOTools.meshGPUData(from: planeGeometry.vertices, indices: planeGeometry.triangleIndices, textureCoordinates: planeGeometry.textureCoordinates, device: device, material: material, textureBundle: textureBundle)
                     
-                    if let drawCallGroup = self?.createDrawCallGroup(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass, meshGPUData: meshGPUData, geometricEntity: surfaceEntity) {
+                    if let drawCallGroup = self?.createDrawCallGroup(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass, meshGPUData: meshGPUData, geometricEntity: surfaceEntity, numQualityLevels: numQualityLevels) {
                         drawCallGroup.moduleIdentifier = SurfacesRenderModule.identifier
                         drawCallGroups.append(drawCallGroup)
                     }
@@ -170,7 +170,7 @@ class SurfacesRenderModule: RenderModule {
                     
                     let meshGPUData = ModelIOTools.meshGPUData(from: mdlAsset, device: device, vertexDescriptor: RenderUtilities.createStandardVertexDescriptor(), frameRate: 60, shaderPreference: shaderPreference, loadTextures: renderPass?.usesLighting ?? true, textureBundle: textureBundle)
                     
-                    if let drawCallGroup = self?.createDrawCallGroup(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass, meshGPUData: meshGPUData, geometricEntity: geometricEntity) {
+                    if let drawCallGroup = self?.createDrawCallGroup(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass, meshGPUData: meshGPUData, geometricEntity: geometricEntity, numQualityLevels: numQualityLevels) {
                         drawCallGroup.moduleIdentifier = SurfacesRenderModule.identifier
                         drawCallGroups.append(drawCallGroup)
                     }
@@ -593,7 +593,7 @@ class SurfacesRenderModule: RenderModule {
     // Addresses to write environment uniforms to each frame
     private var environmentUniformBufferAddress: UnsafeMutableRawPointer?
     
-    private func createDrawCallGroup(forUUID uuid: UUID, withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, renderPass: RenderPass?, meshGPUData: MeshGPUData, geometricEntity: AKGeometricEntity) -> DrawCallGroup {
+    private func createDrawCallGroup(forUUID uuid: UUID, withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, renderPass: RenderPass?, meshGPUData: MeshGPUData, geometricEntity: AKGeometricEntity, numQualityLevels: Int) -> DrawCallGroup {
         
         guard let renderPass = renderPass else {
             print("Warning - Skipping all draw calls because the render pass is nil.")
@@ -626,7 +626,7 @@ class SurfacesRenderModule: RenderModule {
                 }
             }()
             
-            let drawCall = DrawCall(metalLibrary: metalLibrary, renderPass: renderPass, vertexFunctionName: vertexShaderName, fragmentFunctionName: fragmentShaderName, vertexDescriptor: meshGPUData.vertexDescriptor, drawData: drawData)
+            let drawCall = DrawCall(metalLibrary: metalLibrary, renderPass: renderPass, vertexFunctionName: vertexShaderName, fragmentFunctionName: fragmentShaderName, vertexDescriptor: meshGPUData.vertexDescriptor, drawData: drawData, numQualityLevels: numQualityLevels)
             drawCalls.append(drawCall)
             
         }

@@ -88,4 +88,18 @@ kernel void precalculationComputeShader(constant SharedUniforms &sharedUniforms 
     out[index].shadowMVPTransformMatrix = shadowMVPTransformMatrix;
     out[index].directionalLightMVP = directionalLightMVP;
     out[index].useDepth = sharedUniforms.useDepth;
+    out[index].mapWeights[0] = anchorInstanceUniforms[index].mapWeights[0];
+    out[index].mapWeights[1] = anchorInstanceUniforms[index].mapWeights[1];
+    out[index].mapWeights[2] = anchorInstanceUniforms[index].mapWeights[2];
+    out[index].mapWeights[3] = anchorInstanceUniforms[index].mapWeights[3];
+    out[index].mapWeights[4] = anchorInstanceUniforms[index].mapWeights[4];
+    out[index].mapWeights[5] = anchorInstanceUniforms[index].mapWeights[5];
+    out[index].mapWeights[6] = anchorInstanceUniforms[index].mapWeights[6];
+    out[index].mapWeights[7] = anchorInstanceUniforms[index].mapWeights[7];
+    out[index].mapWeights[8] = anchorInstanceUniforms[index].mapWeights[8];
+    out[index].mapWeights[9] = anchorInstanceUniforms[index].mapWeights[9];
+    out[index].mapWeights[10] = anchorInstanceUniforms[index].mapWeights[10];
+    out[index].mapWeights[11] = anchorInstanceUniforms[index].mapWeights[11];
+    out[index].mapWeights[12] = anchorInstanceUniforms[index].mapWeights[12];
+    out[index].mapWeights[13] = anchorInstanceUniforms[index].mapWeights[13];
 }

@@ -120,6 +120,20 @@ struct ColorInOut {
     float2 texCoord [[ function_constant(has_any_map) ]];
     float3 shadowCoord;
     ushort iid;
+    float baseMapWeight; // Used in LOD calculations
+    float normalMapWeight; // Used in LOD calculations
+    float metallicMapWeight; // Used in LOD calculations
+    float roughnessMapWeight; // Used in LOD calculations
+    float ambientOcclusionMapWeight; // Used in LOD calculations
+    float emissionMapWeight; // Used in LOD calculations
+    float subsurfaceMapWeight; // Used in LOD calculations
+    float specularMapWeight; // Used in LOD calculations
+    float specularTintMapWeight; // Used in LOD calculations
+    float anisotropicMapWeight; // Used in LOD calculations
+    float sheenMapWeight; // Used in LOD calculations
+    float sheenTintMapWeight; // Used in LOD calculations
+    float clearcoatMapWeight; // Used in LOD calculations
+    float clearcoatMapWeightGlossMapWeight; // Used in LOD calculations
 };
 
 // MARK: - Pipeline Functions
@@ -368,33 +382,201 @@ LightingParameters calculateParameters(ColorInOut in,
                                        ) {
     LightingParameters parameters;
     
-    float4 baseColor = has_base_color_map ? srgbToLinear(baseColorMap.sample(linearSampler, in.texCoord.xy)) : materialUniforms.baseColor;
+    // Base Color
+    if(has_base_color_map) {
+        float mapWeight = in.baseMapWeight;
+        float4 baseColor = baseColorMap.sample(linearSampler, in.texCoord.xy);
+        baseColor *= mapWeight;
+        float4 uniformContribution = (1.f - mapWeight) * materialUniforms.baseColor;
+        baseColor += uniformContribution;
+        parameters.baseColor = float4(baseColor.xyz, baseColor.w * materialUniforms.opacity);
+    } else {
+        float4 baseColor = materialUniforms.baseColor;
+        parameters.baseColor = float4(baseColor.xyz, baseColor.w * materialUniforms.opacity);
+    }
     
-    parameters.baseColor = float4(baseColor.xyz, baseColor.w * materialUniforms.opacity);
+    // Normal
+    if(has_normal_map) {
+        float mapWeight = in.normalMapWeight;
+        float3 normal = computeNormalMap(in, normalMap);
+        normal *= mapWeight;
+        float3 uniformContribution = (1.f - mapWeight) * normalize(in.normal);
+        normal += uniformContribution;
+        parameters.normal = normal;
+    } else {
+        float3 normal = normalize(in.normal);
+        parameters.normal = normal;
+    }
+    
+    // Matallic
+    if(has_metallic_map) {
+        float mapWeight = in.metallicMapWeight;
+        float metalness = metallicMap.sample(linearSampler, in.texCoord.xy).x;
+        metalness *= mapWeight;
+        float uniformContribution = (1.f - mapWeight) * materialUniforms.metalness;
+        metalness += uniformContribution;
+        parameters.metalness = metalness;
+    } else {
+        float metalness = materialUniforms.metalness;
+        parameters.metalness = metalness;
+    }
+    
+    // Roughness
+    if(has_roughness_map) {
+        float mapWeight = in.roughnessMapWeight;
+        float perceptualRoughness = max(roughnessMap.sample(linearSampler, in.texCoord.xy).x, 0.001f);
+        perceptualRoughness *= mapWeight;
+        float uniformContribution = (1.f - mapWeight) * materialUniforms.roughness;
+        perceptualRoughness += uniformContribution;
+        parameters.perceptualRoughness = clamp(perceptualRoughness, 0.045, 1.0);
+    } else {
+        float perceptualRoughness = materialUniforms.roughness;
+        parameters.perceptualRoughness = clamp(perceptualRoughness, 0.045, 1.0);
+    }
+    
+    // Subsurface
+    if(has_subsurface_map) {
+        float mapWeight = in.subsurfaceMapWeight;
+        float subsurface = subsurfaceMap.sample(linearSampler, in.texCoord.xy).x;
+        subsurface *= mapWeight;
+        float uniformContribution = (1.f - mapWeight) * materialUniforms.subsurface;
+        subsurface += uniformContribution;
+        parameters.subsurface = subsurface;
+    } else {
+        float subsurface = materialUniforms.subsurface;
+        parameters.subsurface = subsurface;
+    }
+    
+    // Ambient Occlusion
+    if(has_ambient_occlusion_map) {
+        float mapWeight = in.ambientOcclusionMapWeight;
+        float ambientOcclusion = ambientOcclusionMap.sample(linearSampler, in.texCoord.xy).x;
+        ambientOcclusion *= mapWeight;
+        float uniformContribution = (1.f - mapWeight) * materialUniforms.ambientOcclusion;
+        ambientOcclusion += uniformContribution;
+        parameters.ambientOcclusion = ambientOcclusion;
+    } else {
+        float ambientOcclusion = materialUniforms.ambientOcclusion;
+        parameters.ambientOcclusion = ambientOcclusion;
+    }
+    
+    // Emission
+    if(has_emission_map) {
+        float mapWeight = in.emissionMapWeight;
+        float4 emissionColor = emissionMap.sample(linearSampler, in.texCoord.xy);
+        emissionColor *= mapWeight;
+        float4 uniformContribution = (1.f - mapWeight) * materialUniforms.emissionColor;
+        emissionColor += uniformContribution;
+        parameters.emissionColor = emissionColor;
+    } else {
+        float4 emissionColor = materialUniforms.emissionColor;
+        parameters.emissionColor = emissionColor;
+    }
+    
+    // Specular
+    if(has_specular_map) {
+        float mapWeight = in.specularMapWeight;
+        float specular = specularMap.sample(linearSampler, in.texCoord.xy).x;
+        specular *= mapWeight;
+        float uniformContribution = (1.f - mapWeight) * materialUniforms.specular;
+        specular += uniformContribution;
+        parameters.specular = specular;
+    } else {
+        float specular = materialUniforms.specular;
+        parameters.specular = specular;
+    }
+    
+    // Specular Tint
+    if(has_specularTint_map) {
+        float mapWeight = in.specularTintMapWeight;
+        float specularTint = specularTintMap.sample(linearSampler, in.texCoord.xy).x;
+        specularTint *= mapWeight;
+        float uniformContribution = (1.f - mapWeight) * materialUniforms.specularTint;
+        specularTint += uniformContribution;
+        parameters.specularTint = specularTint;
+    } else {
+        float specularTint = materialUniforms.specularTint;
+        parameters.specularTint = specularTint;
+    }
+    
+    // Sheen
+    if(has_sheen_map) {
+        float mapWeight = in.sheenMapWeight;
+        float sheen = sheenMap.sample(linearSampler, in.texCoord.xy).x;
+        sheen *= mapWeight;
+        float uniformContribution = (1.f - mapWeight) * materialUniforms.sheen;
+        sheen += uniformContribution;
+        parameters.sheen = sheen;
+    } else {
+        float sheen = materialUniforms.sheen;
+        parameters.sheen = sheen;
+    }
+    
+    // Sheen Tint
+    if(has_sheenTint_map) {
+        float mapWeight = in.sheenTintMapWeight;
+        float sheenTint = sheenTintMap.sample(linearSampler, in.texCoord.xy).x;
+        sheenTint *= mapWeight;
+        float uniformContribution = (1.f - mapWeight) * materialUniforms.sheenTint;
+        sheenTint += uniformContribution;
+        parameters.sheenTint = sheenTint;
+    } else {
+        float sheenTint = materialUniforms.sheenTint;
+        parameters.sheenTint = sheenTint;
+    }
+    
+    // Anisotropic
+    if(has_anisotropic_map) {
+        float mapWeight = in.anisotropicMapWeight;
+        float anisotropic = anisotropicMap.sample(linearSampler, in.texCoord.xy).x;
+        anisotropic *= mapWeight;
+        float uniformContribution = (1.f - mapWeight) * materialUniforms.anisotropic;
+        anisotropic += uniformContribution;
+        parameters.anisotropic = anisotropic;
+    } else {
+        float anisotropic = materialUniforms.anisotropic;
+        parameters.anisotropic = anisotropic;
+    }
+    
+    // Clearcoat
+    if(has_clearcoat_map) {
+        float mapWeight = in.clearcoatMapWeight;
+        float clearcoat = clearcoatMap.sample(linearSampler, in.texCoord.xy).x;
+        clearcoat *= mapWeight;
+        float uniformContribution = (1.f - mapWeight) * materialUniforms.clearcoat;
+        clearcoat += uniformContribution;
+        parameters.clearcoat = clearcoat;
+    } else {
+        float clearcoat = materialUniforms.clearcoat;
+        parameters.clearcoat = clearcoat;
+    }
+    
+    // Clearcoat Gloss
+    if(has_clearcoatGloss_map) {
+        float mapWeight = in.clearcoatMapWeightGlossMapWeight;
+        float clearcoatGloss = clearcoatGlossMap.sample(linearSampler, in.texCoord.xy).x;
+        clearcoatGloss *= mapWeight;
+        float uniformContribution = (1.f - mapWeight) * materialUniforms.clearcoatGloss;
+        clearcoatGloss += uniformContribution;
+        parameters.clearcoatGloss = clearcoatGloss;
+    } else {
+        float clearcoatGloss = materialUniforms.clearcoatGloss;
+        parameters.clearcoatGloss = clearcoatGloss;
+    }
+    
     parameters.baseColorLuminance = 0.3 * parameters.baseColor.x + 0.6 * parameters.baseColor.y + 0.1 * parameters.baseColor.z; // approximation of luminanc
     parameters.baseColorHueSat = parameters.baseColorLuminance > 0.0 ? parameters.baseColor.rgb / parameters.baseColorLuminance : float3(1); // remove luminance
-    parameters.subsurface = has_subsurface_map ? subsurfaceMap.sample(linearSampler, in.texCoord.xy).x : materialUniforms.subsurface;
-    parameters.specular = has_specular_map ? specularMap.sample(linearSampler, in.texCoord.xy).x : materialUniforms.specular;
-    parameters.specularTint = has_specularTint_map ? specularTintMap.sample(linearSampler, in.texCoord.xy).x : materialUniforms.specularTint;
-    parameters.sheen = has_sheen_map ? sheenMap.sample(linearSampler, in.texCoord.xy).x : materialUniforms.sheen;
-    parameters.sheenTint = has_sheenTint_map ? sheenTintMap.sample(linearSampler, in.texCoord.xy).x : materialUniforms.sheenTint;
-    parameters.anisotropic = has_anisotropic_map ? anisotropicMap.sample(linearSampler, in.texCoord.xy).x : materialUniforms.anisotropic;
-    parameters.clearcoat = has_clearcoat_map ? clearcoatMap.sample(linearSampler, in.texCoord.xy).x : materialUniforms.clearcoat;
-    parameters.clearcoatGloss = has_clearcoatGloss_map ? clearcoatGlossMap.sample(linearSampler, in.texCoord.xy).x : materialUniforms.clearcoatGloss;
-    parameters.normal = has_normal_map ? computeNormalMap(in, normalMap) : normalize(in.normal);
     parameters.viewDir = -normalize(in.eyePosition);
     parameters.reflectedVector = reflect(-parameters.viewDir, parameters.normal);
     parameters.reflectedColor = (environmentUniforms[in.iid].hasEnvironmentMap == 1) ? environmentCubemap.sample(reflectiveEnvironmentSampler, parameters.reflectedVector).xyz : float3(0, 0, 0);
     // clamp to minimum roucgness. MIN_PERCEPTUAL_ROUGHNESS = 0.045, MIN_ROUGHNESS = 0.002025
-    float perceptualRoughness = has_roughness_map ? max(roughnessMap.sample(linearSampler, in.texCoord.xy).x, 0.001f) : materialUniforms.roughness;
-    parameters.perceptualRoughness = clamp(perceptualRoughness, 0.045, 1.0);
+//    float perceptualRoughness = has_roughness_map ? max(roughnessMap.sample(linearSampler, in.texCoord.xy).x, 0.001f) : materialUniforms.roughness;
+//    parameters.perceptualRoughness = clamp(perceptualRoughness, 0.045, 1.0);
     float roughness = parameters.perceptualRoughness * parameters.perceptualRoughness;
     parameters.roughness = clamp(roughness, 0.002025, 1.0);
-    parameters.metalness = has_metallic_map ? metallicMap.sample(linearSampler, in.texCoord.xy).x : materialUniforms.metalness;
 //    uint8_t mipLevel = parameters.roughness * emissionMap.get_num_mip_levels();
 //    parameters.emissionColor = has_emission_map ? emissionMap.sample(mipSampler, parameters.reflectedVector, level(mipLevel)).xyz : materialUniforms.emissionColor.xyz;
-    parameters.emissionColor = has_emission_map ? emissionMap.sample(linearSampler, in.texCoord.xy) : materialUniforms.emissionColor;
-    parameters.ambientOcclusion = has_ambient_occlusion_map ? max(srgbToLinear(ambientOcclusionMap.sample(linearSampler, in.texCoord.xy)).x, 0.001f) : materialUniforms.ambientOcclusion;
+//    parameters.emissionColor = has_emission_map ? emissionMap.sample(linearSampler, in.texCoord.xy) : materialUniforms.emissionColor;
     parameters.directionalLightCol = environmentUniforms[in.iid].directionalLightColor;
     parameters.ambientLightCol = environmentUniforms[in.iid].ambientLightColor;
     parameters.ambientIntensity = environmentUniforms[in.iid].ambientLightIntensity;
@@ -461,7 +643,24 @@ vertex ColorInOut rawGeometryVertexTransform(Vertex in [[stage_in]],
     // Shadow Coord
     out.shadowCoord = (arguments[argumentBufferIndex].shadowMVPTransformMatrix * out.position).xyz;
     
+    // Instance ID
     out.iid = iid;
+    
+    // LOD
+    out.baseMapWeight = arguments[argumentBufferIndex].mapWeights[0];
+    out.normalMapWeight = arguments[argumentBufferIndex].mapWeights[1];
+    out.metallicMapWeight = arguments[argumentBufferIndex].mapWeights[2];
+    out.roughnessMapWeight = arguments[argumentBufferIndex].mapWeights[3];
+    out.ambientOcclusionMapWeight = arguments[argumentBufferIndex].mapWeights[4];
+    out.emissionMapWeight = arguments[argumentBufferIndex].mapWeights[5];
+    out.subsurfaceMapWeight = arguments[argumentBufferIndex].mapWeights[6];
+    out.specularMapWeight = arguments[argumentBufferIndex].mapWeights[7];
+    out.specularTintMapWeight = arguments[argumentBufferIndex].mapWeights[8];
+    out.anisotropicMapWeight = arguments[argumentBufferIndex].mapWeights[9];
+    out.sheenMapWeight = arguments[argumentBufferIndex].mapWeights[10];
+    out.sheenTintMapWeight = arguments[argumentBufferIndex].mapWeights[11];
+    out.clearcoatMapWeight = arguments[argumentBufferIndex].mapWeights[12];
+    out.clearcoatMapWeightGlossMapWeight = arguments[argumentBufferIndex].mapWeights[13];
     
     return out;
 }
@@ -504,7 +703,24 @@ vertex ColorInOut anchorGeometryVertexTransform(Vertex in [[stage_in]],
     // Shadow Coord
     out.shadowCoord = (arguments[argumentBufferIndex].shadowMVPTransformMatrix * out.position).xyz;
     
+    // Instance ID
     out.iid = iid;
+    
+    // LOD
+    out.baseMapWeight = arguments[argumentBufferIndex].mapWeights[0];
+    out.normalMapWeight = arguments[argumentBufferIndex].mapWeights[1];
+    out.metallicMapWeight = arguments[argumentBufferIndex].mapWeights[2];
+    out.roughnessMapWeight = arguments[argumentBufferIndex].mapWeights[3];
+    out.ambientOcclusionMapWeight = arguments[argumentBufferIndex].mapWeights[4];
+    out.emissionMapWeight = arguments[argumentBufferIndex].mapWeights[5];
+    out.subsurfaceMapWeight = arguments[argumentBufferIndex].mapWeights[6];
+    out.specularMapWeight = arguments[argumentBufferIndex].mapWeights[7];
+    out.specularTintMapWeight = arguments[argumentBufferIndex].mapWeights[8];
+    out.anisotropicMapWeight = arguments[argumentBufferIndex].mapWeights[9];
+    out.sheenMapWeight = arguments[argumentBufferIndex].mapWeights[10];
+    out.sheenTintMapWeight = arguments[argumentBufferIndex].mapWeights[11];
+    out.clearcoatMapWeight = arguments[argumentBufferIndex].mapWeights[12];
+    out.clearcoatMapWeightGlossMapWeight = arguments[argumentBufferIndex].mapWeights[13];
     
     return out;
 }
@@ -573,7 +789,24 @@ vertex ColorInOut anchorGeometryVertexTransformSkinned(Vertex in [[stage_in]],
     // Shadow Coord
     out.shadowCoord = (arguments[argumentBufferIndex].shadowMVPTransformMatrix * out.position).xyz;
     
+    // Instance ID
     out.iid = iid;
+    
+    // LOD
+    out.baseMapWeight = arguments[argumentBufferIndex].mapWeights[0];
+    out.normalMapWeight = arguments[argumentBufferIndex].mapWeights[1];
+    out.metallicMapWeight = arguments[argumentBufferIndex].mapWeights[2];
+    out.roughnessMapWeight = arguments[argumentBufferIndex].mapWeights[3];
+    out.ambientOcclusionMapWeight = arguments[argumentBufferIndex].mapWeights[4];
+    out.emissionMapWeight = arguments[argumentBufferIndex].mapWeights[5];
+    out.subsurfaceMapWeight = arguments[argumentBufferIndex].mapWeights[6];
+    out.specularMapWeight = arguments[argumentBufferIndex].mapWeights[7];
+    out.specularTintMapWeight = arguments[argumentBufferIndex].mapWeights[8];
+    out.anisotropicMapWeight = arguments[argumentBufferIndex].mapWeights[9];
+    out.sheenMapWeight = arguments[argumentBufferIndex].mapWeights[10];
+    out.sheenTintMapWeight = arguments[argumentBufferIndex].mapWeights[11];
+    out.clearcoatMapWeight = arguments[argumentBufferIndex].mapWeights[12];
+    out.clearcoatMapWeightGlossMapWeight = arguments[argumentBufferIndex].mapWeights[13];
     
     return out;
     
@@ -668,7 +901,7 @@ fragment float4 anchorGeometryFragmentLightingSimple(ColorInOut in [[stage_in]],
     
     ushort iid = in.iid;
     
-    float4 intermediateColor = has_base_color_map ? srgbToLinear(baseColorMap.sample(linearSampler, in.texCoord.xy)) : materialUniforms.baseColor;
+    float4 intermediateColor = has_base_color_map ? baseColorMap.sample(linearSampler, in.texCoord.xy) : materialUniforms.baseColor;
     
     // FIXME: discard_fragment may have performance implications.
     // see: http://metalbyexample.com/translucency-and-transparency/

@@ -78,7 +78,7 @@ class TrackingPointsRenderModule: RenderModule {
     
     // This funciton should set up the vertex descriptors, pipeline / depth state descriptors,
     // textures, etc.
-    func loadPipeline(withModuleEntities: [AKEntity], metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, renderPass: RenderPass? = nil, completion: (([DrawCallGroup]) -> Void)? = nil) {
+    func loadPipeline(withModuleEntities: [AKEntity], metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, renderPass: RenderPass? = nil, numQualityLevels: Int = 1, completion: (([DrawCallGroup]) -> Void)? = nil) {
         
         guard let pointVertexShader = metalLibrary.makeFunction(name: "pointVertexShader") else {
             print("Serious Error - failed to create the pointVertexShader function")

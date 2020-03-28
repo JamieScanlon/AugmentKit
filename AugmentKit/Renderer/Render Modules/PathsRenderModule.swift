@@ -124,7 +124,7 @@ class PathsRenderModule: RenderModule {
         
     }
     
-    func loadPipeline(withModuleEntities: [AKEntity], metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, renderPass: RenderPass? = nil, completion: (([DrawCallGroup]) -> Void)? = nil) {
+    func loadPipeline(withModuleEntities: [AKEntity], metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, renderPass: RenderPass? = nil, numQualityLevels: Int = 1, completion: (([DrawCallGroup]) -> Void)? = nil) {
         
         guard let renderPass = renderPass else {
             print("Warning - Skipping all draw calls because the render pass is nil.")
@@ -176,7 +176,7 @@ class PathsRenderModule: RenderModule {
                 let uuid = geometricEntity.identifier ?? UUID()
                 
                 // Create a draw call group that contins all of the individual draw calls for this model
-                if let drawCallGroup = self?.createDrawCallGroup(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass, meshGPUData: meshGPUData, geometricEntity: geometricEntity) {
+                if let drawCallGroup = self?.createDrawCallGroup(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass, meshGPUData: meshGPUData, geometricEntity: geometricEntity, numQualityLevels: numQualityLevels) {
                     drawCallGroup.moduleIdentifier = PathsRenderModule.identifier
                     drawCallGroups.append(drawCallGroup)
                 }
@@ -518,7 +518,7 @@ class PathsRenderModule: RenderModule {
         
     }
     
-    private func createDrawCallGroup(forUUID uuid: UUID, withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, renderPass: RenderPass?, meshGPUData: MeshGPUData, geometricEntity: AKGeometricEntity) -> DrawCallGroup {
+    private func createDrawCallGroup(forUUID uuid: UUID, withMetalLibrary metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, renderPass: RenderPass?, meshGPUData: MeshGPUData, geometricEntity: AKGeometricEntity, numQualityLevels: Int) -> DrawCallGroup {
         
         guard let renderPass = renderPass else {
             print("Warning - Skipping all draw calls because the render pass is nil.")
@@ -531,7 +531,7 @@ class PathsRenderModule: RenderModule {
         // Create a draw call group containing draw calls. Each draw call is associated with a `DrawData` object in the `MeshGPUData`
         var drawCalls = [DrawCall]()
         for drawData in meshGPUData.drawData {
-            let drawCall = DrawCall(metalLibrary: metalLibrary, renderPass: renderPass, vertexFunctionName: "pathVertexShader", fragmentFunctionName: "pathFragmentShader", vertexDescriptor: meshGPUData.vertexDescriptor, drawData: drawData)
+            let drawCall = DrawCall(metalLibrary: metalLibrary, renderPass: renderPass, vertexFunctionName: "pathVertexShader", fragmentFunctionName: "pathFragmentShader", vertexDescriptor: meshGPUData.vertexDescriptor, drawData: drawData, numQualityLevels: numQualityLevels)
             drawCalls.append(drawCall)
         }
         

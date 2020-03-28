@@ -562,43 +562,43 @@ class ModelIOTools {
         if submesh.baseColorTexture != nil {
             drawData.hasBaseColorMap = true
         }
-        if submesh.normalTexture != nil {
+        if submesh.normalTexture != nil, AKCapabilities.NormalMap {
             drawData.hasNormalMap = true
         }
-        if submesh.ambientOcclusionTexture != nil {
+        if submesh.ambientOcclusionTexture != nil, AKCapabilities.AmbientOcclusionMap {
             drawData.hasAmbientOcclusionMap = true
         }
-        if submesh.roughnessTexture != nil {
+        if submesh.roughnessTexture != nil, AKCapabilities.RoughnessMap {
             drawData.hasRoughnessMap = true
         }
-        if submesh.metallicTexture != nil {
+        if submesh.metallicTexture != nil, AKCapabilities.MetallicMap {
             drawData.hasMetallicMap = true
         }
-        if submesh.emissionTexture != nil {
+        if submesh.emissionTexture != nil, AKCapabilities.EmissionMap {
             drawData.hasEmissionMap = true
         }
-        if submesh.subsurfaceTexture != nil {
+        if submesh.subsurfaceTexture != nil, AKCapabilities.SubsurfaceMap {
             drawData.hasSubsurfaceMap = true
         }
-        if submesh.specularTexture != nil {
+        if submesh.specularTexture != nil, AKCapabilities.SpecularMap {
             drawData.hasSpecularMap = true
         }
-        if submesh.specularTintTexture != nil {
+        if submesh.specularTintTexture != nil, AKCapabilities.SpecularTintMap {
             drawData.hasSpecularTintMap = true
         }
-        if submesh.anisotropicTexture != nil {
+        if submesh.anisotropicTexture != nil, AKCapabilities.AnisotropicMap {
             drawData.hasAnisotropicMap = true
         }
-        if submesh.sheenTexture != nil {
+        if submesh.sheenTexture != nil, AKCapabilities.SheenMap {
             drawData.hasSheenMap = true
         }
-        if submesh.sheenTintTexture != nil {
+        if submesh.sheenTintTexture != nil, AKCapabilities.SheenTintMap {
             drawData.hasSheenTintMap = true
         }
-        if submesh.clearcoatTexture != nil {
+        if submesh.clearcoatTexture != nil, AKCapabilities.ClearcoatMap {
             drawData.hasClearcoatMap = true
         }
-        if submesh.clearcoatGlossTexture != nil {
+        if submesh.clearcoatGlossTexture != nil, AKCapabilities.ClearcoatGlossMap {
             drawData.hasClearcoatGlossMap = true
         }
         
@@ -615,9 +615,11 @@ class ModelIOTools {
     /// - Parameter textureLoader: Used to load textures when found. if nil, uniform values will be used instead of textures.
     /// - Parameter bundle: If a relatice URL to an asset is encountered, it is assumed to be an asset within this bundle.
     /// - Parameter baseURL: If provided, all texture asset path will be assumed to be relative to this base url. This may be used id the material is part of an `MDLAsset` within an bundle. Generally the texture asset patch will be relative to the asset but in order to find the asset, we need to know where the asset is. In this case the `baseURL` would be the `URL` of the folder that contains the `MDLAsset`
-    static func materialProperties(from material: MDLMaterial, textureLoader: MTKTextureLoader? = nil, bundle: Bundle? = nil, baseURL: URL? = nil) -> MaterialProperties {
+    static func materialProperties(from material: MDLMaterial, textureLoader: MTKTextureLoader? = nil, bundle: Bundle? = nil, baseURL: URL? = nil, meshIdentifier: String = "") -> MaterialProperties {
         
-        if let cachedProperties = MaterialCache.shared.cachedMaterial(with: material.name), textureLoader != nil, bundle != nil {
+        let meshCacheKey = meshIdentifier + material.name
+        print("MaterialCache cacheKey: \(meshCacheKey)")
+        if let cachedProperties = MaterialCache.shared.cachedMaterial(with: meshCacheKey), textureLoader != nil, bundle != nil {
             // Only attempt to load from cache materials with textures.
             return cachedProperties
         }
@@ -760,7 +762,7 @@ class ModelIOTools {
         let materialProperties = MaterialProperties(name: material.name, properties: allProperties)
         if textureLoader != nil, bundle != nil {
             // Only cace materials with textures
-            MaterialCache.shared.cacheMaterial(materialProperties, for: material.name)
+            MaterialCache.shared.cacheMaterial(materialProperties, for: meshCacheKey)
         }
         return materialProperties
     }
@@ -816,7 +818,7 @@ class ModelIOTools {
                     
                     var material = MaterialUniforms()
                     
-                    let myMaterialProperties = materialProperties(from: mdlMaterial, textureLoader: textureLoader, bundle: textureBundle, baseURL: baseURL)
+                    let myMaterialProperties = materialProperties(from: mdlMaterial, textureLoader: textureLoader, bundle: textureBundle, baseURL: baseURL, meshIdentifier: mesh.name)
                     let allProperties = myMaterialProperties.properties
                     
                     // Encode the texture indexes corresponding to the texture maps. If a property has no texture map this value will be nil
@@ -958,9 +960,7 @@ class ModelIOTools {
         var result: (uniform: Any?, texture: MTLTexture?) = (nil, nil)
         
         if let textureLoader = textureLoader, let sourceTexture = property.textureSamplerValue?.texture {
-            let wantMips = property.semantic != .tangentSpaceNormal
-            //                  let options: [MTKTextureLoader.Option : Any] = [ .generateMipmaps : wantMips, .textureUsage: NSNumber(value: MTLTextureUsage.unknown.rawValue) ] // Force an uncompressed texture
-            let options: [MTKTextureLoader.Option : Any] = [ .generateMipmaps : wantMips ]
+            let options: [MTKTextureLoader.Option : Any] = [ .generateMipmaps : property.semantic != .tangentSpaceNormal, .allocateMipmaps: property.semantic != .tangentSpaceNormal ]
             do {
                 result.texture = try textureLoader.newTexture(texture: sourceTexture, options: options)
             } catch {
@@ -980,8 +980,7 @@ class ModelIOTools {
                 }
             case .texture:
                 if let textureLoader = textureLoader, let sourceTexture = property.textureSamplerValue?.texture {
-                    let wantMips = property.semantic != .tangentSpaceNormal
-                    let options: [MTKTextureLoader.Option : Any] = [ .generateMipmaps : wantMips ]
+                    let options: [MTKTextureLoader.Option : Any] = [ .generateMipmaps : property.semantic != .tangentSpaceNormal, .allocateMipmaps: property.semantic != .tangentSpaceNormal ]
                     result.texture = try? textureLoader.newTexture(texture: sourceTexture, options: options)
                 } else {
                     return nil

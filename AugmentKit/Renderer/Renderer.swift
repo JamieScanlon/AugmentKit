@@ -1256,6 +1256,10 @@ open class Renderer: NSObject {
      */
     public func remove(akAnchor: AKAugmentedAnchor) {
         
+        if let uuid = akAnchor.identifier {
+            freeTextureMemory(for: [uuid])
+        }
+        
         let anchorType = type(of: akAnchor).type
         modelProvider?.unregisterAsset(forObjectType: anchorType, identifier: akAnchor.identifier)
         var existingGeometries = entitiesForRenderModule[AnchorsRenderModule.identifier]
@@ -1278,6 +1282,10 @@ open class Renderer: NSObject {
      */
     public func remove(akTracker: AKAugmentedTracker) {
         
+        if let uuid = akTracker.identifier {
+            freeTextureMemory(for: [uuid])
+        }
+        
         let anchorType = type(of: akTracker).type
         modelProvider?.unregisterAsset(forObjectType: anchorType, identifier: akTracker.identifier)
         var existingGeometries = entitiesForRenderModule[UnanchoredRenderModule.identifier]
@@ -1286,6 +1294,8 @@ open class Renderer: NSObject {
         }
         entitiesForRenderModule[UnanchoredRenderModule.identifier] = existingGeometries
         
+        unanchoredRenderModule?.state = .uninitialized
+        hasUninitializedModules = true
     }
     /**
      Remove a new path to the AR world
@@ -1294,11 +1304,20 @@ open class Renderer: NSObject {
      */
     public func remove(akPath: AKPath) {
         
+        var uuids = [UUID]()
         akPath.segmentPoints.forEach { segment in
+            if let uuid = segment.identifier {
+                uuids.append(uuid)
+            }
             if let arAnchor = session.currentFrame?.anchors.first(where: {$0.identifier == segment.identifier}) {
                 session.remove(anchor: arAnchor)
             }
         }
+        if let uuid = akPath.identifier {
+            uuids.append(uuid)
+        }
+        
+        freeTextureMemory(for: uuids)
         
         let anchorType = type(of: akPath).type
         modelProvider?.unregisterAsset(forObjectType: anchorType, identifier: akPath.identifier)
@@ -1317,6 +1336,10 @@ open class Renderer: NSObject {
      */
     public func remove(gazeTarget: GazeTarget) {
         
+        if let uuid = gazeTarget.identifier {
+            freeTextureMemory(for: [uuid])
+        }
+        
         let anchorType = type(of: gazeTarget).type
         modelProvider?.unregisterAsset(forObjectType: anchorType, identifier: gazeTarget.identifier)
         var existingGeometries = entitiesForRenderModule[UnanchoredRenderModule.identifier]
@@ -1325,6 +1348,8 @@ open class Renderer: NSObject {
         }
         entitiesForRenderModule[UnanchoredRenderModule.identifier] = existingGeometries
         
+        unanchoredRenderModule?.state = .uninitialized
+        hasUninitializedModules = true
     }
     
     // MARK: - Private
@@ -2052,6 +2077,15 @@ open class Renderer: NSObject {
         // We're done encoding commands
         commandEncoder.endEncoding()
         
+    }
+    
+    fileprivate func freeTextureMemory(for enitityIDs: [UUID]) {
+        
+        let existingMainPassDrawCallGroups = mainRenderPass?.drawCallGroups ?? []
+        
+        // For the current DrawCallGroup's that have been removed, Mark the textures associated with those draw calls purgable so the system can free up the memory
+        let removedMainPassGroups = existingMainPassDrawCallGroups.filter({ enitityIDs.contains($0.uuid) })
+        removedMainPassGroups.forEach{ $0.markTexturesAsVolitile() }
     }
     
     // MARK: Precomute pass

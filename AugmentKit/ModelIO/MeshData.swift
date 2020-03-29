@@ -155,6 +155,42 @@ public struct DrawSubData {
         materialUniforms = material
         
     }
+    
+    public func markTexturesAsVolitile() {
+        
+        baseColorTexture?.setPurgeableState(.volatile)
+        normalTexture?.setPurgeableState(.volatile)
+        ambientOcclusionTexture?.setPurgeableState(.volatile)
+        metallicTexture?.setPurgeableState(.volatile)
+        roughnessTexture?.setPurgeableState(.volatile)
+        emissionTexture?.setPurgeableState(.volatile)
+        subsurfaceTexture?.setPurgeableState(.volatile)
+        specularTexture?.setPurgeableState(.volatile)
+        specularTintTexture?.setPurgeableState(.volatile)
+        anisotropicTexture?.setPurgeableState(.volatile)
+        sheenTexture?.setPurgeableState(.volatile)
+        sheenTintTexture?.setPurgeableState(.volatile)
+        clearcoatTexture?.setPurgeableState(.volatile)
+        clearcoatGlossTexture?.setPurgeableState(.volatile)
+    }
+    
+    public func markTexturesAsNonVolitile() {
+        
+        baseColorTexture?.setPurgeableState(.nonVolatile)
+        normalTexture?.setPurgeableState(.nonVolatile)
+        ambientOcclusionTexture?.setPurgeableState(.nonVolatile)
+        metallicTexture?.setPurgeableState(.nonVolatile)
+        roughnessTexture?.setPurgeableState(.nonVolatile)
+        emissionTexture?.setPurgeableState(.nonVolatile)
+        subsurfaceTexture?.setPurgeableState(.nonVolatile)
+        specularTexture?.setPurgeableState(.nonVolatile)
+        specularTintTexture?.setPurgeableState(.nonVolatile)
+        anisotropicTexture?.setPurgeableState(.nonVolatile)
+        sheenTexture?.setPurgeableState(.nonVolatile)
+        sheenTintTexture?.setPurgeableState(.nonVolatile)
+        clearcoatTexture?.setPurgeableState(.nonVolatile)
+        clearcoatGlossTexture?.setPurgeableState(.nonVolatile)
+    }
 
     static func mapTextureBindPoint(to textureIndex: TextureIndices) -> FunctionConstantIndices {
         switch textureIndex {
@@ -231,6 +267,14 @@ public struct DrawData {
     var isRaw: Bool {
         return rawVertexBuffers.count > 0
     }
+    
+    public func markTexturesAsVolitile() {
+        subData.forEach{ $0.markTexturesAsVolitile() }
+    }
+    
+    public func markTexturesAsNonVolitile() {
+        subData.forEach{ $0.markTexturesAsNonVolitile() }
+    }
 }
 
 // MARK: MeshGPUData
@@ -242,6 +286,14 @@ public struct MeshGPUData {
     var drawData = [DrawData]()
     var vertexDescriptor: MTLVertexDescriptor?
     var shaderPreference: ShaderPreference = .pbr
+    
+    public func markTexturesAsVolitile() {
+        drawData.forEach{ $0.markTexturesAsVolitile() }
+    }
+    
+    public func markTexturesAsNonVolitile() {
+        drawData.forEach{ $0.markTexturesAsNonVolitile() }
+    }
 }
 
 // MARK: MeshGPUData

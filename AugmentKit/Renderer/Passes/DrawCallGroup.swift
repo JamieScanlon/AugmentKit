@@ -29,7 +29,7 @@ import Foundation
 
 // MARK: - DrawCallGroup
 
-/// An abstraction for a collection of `DrawCall`'s. A `DrawCallGroup` helps organize a sequence of `DrawCall`'s into a logical group. Multiple `DrawCallGroup`'s can then be rendered, in order, in a single pass.
+/// An abstraction for a collection of `DrawCall`'s. A `DrawCallGroup` helps organize a sequence of `DrawCall`'s into a logical group. Multiple `DrawCallGroup`'s can then be rendered, in order, in a single pass. A `DrawCallGroup` can be thought of as a model level abstraction where a model contains one or more mesh and each mesh is a `DrawCall`
 class DrawCallGroup {
     
     /// The `uuid` is usually set to match the `identifier` property of the corresponding `AKGeometricEntity`
@@ -56,6 +56,13 @@ class DrawCallGroup {
         }
     }
     
+    func markTexturesAsVolitile() {
+        drawCalls.forEach{ $0.markTexturesAsVolitile() }
+    }
+    
+    func markTexturesAsNonVolitile() {
+        drawCalls.forEach{ $0.markTexturesAsNonVolitile() }
+    }
 }
 
 extension DrawCallGroup: CustomDebugStringConvertible, CustomStringConvertible {

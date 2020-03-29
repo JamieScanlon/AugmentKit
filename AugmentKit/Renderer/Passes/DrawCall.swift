@@ -280,6 +280,14 @@ struct DrawCall {
         return qualityRenderPipelineStates[qualityLevel]
     }
     
+    func markTexturesAsVolitile() {
+        drawData?.markTexturesAsVolitile()
+    }
+    
+    func markTexturesAsNonVolitile() {
+        drawData?.markTexturesAsNonVolitile()
+    }
+    
 }
 
 extension DrawCall: CustomDebugStringConvertible, CustomStringConvertible {

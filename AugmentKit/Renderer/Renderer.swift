@@ -2095,9 +2095,9 @@ open class Renderer: NSObject {
         
         // Dispatch
         computeModules.forEach { module in
-            if let precalculationModule = module as? AnyComputeModule<PrecalculatedParameters>, let precalculationPass = precalculationPass, precalculationModule.state == .ready {
+            if let precalculationModule = module as? AnyComputeModule<PrecalculatedParameters>, let precalculationPass = precalculationPass, let sharedModules = sharedModulesForModule[precalculationModule.moduleIdentifier], precalculationModule.state == .ready, sharedModules.count > 0 {
                 precalculationPass.prepareCommandEncoder(withCommandBuffer: commandBuffer)
-                precalculationModule.dispatch(withComputePass: precalculationPass, sharedModules: sharedModulesForModule[precalculationModule.moduleIdentifier])
+                precalculationModule.dispatch(withComputePass: precalculationPass, sharedModules: sharedModules)
                 precalculationPass.computeCommandEncoder?.endEncoding()
             }
         }

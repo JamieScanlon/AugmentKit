@@ -44,6 +44,10 @@ public extension Notification.Name {
      */
     static let surfaceDetectionStateChanged = Notification.Name("com.tenthlettermade.augmentKit.notificaiton.surfaceDetectionStateChanged")
     /**
+     A Notification issued when the renderer has detected the first face
+     */
+    static let faceDetectionStateChanged = Notification.Name("com.tenthlettermade.augmentKit.notificaiton.faceDetectionStateChanged")
+    /**
      A Notification issued when the renderer has aborted due to errors.
      */
     static let abortedDueToErrors = Notification.Name("com.tenthlettermade.augmentKit.notificaiton.abortedDueToErrors")
@@ -376,6 +380,31 @@ open class Renderer: NSObject {
     /**
      State of the renderer
      */
+    public enum RendererSessionType {
+        /**
+         Initializes the ARKit session with an `ARWorldTrackingConfiguration`
+         */
+        case worldTracking
+        /**
+         Initializes the ARKit session with an `ARFaceTrackingConfiguration`
+         */
+        case faceTracking
+        /**
+         Initializes the ARKit session with an `ARWorldTrackingConfiguration` with  `userFaceTrackingEnabled` set to `true`
+         */
+        case worldTrackingWithFaceDetection
+        /**
+         Initializes the ARKit session with an `ARFaceTrackingConfiguration` with  `supportsWorldTracking` set to `true`
+         */
+        case faceTrackingWithWorldTracking
+        /**
+         Initializes the ARKit session with an `ARBodyTrackingConfiguration`
+         */
+        case bodyTracking
+    }
+    /**
+     State of the renderer
+     */
     public enum RendererState {
         /**
          Uninitialized
@@ -395,7 +424,7 @@ open class Renderer: NSObject {
         case paused
     }
     /**
-     State of surface detection. Many features of AugmentKit rely on the AR engine to have detected at least one surface so monitoring surface dettection state gives a good indication of the readyness of the render to perform AR calculations reliably
+     State of surface detection. When using a world tracking session, many features of AugmentKit rely on the AR engine to have detected at least one surface so monitoring surface dettection state gives a good indication of the readyness of the render to perform AR calculations reliably
      */
     public enum SurfaceDetectionState {
         /**
@@ -404,6 +433,19 @@ open class Renderer: NSObject {
         case noneDetected
         /**
          At least one surface has been detected
+         */
+        case detected
+    }
+    /**
+     State of face detection. When using a face tracking session, many features of AugmentKit rely on the AR engine to have detected at least one face so monitoring face detection state gives a good indication of the readyness of the render to perform AR calculations reliably
+     */
+    public enum FaceDetectionState {
+        /**
+         No faces have been detected
+         */
+        case noneDetected
+        /**
+         At least one face has been detected
          */
         case detected
     }
@@ -454,7 +496,10 @@ open class Renderer: NSObject {
      This `RenderDelegate` will get callbacks for errors or interruptions of AR tracking
      */
     public var delegate: RenderDelegate?
-    
+    /**
+      Defaults to `worldTracking`. After changing this property you must call `reset(options:)` for the change to take affect.
+     */
+    public var sessionType: RendererSessionType
     /**
      Guides for debugging. Turning this on will show the tracking points used by ARKit as well as detected surfaces. Setting this to true might affect performance.
      */
@@ -582,19 +627,20 @@ open class Renderer: NSObject {
         - metalDevice: A metal device (GPU)
         - renderDestination: Provides the drawable that the renderer will render to.
         - textureBundle: The default bundle whe texture assets will attempt to load from
+        - faceTrackingEnabled: Set to `true` to enable simultanious face tracking on devices that support TrueDepth cameras
      */
-    public init(session: ARSession, metalDevice device: MTLDevice, renderDestination: RenderDestinationProvider, textureBundle: Bundle) {
+    public init(session: ARSession, metalDevice device: MTLDevice, renderDestination: RenderDestinationProvider, textureBundle: Bundle, sessionType: RendererSessionType = .worldTracking) {
         
         self.session = session
         self.device = device
         self.renderDestination = renderDestination
         self.textureBundle = textureBundle
+        self.sessionType = sessionType
         self.textureLoader = MTKTextureLoader(device: device)
         self.matteGenerator = ARMatteGenerator(device: device, matteResolution: .half)
         super.init()
         
         self.session.delegate = self
-        
     }
     
     // MARK: - Viewport changes
@@ -1450,24 +1496,58 @@ open class Renderer: NSObject {
     
     // MARK: ARKit Session Configuration
     
-    fileprivate func createNewConfiguration() -> ARWorldTrackingConfiguration {
-        let configuration = ARWorldTrackingConfiguration()
+    fileprivate func createNewConfiguration() -> ARConfiguration {
+        
+        let configuration: ARConfiguration = {
+            switch sessionType {
+            case .bodyTracking:
+                let myConfig = ARBodyTrackingConfiguration()
+                return myConfig
+            case .faceTracking:
+                let myConfig = ARFaceTrackingConfiguration()
+                myConfig.isLightEstimationEnabled = true
+                return myConfig
+            case .faceTrackingWithWorldTracking:
+                let myConfig = ARFaceTrackingConfiguration()
+                myConfig.isLightEstimationEnabled = true
+                if ARFaceTrackingConfiguration.supportsWorldTracking {
+                    myConfig.isWorldTrackingEnabled = true
+                }
+                return myConfig
+            case .worldTracking:
+                let myConfig = ARWorldTrackingConfiguration()
+                // Enable horizontal plane detection
+                myConfig.planeDetection = [.horizontal, .vertical]
+                // Enable environment texturing
+                myConfig.environmentTexturing = .automatic
+                // Initialize with a world map
+                if let worldMap = worldMap {
+                    myConfig.initialWorldMap = worldMap
+                }
+                return myConfig
+            case .worldTrackingWithFaceDetection:
+                let myConfig = ARWorldTrackingConfiguration()
+                // Enable horizontal plane detection
+                myConfig.planeDetection = [.horizontal, .vertical]
+                // Enable environment texturing
+                myConfig.environmentTexturing = .automatic
+                // Initialize with a world map
+                if let worldMap = worldMap {
+                    myConfig.initialWorldMap = worldMap
+                }
+                if ARWorldTrackingConfiguration.supportsUserFaceTracking {
+                    myConfig.userFaceTrackingEnabled = true
+                }
+                return myConfig
+            }
+        }()
+        
         // Setting this to .gravityAndHeading aligns the the origin of the scene to compass direction
         configuration.worldAlignment = .gravityAndHeading
-        
-        // Enable horizontal plane detection
-        configuration.planeDetection = [.horizontal, .vertical]
-        
-        // Enable environment texturing
-        configuration.environmentTexturing = .automatic
         
         // Enable people occlusion
         if #available(iOS 13.0, *), ARConfiguration.supportsFrameSemantics(.personSegmentationWithDepth) {
             configuration.frameSemantics.insert(.personSegmentationWithDepth)
-        }
-        
-        if let worldMap = worldMap {
-            configuration.initialWorldMap = worldMap
         }
         
         return configuration
@@ -2212,7 +2292,7 @@ extension Renderer: ARSessionDelegate {
                     k.identifier == planeAnchor.identifier
                 }) as? AKRealSurfaceAnchor {
                     akAnchor.setARAnchor(planeAnchor)
-                    akAnchor.planeGeometry = planeAnchor.geometry
+                    akAnchor.geometry = planeAnchor.geometry
                     akAnchor.needsMeshUpdate = true
                 } else {
                     let newRealAnchor = RealSurfaceAnchor(at: WorldLocation(transform: planeAnchor.transform), planeGeometry: planeAnchor.geometry)
@@ -2274,7 +2354,7 @@ extension Renderer: ARSessionDelegate {
                     k.identifier == planeAnchor.identifier
                 }) as? AKRealSurfaceAnchor {
                     akAnchor.setARAnchor(planeAnchor)
-                    akAnchor.planeGeometry = planeAnchor.geometry
+                    akAnchor.geometry = planeAnchor.geometry
                     akAnchor.needsMeshUpdate = true
                 }
                 

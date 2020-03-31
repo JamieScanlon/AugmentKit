@@ -148,7 +148,7 @@ class SurfacesRenderModule: RenderModule {
                 
                 if let surfaceEntity = moduleEntity as? AKRealSurfaceAnchor {
                     
-                    guard let uuid = surfaceEntity.identifier, let planeGeometry = surfaceEntity.planeGeometry else {
+                    guard let uuid = surfaceEntity.identifier, let planeGeometry = surfaceEntity.geometry else {
                         continue
                     }
                     
@@ -235,7 +235,7 @@ class SurfacesRenderModule: RenderModule {
                 continue
             }
             
-            if let planeGeometry = realSurfaceAnchor.planeGeometry, let device = device, realSurfaceAnchor.needsMeshUpdate {
+            if let planeGeometry = realSurfaceAnchor.geometry, let device = device, realSurfaceAnchor.needsMeshUpdate {
                 let rawVertexBuffers = ModelIOTools.rawVertexBuffers(from: planeGeometry.vertices, textureCoordinates: planeGeometry.textureCoordinates, device: device)
                 let indexBuffer = ModelIOTools.indexBuffer(from: planeGeometry.triangleIndices, device: device)
                 

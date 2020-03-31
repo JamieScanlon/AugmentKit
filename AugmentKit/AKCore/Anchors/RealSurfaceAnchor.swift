@@ -47,7 +47,7 @@ open class RealSurfaceAnchor: AKRealSurfaceAnchor {
     /**
      The geometry that describes the shape of the plane if it not a rectangle.
      */
-    public var planeGeometry: ARPlaneGeometry? {
+    public var geometry: AKMeshGeometry? {
         didSet {
             needsMeshUpdate = true
         }
@@ -98,10 +98,10 @@ open class RealSurfaceAnchor: AKRealSurfaceAnchor {
         - planeGeometry: A `ARPlaneGeometry` that describes the shape of the plane if it is not rectangel
         - withAllocator: A `MTKMeshBufferAllocator` with wich to create the plane geometry
      */
-    public init(at location: AKWorldLocation, planeGeometry: ARPlaneGeometry? = nil, withAllocator metalAllocator: MTKMeshBufferAllocator? = nil) {
+    public init(at location: AKWorldLocation, planeGeometry: AKMeshGeometry? = nil, withAllocator metalAllocator: MTKMeshBufferAllocator? = nil) {
         self.asset = MDLAsset()
         self.worldLocation = location
-        self.planeGeometry = planeGeometry
+        self.geometry = planeGeometry
     }
     /**
      Sets a new `arAnchor`

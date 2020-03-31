@@ -35,13 +35,7 @@ import Foundation
  */
 public protocol AKRealAnchor: AKAnchor {
     /**
-     An `ARAnchor` that will be tracked in the AR world by `ARKit`
+     The geometry that describes the shape of the object in the real world.
      */
-    var arAnchor: ARAnchor? { get }
-    /**
-     Sets a new `arAnchor`
-     - Parameters:
-        - _: An `ARAnchor`
-     */
-    func setARAnchor(_ anchor: ARAnchor)
+    var geometry: AKMeshGeometry? { get set }
 }

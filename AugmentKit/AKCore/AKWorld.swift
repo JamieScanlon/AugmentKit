@@ -52,14 +52,22 @@ public struct AKWorldConfiguration {
      */
     public var hasCoachingOverlay: Bool = true
     /**
+     If `true`, for devices with the TrueDepth camera, facial data will be collected.
+     */
+    public var usesFaceTracking: Bool = false
+    /**
      Initialize the `AKWorldConfiguration` object
      - Parameters:
         - usesLocation: When true, AKWorld manager is able to translate postions to real work latitude and longitude. Defaults to `true`.
         - renderDistance: Sets the maximum distance (in meters) that will be rendred. Defaults to 500.
-     
+        - hasCoachingOverlay: If `true` a coaching overlay view will automatically be created and added as a subview to the `renderDestination`
+        - usesFaceTracking: If `true`, for devices with the TrueDepth camera, facial data will be collected.
      */
-    public init(usesLocation: Bool = true, renderDistance: Double = 500, hasCoachingOverlay: Bool = true) {
-        
+    public init(usesLocation: Bool = true, renderDistance: Double = 500, hasCoachingOverlay: Bool = true, usesFaceTracking: Bool = false) {
+        self.usesLocation = usesLocation
+        self.renderDistance = renderDistance
+        self.hasCoachingOverlay = hasCoachingOverlay
+        self.usesFaceTracking = usesFaceTracking
     }
 }
 
@@ -363,8 +371,9 @@ open class AKWorld: NSObject {
         - renderDestination: The `MTKView` to which the AR world will be rendered.
         - configuration: The `AKWorldConfiguration` object used for configuring the world.
         - textureBundle: The `Bundle` from which the renderer will look for texture assets.
+        - enableFaceTracking: Defaults to `false`. If set to `true`, the world will be initialized with multi-cam world tracking with face tracking.
     */
-    public init(renderDestination: MTKView, configuration: AKWorldConfiguration = AKWorldConfiguration(), textureBundle: Bundle? = nil) {
+    public init(renderDestination: MTKView, configuration: AKWorldConfiguration = AKWorldConfiguration(), textureBundle: Bundle? = nil, enableFaceTracking: Bool = false) {
         
         let bundle: Bundle = {
             if let textureBundle = textureBundle {
@@ -379,7 +388,7 @@ open class AKWorld: NSObject {
             fatalError("Metal is not supported on this device")
         }
         self.device = aDevice
-        self.renderer = Renderer(session: self.session, metalDevice: self.device, renderDestination: renderDestination, textureBundle: bundle)
+        self.renderer = Renderer(session: self.session, metalDevice: self.device, renderDestination: renderDestination, textureBundle: bundle, sessionType: enableFaceTracking ? .worldTrackingWithFaceDetection : .worldTracking)
         self.worldStatus = AKWorldStatus(timestamp: Date())
         super.init()
         
@@ -996,6 +1005,6 @@ extension AKWorld: ARCoachingOverlayViewDelegate {
     }
     
     public func coachingOverlayViewDidRequestSessionReset(_ coachingOverlayView: ARCoachingOverlayView) {
-        
+        renderer.reset()
     }
 }

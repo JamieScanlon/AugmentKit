@@ -51,7 +51,7 @@ open class DetectedSurfaceAnchor: AKRealSurfaceAnchor {
     /**
      The geometry that describes the shape of the plane if it not a rectangle.
      */
-    public var planeGeometry: ARPlaneGeometry?
+    public var geometry: AKMeshGeometry?
     /**
      The location in the ARWorld
      */
@@ -111,13 +111,13 @@ open class DetectedSurfaceAnchor: AKRealSurfaceAnchor {
         - bundle: The `Bundle` where the plane_grid.png asset is located
         - withAllocator: A `MTKMeshBufferAllocator` with wich to create the plane geometry
      */
-    public init(inBundle bundle: Bundle, at location: AKWorldLocation, planeGeometry: ARPlaneGeometry? = nil, withAllocator metalAllocator: MTKMeshBufferAllocator? = nil) {
+    public init(inBundle bundle: Bundle, at location: AKWorldLocation, planeGeometry: AKMeshGeometry? = nil, withAllocator metalAllocator: MTKMeshBufferAllocator? = nil) {
         
         let mySurfaceModelAsset = DetectedSurfaceAnchor.createModelAsset(inBundle: bundle, withAllocator: metalAllocator)!
         
         self.asset = mySurfaceModelAsset
         self.worldLocation = location
-        self.planeGeometry = planeGeometry
+        self.geometry = planeGeometry
         
     }
     /**

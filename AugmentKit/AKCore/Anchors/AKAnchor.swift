@@ -51,4 +51,14 @@ public protocol AKAnchor: class, AKGeometricEntity {
      The heading in the ARWorld
      */
     var heading: AKHeading { get set }
+    /**
+     An `ARAnchor` that will be tracked in the AR world by `ARKit`
+     */
+    var arAnchor: ARAnchor? { get }
+    /**
+     Sets a new `arAnchor`
+     - Parameters:
+     - _: An `ARAnchor`
+     */
+    func setARAnchor(_ anchor: ARAnchor)
 }

@@ -36,39 +36,6 @@ import AugmentKitShader
 // MARK: - MDLAsset extesntions
 
 extension MDLAsset {
-
-    /**
-     Find an MDLObject by its path from MDLAsset level
-     - Parameters:
-        - _: the path
-     - Returns: and `MDLObject` if found
-     */
-    func objectAtPath(_ path: String) -> MDLObject? {
-        // pathArray[] is always ""
-        let pathArray = path.components(separatedBy: "/")
-        guard !pathArray.isEmpty else {
-            return nil
-        }
-
-        for childIndex in 0..<self.count {
-            guard let child = self[childIndex] else {
-                continue
-            }
-
-            // since pathArray[0] == "" we ignore it and grab the substring if
-            // the path count is greater than 2 otherwise return the child itself
-            if child.name == pathArray[1] {
-                if pathArray.count > 2 {
-                    let startIndex = path.index(pathArray[1].endIndex, offsetBy: 3)
-                    return child.atPath(String(path[startIndex...]))
-                } else {
-                    return child
-                }
-            }
-        }
-
-        return nil
-    }
     
     /// Exports the `MDLAsset` to the given path as a USDZ file.
     /// - Parameter url: A url to the final file location. The file must have a `.usdz` file extension
@@ -504,7 +471,8 @@ class ModelIOTools {
     /// - Parameter vertices: An array of verticies
     /// - Parameter textureCoordinates: An array of texture coordinates
     /// - Parameter device: The Metal device
-    static func rawVertexBuffers(from vertices: [SIMD3<Float>], textureCoordinates: [SIMD2<Float>], device: MTLDevice) -> [MTLBuffer] {
+    /// - Returns: A new buffer contining an array of `RawVertexBuffer` structs which can be used in the `rawGeometryVertexTransform` shader
+    static func rawVertexBuffer(from vertices: [SIMD3<Float>], textureCoordinates: [SIMD2<Float>], device: MTLDevice) -> MTLBuffer? {
         
         let rawVerticiesSize = vertices.count * MemoryLayout<RawVertexBuffer>.size
         var rawVerticies = [RawVertexBuffer]()
@@ -515,9 +483,9 @@ class ModelIOTools {
         }
         
         guard let vertexBuffer = device.makeBuffer(bytes: &rawVerticies, length: rawVerticiesSize, options: []) else {
-            return []
+            return nil
         }
-        return [vertexBuffer]
+        return vertexBuffer
     }
     
     /// Generated index buffer data from a raw array of indexes.
@@ -556,7 +524,11 @@ class ModelIOTools {
         let textureCoordinatesBuffer = device.makeBuffer(bytes: textureCoordinates, length: textureCoordinatesSize, options: [])!
         
         drawData.vertexBuffers = [verticiesBuffer, textureCoordinatesBuffer]
-        drawData.rawVertexBuffers = rawVertexBuffers(from: vertices, textureCoordinates: textureCoordinates, device: device)
+        if let aRawVertexBuffer = rawVertexBuffer(from: vertices, textureCoordinates: textureCoordinates, device: device) {
+            drawData.rawVertexBuffers = [aRawVertexBuffer]
+        } else {
+            drawData.rawVertexBuffers = []
+        }
         drawData.subData = [submesh]
         
         if submesh.baseColorTexture != nil {
@@ -938,20 +910,43 @@ class ModelIOTools {
     
     // Store skinning information if object has MDLSkinDeformerComponent
     private static func storeMeshSkin(for object: MDLObject) -> SkinData? {
-        guard let skinDeformer = object.componentConforming(to: MDLTransformComponent.self) as? MDLSkeleton else {
-            return nil
-        }
         
-        guard !skinDeformer.jointPaths.isEmpty else {
+        guard let skinDeformer = object.components.first(where: {$0 is MDLSkeleton || $0 is MDLAnimationBindComponent || $0 is MDLPackedJointAnimation}) else {
             return nil
         }
         
         var skin = SkinData()
         // store the joint paths which tell us where the skeleton joints are
-        skin.jointPaths = skinDeformer.jointPaths
+        skin.jointPaths = {
+            if let aDeformer = skinDeformer as? MDLSkeleton {
+                return aDeformer.jointPaths
+            } else if let aDeformer = skinDeformer as? MDLAnimationBindComponent, let paths = aDeformer.jointPaths {
+                return paths
+            } else if let aDeformer = skinDeformer as? MDLPackedJointAnimation {
+                return aDeformer.jointPaths
+            } else {
+                return []
+            }
+        }()
         // store the joint bind transforms which give us the bind pose
-        let jointBindTransforms = skinDeformer.jointBindTransforms
-        skin.inverseBindTransforms = jointBindTransforms.float4x4Array.map { simd_inverse($0) }
+        let jointBindTransforms: [matrix_double4x4] = {
+            if let aDeformer = skinDeformer as? MDLSkeleton {
+                return aDeformer.jointBindTransforms.double4x4Array
+            } else if let aDeformer = skinDeformer as? MDLAnimationBindComponent {
+                return [aDeformer.geometryBindTransform]
+            } else if let aDeformer = skinDeformer as? MDLPackedJointAnimation {
+                var transforms = aDeformer.rotations.doubleQuaternionArray.map({$0.toMatrix4()})
+                transforms = transforms.enumerated().map{
+                    let scales = aDeformer.scales.double3Array[$0.offset]
+                    let translations = aDeformer.translations.double3Array[$0.offset]
+                    return $0.element.scale(x: scales.x, y: scales.y, z: scales.z).translate(x: translations.x, y: translations.y, z: translations.z)
+                }
+                return transforms
+            } else {
+                return []
+            }
+        }()
+        skin.inverseBindTransforms = jointBindTransforms.map { simd_inverse($0).toFloat() }
         return skin
     }
     
@@ -1073,10 +1068,7 @@ class ModelIOTools {
         var animation = AnimatedSkeleton()
         var jointCount = 0
         
-        guard let object = asset.objectAtPath(rootPath) else {
-            return animation
-        }
-        
+        let object = asset.object(atPath: rootPath)
         jointCount = ModelIOTools.subGraphCount(object)
         
         animation = AnimatedSkeleton()

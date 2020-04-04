@@ -332,11 +332,11 @@ class PrecalculationModule: PreRenderComputeModule {
                     if let akAnchor = geometricEntity as? AKAnchor {
                         
                         // Update Heading
-                        let myHeadingTransform = akAnchor.heading.offsetRotation.quaternion.toMatrix4()
-                        
+                        headingTransform = akAnchor.heading.offsetRotation.quaternion.toMatrix4()
                         hasHeading = true
                         headingType = akAnchor.heading.type
-                        headingTransform = myHeadingTransform
+                        
+                        // Update postion
                         locationTransform = akAnchor.worldLocation.transform
                         
                     } else if let akTarget = geometricEntity as? AKTarget {
@@ -347,6 +347,15 @@ class PrecalculationModule: PreRenderComputeModule {
                         
                     } else if let akTracker = geometricEntity as? AKTracker {
                         
+                        if let heading = akTracker.position.heading {
+                            
+                            // Update Heading
+                            headingTransform = heading.offsetRotation.quaternion.toMatrix4()
+                            hasHeading = true
+                            headingType = heading.type
+                        }
+                        
+                        // Update position
                         // Apply the transform of the target relative to the reference transform
                         let trackerAbsoluteTransform = akTracker.position.referenceTransform * akTracker.position.transform
                         locationTransform = trackerAbsoluteTransform

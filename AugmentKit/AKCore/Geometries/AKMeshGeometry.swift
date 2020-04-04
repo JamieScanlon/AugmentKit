@@ -29,6 +29,8 @@ import Foundation
 import simd
 import ARKit
 
+// MARK: - AKMeshGeometry
+
 /// This is a  thin protocol wrapper around `ARPlaneGeometry` and `ARFaceGeometry`
 public protocol AKMeshGeometry {
     /// An array of vertex positions for each point in the plane mesh.
@@ -41,9 +43,13 @@ public protocol AKMeshGeometry {
     var triangleIndices: [Int16] { get }
 }
 
+// MARK: - ARPlaneGeometry
+
 extension ARPlaneGeometry: AKMeshGeometry {
     
 }
+
+// MARK: - ARFaceGeometry
 
 extension ARFaceGeometry: AKMeshGeometry {
     

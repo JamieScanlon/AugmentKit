@@ -71,19 +71,32 @@ public struct HeadingRotation: Equatable {
     /**
      Initialize with no rotation
      */
-    init() {
+    public init() {
         self.quaternion = simd_quatf(vector: SIMD4<Float>(0, 0, 0, 1))
     }
     /**
      Initialize with a rotation represented by a quaternion
+     - Parameter quaternion: The quaternion describing the rotation
      */
-    init(withQuaternion quaternion: simd_quatf) {
+    public init(withQuaternion quaternion: simd_quatf) {
         self.quaternion = quaternion
     }
     /**
      Initialize with a rotation represented by `EulerAngles`. The `EulerAngles` will be converted into a quaternion.
+     - Parameter eulerAngles: The angles for the rotation
      */
-    init(withEulerAngles eulerAngles: EulerAngles) {
+    public init(withEulerAngles eulerAngles: EulerAngles) {
+        self.quaternion = QuaternionUtilities.quaternionFromEulerAngles(eulerAngles: eulerAngles)
+    }
+    /**
+     Initialize with a rotation represented by `roll`, `yaw`, and `pitch`.  Parameters are ordered in the ARKit rotation order, ZYX: first `roll` (about Z axis), then `yaw` (about Y axis), then `pitch` (about X axis)
+     - Parameters:
+        - roll: The number of degrees in radians
+        - yaw: The number of degrees in radians
+        - pitch: The number of degrees in radians
+     */
+    public init(withRoll roll: Float, yaw: Float, pitch: Float) {
+        let eulerAngles = EulerAngles(roll: roll, yaw: yaw, pitch: pitch)
         self.quaternion = QuaternionUtilities.quaternionFromEulerAngles(eulerAngles: eulerAngles)
     }
 }

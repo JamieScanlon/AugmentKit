@@ -236,7 +236,9 @@ class SurfacesRenderModule: RenderModule {
             }
             
             if let planeGeometry = realSurfaceAnchor.geometry, let device = device, realSurfaceAnchor.needsMeshUpdate {
-                let rawVertexBuffers = ModelIOTools.rawVertexBuffers(from: planeGeometry.vertices, textureCoordinates: planeGeometry.textureCoordinates, device: device)
+                guard let rawVertexBuffer = ModelIOTools.rawVertexBuffer(from: planeGeometry.vertices, textureCoordinates: planeGeometry.textureCoordinates, device: device) else {
+                    continue
+                }
                 let indexBuffer = ModelIOTools.indexBuffer(from: planeGeometry.triangleIndices, device: device)
                 
                 var mutableDrawCallGroups = [DrawCallGroup]()
@@ -244,7 +246,7 @@ class SurfacesRenderModule: RenderModule {
                     if let drawCall = drawCallGroup.drawCalls.first, let drawData = drawCall.drawData, drawCallGroup.uuid == identifier {
                         var mutableDrawCall = drawCall
                         var mutableDrawData = drawData
-                        mutableDrawData.rawVertexBuffers = rawVertexBuffers
+                        mutableDrawData.rawVertexBuffers = [rawVertexBuffer]
                         mutableDrawData.subData[0].indexBuffer = indexBuffer
                         mutableDrawCall.drawData = mutableDrawData
                         drawCallGroup.drawCalls = [mutableDrawCall]

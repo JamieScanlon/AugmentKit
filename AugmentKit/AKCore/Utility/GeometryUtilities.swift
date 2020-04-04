@@ -551,9 +551,7 @@ public extension FloatingPoint {
 // MARK: - EulerAngles
 
 /**
- A structure representing euler angles (roll, yaw, pitch)
- Parameters are ordered in the ARKit rotation order, ZYX:
- first roll (about Z axis), then yaw (about Y axis), then pitch (about X axis)
+ A structure representing euler angles (roll, yaw, pitch). Parameters are ordered in the ARKit rotation order, ZYX: first roll (about Z axis), then yaw (about Y axis), then pitch (about X axis)
  */
 public struct EulerAngles {
     var roll: Float

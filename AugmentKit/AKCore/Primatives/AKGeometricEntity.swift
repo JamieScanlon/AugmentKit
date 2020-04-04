@@ -41,7 +41,7 @@ public protocol AKGeometricEntity: AKEntity {
     /**
      An array of `AKEffect` objects that are applied by the renderer
      */
-    var effects: [AnyEffect<Any>]? { get }
+    var effects: [AnyEffect<Any>]? { get set }
     /**
      Specifies a perfered renderer to use when rendering this enitity. Most will use the standard PBR renderer but some entities may prefer a simpiler renderer when they are not trying to achieve the look of real-world objects.
      */

@@ -53,6 +53,7 @@ kernel void precalculationComputeShader(constant SharedUniforms &sharedUniforms 
     // Update Heading
     float4x4 headingTransform = anchorInstanceUniforms[index].headingTransform;
     float headingType = float(anchorInstanceUniforms[index].headingType);
+    // FIXME: This transformcalculation is incorrect when headingType = 0 i.e. absolute heading. It is naive to assume that locationTransform[0][0], locationTransform[1][1], and locationTransform[2][2] have no rotational components
     locationTransform =  float4x4(float4(locationTransform[0][0], headingType * locationTransform[0][1], headingType * locationTransform[0][2], headingType * locationTransform[0][3]),
                                         float4(headingType * locationTransform[1][0], locationTransform[1][1], headingType * locationTransform[1][2], headingType * locationTransform[1][3]),
                                         float4(headingType * locationTransform[2][0], headingType * locationTransform[2][1], locationTransform[2][2], headingType * locationTransform[2][3]),

@@ -86,7 +86,7 @@ public struct HeadingRotation: Equatable {
      - Parameter eulerAngles: The angles for the rotation
      */
     public init(withEulerAngles eulerAngles: EulerAngles) {
-        self.quaternion = QuaternionUtilities.quaternionFromEulerAngles(eulerAngles: eulerAngles)
+        self.quaternion = eulerAngles.quaternion()
     }
     /**
      Initialize with a rotation represented by `roll`, `yaw`, and `pitch`.  Parameters are ordered in the ARKit rotation order, ZYX: first `roll` (about Z axis), then `yaw` (about Y axis), then `pitch` (about X axis)
@@ -95,9 +95,9 @@ public struct HeadingRotation: Equatable {
         - yaw: The number of degrees in radians
         - pitch: The number of degrees in radians
      */
-    public init(withRoll roll: Float, yaw: Float, pitch: Float) {
+    public init(roll: Float, yaw: Float, pitch: Float) {
         let eulerAngles = EulerAngles(roll: roll, yaw: yaw, pitch: pitch)
-        self.quaternion = QuaternionUtilities.quaternionFromEulerAngles(eulerAngles: eulerAngles)
+        self.quaternion = eulerAngles.quaternion()
     }
 }
 

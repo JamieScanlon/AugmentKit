@@ -752,7 +752,7 @@ open class Renderer: NSObject {
         // in the opposite direction. The result is a transform at the position of the camera
         // but oriented along the same axes as world space.
         let eulerAngles = EulerAngles(roll: currentFrame.camera.eulerAngles.z, yaw: currentFrame.camera.eulerAngles.y, pitch: currentFrame.camera.eulerAngles.x)
-        let cameraQuaternion = QuaternionUtilities.quaternionFromEulerAngles(eulerAngles: eulerAngles)
+        let cameraQuaternion = eulerAngles.quaternion()
         var positionOnlyTransform = matrix_identity_float4x4
         positionOnlyTransform = positionOnlyTransform.translate(x: currentFrame.camera.transform.columns.3.x, y: currentFrame.camera.transform.columns.3.y, z: currentFrame.camera.transform.columns.3.z)
         currentCameraPositionTransform = positionOnlyTransform

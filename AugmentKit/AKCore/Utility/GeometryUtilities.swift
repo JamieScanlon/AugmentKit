@@ -554,9 +554,33 @@ public extension FloatingPoint {
  A structure representing euler angles (roll, yaw, pitch). Parameters are ordered in the ARKit rotation order, ZYX: first roll (about Z axis), then yaw (about Y axis), then pitch (about X axis)
  */
 public struct EulerAngles {
-    var roll: Float
-    var yaw: Float
-    var pitch: Float
+    public var roll: Float
+    public var yaw: Float
+    public var pitch: Float
+    
+    /// Creates a new `EulerAngles` object representing euler angles (roll, yaw, pitch). When rotating an object, ARKit uses the rotation order convention of ZYX or roll, yaw, pitch.
+    /// - Parameters:
+    ///   - roll: roll (about Z axis)
+    ///   - yaw: yaw (about Y axis)
+    ///   - pitch: pitch (about X axis)
+    public init(roll: Float = 0, yaw: Float = 0, pitch: Float = 0) {
+        self.roll = roll
+        self.yaw = yaw
+        self.pitch = pitch
+    }
+}
+
+extension EulerAngles {
+    
+    /// Converts this `EulerAngles` to a Quaternion (`simd_quatf`)
+    /// - Returns: A new `simd_quatf` object
+    public func quaternion() -> simd_quatf {
+        // Follow the ZYX rotation order convention
+        var q = simd_quatf(angle: roll, axis: SIMD3<Float>(0, 0, 1))
+        q *= simd_quatf(angle: yaw, axis: SIMD3<Float>(0, 1, 0))
+        q *= simd_quatf(angle: pitch, axis: SIMD3<Float>(1, 0, 0))
+        return q
+    }
 }
 
 // MARK: - simd_quatf
@@ -660,6 +684,42 @@ extension simd_quatf {
         
     }
     
+    /// See: https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
+    /// - Returns: A new `EulerAngles` object
+    public func eulerAngles() -> EulerAngles {
+        
+        let q = vector
+        
+        // roll (x-axis rotation)
+        let sinr_cosp = 2 * (q.w * q.x + q.y * q.z)
+        let cosr_cosp = 1 - 2 * (q.x * q.x + q.y * q.y)
+        let roll = atan2(sinr_cosp, cosr_cosp)
+        
+        // yaw (y-axis rotation)
+        let sinp = 2 * (q.w * q.y - q.z * q.x)
+        let yaw: Float = {
+            if abs(sinp) >= 1 {
+                return copysign(Float.pi / 2, sinp) // use 90 degrees if out of range
+            } else {
+                return asin(sinp)
+            }
+        }()
+        
+        // pitch (z-axis rotation)
+        let siny_cosp = 2 * (q.w * q.z + q.x * q.y)
+        let cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z)
+        let pitch = atan2(siny_cosp, cosy_cosp)
+        
+        return EulerAngles(roll: roll, yaw: yaw, pitch: pitch)
+    }
+    
+}
+
+extension simd_quatf: CustomStringConvertible {
+    /// :nodoc:
+    public var description: String {
+        return debugDescription
+    }
 }
 
 // MARK: - simd_quatd
@@ -763,15 +823,35 @@ extension simd_quatd {
         
     }
     
-}
-
-// MARK: Debugging
-
-extension simd_quatf: CustomStringConvertible {
-    /// :nodoc:
-    public var description: String {
-        return debugDescription
+    /// See: https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
+    /// - Returns: A new `EulerAngles` object
+    public func eulerAngles() -> EulerAngles {
+        
+        let q = vector
+        
+        // roll (x-axis rotation)
+        let sinr_cosp = 2 * (q.w * q.x + q.y * q.z)
+        let cosr_cosp = 1 - 2 * (q.x * q.x + q.y * q.y)
+        let roll = atan2(sinr_cosp, cosr_cosp)
+        
+        // yaw (y-axis rotation)
+        let sinp = 2 * (q.w * q.y - q.z * q.x)
+        let yaw: Double = {
+            if abs(sinp) >= 1 {
+                return copysign(Double.pi / 2, sinp) // use 90 degrees if out of range
+            } else {
+                return asin(sinp)
+            }
+        }()
+        
+        // pitch (z-axis rotation)
+        let siny_cosp = 2 * (q.w * q.z + q.x * q.y)
+        let cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z)
+        let pitch = atan2(siny_cosp, cosy_cosp)
+        
+        return EulerAngles(roll: Float(roll), yaw: Float(yaw), pitch: Float(pitch))
     }
+    
 }
 
 extension simd_quatd: CustomStringConvertible {
@@ -781,27 +861,3 @@ extension simd_quatd: CustomStringConvertible {
     }
 }
 
-
-// MARK: - QuaternionUtilities
-/**
- Tools for using quaternions. Augmentkit uses `simd_quatf` for all quaternions.
- */
-open class QuaternionUtilities {
-    
-    /**
-     Creates a quaternion from a set of `EulerAngles`
-     - Parameters:
-        - eulerAngles: A set of euler angles representing the rotation
-     - Returns: a new `simd_quatf`
-     */
-    public static func quaternionFromEulerAngles(eulerAngles: EulerAngles) -> simd_quatf {
-        
-        // Follow the ZYX rotation order convention
-        var q = simd_quatf(angle: eulerAngles.roll, axis: SIMD3<Float>(0, 0, 1))
-        q *= simd_quatf(angle: eulerAngles.yaw, axis: SIMD3<Float>(0, 1, 0))
-        q *= simd_quatf(angle: eulerAngles.pitch, axis: SIMD3<Float>(1, 0, 0))
-        return q
-        
-    }
-    
-}

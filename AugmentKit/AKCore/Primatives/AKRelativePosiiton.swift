@@ -97,24 +97,25 @@ open class AKRelativePosition {
                 self.heading = mutableHeading
             }
             
-            if (_transformHasChanged || _headingHasChanged) {
-            
-                // Heading
-                var newTransform = mutableHeading.offsetRotation.quaternion.toMatrix4()
-                
-                if mutableHeading.type == .absolute {
-                    // FIXME: This transform calculation is incorrect when headingType = .absolute. It is naive to assume that transform.columns.0.x, transform.columns.1.y, and transform.columns.2.z have no rotational components
-                    newTransform = newTransform * float4x4(
-                        SIMD4<Float>(transform.columns.0.x, 0, 0, 0),
-                        SIMD4<Float>(0, transform.columns.1.y, 0, 0),
-                        SIMD4<Float>(0, 0, transform.columns.2.z, 0),
-                        SIMD4<Float>(transform.columns.3.x, transform.columns.3.y, transform.columns.3.z, 1)
-                    )
-                    transform = newTransform
-                } else if mutableHeading.type == .relative {
-                    transform = transform * newTransform
-                }
-            }
+            // Removing because this work is being done in the Precalculation Shader
+//            if (_transformHasChanged || _headingHasChanged) {
+//
+//                // Heading
+//                var newTransform = mutableHeading.offsetRotation.quaternion.toMatrix4()
+//
+//                if mutableHeading.type == .absolute {
+//                    // FIXME: This transform calculation is incorrect when headingType = .absolute. It is naive to assume that transform.columns.0.x, transform.columns.1.y, and transform.columns.2.z have no rotational components
+//                    newTransform = newTransform * float4x4(
+//                        SIMD4<Float>(transform.columns.0.x, 0, 0, 0),
+//                        SIMD4<Float>(0, transform.columns.1.y, 0, 0),
+//                        SIMD4<Float>(0, 0, transform.columns.2.z, 0),
+//                        SIMD4<Float>(transform.columns.3.x, transform.columns.3.y, transform.columns.3.z, 1)
+//                    )
+//                    transform = newTransform
+//                } else if mutableHeading.type == .relative {
+//                    transform = transform * newTransform
+//                }
+//            }
             
         }
         _transformHasChanged = false

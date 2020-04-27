@@ -246,6 +246,11 @@ public extension LocationManager {
             return
         }
         
+        // Ignore if the horizontal accuracy is less than 20 meters. Negative accuracy means no accuracy so ignore those as well
+        guard mostRecentLocation.horizontalAccuracy < 20 && mostRecentLocation.horizontalAccuracy > 0 else {
+            return
+        }
+        
         setLastLocation(mostRecentLocation)
         
         if let mostReliableARLocation = mostReliableARLocation {

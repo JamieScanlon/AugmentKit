@@ -590,7 +590,7 @@ class ModelIOTools {
     static func materialProperties(from material: MDLMaterial, textureLoader: MTKTextureLoader? = nil, bundle: Bundle? = nil, baseURL: URL? = nil, meshIdentifier: String = "") -> MaterialProperties {
         
         let meshCacheKey = meshIdentifier + material.name
-        print("MaterialCache cacheKey: \(meshCacheKey)")
+        
         if let cachedProperties = MaterialCache.shared.cachedMaterial(with: meshCacheKey), textureLoader != nil, bundle != nil {
             // Only attempt to load from cache materials with textures.
             return cachedProperties

@@ -78,6 +78,22 @@ open class AKLocationUtility {
     // Mean earth radius in meters
     static let R = (eR + pR) / 2
     
+    /// See: https://en.wikipedia.org/wiki/Geographic_coordinate_system
+    /// - Parameter referenceLatitude: The latitude at which the calculation is performed
+    /// - Returns: Distance in meters
+    public static func metersPerDegreeLatitude(at referenceLatitude: Double) -> Double {
+        let latitudeInRadians = referenceLatitude.degreesToRadians()
+        return 111132.954 - 559.822 * cos(2 * latitudeInRadians) + 1.175 * cos(4 * latitudeInRadians) - 0.0023 * cos(6 * latitudeInRadians)
+    }
+    
+    /// See: https://en.wikipedia.org/wiki/Geographic_coordinate_system
+    /// - Parameter referenceLatitude: The latitude at which the calculation is performed
+    /// - Returns: Distance in meters
+    public static func metersPerDegreeLongitude(at referenceLatitude: Double) -> Double {
+        let latitudeInRadians = referenceLatitude.degreesToRadians()
+        return (Double.pi / 180) * 6367449 * cos(latitudeInRadians)
+    }
+    
     //  An accurate algorithm for calculating distances between to far distances
     //  https://github.com/raywenderlich/swift-algorithm-club/tree/master/HaversineDistance
     static func haversineDinstance(latitude1: Double, longitude1: Double, latitude2: Double, longitude2: Double) -> Double {
@@ -113,10 +129,8 @@ open class AKLocationUtility {
      */
     public static func worldLocation(from location: AKWorldLocation, translatedBy: AKWorldDistance) -> AKWorldLocation {
         
-        // See: https://en.wikipedia.org/wiki/Geographic_coordinate_system
-        let latitudeInRadians = location.latitude.degreesToRadians()
-        let metersPerDegreeLatitude =  111132.92 - 559.82 * cos(2 * latitudeInRadians) + 1.175 * cos(4 * latitudeInRadians) - 0.0023 * cos(6 * latitudeInRadians)
-        let metersPerDegreeLongitude = 11412.84 * cos(latitudeInRadians) - 93.5 * cos(3 * latitudeInRadians) + 118 * cos(5 * latitudeInRadians)
+        let metersPerDegreeLatitude = AKLocationUtility.metersPerDegreeLatitude(at: location.latitude)
+        let metersPerDegreeLongitude = AKLocationUtility.metersPerDegreeLongitude(at: location.latitude)
         
         let Δx = (translatedBy.metersX / metersPerDegreeLongitude).radiansToDegrees()
         let Δz = (translatedBy.metersZ / metersPerDegreeLatitude).radiansToDegrees()

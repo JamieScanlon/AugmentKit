@@ -106,19 +106,16 @@ public struct WorldLocation: AKWorldLocation {
         
         self.transform = transform
         
-        
-        let latitudeInRadians = referenceLocation.latitude.degreesToRadians()
-        let metersPerDegreeLatitude =  111132.92 - 559.82 * cos(2 * latitudeInRadians) + 1.175 * cos(4 * latitudeInRadians) - 0.0023 * cos(6 * latitudeInRadians)
-        let metersPerDegreeLongitude = 11412.84 * cos(latitudeInRadians) - 93.5 * cos(3 * latitudeInRadians) + 118 * cos(5 * latitudeInRadians)
+        let metersPerDegreeLatitude = AKLocationUtility.metersPerDegreeLatitude(at: referenceLocation.latitude)
+        let metersPerDegreeLongitude = AKLocationUtility.metersPerDegreeLongitude(at: referenceLocation.latitude)
         
         let Δz = transform.columns.3.z - referenceLocation.transform.columns.3.z
         let Δx = transform.columns.3.x - referenceLocation.transform.columns.3.x
         let Δy = transform.columns.3.y - referenceLocation.transform.columns.3.y
         
-        self.latitude = Double(Δz) / metersPerDegreeLatitude
-        self.longitude = Double(Δx) / metersPerDegreeLongitude
-        self.elevation = Double(Δy)
-        
+        self.latitude = referenceLocation.latitude + Double(Δz) / metersPerDegreeLatitude
+        self.longitude = referenceLocation.longitude + Double(Δx) / metersPerDegreeLongitude
+        self.elevation = referenceLocation.elevation + Double(Δy)
     }
     
     /**

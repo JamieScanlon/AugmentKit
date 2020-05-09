@@ -1486,6 +1486,9 @@ open class Renderer: NSObject {
     fileprivate var gazeTargets: [GazeTarget] {
         return entitiesForRenderModule[UnanchoredRenderModule.identifier]?.compactMap({$0 as? GazeTarget}) ?? []
     }
+    fileprivate var bodies: [AKBody] {
+        return entitiesForRenderModule[UnanchoredRenderModule.identifier]?.compactMap({$0 as? AKBody}) ?? []
+    }
     fileprivate var environmentProbeAnchors = [AREnvironmentProbeAnchor]()
     fileprivate var environmentAnchorsWithReatedAnchors = [AREnvironmentProbeAnchor: [UUID]]()
     
@@ -1501,6 +1504,9 @@ open class Renderer: NSObject {
         let configuration: ARConfiguration = {
             switch sessionType {
             case .bodyTracking:
+                guard ARBodyTrackingConfiguration.isSupported else {
+                    fatalError("This feature is only supported on devices with an A12 or newer chip")
+                }
                 let myConfig = ARBodyTrackingConfiguration()
                 return myConfig
             case .faceTracking:
@@ -1610,6 +1616,7 @@ open class Renderer: NSObject {
         precalculationPass = ComputePass(withDevice: device)
         precalculationPass?.name = "Precalculation Pass"
         precalculationPass?.usesGeometry = true
+        precalculationPass?.hasSkeleton = true
         precalculationPass?.usesLighting = false
         precalculationPass?.usesSharedBuffer = true
         precalculationPass?.usesEnvironment = true
@@ -1659,6 +1666,7 @@ open class Renderer: NSObject {
             specularIBLCubePass = ComputePass(withDevice: device)
             specularIBLCubePass?.name = "Specular IBL Pass"
             specularIBLCubePass?.usesGeometry = false
+            specularIBLCubePass?.hasSkeleton = false
             specularIBLCubePass?.usesLighting = false
             specularIBLCubePass?.usesSharedBuffer = false
             specularIBLCubePass?.usesEnvironment = true
@@ -1686,6 +1694,7 @@ open class Renderer: NSObject {
             computeBDRFLookupPass = ComputePass(withDevice: device)
             computeBDRFLookupPass?.name = "BDRF Lookup Pass"
             computeBDRFLookupPass?.usesGeometry = false
+            computeBDRFLookupPass?.hasSkeleton = false
             computeBDRFLookupPass?.usesLighting = false
             computeBDRFLookupPass?.usesSharedBuffer = false
             computeBDRFLookupPass?.usesEnvironment = true
@@ -1734,6 +1743,7 @@ open class Renderer: NSObject {
         shadowRenderPass = RenderPass(withDevice: device, renderPassDescriptor: shadowRenderPassDescriptor)
         shadowRenderPass?.name = "Shadow Render Pass"
         shadowRenderPass?.usesGeometry = true
+        shadowRenderPass?.hasSkeleton = true
         shadowRenderPass?.usesLighting = false
         shadowRenderPass?.usesEffects = true
         shadowRenderPass?.usesEnvironment = true
@@ -1768,6 +1778,7 @@ open class Renderer: NSObject {
         mainRenderPass = RenderPass(withDevice: device)
         mainRenderPass?.name = "Main Render Pass"
         mainRenderPass?.usesGeometry = true
+        mainRenderPass?.hasSkeleton = true
         mainRenderPass?.usesLighting = true
         mainRenderPass?.usesEffects = true
         mainRenderPass?.usesEnvironment = true
@@ -2329,6 +2340,16 @@ extension Renderer: ARSessionDelegate {
                 
             } else if let _ = anchor as? ARFaceAnchor {
                 
+            } else if let arBodyAnchor = anchor as? ARBodyAnchor {
+                
+                modulesToUpdate.insert(UnanchoredRenderModule.identifier)
+                
+                if let bodyAnchor = bodies.first(where: { k in
+                    k.identifier == arBodyAnchor.identifier
+                }) as? RealBody {
+                    bodyAnchor.update(with: arBodyAnchor)
+                }
+                
             } else {
                 if let akAnchor = augmentedAnchors.first(where: { k in
                     k.identifier == anchor.identifier
@@ -2383,6 +2404,14 @@ extension Renderer: ARSessionDelegate {
                 
             } else if let _ = anchor as? ARFaceAnchor {
                 
+            } else if let arBodyAnchor = anchor as? ARBodyAnchor {
+                
+                if let bodyAnchor = bodies.first(where: { k in
+                    k.identifier == arBodyAnchor.identifier
+                }) as? RealBody {
+                    bodyAnchor.update(with: arBodyAnchor)
+                }
+                
             } else {
                 if let akAnchor = augmentedAnchors.first(where: { k in
                     k.identifier == anchor.identifier
@@ -2431,6 +2460,16 @@ extension Renderer: ARSessionDelegate {
             } else if let _ = anchor as? ARImageAnchor {
                 
             } else if let _ = anchor as? ARFaceAnchor {
+                
+            } else if let arBodyAnchor = anchor as? ARBodyAnchor {
+                
+                if let bodyAnchor = bodies.first(where: { k in
+                    k.identifier == arBodyAnchor.identifier
+                }) as? RealBody {
+                    bodyAnchor.update(with: nil)
+                }
+                
+                modulesToUpdate.insert(UnanchoredRenderModule.identifier)
                 
             } else {
                 //

@@ -45,9 +45,9 @@ struct DrawCall {
     var cullMode: MTLCullMode = .back
     var depthBias: RenderPass.DepthBias?
     var drawData: DrawData?
-    var usesSkins: Bool {
+    var usesSkeleton: Bool {
         if let myDrawData = drawData {
-            return myDrawData.skins.count > 0
+            return myDrawData.skeleton != nil
         } else {
             return false
         }
@@ -205,7 +205,7 @@ struct DrawCall {
             
             let vertFunc: MTLFunction = {
                 do {
-                    // Specify which shader to use based on if the model has skinned puppet suppot
+                    // Specify which shader to use based on if the model has skinned skeleton suppot
                     return try metalLibrary.makeFunction(name: vertexFunctionName, constantValues: funcConstants)
                 } catch let error {
                     print("Failed to create vertex function for pipeline state descriptor, error \(error)")
@@ -298,7 +298,7 @@ extension DrawCall: CustomDebugStringConvertible, CustomStringConvertible {
     }
     /// :nodoc:
     var debugDescription: String {
-        let myDescription = "<DrawCall: > uuid: \(uuid), renderPipelineState:\(String(describing: renderPipelineState.debugDescription)), depthStencilState:\(depthStencilState?.debugDescription ?? "None"), cullMode: \(cullMode), usesSkins: \(usesSkins), vertexFunction: \(vertexFunction?.debugDescription ?? "None"), fragmentFunction: \(fragmentFunction?.debugDescription ?? "None")"
+        let myDescription = "<DrawCall: > uuid: \(uuid), renderPipelineState:\(String(describing: renderPipelineState.debugDescription)), depthStencilState:\(depthStencilState?.debugDescription ?? "None"), cullMode: \(cullMode), usesSkeleton: \(usesSkeleton), vertexFunction: \(vertexFunction?.debugDescription ?? "None"), fragmentFunction: \(fragmentFunction?.debugDescription ?? "None")"
         return myDescription
     }
 }

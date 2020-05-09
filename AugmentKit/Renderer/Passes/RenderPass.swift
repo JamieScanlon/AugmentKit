@@ -59,6 +59,7 @@ class RenderPass {
     var uuid: UUID
     
     var usesGeometry = true
+    var hasSkeleton = false
     var usesLighting = true
     var usesSharedBuffer = true
     var usesEnvironment = true
@@ -208,7 +209,7 @@ extension RenderPass: CustomStringConvertible, CustomDebugStringConvertible {
     }
     /// :nodoc:
     public var debugDescription: String {
-        let myDescription = "<\(type(of: self)): \(Unmanaged.passUnretained(self).toOpaque())> name: \(name ?? "none"), uuid: \(uuid), drawCallGroups: \(drawCallGroups), usesGeometry: \(usesGeometry), usesLighting: \(usesLighting), usesSharedBuffer: \(usesSharedBuffer), usesEnvironment: \(usesEnvironment), usesEffects: \(usesEffects), usesCameraOutput: \(usesCameraOutput), usesShadows: \(usesShadows), templateRenderPipelineDescriptor: \(templateRenderPipelineDescriptor?.debugDescription ?? "none"), vertexDescriptorMergePolicy: \(vertexDescriptorMergePolicy), vertexFunctionMergePolicy: \(vertexFunctionMergePolicy), fragmentFunctionMergePolicy: \(fragmentFunctionMergePolicy), depthCompareFunction: \(depthCompareFunction?.debugDescription ?? "none"), depthCompareFunctionMergePolicy: \(depthCompareFunctionMergePolicy), isDepthWriteEnabled: \(isDepthWriteEnabled), isDepthWriteEnabledMergePolicy: \(isDepthWriteEnabledMergePolicy), cullMode: \(cullMode), depthBias: \(depthBias?.debugDescription ?? "none")"
+        let myDescription = "<\(type(of: self)): \(Unmanaged.passUnretained(self).toOpaque())> name: \(name ?? "none"), uuid: \(uuid), drawCallGroups: \(drawCallGroups), usesGeometry: \(usesGeometry), hasSkeleton: \(hasSkeleton), usesLighting: \(usesLighting), usesSharedBuffer: \(usesSharedBuffer), usesEnvironment: \(usesEnvironment), usesEffects: \(usesEffects), usesCameraOutput: \(usesCameraOutput), usesShadows: \(usesShadows), templateRenderPipelineDescriptor: \(templateRenderPipelineDescriptor?.debugDescription ?? "none"), vertexDescriptorMergePolicy: \(vertexDescriptorMergePolicy), vertexFunctionMergePolicy: \(vertexFunctionMergePolicy), fragmentFunctionMergePolicy: \(fragmentFunctionMergePolicy), depthCompareFunction: \(depthCompareFunction?.debugDescription ?? "none"), depthCompareFunctionMergePolicy: \(depthCompareFunctionMergePolicy), isDepthWriteEnabled: \(isDepthWriteEnabled), isDepthWriteEnabledMergePolicy: \(isDepthWriteEnabledMergePolicy), cullMode: \(cullMode), depthBias: \(depthBias?.debugDescription ?? "none")"
         return myDescription
     }
 }

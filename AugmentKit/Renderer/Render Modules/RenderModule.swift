@@ -70,7 +70,7 @@ protocol RenderModule: ShaderModule {
 extension RenderModule {
     
     /// Calls `drawIndexedPrimitives` for every submesh in the `drawData`
-    func draw(withDrawData drawData: DrawData, with renderEncoder: MTLRenderCommandEncoder, baseIndex: Int = 0, environmentData: EnvironmentData? = nil, includeGeometry: Bool = true, includeLighting: Bool = true) {
+    func draw(withDrawData drawData: DrawData, with renderEncoder: MTLRenderCommandEncoder, baseIndex: Int = 0, environmentData: EnvironmentData? = nil, includeGeometry: Bool = true, includeSkeleton: Bool = false, includeLighting: Bool = true) {
         
         if includeGeometry {
             // Set mesh's vertex buffers
@@ -82,8 +82,9 @@ extension RenderModule {
                 renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: Int(kBufferIndexRawVertexData.rawValue))
             }
         
-            // Set the palette offset info
-            if var paletteStartIndex = drawData.paletteStartIndex {
+            if includeSkeleton {
+                // Set the palette offset info
+                var paletteStartIndex = drawData.paletteStartIndex ?? 0
                 renderEncoder.setVertexBytes(&paletteStartIndex, length: 8, index: Int(kBufferIndexMeshPaletteIndex.rawValue))
                 var paletteSize = drawData.paletteSize
                 renderEncoder.setVertexBytes(&paletteSize, length: 8, index: Int(kBufferIndexMeshPaletteSize.rawValue))

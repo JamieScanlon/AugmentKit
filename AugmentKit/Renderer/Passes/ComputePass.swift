@@ -80,6 +80,7 @@ class ComputePass<Out> {
     var functionName: String?
     
     var usesGeometry = true
+    var hasSkeleton = false
     var usesLighting = false
     var usesSharedBuffer = true
     var usesEnvironment = true
@@ -156,7 +157,9 @@ class ComputePass<Out> {
         
         if usesGeometry == true {
             geometryBuffer?.initialize(withDevice: device)
-            paletteBuffer?.initialize(withDevice: device)
+            if hasSkeleton {
+                paletteBuffer?.initialize(withDevice: device)
+            }
         }
         if usesSharedBuffer == true {
             sharedUniformsBuffer?.initialize(withDevice: device)
@@ -206,7 +209,9 @@ class ComputePass<Out> {
         
         if usesGeometry == true {
             geometryBuffer?.update(toFrame: index)
-            paletteBuffer?.update(toFrame: index)
+            if hasSkeleton {
+                paletteBuffer?.update(toFrame: index)
+            }
         }
         if usesSharedBuffer == true {
             sharedUniformsBuffer?.update(toFrame: index)
@@ -273,7 +278,7 @@ class ComputePass<Out> {
             computeEncoder.popDebugGroup()
         }
         
-        if let paletteBuffer = paletteBuffer, usesGeometry {
+        if let paletteBuffer = paletteBuffer, usesGeometry, hasSkeleton {
             computeEncoder.pushDebugGroup(paletteBuffer.label ?? "Palette Buffer")
             computeEncoder.setBuffer(paletteBuffer.buffer, offset: paletteBuffer.currentBufferFrameOffset, index: paletteBuffer.shaderAttributeIndex)
             computeEncoder.popDebugGroup()

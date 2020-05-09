@@ -30,7 +30,7 @@ import ARKit
 import AugmentKitShader
 import MetalKit
 
-class UnanchoredRenderModule: RenderModule {
+class UnanchoredRenderModule: RenderModule, SkinningModule {
     
     static var identifier = "UnanchoredRenderModule"
     
@@ -70,6 +70,7 @@ class UnanchoredRenderModule: RenderModule {
         let materialUniformBufferSize = RenderModuleConstants.alignedMaterialSize * maxInFlightFrames
         let effectsUniformBufferSize = Constants.alignedEffectsUniformSize * maxInFlightFrames
         let environmentUniformBufferSize = Constants.alignedEnvironmentUniformSize * maxInFlightFrames
+        let paletteBufferSize = Constants.alignedPaletteSize * Constants.maxPaletteSize * maxInFlightFrames
         
         // Create and allocate our uniform buffer objects. Indicate shared storage so that both the
         // CPU can access the buffer
@@ -81,6 +82,9 @@ class UnanchoredRenderModule: RenderModule {
         
         environmentUniformBuffer = device?.makeBuffer(length: environmentUniformBufferSize, options: .storageModeShared)
         environmentUniformBuffer?.label = "EnvironmentUniformBuffer"
+        
+        paletteBuffer = device?.makeBuffer(length: paletteBufferSize, options: [])
+        paletteBuffer?.label = "PaletteBuffer"
         
         geometricEntities = []
         
@@ -261,11 +265,12 @@ class UnanchoredRenderModule: RenderModule {
         materialUniformBufferOffset = RenderModuleConstants.alignedMaterialSize * bufferIndex
         effectsUniformBufferOffset = Constants.alignedEffectsUniformSize * bufferIndex
         environmentUniformBufferOffset = Constants.alignedEnvironmentUniformSize * bufferIndex
+        paletteBufferOffset = Constants.alignedPaletteSize * Constants.maxPaletteSize * bufferIndex
         
         materialUniformBufferAddress = materialUniformBuffer?.contents().advanced(by: materialUniformBufferOffset)
         effectsUniformBufferAddress = effectsUniformBuffer?.contents().advanced(by: effectsUniformBufferOffset)
         environmentUniformBufferAddress = environmentUniformBuffer?.contents().advanced(by: environmentUniformBufferOffset)
-        
+        paletteBufferAddress = paletteBuffer?.contents().advanced(by: paletteBufferOffset)
     }
     
     func updateBuffers(withModuleEntities moduleEntities: [AKEntity], cameraProperties: CameraProperties, environmentProperties: EnvironmentProperties, shadowProperties: ShadowProperties, argumentBufferProperties theArgumentBufferProperties: ArgumentBufferProperties, forRenderPass renderPass: RenderPass) {
@@ -361,7 +366,7 @@ class UnanchoredRenderModule: RenderModule {
             
             for drawCall in drawCallGroup.drawCalls {
                 
-                guard drawCall.drawData != nil else {
+                guard let drawData = drawCall.drawData else {
                     continue
                 }
                 
@@ -388,6 +393,12 @@ class UnanchoredRenderModule: RenderModule {
                             trackerInstanceCount = Constants.maxTrackerInstanceCount
                             break
                         }
+                        
+                        //
+                        // Update puppet animation
+                        //
+                        
+                        updatePuppetAnimation(from: drawData, frameNumber: cameraProperties.currentFrame, frameRate: cameraProperties.frameRate)
                         
                         //
                         // Update Environment
@@ -754,13 +765,17 @@ class UnanchoredRenderModule: RenderModule {
                     renderEncoder.setVertexBytes(&drawCallIndex, length: MemoryLayout<Int32>.size, index: Int(kBufferIndexDrawCallIndex.rawValue))
                     // Set the offset index of the draw call group into the argument buffer
                     renderEncoder.setVertexBytes(&drawCallGroupIndex, length: MemoryLayout<Int32>.size, index: Int(kBufferIndexDrawCallGroupIndex.rawValue))
+                    if renderPass.hasSkeleton {
+                        // Set any buffers fed into our render pipeline
+                        renderEncoder.setVertexBuffer(paletteBuffer, offset: paletteBufferOffset, index: Int(kBufferIndexMeshPalettes.rawValue))
+                    }
                 }
                 
                 var mutableDrawData = drawData
                 mutableDrawData.instanceCount = geometryCount
                 
                 // Set the mesh's vertex data buffers and draw
-                draw(withDrawData: mutableDrawData, with: renderEncoder, baseIndex: baseIndex, includeGeometry: renderPass.usesGeometry, includeLighting: renderPass.usesLighting)
+                draw(withDrawData: mutableDrawData, with: renderEncoder, baseIndex: baseIndex, includeGeometry: renderPass.usesGeometry, includeSkeleton: renderPass.hasSkeleton, includeLighting: renderPass.usesLighting)
                 
                 baseIndex += geometryCount
                 drawCallIndex += 1
@@ -792,6 +807,8 @@ class UnanchoredRenderModule: RenderModule {
     private enum Constants {
         static let maxTrackerInstanceCount = 64
         static let maxTargetInstanceCount = 64
+        static let maxPaletteSize = 100
+        static let alignedPaletteSize = (MemoryLayout<matrix_float4x4>.stride & ~0xFF) + 0x100
         static let alignedEffectsUniformSize = ((MemoryLayout<AnchorEffectsUniforms>.stride * (Constants.maxTrackerInstanceCount + Constants.maxTargetInstanceCount)) & ~0xFF) + 0x100
         static let alignedEnvironmentUniformSize = ((MemoryLayout<EnvironmentUniforms>.stride * (Constants.maxTrackerInstanceCount + Constants.maxTargetInstanceCount)) & ~0xFF) + 0x100
     }
@@ -812,6 +829,7 @@ class UnanchoredRenderModule: RenderModule {
     private var materialUniformBuffer: MTLBuffer?
     private var effectsUniformBuffer: MTLBuffer?
     private var environmentUniformBuffer: MTLBuffer?
+    private var paletteBuffer: MTLBuffer?
     private var environmentData: EnvironmentData?
     private var shadowMap: MTLTexture?
     private var argumentBufferProperties: ArgumentBufferProperties?
@@ -825,6 +843,9 @@ class UnanchoredRenderModule: RenderModule {
     // Offset within environmentUniformBuffer to set for the current frame
     private var environmentUniformBufferOffset: Int = 0
     
+    // Offset within paletteBuffer to set for the current frame
+    private var paletteBufferOffset = 0
+    
     // Addresses to write material uniforms to each frame
     private var materialUniformBufferAddress: UnsafeMutableRawPointer?
     
@@ -833,6 +854,9 @@ class UnanchoredRenderModule: RenderModule {
     
     // Addresses to write environment uniforms to each frame
     private var environmentUniformBufferAddress: UnsafeMutableRawPointer?
+    
+    // Addresses to write palette to each frame
+    private var paletteBufferAddress: UnsafeMutableRawPointer?
     
     // number of frames in the tracker animation by index
     private var trackerAnimationFrameCount = [Int]()
@@ -863,7 +887,7 @@ class UnanchoredRenderModule: RenderModule {
                 }
             }()
             let vertexShaderName: String = {
-                if drawData.isSkinned {
+                if drawData.hasSkeleton {
                     return "anchorGeometryVertexTransformSkinned"
                 } else {
                     if drawData.isRaw {
@@ -882,6 +906,28 @@ class UnanchoredRenderModule: RenderModule {
         let drawCallGroup = DrawCallGroup(drawCalls: drawCalls, uuid: uuid, generatesShadows: geometricEntity.generatesShadows)
         return drawCallGroup
         
+    }
+    
+    private func updatePuppetAnimation(from drawData: DrawData, frameNumber: UInt, frameRate: Double = 60) {
+        
+        let capacity = Constants.alignedPaletteSize * Constants.maxPaletteSize
+        let boundPaletteData = paletteBufferAddress?.bindMemory(to: matrix_float4x4.self, capacity: capacity)
+        let paletteData = UnsafeMutableBufferPointer<matrix_float4x4>(start: boundPaletteData, count: Constants.maxPaletteSize)
+        
+        var jointPaletteOffset = 0
+        if let skeleton = drawData.skeleton {
+            let keyTimes = skeleton.animations.map{ $0.keyTime }
+            let time = (Double(frameNumber) * 1.0 / frameRate)
+            let keyframeIndex = lowerBoundKeyframeIndex(keyTimes, key: time) ?? 0
+            let worldPose = evaluateAnimation(skeleton, keyframeIndex: keyframeIndex)
+            let matrixPalette = evaluateMatrixPalette(worldPose: worldPose, skeletonData: skeleton, keyframeIndex: keyframeIndex)
+            
+            for k in 0..<matrixPalette.count {
+                paletteData[k + jointPaletteOffset] = matrixPalette[k]
+            }
+            
+            jointPaletteOffset += matrixPalette.count
+        }
     }
     
 }

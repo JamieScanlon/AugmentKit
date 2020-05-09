@@ -84,7 +84,7 @@ open class UserTracker: AKAugmentedUserTracker {
     }
     /**
      Gets the updated users position.
-     - Returns: An `AKRelativePosition` eith the users current position in the world
+     - Returns: An `AKRelativePosition` with the users current position in the world
      */
     public func userPosition() -> AKRelativePosition? {
         return position.parentPosition

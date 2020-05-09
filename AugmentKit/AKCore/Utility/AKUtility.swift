@@ -132,8 +132,8 @@ open class AKLocationUtility {
         let metersPerDegreeLatitude = AKLocationUtility.metersPerDegreeLatitude(at: location.latitude)
         let metersPerDegreeLongitude = AKLocationUtility.metersPerDegreeLongitude(at: location.latitude)
         
-        let Δx = (translatedBy.metersX / metersPerDegreeLongitude).radiansToDegrees()
-        let Δz = (translatedBy.metersZ / metersPerDegreeLatitude).radiansToDegrees()
+        let Δx = translatedBy.metersX / metersPerDegreeLongitude
+        let Δz = translatedBy.metersZ / metersPerDegreeLatitude
         
         let transform = location.transform.translate(x: Float(translatedBy.metersX), y: Float(translatedBy.metersY), z: Float(translatedBy.metersZ))
         
@@ -235,7 +235,7 @@ extension MDLAsset {
     
     /// :nodoc:
     override open var debugDescription: String {
-        var myDescription = "<\(type(of: self)): \(Unmanaged.passUnretained(self).toOpaque())> URL: \(url?.absoluteString ?? "none"), Count: \(count), VertedDescriptor: \(vertexDescriptor?.debugDescription ?? "none"), Masters (\(masters.count)): \(masters)"
+        var myDescription = "<\(type(of: self)): \(Unmanaged.passUnretained(self).toOpaque())> URL: \(url?.absoluteString ?? "none"), Count: \(count), VertedDescriptor: \(vertexDescriptor?.debugDescription ?? "none"), Masters (\(masters.count)): \(masters), Children (\(self.count))"
         for childIndex in 0..<self.count {
             myDescription += "\n"
             myDescription += "    Child \(childIndex) - \(self.object(at: childIndex))"

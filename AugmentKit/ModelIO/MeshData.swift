@@ -245,8 +245,7 @@ public struct DrawData {
     var subData = [DrawSubData]()
     var worldTransform: matrix_float4x4 = matrix_identity_float4x4
     var worldTransformAnimations: [matrix_float4x4] = []
-    var skins = [SkinData]()
-    var skeletonAnimations = [AnimatedSkeleton]()
+    var skeleton: SkeletonData?
     var hasBaseColorMap = false
     var hasNormalMap = false
     var hasMetallicMap = false
@@ -261,8 +260,8 @@ public struct DrawData {
     var hasSheenTintMap = false
     var hasClearcoatMap = false
     var hasClearcoatGlossMap = false
-    var isSkinned: Bool {
-        return paletteStartIndex != nil
+    var hasSkeleton: Bool {
+        return skeleton != nil
     }
     var isRaw: Bool {
         return rawVertexBuffers.count > 0
@@ -315,39 +314,34 @@ public enum ShaderPreference {
     case blinn
 }
 
-// MARK: - Puppet Animation (Not currently supported by renderer)
+// MARK: - Skeletons
 
-// MARK: SkinData
+// MARK: SkeletonData
 
-/**
- Data that describes how a mesh is bound to a skeleton.
- `SkinData` is a data structure for the render engine. The structure of this data object is intended to contain all the data needed to set up the Metal pipline in a way where there is not much, if any, translation required between the properties here and the properties of the render pipleine objects.
- */
-public struct SkinData: JointPathRemappable {
-    var jointPaths = [String]()
-    var skinToSkeletonMap = [Int]()
-    var inverseBindTransforms = [matrix_float4x4]()
-    var animationIndex: Int?
-}
-
-// MARK: AnimatedSkeleton
-//
 /**
  Data that stores skeleton data as well as its time-sampled animation.
- `AnimatedSkeleton` is a data structure for the render engine. The structure of this data object is intended to contain all the data needed to set up the Metal pipline in a way where there is not much, if any, translation required between the properties here and the properties of the render pipleine objects.
+ `SkeletonData` is a data structure for the render engine. The structure of this data object is intended to contain all the data needed to set up the Metal pipline in a way where there is not much, if any, translation required between the properties here and the properties of the render pipleine objects.
  */
-public struct AnimatedSkeleton: JointPathRemappable {
+public struct SkeletonData: JointPathRemappable {
     var jointPaths = [String]()
+    var jointNames = [String]()
     var parentIndices = [Int?]()
-    var keyTimes = [Double]()
-    var translations = [SIMD3<Float>]()
-    var rotations = [simd_quatf]()
+    var animations = [SkeletonAnimation]()
+    var inverseBindTransforms = [matrix_float4x4]() // The starting set of transforms from each node to it's parent. The number of items should be jointCount
     var jointCount: Int {
         return jointPaths.count
     }
     var timeSampleCount: Int {
-        return keyTimes.count
+        return animations.count
     }
+}
+
+// MARK: SkeletonAnimation
+
+public struct SkeletonAnimation {
+    var keyTime: Double
+    var translations = [SIMD3<Float>]() // An array of translations. One for each joint
+    var rotations = [simd_quatf]() // An array of rotations. One for each joint
 }
 
 // MARK: - Environment

@@ -532,7 +532,7 @@ class SurfacesRenderModule: RenderModule {
                 mutableDrawData.instanceCount = 1
                 
                 // Set the mesh's vertex data buffers and draw
-                draw(withDrawData: mutableDrawData, with: renderEncoder, baseIndex: baseIndex, includeGeometry: renderPass.usesGeometry, includeLighting: renderPass.usesLighting)
+                draw(withDrawData: mutableDrawData, with: renderEncoder, baseIndex: baseIndex, includeGeometry: renderPass.usesGeometry, includeSkeleton: renderPass.hasSkeleton, includeLighting: renderPass.usesLighting)
                 
                 baseIndex += 1
                 drawCallIndex += 1

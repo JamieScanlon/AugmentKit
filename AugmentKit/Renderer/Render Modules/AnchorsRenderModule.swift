@@ -588,15 +588,16 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                     renderEncoder.setVertexBytes(&drawCallIndex, length: MemoryLayout<Int32>.size, index: Int(kBufferIndexDrawCallIndex.rawValue))
                     // Set the offset index of the draw call group into the argument buffer
                     renderEncoder.setVertexBytes(&drawCallGroupIndex, length: MemoryLayout<Int32>.size, index: Int(kBufferIndexDrawCallGroupIndex.rawValue))
-                    
-                    // Set any buffers fed into our render pipeline
-                    renderEncoder.setVertexBuffer(paletteBuffer, offset: paletteBufferOffset, index: Int(kBufferIndexMeshPalettes.rawValue))
+                    if renderPass.hasSkeleton {
+                        // Set any buffers fed into our render pipeline
+                        renderEncoder.setVertexBuffer(paletteBuffer, offset: paletteBufferOffset, index: Int(kBufferIndexMeshPalettes.rawValue))
+                    }
                 }
                 var mutableDrawData = drawData
                 mutableDrawData.instanceCount = anchorcount
                 
                 // Set the mesh's vertex data buffers and draw
-                draw(withDrawData: mutableDrawData, with: renderEncoder, baseIndex: baseIndex, includeGeometry: renderPass.usesGeometry, includeLighting: renderPass.usesLighting)
+                draw(withDrawData: mutableDrawData, with: renderEncoder, baseIndex: baseIndex, includeGeometry: renderPass.usesGeometry, includeSkeleton: renderPass.hasSkeleton, includeLighting: renderPass.usesLighting)
                 
                 baseIndex += anchorcount
                 drawCallIndex += 1
@@ -736,7 +737,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                 }
             }()
             let vertexShaderName: String = {
-                if drawData.isSkinned {
+                if drawData.hasSkeleton {
                     return "anchorGeometryVertexTransformSkinned"
                 } else {
                     if drawData.isRaw {
@@ -764,18 +765,18 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         let paletteData = UnsafeMutableBufferPointer<matrix_float4x4>(start: boundPaletteData, count: Constants.maxPaletteSize)
         
         var jointPaletteOffset = 0
-        for skin in drawData.skins {
-            if let animationIndex = skin.animationIndex {
-                let curAnimation = drawData.skeletonAnimations[animationIndex]
-                let worldPose = evaluateAnimation(curAnimation, at: (Double(frameNumber) * 1.0 / frameRate))
-                let matrixPalette = evaluateMatrixPalette(worldPose, skin)
-                
-                for k in 0..<matrixPalette.count {
-                    paletteData[k + jointPaletteOffset] = matrixPalette[k]
-                }
-                
-                jointPaletteOffset += matrixPalette.count
+        if let skeleton = drawData.skeleton {
+            let keyTimes = skeleton.animations.map{ $0.keyTime }
+            let time = (Double(frameNumber) * 1.0 / frameRate)
+            let keyframeIndex = lowerBoundKeyframeIndex(keyTimes, key: time) ?? 0
+            let worldPose = evaluateAnimation(skeleton, keyframeIndex: keyframeIndex)
+            let matrixPalette = evaluateMatrixPalette(worldPose: worldPose, skeletonData: skeleton, keyframeIndex: keyframeIndex)
+            
+            for k in 0..<matrixPalette.count {
+                paletteData[k + jointPaletteOffset] = matrixPalette[k]
             }
+            
+            jointPaletteOffset += matrixPalette.count
         }
     }
     

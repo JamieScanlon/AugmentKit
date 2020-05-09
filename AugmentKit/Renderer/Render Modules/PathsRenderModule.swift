@@ -394,7 +394,7 @@ class PathsRenderModule: RenderModule {
                 mutableDrawData.instanceCount = pathSegmentInstanceCount
                 
                 // Set the mesh's vertex data buffers and draw
-                draw(withDrawData: mutableDrawData, with: renderEncoder, includeGeometry: renderPass.usesGeometry, includeLighting: renderPass.usesLighting)
+                draw(withDrawData: mutableDrawData, with: renderEncoder, includeGeometry: renderPass.usesGeometry, includeSkeleton: renderPass.hasSkeleton, includeLighting: renderPass.usesLighting)
                 
                 drawCallIndex += 1
                 

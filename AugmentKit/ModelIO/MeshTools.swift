@@ -28,6 +28,7 @@
 //  Contains utility functions for importing and exporting models
 //
 
+import ARKit
 import UIKit
 import MetalKit
 import ModelIO
@@ -231,7 +232,7 @@ class ModelIOTools {
     
     // MARK: Encoding Mesh Data
     
-    // Encodes an MDLAsset from ModelIO into a MeshGPUData object which is used internally to set up the render pipeline.
+    /// Encodes an MDLAsset from ModelIO into a MeshGPUData object which is used internally to set up the render pipeline.
     static func meshGPUData(from asset: MDLAsset, device: MTLDevice, vertexDescriptor: MDLVertexDescriptor?, frameRate: Double = 60, shaderPreference: ShaderPreference = .pbr, loadTextures: Bool = true, textureBundle: Bundle? = nil) -> MeshGPUData {
         
         // see: https://github.com/metal-by-example/modelio-materials
@@ -264,15 +265,15 @@ class ModelIOTools {
         asset.loadTextures()
         
         // Find the root meshes
-        for sourceMesh in asset.childObjects(of: MDLMesh.self) as! [MDLMesh] {
-            
-            // Calculate tangent information
-//            sourceMesh.addTangentBasis(forTextureCoordinateAttributeNamed: MDLVertexAttributeTextureCoordinate, normalAttributeNamed: MDLVertexAttributeNormal, tangentAttributeNamed: MDLVertexAttributeTangent)
-            
-            // Set the Vertex Descriptor
-            sourceMesh.vertexDescriptor = concreteVertexDescriptor
-            
-        }
+//        for sourceMesh in asset.childObjects(of: MDLMesh.self) as! [MDLMesh] {
+//
+//            // Calculate tangent information
+////            sourceMesh.addTangentBasis(forTextureCoordinateAttributeNamed: MDLVertexAttributeTextureCoordinate, normalAttributeNamed: MDLVertexAttributeNormal, tangentAttributeNamed: MDLVertexAttributeTangent)
+//
+//            // Set the Vertex Descriptor
+//            sourceMesh.vertexDescriptor = concreteVertexDescriptor
+//
+//        }
         
         //
         // Animation frame times @ 60fps
@@ -305,23 +306,14 @@ class ModelIOTools {
             
         }
         
-        var skinIndex = 0
+        //
+        // Find and parse skeleton animations
+        // Only One MDLSkeleton is supported. If there are multiple, the firs will be used and the others ignored.
+        //
+        
+        let baseSkeleton: SkeletonData? = createSkeleton(from: asset)
         
         walkSceneGraph(in: asset) { object, currentIndex, parentIndex in
-            
-            //
-            // Calculate Skeleton Animations
-            //
-            
-            let skeletonAnimation: AnimatedSkeleton? = {
-                // TODO: This skeleleton animation stuff needs more work. It is in a non-fuctional state right now
-                let jointRootID = "root" // FIXME: This is hardcoded to 'root' but it should be dynamic
-                if let skeletonRootPath = findShortestPath(in: object.path, containing: jointRootID), skeletonRootPath == object.path {
-                    return createSkeletonAnimation(for: asset, rootPath: skeletonRootPath, sampleTimes: sampleTimes)
-                } else {
-                    return nil
-                }
-            }()
             
             //
             // Calculate the World Transform / World Transform Animations for each node
@@ -401,17 +393,10 @@ class ModelIOTools {
                 // Create a new DrawData object from the mesh
                 var drawData = store(mesh, device: device, textureBundle: textureBundle, textureLoader: textureLoader, vertexDescriptor: vertexDescriptor, baseURL: asset.url?.deletingLastPathComponent())
                 
-                // Update the skin properties
-                if let skin = storeMeshSkin(for: object) {
-                    var mutableSkin = skin
-                    if let skeletonAnimation = skeletonAnimation {
-                        mutableSkin.skinToSkeletonMap = ModelIOTools.mapJoints(from: skin, to: skeletonAnimation)
-                        mutableSkin.animationIndex = skinIndex
-                        drawData.skeletonAnimations.append(skeletonAnimation)
-                    }
-                    drawData.skins.append(mutableSkin)
-                    skinIndex += 1
-                }
+                // Update the skeleton property with any animation
+                drawData.skeleton = skeletonDataAnimation(from: baseSkeleton, for: object, keyTimes: sampleTimes)
+                drawData.paletteStartIndex = 0
+                drawData.paletteSize = drawData.skeleton?.jointCount ?? 0
                 
                 // Update the World Transforms (calculated previously)
                 if hasAnimation {
@@ -428,17 +413,8 @@ class ModelIOTools {
                 // Get a copy of the DrawData object from the array of master DrawData objects
                 var drawData = masterDrawDatas[masterIndex]
                 
-                // Update the skin properties
-                if let skin = storeMeshSkin(for: object) {
-                    var mutableSkin = skin
-                    if let skeletonAnimation = skeletonAnimation {
-                        mutableSkin.skinToSkeletonMap = ModelIOTools.mapJoints(from: skin, to: skeletonAnimation)
-                        mutableSkin.animationIndex = skinIndex
-                        drawData.skeletonAnimations.append(skeletonAnimation)
-                    }
-                    drawData.skins.append(skin)
-                    
-                }
+                // Update the skeleton property with any animation
+                drawData.skeleton = skeletonDataAnimation(from: baseSkeleton, for: object, keyTimes: sampleTimes)
                 
                 // Update the World Transforms (calculated previously)
                 if hasAnimation {
@@ -752,7 +728,7 @@ class ModelIOTools {
         }
     }
     
-    // Record all buffers and materials for an MDLMesh
+    /// Record all buffers and materials for an MDLMesh
     private static func store(_ mesh: MDLMesh, device: MTLDevice, textureBundle: Bundle? = nil, textureLoader: MTKTextureLoader? = nil, vertexDescriptor: MDLVertexDescriptor? = nil, baseURL: URL? = nil) -> DrawData {
         
         var drawData = DrawData()
@@ -908,46 +884,33 @@ class ModelIOTools {
         
     }
     
-    // Store skinning information if object has MDLSkinDeformerComponent
-    private static func storeMeshSkin(for object: MDLObject) -> SkinData? {
+    /// Create a `SkeletonData` object of the provided `MDLObject` has joint transform informtaion
+    /// - Parameter object: An `MDLObject`
+    /// - Parameter from: A base `SkeletonData` object
+    /// - Parameter keyTimes: Keyframe sample times
+    /// - Returns: `SkeletonData` or `nil` if not data is found
+    private static func skeletonDataAnimation(from baseSkeleton: SkeletonData?, for object: MDLObject, keyTimes: [TimeInterval]) -> SkeletonData? {
         
-        guard let skinDeformer = object.components.first(where: {$0 is MDLSkeleton || $0 is MDLAnimationBindComponent || $0 is MDLPackedJointAnimation}) else {
+        guard let baseSkeleton = baseSkeleton else {
             return nil
         }
         
-        var skin = SkinData()
-        // store the joint paths which tell us where the skeleton joints are
-        skin.jointPaths = {
-            if let aDeformer = skinDeformer as? MDLSkeleton {
-                return aDeformer.jointPaths
-            } else if let aDeformer = skinDeformer as? MDLAnimationBindComponent, let paths = aDeformer.jointPaths {
-                return paths
-            } else if let aDeformer = skinDeformer as? MDLPackedJointAnimation {
-                return aDeformer.jointPaths
-            } else {
-                return []
-            }
-        }()
-        // store the joint bind transforms which give us the bind pose
-        let jointBindTransforms: [matrix_double4x4] = {
-            if let aDeformer = skinDeformer as? MDLSkeleton {
-                return aDeformer.jointBindTransforms.double4x4Array
-            } else if let aDeformer = skinDeformer as? MDLAnimationBindComponent {
-                return [aDeformer.geometryBindTransform]
-            } else if let aDeformer = skinDeformer as? MDLPackedJointAnimation {
-                var transforms = aDeformer.rotations.doubleQuaternionArray.map({$0.toMatrix4()})
-                transforms = transforms.enumerated().map{
-                    let scales = aDeformer.scales.double3Array[$0.offset]
-                    let translations = aDeformer.translations.double3Array[$0.offset]
-                    return $0.element.scale(x: scales.x, y: scales.y, z: scales.z).translate(x: translations.x, y: translations.y, z: translations.z)
-                }
-                return transforms
-            } else {
-                return []
-            }
-        }()
-        skin.inverseBindTransforms = jointBindTransforms.map { simd_inverse($0).toFloat() }
-        return skin
+        // MDLAnimationBindComponent? Im not sure what this component's role is in joint anomation because, guess what, "No Overview Available"
+        guard let jointAnimation = object.components.first(where: {$0 is MDLPackedJointAnimation}) as? MDLPackedJointAnimation else {
+            return baseSkeleton
+        }
+        
+        var skeleton = baseSkeleton
+        var animations = [SkeletonAnimation]()
+        for time in keyTimes {
+            let translations = jointAnimation.translations.float3Array(atTime: time)
+            let rotations = jointAnimation.rotations.floatQuaternionArray(atTime: time)
+            let animation = SkeletonAnimation(keyTime: time, translations: translations, rotations: rotations)
+            animations.append(animation)
+        }
+        
+        skeleton.animations = animations
+        return skeleton
     }
     
     private static func readMaterialPropertyValue(from property: MDLMaterialProperty, textureLoader: MTKTextureLoader? = nil, bundle: Bundle? = nil, baseURL: URL? = nil) -> (uniform: Any?, texture: MTLTexture?)? {
@@ -1051,7 +1014,7 @@ class ModelIOTools {
         return nil
     }
 
-    //  Compute an index map from all elements of A.jointPaths to the corresponding paths in B.jointPaths
+    ///  Compute an index map from all elements of A.jointPaths to the corresponding paths in B.jointPaths
     private static func mapJoints<A: JointPathRemappable, B: JointPathRemappable>(from src: A, to dst: B) -> [Int] {
         let dstJointPaths = dst.jointPaths
         return src.jointPaths.compactMap { srcJointPath in
@@ -1063,40 +1026,40 @@ class ModelIOTools {
         }
     }
     
-    // Construct a SkeletonAnimation by time-sampling all joint transforms
-    private static func createSkeletonAnimation(for asset: MDLAsset, rootPath: String, sampleTimes: [TimeInterval]) -> AnimatedSkeleton {
-        var animation = AnimatedSkeleton()
-        var jointCount = 0
+    /// Construct a `SkeletonData`. This generates a base object with no animation.
+    private static func createSkeleton(from asset: MDLAsset) -> SkeletonData? {
         
-        let object = asset.object(atPath: rootPath)
-        jointCount = ModelIOTools.subGraphCount(object)
-        
-        animation = AnimatedSkeleton()
-        animation.keyTimes = sampleTimes
-        animation.translations = [SIMD3<Float>](repeating: SIMD3<Float>(), count: sampleTimes.count * jointCount)
-        animation.rotations = [simd_quatf](repeating: simd_quatf(), count: sampleTimes.count * jointCount)
-        
-        ModelIOTools.walkSceneGraph(rootAt: object) { object, jointIndex, parentIndex in
-            animation.jointPaths.append(object.path)
-            animation.parentIndices.append(parentIndex)
-            
-            if let xform = object.componentConforming(to: MDLTransformComponent.self) as? MDLTransformComponent {
-                for timeIndex in 0..<sampleTimes.count {
-                    let xM = xform.localTransform?(atTime: sampleTimes[timeIndex]) ?? matrix_identity_float4x4
-                    let xR = matrix_float3x3(columns: (SIMD3<Float>(xM.columns.0.x, xM.columns.0.y, xM.columns.0.z),
-                                                       SIMD3<Float>(xM.columns.1.x, xM.columns.1.y, xM.columns.1.z),
-                                                       SIMD3<Float>(xM.columns.2.x, xM.columns.2.y, xM.columns.2.z)))
-                    animation.rotations[timeIndex * jointCount + jointIndex] = simd_quaternion(xR)
-                    animation.translations[timeIndex * jointCount + jointIndex] =
-                        SIMD3<Float>(xM.columns.3.x, xM.columns.3.y, xM.columns.3.z)
-                }
-            }
+        guard let skeletons = asset.childObjects(of: MDLSkeleton.self) as? [MDLSkeleton] else {
+            return nil
         }
         
-        return animation
+        if skeletons.count > 1 {
+            print("WARNING: Multiple MDLSkeletons were found in the MDLAsset. The first will be used but this asset may not be compatible with AugmentKit.")
+        }
+        
+        guard let skeleton = skeletons.first else {
+            return nil
+        }
+        
+        let jointCount = skeleton.jointPaths.count
+        
+        var skeletonData = SkeletonData()
+        skeletonData.jointPaths = skeleton.jointPaths
+        skeletonData.inverseBindTransforms = skeleton.jointBindTransforms.float4x4Array.map{ $0.inverse }
+        skeletonData.parentIndices = Array(repeating: nil, count: jointCount)
+        for (index, path) in skeletonData.jointPaths.enumerated() {
+            let components = path.components(separatedBy: "/")
+            let name = components.last ?? ""
+            let basePath = components.dropLast().joined(separator: "/")
+            let parentIndex = skeletonData.jointPaths.firstIndex(of: basePath)
+            skeletonData.parentIndices[index] = parentIndex
+            skeletonData.jointNames.append(name)
+        }
+        
+        return skeletonData
     }
 
-    //  Count the element count of the subgraph rooted at object.
+    ///  Count the element count of the subgraph rooted at object.
     private static func subGraphCount(_ object: MDLObject) -> Int {
         var elementCount: Int = 1 // counting us ...
         let childCount = object.children.count
@@ -1107,8 +1070,7 @@ class ModelIOTools {
         return elementCount
     }
 
-    //  Traverse an MDLAsset's scene graph and run a closure on each element,
-    //  passing on each element's flattened node index as well as its parent's index
+    ///  Traverse an MDLAsset's scene graph and run a closure on each element, passing on each element's flattened node index as well as its parent's index
     private static func walkSceneGraph(in asset: MDLAsset, perNodeBody: (MDLObject, Int, Int?) -> Void) {
         func walkGraph(in object: MDLObject, currentIndex: inout Int, parentIndex: Int?, perNodeBody: (MDLObject, Int, Int?) -> Void) {
             perNodeBody(object, currentIndex, parentIndex)
@@ -1131,8 +1093,7 @@ class ModelIOTools {
         }
     }
 
-    //  Traverse thescene graph rooted at object and run a closure on each element,
-    //  passing on each element's flattened node index as well as its parent's index
+    ///  Traverse thescene graph rooted at object and run a closure on each element, passing on each element's flattened node index as well as its parent's index
     private static func walkSceneGraph(rootAt object: MDLObject, perNodeBody: (MDLObject, Int, Int?) -> Void) {
         var currentIndex = 0
 
@@ -1154,8 +1115,7 @@ class ModelIOTools {
         walkGraph(object: object, currentIndex: &currentIndex, parentIndex: nil, perNodeBody: perNodeBody)
     }
 
-    //  Traverse an MDLAsset's masters list and run a closure on each element.
-    //  Model I/O supports instancing. These are the master objects that the instances refer to.
+    ///  Traverse an MDLAsset's masters list and run a closure on each element. Model I/O supports instancing. These are the master objects that the instances refer to.
     private static func walkMasters(in asset: MDLAsset, perNodeBody: (MDLObject) -> Void) {
         func walkGraph(in object: MDLObject, perNodeBody: (MDLObject) -> Void) {
             perNodeBody(object)
@@ -1170,7 +1130,7 @@ class ModelIOTools {
         }
     }
 
-    //  Find the index of the (first) MDLMesh in MDLAsset.masters that an MDLObject.instance points to
+    ///  Find the index of the (first) MDLMesh in MDLAsset.masters that an MDLObject.instance points to
     private static func findMasterIndex(_ masterMeshes: [MDLMesh], _ instance: MDLObject) -> Int? {
         
         //  find first MDLMesh in MDLObject hierarchy
@@ -1198,7 +1158,7 @@ class ModelIOTools {
         return assetURL.appendingPathComponent(path).absoluteString
     }
 
-    //  Find the shortest subpath containing a rootIdentifier (used to find a e.g. skeleton's root path)
+    ///  Find the shortest subpath containing a rootIdentifier (used to find a e.g. skeleton's root path)
     private static func findShortestPath(in path: String, containing rootIdentifier: String) -> String? {
         var result = ""
         let pathArray = path.components(separatedBy: "/")

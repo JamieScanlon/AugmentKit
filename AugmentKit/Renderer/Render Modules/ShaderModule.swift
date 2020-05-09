@@ -95,22 +95,35 @@ protocol SkinningModule {
 extension SkinningModule {
     
     //  Find the largest index of time stamp <= key
-    func lowerBoundKeyframeIndex(_ lhs: [Double], key: Double) -> Int? {
-        if lhs.isEmpty {
+    func lowerBoundKeyframeIndex(_ keyTimes: [Double], key: Double) -> Int? {
+        
+        guard !keyTimes.isEmpty else {
             return nil
         }
         
-        if key < lhs.first! { return 0 }
-        if key > lhs.last! { return lhs.count - 1 }
+        guard let first = keyTimes.first else {
+            return nil
+        }
         
-        var range = 0..<lhs.count
+        guard let last = keyTimes.last else {
+            return nil
+        }
+        
+        if key < first {
+            return 0
+        }
+        if key > last {
+            return keyTimes.count - 1
+        }
+        
+        var range = 0..<keyTimes.count
         
         while range.endIndex - range.startIndex > 1 {
             let midIndex = range.startIndex + (range.endIndex - range.startIndex) / 2
             
-            if lhs[midIndex] == key {
+            if keyTimes[midIndex] == key {
                 return midIndex
-            } else if lhs[midIndex] < key {
+            } else if keyTimes[midIndex] < key {
                 range = midIndex..<range.endIndex
             } else {
                 range = range.startIndex..<midIndex
@@ -120,18 +133,25 @@ extension SkinningModule {
     }
     
     //  Evaluate the skeleton animation at a particular time
-    func evaluateAnimation(_ animation: AnimatedSkeleton, at time: Double) -> [matrix_float4x4] {
-        let keyframeIndex = lowerBoundKeyframeIndex(animation.keyTimes, key: time)!
-        let parentIndices = animation.parentIndices
-        let animJointCount = animation.jointCount
+    func evaluateAnimation(_ skeleton: SkeletonData, keyframeIndex: Int) -> [matrix_float4x4] {
         
-        // get the joints at the specified range
-        let startIndex = keyframeIndex * animJointCount
-        let endIndex = startIndex + animJointCount
+        let parentIndices = skeleton.parentIndices
         
-        // get the translations and rotations using the start and endindex
-        let poseTranslations = [SIMD3<Float>](animation.translations[startIndex..<endIndex])
-        let poseRotations = [simd_quatf](animation.rotations[startIndex..<endIndex])
+        // get the translations and rotations
+        let poseTranslations: [SIMD3<Float>] = {
+            if keyframeIndex < skeleton.animations.count {
+                return skeleton.animations[keyframeIndex].translations
+            } else {
+                return Array(repeating: SIMD3<Float>(0, 0, 0), count: skeleton.jointCount)
+            }
+        }()
+        let poseRotations: [simd_quatf] = {
+            if keyframeIndex < skeleton.animations.count {
+                return skeleton.animations[keyframeIndex].rotations
+            } else {
+                return Array(repeating: simd_quatf(), count: skeleton.jointCount)
+            }
+        }()
         
         var worldPose = [matrix_float4x4]()
         worldPose.reserveCapacity(parentIndices.count)
@@ -153,16 +173,16 @@ extension SkinningModule {
         return worldPose
     }
     
-    //  Using the the skinData and a skeleton's pose in world space, compute the matrix palette
-    func evaluateMatrixPalette(_ worldPose: [matrix_float4x4], _ skinData: SkinData) -> [matrix_float4x4] {
-        let paletteCount = skinData.inverseBindTransforms.count
-        let inverseBindTransforms = skinData.inverseBindTransforms
+    //  Using the the skeletonData and a skeleton's pose in world space, compute the matrix palette
+    func evaluateMatrixPalette(worldPose: [matrix_float4x4], skeletonData: SkeletonData, keyframeIndex: Int) -> [matrix_float4x4] {
+        let paletteCount = skeletonData.inverseBindTransforms.count
+        let inverseBindTransforms = skeletonData.inverseBindTransforms
         
         var palette = [matrix_float4x4]()
         palette.reserveCapacity(paletteCount)
         // using the joint map create the palette for the skeleton
-        for index in 0..<skinData.skinToSkeletonMap.count {
-            palette.append(simd_mul(worldPose[skinData.skinToSkeletonMap[index]], inverseBindTransforms[index]))
+        for index in 0..<skeletonData.jointCount {
+            palette.append(simd_mul(worldPose[index], inverseBindTransforms[index]))
         }
         
         return palette

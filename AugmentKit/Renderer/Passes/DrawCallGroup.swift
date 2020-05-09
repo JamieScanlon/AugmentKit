@@ -38,8 +38,8 @@ class DrawCallGroup {
     var numDrawCalls: Int {
         return drawCalls.count
     }
-    /// The value of this property is set automatically when initializing with an array of draw calls and is `true` if any `DrawCall` uses skins. When this is false the renderer can skip steps for calculating skinned animations resulting in some efficiency gain.
-    var useSkins = false
+    /// The value of this property is set automatically when initializing with an array of draw calls and is `true` if any `DrawCall` has a non-null `skeleton` prorperty set. When this is false the renderer can skip steps for calculating skinned skeleton animations resulting in some efficiency gain.
+    var useSkeleton = false
     /// If `false` the renderer will not generate a shadow for this `DrawCallGroup`
     var generatesShadows: Bool
     
@@ -51,8 +51,8 @@ class DrawCallGroup {
         self.uuid = uuid
         self.drawCalls = drawCalls
         self.generatesShadows = generatesShadows
-        if drawCalls.first(where: {$0.usesSkins}) != nil {
-            self.useSkins = true
+        if drawCalls.first(where: {$0.usesSkeleton}) != nil {
+            self.useSkeleton = true
         }
     }
     
@@ -73,7 +73,7 @@ extension DrawCallGroup: CustomDebugStringConvertible, CustomStringConvertible {
     }
     /// :nodoc:
     var debugDescription: String {
-        let myDescription = "<DrawCallGroup: \(Unmanaged.passUnretained(self).toOpaque())> uuid: \(uuid), moduleIdentifier:\(moduleIdentifier?.debugDescription ?? "None"), numDrawCalls: \(numDrawCalls), useSkins: \(useSkins)"
+        let myDescription = "<DrawCallGroup: \(Unmanaged.passUnretained(self).toOpaque())> uuid: \(uuid), moduleIdentifier:\(moduleIdentifier?.debugDescription ?? "None"), numDrawCalls: \(numDrawCalls), useSkeleton: \(useSkeleton)"
         return myDescription
     }
 }

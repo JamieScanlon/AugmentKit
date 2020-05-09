@@ -437,10 +437,11 @@ class PrecalculationModule: PreRenderComputeModule {
             computeEncoder.pushDebugGroup("Geometry Uniforms")
             computeEncoder.setBuffer(geometryUniformBuffer, offset: geometryUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
             computeEncoder.popDebugGroup()
-        
-            computeEncoder.pushDebugGroup("Palette Uniforms")
-            computeEncoder.setBuffer(paletteBuffer, offset: paletteBufferOffset, index: Int(kBufferIndexMeshPalettes.rawValue))
-            computeEncoder.popDebugGroup()
+            if computePass.hasSkeleton {
+                computeEncoder.pushDebugGroup("Palette Uniforms")
+                computeEncoder.setBuffer(paletteBuffer, offset: paletteBufferOffset, index: Int(kBufferIndexMeshPalettes.rawValue))
+                computeEncoder.popDebugGroup()
+            }
         }
         
         // Output Buffer

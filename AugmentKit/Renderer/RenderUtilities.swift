@@ -187,12 +187,12 @@ class RenderUtilities {
         geometryVertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)].offset = 0
         geometryVertexDescriptor.attributes[Int(kVertexAttributePosition.rawValue)].bufferIndex = Int(kBufferIndexMeshPositions.rawValue)
         
-        // JointIndices (Puppet animations)
+        // JointIndices (Skeletons)
         geometryVertexDescriptor.attributes[Int(kVertexAttributeJointIndices.rawValue)].format = .ushort4 // 8 bytes
         geometryVertexDescriptor.attributes[Int(kVertexAttributeJointIndices.rawValue)].offset = 12
         geometryVertexDescriptor.attributes[Int(kVertexAttributeJointIndices.rawValue)].bufferIndex = Int(kBufferIndexMeshPositions.rawValue)
         
-        // JointWeights (Puppet animations)
+        // JointWeights (Skeletons)
         geometryVertexDescriptor.attributes[Int(kVertexAttributeJointWeights.rawValue)].format = .float4 // 16 bytes
         geometryVertexDescriptor.attributes[Int(kVertexAttributeJointWeights.rawValue)].offset = 20
         geometryVertexDescriptor.attributes[Int(kVertexAttributeJointWeights.rawValue)].bufferIndex = Int(kBufferIndexMeshPositions.rawValue)

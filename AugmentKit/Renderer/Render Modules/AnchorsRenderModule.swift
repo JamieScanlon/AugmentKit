@@ -69,23 +69,23 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         // Also uniform storage must be aligned (to 256 bytes) to meet the requirements to be an
         // argument in the constant address space of our shading functions.
         let materialUniformBufferSize = RenderModuleConstants.alignedMaterialSize * maxInFlightFrames
-        let paletteBufferSize = Constants.alignedPaletteSize * Constants.maxPaletteSize * maxInFlightFrames
+        let jointTransformBufferSize = Constants.alignedJointTransform * Constants.maxJointCount * maxInFlightFrames
         let effectsUniformBufferSize = Constants.alignedEffectsUniformSize * maxInFlightFrames
         let environmentUniformBufferSize = Constants.alignedEnvironmentUniformSize * maxInFlightFrames
         
         // Create and allocate our uniform buffer objects. Indicate shared storage so that both the
         // CPU can access the buffer
         materialUniformBuffer = device?.makeBuffer(length: materialUniformBufferSize, options: .storageModeShared)
-        materialUniformBuffer?.label = "MaterialUniformBuffer"
+        materialUniformBuffer?.label = "Material Uniform Buffer"
         
-        paletteBuffer = device?.makeBuffer(length: paletteBufferSize, options: [])
-        paletteBuffer?.label = "PaletteBuffer"
+        jointTransformBuffer = device?.makeBuffer(length: jointTransformBufferSize, options: [])
+        jointTransformBuffer?.label = "Joint Transform Buffer"
         
         effectsUniformBuffer = device?.makeBuffer(length: effectsUniformBufferSize, options: .storageModeShared)
-        effectsUniformBuffer?.label = "EffectsUniformBuffer"
+        effectsUniformBuffer?.label = "Effects Uniform Buffer"
         
         environmentUniformBuffer = device?.makeBuffer(length: environmentUniformBufferSize, options: .storageModeShared)
-        environmentUniformBuffer?.label = "EnvironmentUniformBuffer"
+        environmentUniformBuffer?.label = "Environment Uniform Buffer"
         
         geometricEntities = []
         
@@ -248,12 +248,12 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         bufferIndex = theBufferIndex
         
         materialUniformBufferOffset = RenderModuleConstants.alignedMaterialSize * bufferIndex
-        paletteBufferOffset = Constants.alignedPaletteSize * Constants.maxPaletteSize * bufferIndex
+        jointTransformBufferOffset = Constants.alignedJointTransform * Constants.maxJointCount * bufferIndex
         effectsUniformBufferOffset = Constants.alignedEffectsUniformSize * bufferIndex
         environmentUniformBufferOffset = Constants.alignedEnvironmentUniformSize * bufferIndex
         
         materialUniformBufferAddress = materialUniformBuffer?.contents().advanced(by: materialUniformBufferOffset)
-        paletteBufferAddress = paletteBuffer?.contents().advanced(by: paletteBufferOffset)
+        jointTransformBufferAddress = jointTransformBuffer?.contents().advanced(by: jointTransformBufferOffset)
         effectsUniformBufferAddress = effectsUniformBuffer?.contents().advanced(by: effectsUniformBufferOffset)
         environmentUniformBufferAddress = environmentUniformBuffer?.contents().advanced(by: environmentUniformBufferOffset)
         
@@ -374,10 +374,10 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                 for akAnchor in akAnchors {
                     
                     //
-                    // Update puppet animation
+                    // Update skeletons
                     //
                     
-                    updatePuppetAnimation(from: drawData, frameNumber: cameraProperties.currentFrame, frameRate: cameraProperties.frameRate)
+                    updateSkeletonAnimation(from: drawData, frameNumber: cameraProperties.currentFrame, frameRate: cameraProperties.frameRate)
                     
                     //
                     // Update Environment
@@ -590,7 +590,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                     renderEncoder.setVertexBytes(&drawCallGroupIndex, length: MemoryLayout<Int32>.size, index: Int(kBufferIndexDrawCallGroupIndex.rawValue))
                     if renderPass.hasSkeleton {
                         // Set any buffers fed into our render pipeline
-                        renderEncoder.setVertexBuffer(paletteBuffer, offset: paletteBufferOffset, index: Int(kBufferIndexMeshPalettes.rawValue))
+                        renderEncoder.setVertexBuffer(jointTransformBuffer, offset: jointTransformBufferOffset, index: Int(kBufferIndexMeshJointTransforms.rawValue))
                     }
                 }
                 var mutableDrawData = drawData
@@ -660,8 +660,8 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     
     private enum Constants {
         static let maxAnchorInstanceCount = 256
-        static let maxPaletteSize = 100
-        static let alignedPaletteSize = (MemoryLayout<matrix_float4x4>.stride & ~0xFF) + 0x100
+        static let maxJointCount = 100
+        static let alignedJointTransform = (MemoryLayout<matrix_float4x4>.stride & ~0xFF) + 0x100
         static let alignedEffectsUniformSize = ((MemoryLayout<AnchorEffectsUniforms>.stride * Constants.maxAnchorInstanceCount) & ~0xFF) + 0x100
         static let alignedEnvironmentUniformSize = ((MemoryLayout<EnvironmentUniforms>.stride * Constants.maxAnchorInstanceCount) & ~0xFF) + 0x100
     }
@@ -674,7 +674,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     private var modelAssetsByUUID = [UUID: MDLAsset]()
     private var shaderPreferenceByUUID = [UUID: ShaderPreference]()
     private var materialUniformBuffer: MTLBuffer?
-    private var paletteBuffer: MTLBuffer?
+    private var jointTransformBuffer: MTLBuffer?
     private var effectsUniformBuffer: MTLBuffer?
     private var environmentUniformBuffer: MTLBuffer?
     private var environmentData: EnvironmentData?
@@ -684,8 +684,8 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     // Offset within materialUniformBuffer to set for the current frame
     private var materialUniformBufferOffset: Int = 0
     
-    // Offset within paletteBuffer to set for the current frame
-    private var paletteBufferOffset = 0
+    // Offset within jointTransformBuffer to set for the current frame
+    private var jointTransformBufferOffset = 0
     
     // Offset within effectsUniformBuffer to set for the current frame
     private var effectsUniformBufferOffset: Int = 0
@@ -696,8 +696,8 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
     // Addresses to write anchor uniforms to each frame
     private var materialUniformBufferAddress: UnsafeMutableRawPointer?
     
-    // Addresses to write palette to each frame
-    private var paletteBufferAddress: UnsafeMutableRawPointer?
+    // Addresses to write jointTransform to each frame
+    private var jointTransformBufferAddress: UnsafeMutableRawPointer?
     
     // Addresses to write effects uniforms to each frame
     private var effectsUniformBufferAddress: UnsafeMutableRawPointer?
@@ -758,25 +758,22 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         
     }
     
-    private func updatePuppetAnimation(from drawData: DrawData, frameNumber: UInt, frameRate: Double = 60) {
+    private func updateSkeletonAnimation(from drawData: DrawData, frameNumber: UInt, frameRate: Double = 60) {
         
-        let capacity = Constants.alignedPaletteSize * Constants.maxPaletteSize
-        let boundPaletteData = paletteBufferAddress?.bindMemory(to: matrix_float4x4.self, capacity: capacity)
-        let paletteData = UnsafeMutableBufferPointer<matrix_float4x4>(start: boundPaletteData, count: Constants.maxPaletteSize)
+        let capacity = Constants.alignedJointTransform * Constants.maxJointCount
+        let boundJointTransformData = jointTransformBufferAddress?.bindMemory(to: matrix_float4x4.self, capacity: capacity)
+        let jointTransformData = UnsafeMutableBufferPointer<matrix_float4x4>(start: boundJointTransformData, count: Constants.maxJointCount)
         
-        var jointPaletteOffset = 0
         if let skeleton = drawData.skeleton {
             let keyTimes = skeleton.animations.map{ $0.keyTime }
             let time = (Double(frameNumber) * 1.0 / frameRate)
             let keyframeIndex = lowerBoundKeyframeIndex(keyTimes, key: time) ?? 0
-            let worldPose = evaluateAnimation(skeleton, keyframeIndex: keyframeIndex)
-            let matrixPalette = evaluateMatrixPalette(worldPose: worldPose, skeletonData: skeleton, keyframeIndex: keyframeIndex)
+            let animationTransforms = evaluateAnimation(skeleton, keyframeIndex: keyframeIndex)
+            let jointTransforms = evaluateJointTransforms(animationTransforms: animationTransforms, skeletonData: skeleton)
             
-            for k in 0..<matrixPalette.count {
-                paletteData[k + jointPaletteOffset] = matrixPalette[k]
+            for k in 0..<jointTransforms.count {
+                jointTransformData[k] = jointTransforms[k]
             }
-            
-            jointPaletteOffset += matrixPalette.count
         }
     }
     

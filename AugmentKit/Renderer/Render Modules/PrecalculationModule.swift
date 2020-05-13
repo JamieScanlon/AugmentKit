@@ -67,23 +67,23 @@ class PrecalculationModule: PreRenderComputeModule {
         // Also uniform storage must be aligned (to 256 bytes) to meet the requirements to be an
         // argument in the constant address space of our shading functions.
         let geometryUniformBufferSize = alignedGeometryInstanceUniformsSize * maxInFlightFrames
-        let paletteBufferSize = Constants.alignedPaletteSize * Constants.maxPaletteCount * maxInFlightFrames
+        let jointTransformBufferSize = Constants.alignedJointTransform * Constants.maxJointCount * maxInFlightFrames
         let effectsUniformBufferSize = alignedEffectsUniformSize * maxInFlightFrames
         let environmentUniformBufferSize = alignedEnvironmentUniformSize * maxInFlightFrames
         
         // Create and allocate our uniform buffer objects. Indicate shared storage so that both the
         // CPU can access the buffer
         geometryUniformBuffer = device.makeBuffer(length: geometryUniformBufferSize, options: .storageModeShared)
-        geometryUniformBuffer?.label = "GeometryUniformBuffer"
+        geometryUniformBuffer?.label = "Geometry Uniform Buffer"
         
-        paletteBuffer = device.makeBuffer(length: paletteBufferSize, options: [])
-        paletteBuffer?.label = "PaletteBuffer"
+        jointTransformBuffer = device.makeBuffer(length: jointTransformBufferSize, options: [])
+        jointTransformBuffer?.label = "Joint Transform Buffer"
         
         effectsUniformBuffer = device.makeBuffer(length: effectsUniformBufferSize, options: .storageModeShared)
-        effectsUniformBuffer?.label = "EffectsUniformBuffer"
+        effectsUniformBuffer?.label = "Effects Uniform Buffer"
         
         environmentUniformBuffer = device.makeBuffer(length: environmentUniformBufferSize, options: .storageModeShared)
-        environmentUniformBuffer?.label = "EnvironmentUniformBuffer"
+        environmentUniformBuffer?.label = "Environment Uniform Buffer"
         
     }
     
@@ -110,12 +110,12 @@ class PrecalculationModule: PreRenderComputeModule {
     func updateBufferState(withBufferIndex bufferIndex: Int) {
         
         geometryUniformBufferOffset = alignedGeometryInstanceUniformsSize * bufferIndex
-        paletteBufferOffset = Constants.alignedPaletteSize * Constants.maxPaletteCount * bufferIndex
+        jointTransformBufferOffset = Constants.alignedJointTransform * Constants.maxJointCount * bufferIndex
         effectsUniformBufferOffset = alignedEffectsUniformSize * bufferIndex
         environmentUniformBufferOffset = alignedEnvironmentUniformSize * bufferIndex
         
         geometryUniformBufferAddress = geometryUniformBuffer?.contents().advanced(by: geometryUniformBufferOffset)
-        paletteBufferAddress = paletteBuffer?.contents().advanced(by: paletteBufferOffset)
+        jointTransformBufferAddress = jointTransformBuffer?.contents().advanced(by: jointTransformBufferOffset)
         effectsUniformBufferAddress = effectsUniformBuffer?.contents().advanced(by: effectsUniformBufferOffset)
         environmentUniformBufferAddress = environmentUniformBuffer?.contents().advanced(by: environmentUniformBufferOffset)
         
@@ -438,8 +438,8 @@ class PrecalculationModule: PreRenderComputeModule {
             computeEncoder.setBuffer(geometryUniformBuffer, offset: geometryUniformBufferOffset, index: Int(kBufferIndexAnchorInstanceUniforms.rawValue))
             computeEncoder.popDebugGroup()
             if computePass.hasSkeleton {
-                computeEncoder.pushDebugGroup("Palette Uniforms")
-                computeEncoder.setBuffer(paletteBuffer, offset: paletteBufferOffset, index: Int(kBufferIndexMeshPalettes.rawValue))
+                computeEncoder.pushDebugGroup("Joint Transform Uniforms")
+                computeEncoder.setBuffer(jointTransformBuffer, offset: jointTransformBufferOffset, index: Int(kBufferIndexMeshJointTransforms.rawValue))
                 computeEncoder.popDebugGroup()
             }
         }
@@ -471,8 +471,8 @@ class PrecalculationModule: PreRenderComputeModule {
     // MARK: - Private
     
     fileprivate enum Constants {
-        static let maxPaletteCount = 100
-        static let alignedPaletteSize = ((MemoryLayout<matrix_float4x4>.stride * maxPaletteCount) & ~0xFF) + 0x100
+        static let maxJointCount = 100
+        static let alignedJointTransform = (MemoryLayout<matrix_float4x4>.stride & ~0xFF) + 0x100
     }
     
     fileprivate var instanceCount: Int = 0
@@ -482,7 +482,7 @@ class PrecalculationModule: PreRenderComputeModule {
     fileprivate var alignedEnvironmentUniformSize: Int = 0
     
     fileprivate var geometryUniformBuffer: MTLBuffer?
-    fileprivate var paletteBuffer: MTLBuffer?
+    fileprivate var jointTransformBuffer: MTLBuffer?
     fileprivate var effectsUniformBuffer: MTLBuffer?
     fileprivate var environmentUniformBuffer: MTLBuffer?
     
@@ -490,16 +490,16 @@ class PrecalculationModule: PreRenderComputeModule {
     
     // Offset within geometryUniformBuffer to set for the current frame
     fileprivate var geometryUniformBufferOffset: Int = 0
-    // Offset within paletteBuffer to set for the current frame
-    fileprivate var paletteBufferOffset = 0
+    // Offset within jointTransformBuffer to set for the current frame
+    fileprivate var jointTransformBufferOffset = 0
     // Offset within effectsUniformBuffer to set for the current frame
     fileprivate var effectsUniformBufferOffset: Int = 0
     // Offset within environmentUniformBuffer to set for the current frame
     fileprivate var environmentUniformBufferOffset: Int = 0
     // Addresses to write geometry uniforms to each frame
     fileprivate var geometryUniformBufferAddress: UnsafeMutableRawPointer?
-    // Addresses to write palette to each frame
-    fileprivate var paletteBufferAddress: UnsafeMutableRawPointer?
+    // Addresses to write jointTransform to each frame
+    fileprivate var jointTransformBufferAddress: UnsafeMutableRawPointer?
     // Addresses to write effects uniforms to each frame
     fileprivate var effectsUniformBufferAddress: UnsafeMutableRawPointer?
     // Addresses to write environment uniforms to each frame

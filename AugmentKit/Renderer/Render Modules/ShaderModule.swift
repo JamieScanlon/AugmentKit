@@ -153,8 +153,8 @@ extension SkinningModule {
             }
         }()
         
-        var worldPose = [matrix_float4x4]()
-        worldPose.reserveCapacity(parentIndices.count)
+        var keyframeTransforms = [matrix_float4x4]()
+        keyframeTransforms.reserveCapacity(parentIndices.count)
         
         // using the parent indices create the worldspace transformations and store
         for index in 0..<parentIndices.count {
@@ -164,28 +164,28 @@ extension SkinningModule {
             let translation = poseTranslations[index]
             localMatrix.columns.3 = SIMD4<Float>(translation.x, translation.y, translation.z, 1.0)
             if let index = parentIndex {
-                worldPose.append(simd_mul(worldPose[index], localMatrix))
+                keyframeTransforms.append(keyframeTransforms[index] * localMatrix)
             } else {
-                worldPose.append(localMatrix)
+                keyframeTransforms.append(localMatrix)
             }
         }
         
-        return worldPose
+        return keyframeTransforms
     }
     
-    //  Using the the skeletonData and a skeleton's pose in world space, compute the matrix palette
-    func evaluateMatrixPalette(worldPose: [matrix_float4x4], skeletonData: SkeletonData, keyframeIndex: Int) -> [matrix_float4x4] {
-        let paletteCount = skeletonData.inverseBindTransforms.count
+    //  Using the the skeletonData and a keyframe animation transform, compute the joint transform
+    func evaluateJointTransforms(animationTransforms: [matrix_float4x4], skeletonData: SkeletonData) -> [matrix_float4x4] {
+        let jointCount = skeletonData.jointCount
         let inverseBindTransforms = skeletonData.inverseBindTransforms
+        let restTransforms = skeletonData.restTransforms
         
-        var palette = [matrix_float4x4]()
-        palette.reserveCapacity(paletteCount)
-        // using the joint map create the palette for the skeleton
+        var jointTransforms = [matrix_float4x4]()
+        jointTransforms.reserveCapacity(jointCount)
         for index in 0..<skeletonData.jointCount {
-            palette.append(simd_mul(worldPose[index], inverseBindTransforms[index]))
+            jointTransforms.append(animationTransforms[index] * restTransforms[index] * inverseBindTransforms[index])
         }
         
-        return palette
+        return jointTransforms
     }
     
 }

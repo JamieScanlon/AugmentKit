@@ -83,11 +83,8 @@ extension RenderModule {
             }
         
             if includeSkeleton {
-                // Set the palette offset info
-                var paletteStartIndex = drawData.paletteStartIndex ?? 0
-                renderEncoder.setVertexBytes(&paletteStartIndex, length: 8, index: Int(kBufferIndexMeshPaletteIndex.rawValue))
-                var paletteSize = drawData.paletteSize
-                renderEncoder.setVertexBytes(&paletteSize, length: 8, index: Int(kBufferIndexMeshPaletteSize.rawValue))
+                var jointCount = drawData.skeleton?.jointCount ?? 0
+                renderEncoder.setVertexBytes(&jointCount, length: 8, index: Int(kBufferIndexMeshJointCount.rawValue))
             }
             
         }

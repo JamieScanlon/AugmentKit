@@ -240,8 +240,6 @@ public struct DrawData {
     var rawVertexBuffers = [MTLBuffer]()
     /// Used in the render pipeline to store the number of instances of this type to render
     var instanceCount = 0
-    var paletteStartIndex: Int?
-    var paletteSize = 0
     var subData = [DrawSubData]()
     var worldTransform: matrix_float4x4 = matrix_identity_float4x4
     var worldTransformAnimations: [matrix_float4x4] = []
@@ -328,6 +326,7 @@ public struct SkeletonData: JointPathRemappable {
     var parentIndices = [Int?]()
     var animations = [SkeletonAnimation]()
     var inverseBindTransforms = [matrix_float4x4]() // The starting set of transforms from each node to it's parent. The number of items should be jointCount
+    var restTransforms = [matrix_float4x4]() // The number of items should be jointCount
     var jointCount: Int {
         return jointPaths.count
     }

@@ -89,7 +89,7 @@ class ComputePass<Out> {
     var usesShadows = false
     
     var geometryBuffer: GPUPassBuffer<AnchorInstanceUniforms>?
-    var paletteBuffer: GPUPassBuffer<AnchorInstanceUniforms>?
+    var jointTransformsBuffer: GPUPassBuffer<AnchorInstanceUniforms>?
     var materialBuffer: GPUPassBuffer<MaterialUniforms>?
     var sharedUniformsBuffer: GPUPassBuffer<SharedUniforms>?
     var environmentBuffer: GPUPassBuffer<EnvironmentUniforms>?
@@ -158,7 +158,7 @@ class ComputePass<Out> {
         if usesGeometry == true {
             geometryBuffer?.initialize(withDevice: device)
             if hasSkeleton {
-                paletteBuffer?.initialize(withDevice: device)
+                jointTransformsBuffer?.initialize(withDevice: device)
             }
         }
         if usesSharedBuffer == true {
@@ -210,7 +210,7 @@ class ComputePass<Out> {
         if usesGeometry == true {
             geometryBuffer?.update(toFrame: index)
             if hasSkeleton {
-                paletteBuffer?.update(toFrame: index)
+                jointTransformsBuffer?.update(toFrame: index)
             }
         }
         if usesSharedBuffer == true {
@@ -278,9 +278,9 @@ class ComputePass<Out> {
             computeEncoder.popDebugGroup()
         }
         
-        if let paletteBuffer = paletteBuffer, usesGeometry, hasSkeleton {
-            computeEncoder.pushDebugGroup(paletteBuffer.label ?? "Palette Buffer")
-            computeEncoder.setBuffer(paletteBuffer.buffer, offset: paletteBuffer.currentBufferFrameOffset, index: paletteBuffer.shaderAttributeIndex)
+        if let jointTransformsBuffer = jointTransformsBuffer, usesGeometry, hasSkeleton {
+            computeEncoder.pushDebugGroup(jointTransformsBuffer.label ?? "Joint Transforms Buffer")
+            computeEncoder.setBuffer(jointTransformsBuffer.buffer, offset: jointTransformsBuffer.currentBufferFrameOffset, index: jointTransformsBuffer.shaderAttributeIndex)
             computeEncoder.popDebugGroup()
         }
         

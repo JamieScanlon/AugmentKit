@@ -395,8 +395,6 @@ class ModelIOTools {
                 
                 // Update the skeleton property with any animation
                 drawData.skeleton = skeletonDataAnimation(from: baseSkeleton, for: object, keyTimes: sampleTimes)
-                drawData.paletteStartIndex = 0
-                drawData.paletteSize = drawData.skeleton?.jointCount ?? 0
                 
                 // Update the World Transforms (calculated previously)
                 if hasAnimation {
@@ -1046,13 +1044,24 @@ class ModelIOTools {
         var skeletonData = SkeletonData()
         skeletonData.jointPaths = skeleton.jointPaths
         skeletonData.inverseBindTransforms = skeleton.jointBindTransforms.float4x4Array.map{ $0.inverse }
+        let jointRestTransforms = skeleton.jointRestTransforms.float4x4Array
         skeletonData.parentIndices = Array(repeating: nil, count: jointCount)
+        skeletonData.restTransforms = Array(repeating: matrix_identity_float4x4, count: jointCount)
         for (index, path) in skeletonData.jointPaths.enumerated() {
             let components = path.components(separatedBy: "/")
             let name = components.last ?? ""
             let basePath = components.dropLast().joined(separator: "/")
             let parentIndex = skeletonData.jointPaths.firstIndex(of: basePath)
+            let jointRestTransform = jointRestTransforms[index]
+            let parentRestTransform: matrix_float4x4 = {
+                if let parentIndex = parentIndex {
+                    return skeletonData.restTransforms[parentIndex]
+                } else {
+                    return matrix_identity_float4x4
+                }
+            }()
             skeletonData.parentIndices[index] = parentIndex
+            skeletonData.restTransforms[index] = parentRestTransform * jointRestTransform
             skeletonData.jointNames.append(name)
         }
         

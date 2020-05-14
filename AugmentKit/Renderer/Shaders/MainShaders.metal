@@ -580,7 +580,7 @@ LightingParameters calculateParameters(ColorInOut in,
     parameters.directionalLightCol = environmentUniforms[in.iid].directionalLightColor;
     parameters.ambientLightCol = environmentUniforms[in.iid].ambientLightColor;
     parameters.ambientIntensity = environmentUniforms[in.iid].ambientLightIntensity;
-    parameters.lightDirection = normalize(in.eyePosition - environmentUniforms[in.iid].directionalLightDirection);
+    parameters.lightDirection = normalize(environmentUniforms[in.iid].directionalLightDirection); 
     // Light falls off based on how closely aligned the surface normal is to the light direction.
     // This is the dot product of the light direction vector and vertex normal.
     // The smaller the angle between those two vectors, the higher this value,

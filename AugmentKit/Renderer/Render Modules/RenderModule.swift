@@ -48,7 +48,7 @@ protocol RenderModule: ShaderModule {
     func loadAssets(forGeometricEntities: [AKGeometricEntity], fromModelProvider: ModelProvider?, textureLoader: MTKTextureLoader, completion: (() -> Void))
     
     /// After this function is called, The Render Pass Desciptors, Textures, Buffers, Render Pipeline State Descriptors, and Depth Stencil Descriptors should all be set up.
-    func loadPipeline(withModuleEntities: [AKEntity], metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, renderPass: RenderPass?, numQualityLevels: Int, completion: (([DrawCallGroup]) -> Void)?)
+    func loadPipeline(withModuleEntities: [AKEntity], metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, modelManager: ModelManager, renderPass: RenderPass?, numQualityLevels: Int, completion: (([DrawCallGroup]) -> Void)?)
     
     //
     // Per Frame Updates

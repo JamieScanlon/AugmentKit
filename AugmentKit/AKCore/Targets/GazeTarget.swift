@@ -95,7 +95,7 @@ extension GazeTarget: CustomStringConvertible, CustomDebugStringConvertible {
     }
     /// :nodoc:
     public var debugDescription: String {
-        let myDescription = "<GazeTarget: \(Unmanaged.passUnretained(self).toOpaque())> type: \(UserTracker.type), identifier: \(identifier?.debugDescription ?? "None"), vectorDirection: \(vectorDirection), position: \(position), asset: \(asset), effects: \(effects.debugDescription), shaderPreference: \(shaderPreference), generatesShadows: \(generatesShadows)"
+        let myDescription = "<GazeTarget: \(Unmanaged.passUnretained(self).toOpaque())> type: \(GazeTarget.type), identifier: \(identifier?.debugDescription ?? "None"), vectorDirection: \(vectorDirection), position: \(position), asset: \(asset), effects: \(effects.debugDescription), shaderPreference: \(shaderPreference), generatesShadows: \(generatesShadows)"
         return myDescription
     }
     

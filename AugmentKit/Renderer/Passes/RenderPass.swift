@@ -83,7 +83,7 @@ class RenderPass {
     var drawCallGroupFilterFunction: ((DrawCallGroup?) -> Bool)?
     
     // The following are used to create DrawCall objects
-    var cullMode: MTLCullMode = .back
+    var cullMode: MTLCullMode = .front
     var depthBias: DepthBias?
     
     init(withDevice device: MTLDevice, renderPassDescriptor: MTLRenderPassDescriptor? = nil, uuid: UUID = UUID()) {

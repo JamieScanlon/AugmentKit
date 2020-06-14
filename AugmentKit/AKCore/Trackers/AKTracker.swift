@@ -31,7 +31,7 @@ import Foundation
 // MARK: - AKTracker
 
 /**
- An `AKTracker` represents an object that can be rendered into the `AKWorld`. It's position is relative to another object and therefore tracks the other opject and is not fixed. The `AKTracker` protocol has two sub protocols, `AKAugmentedTracker` and `AKRealTracker` that represent augmented objects (objects that don't exist in the real world) and real objects, objects that exist both in the augmented work and the real world.
+ An `AKTracker` represents an object that can be rendered into the `AKWorld`. It's position is relative to another object and therefore tracks the other opject and is not fixed.
  
  An `AKTracker` is a `AKGeometricEntity`. The object's geometry is defiened by the `model` property. The object's position is not fixed in world space but is relative.
  */

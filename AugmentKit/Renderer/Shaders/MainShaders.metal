@@ -675,7 +675,10 @@ vertex ColorInOut anchorGeometryVertexTransform(Vertex in [[stage_in]],
     ColorInOut out;
     
     // Make position a float4 to perform 4x4 matrix math on it
-    float4 position = float4(in.position, 1.0);
+//    float4 position = float4(in.position, 1.0);
+    float4 position = float4(-1.0 * in.position.x, in.position.y, in.position.z, 1.0);
+    float3 normal = in.normal;
+    float3 tangent = in.tangent;
     int argumentBufferIndex = drawCallIndex;
     
     float3x3 normalMatrix = arguments[argumentBufferIndex].normalMatrix;
@@ -689,9 +692,9 @@ vertex ColorInOut anchorGeometryVertexTransform(Vertex in [[stage_in]],
     out.eyePosition = float3((modelViewMatrix * position).xyz);
     
     // Rotate our normals to world coordinates
-    out.normal = normalMatrix * in.normal;
-    out.tangent = normalMatrix * in.tangent;
-    out.bitangent = normalMatrix * cross(in.normal, in.tangent);
+    out.normal = normalMatrix * normal;
+    out.tangent = normalMatrix * tangent;
+    out.bitangent = normalMatrix * cross(normal, tangent);
     
     // Texture Coord
     // Pass along the texture coordinate of our vertex such which we'll use to sample from texture's
@@ -740,7 +743,8 @@ vertex ColorInOut anchorGeometryVertexTransformSkinned(Vertex in [[stage_in]],
     ColorInOut out;
     
     // Make position a float4 to perform 4x4 matrix math on it
-    float4 position = float4(in.position, 1.0f);
+//    float4 position = float4(in.position, 1.0f);
+    float4 position = float4(-1.0 * in.position.x, in.position.y, in.position.z, 1.0);
     int argumentBufferIndex = drawCallIndex;
     
     ushort4 jointIndex = in.jointIndices;

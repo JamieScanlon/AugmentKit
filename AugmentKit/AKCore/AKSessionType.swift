@@ -1,5 +1,5 @@
 //
-//  AKBody.swift
+//  AKSessionType.swift
 //  AugmentKit
 //
 //  MIT License
@@ -26,16 +26,29 @@
 //
 
 import Foundation
-import simd
 
-public protocol AKBody: AKTracker {
-    
-    /// The names of all the joints in the model.
-    var jointNames: [String] { get }
-    
-    /// The transform of each joint relative to the transform of the the parent joint.
-    var localJointTransforms: [matrix_float4x4] { get }
-    
-    /// The transform of each joint relative to the transform of the the hip joint. The hip joint is the root of the skeleton and is located at the model origin.
-    var jointTransforms: [matrix_float4x4] { get }
+/**
+ The type of AR session. The three main types of AR sessions are World Tracking, Face Tracking, and Body Tracking.
+ */
+public enum AKSessionType {
+    /**
+     Initializes the ARKit session with an `ARWorldTrackingConfiguration`
+     */
+    case worldTracking
+    /**
+     Initializes the ARKit session with an `ARFaceTrackingConfiguration`
+     */
+    case faceTracking
+    /**
+     Initializes the ARKit session with an `ARWorldTrackingConfiguration` with  `userFaceTrackingEnabled` set to `true`
+     */
+    case worldTrackingWithFaceDetection
+    /**
+     Initializes the ARKit session with an `ARFaceTrackingConfiguration` with  `supportsWorldTracking` set to `true`
+     */
+    case faceTrackingWithWorldTracking
+    /**
+     Initializes the ARKit session with an `ARBodyTrackingConfiguration`
+     */
+    case bodyTracking
 }

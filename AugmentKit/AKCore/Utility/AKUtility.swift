@@ -33,37 +33,6 @@ import ARKit
 import CoreLocation
 import MetalKit
 
-// MARK: - Degree / Radian conversion
-
-public extension Int {
-    /**
-     Converts degrees to radians
-     */
-    func degreesToRadians() -> Double {
-        return Double(self) * .pi / 180
-    }
-    /**
-     Converts radians to degrees
-     */
-    func radiansToDegrees() -> Double {
-        return Double(self) * 180 / .pi
-    }
-}
-public extension FloatingPoint {
-    /**
-     Converts degrees to radians
-     */
-    func degreesToRadians() -> Self {
-        return self * .pi / 180
-    }
-    /**
-     Converts radians to degrees
-     */
-    func radiansToDegrees() -> Self {
-        return self * 180 / .pi
-    }
-}
-
 // MARK: - Lat/Lng calculations
 
 /**

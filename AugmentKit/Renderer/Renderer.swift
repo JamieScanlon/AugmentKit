@@ -380,31 +380,6 @@ open class Renderer: NSObject {
     /**
      State of the renderer
      */
-    public enum RendererSessionType {
-        /**
-         Initializes the ARKit session with an `ARWorldTrackingConfiguration`
-         */
-        case worldTracking
-        /**
-         Initializes the ARKit session with an `ARFaceTrackingConfiguration`
-         */
-        case faceTracking
-        /**
-         Initializes the ARKit session with an `ARWorldTrackingConfiguration` with  `userFaceTrackingEnabled` set to `true`
-         */
-        case worldTrackingWithFaceDetection
-        /**
-         Initializes the ARKit session with an `ARFaceTrackingConfiguration` with  `supportsWorldTracking` set to `true`
-         */
-        case faceTrackingWithWorldTracking
-        /**
-         Initializes the ARKit session with an `ARBodyTrackingConfiguration`
-         */
-        case bodyTracking
-    }
-    /**
-     State of the renderer
-     */
     public enum RendererState {
         /**
          Uninitialized
@@ -499,7 +474,7 @@ open class Renderer: NSObject {
     /**
       Defaults to `worldTracking`. After changing this property you must call `reset(options:)` for the change to take affect.
      */
-    public var sessionType: RendererSessionType
+    public var sessionType: AKSessionType
     /**
      Guides for debugging. Turning this on will show the tracking points used by ARKit as well as detected surfaces. Setting this to true might affect performance.
      */
@@ -629,7 +604,7 @@ open class Renderer: NSObject {
         - textureBundle: The default bundle whe texture assets will attempt to load from
         - faceTrackingEnabled: Set to `true` to enable simultanious face tracking on devices that support TrueDepth cameras
      */
-    public init(session: ARSession, metalDevice device: MTLDevice, renderDestination: RenderDestinationProvider, textureBundle: Bundle, sessionType: RendererSessionType = .worldTracking) {
+    public init(session: ARSession, metalDevice device: MTLDevice, renderDestination: RenderDestinationProvider, textureBundle: Bundle, sessionType: AKSessionType = .worldTracking) {
         
         self.session = session
         self.device = device
@@ -638,6 +613,7 @@ open class Renderer: NSObject {
         self.sessionType = sessionType
         self.textureLoader = MTKTextureLoader(device: device)
         self.matteGenerator = ARMatteGenerator(device: device, matteResolution: .half)
+        self.modelManager = ModelManager(device: device, vertexDescriptor: RenderUtilities.createStandardVertexDescriptor(), textureBundle: textureBundle)
         super.init()
         
         self.session.delegate = self
@@ -820,7 +796,7 @@ open class Renderer: NSObject {
         }
         
         // Add Unanchored modules if nescessary
-        if unanchoredRenderModule == nil && (trackers.count > 0 || gazeTargets.count > 0) {
+        if unanchoredRenderModule == nil && (trackers.count > 0 || gazeTargets.count > 0 || bodies.count > 0) {
             addModule(forModuelIdentifier: UnanchoredRenderModule.identifier)
         }
         
@@ -1087,16 +1063,6 @@ open class Renderer: NSObject {
                         
                     }
 
-//                    mainRenderPass.renderPassDescriptor = mainRenderPassDescriptor
-//                    mainRenderPass.prepareCommandEncoder(withCommandBuffer: commandBuffer)
-//
-//                    // Draw
-//                    if let renderEncoder = mainRenderPass.renderCommandEncoder {
-//                        drawMainPass(with: renderEncoder)
-//                    } else {
-//                        print("WARNING: Could not create MTLRenderCommandEncoder. Aborting draw pass.")
-//                    }
-//
                     // Schedule a present once the framebuffer is complete using the current drawable
                     commandBuffer.present(currentDrawable)
 
@@ -1158,11 +1124,17 @@ open class Renderer: NSObject {
     // MARK: - Adding objects for render
     
     /**
-     Add a new AKAugmentedAnchor to the AR world
+     Add a new AKAugmentedAnchor to the AR world. Requires a `.worldTracking` or `.worldTrackingWithFaceDetection` `sessionType`.
      - Parameters:
         - akAnchor: The anchor to add
      */
     public func add(akAnchor: AKAugmentedAnchor) {
+        
+        guard sessionType == .worldTracking || sessionType == .worldTrackingWithFaceDetection else {
+            let error = AKError.recoverableError(.configurationError(.sessionTypeCapabilities))
+            monitor?.update(renderErrors: [error])
+            return
+        }
         
         let arAnchor = ARAnchor(transform: akAnchor.worldLocation.transform)
         akAnchor.identifier = arAnchor.identifier
@@ -1190,21 +1162,20 @@ open class Renderer: NSObject {
     }
     
     /**
-     Add a new AKAugmentedTracker to the AR world
+     Add a new AKAugmentedTracker to the AR world. Requires a `.worldTracking` or `.worldTrackingWithFaceDetection` `sessionType`.
      - Parameters:
         - akTracker: The tracker to add
      */
     public func add(akTracker: AKAugmentedTracker) {
         
-        let identifier = UUID()
-        
-        if let userTracker = akTracker as? UserTracker {
-            // If a UserTracker instance was passed in, use that directly instead of the
-            // internal type
-            userTracker.identifier = identifier
-        } else {
-            akTracker.identifier = identifier
+        guard sessionType == .worldTracking || sessionType == .worldTrackingWithFaceDetection else {
+            let error = AKError.recoverableError(.configurationError(.sessionTypeCapabilities))
+            monitor?.update(renderErrors: [error])
+            return
         }
+        
+        let identifier = UUID()
+        akTracker.identifier = identifier
         
         let anchorType = type(of: akTracker).type
         
@@ -1226,11 +1197,17 @@ open class Renderer: NSObject {
     }
     
     /**
-     Add a new path to the AR world
+     Add a new path to the AR world. Requires a `.worldTracking` or `.worldTrackingWithFaceDetection` `sessionType`.
      - Parameters:
         - akPath: The path to add
      */
     public func add(akPath: AKPath) {
+        
+        guard sessionType == .worldTracking || sessionType == .worldTrackingWithFaceDetection else {
+            let error = AKError.recoverableError(.configurationError(.sessionTypeCapabilities))
+            monitor?.update(renderErrors: [error])
+            return
+        }
         
         let anchorType = type(of: akPath).type
         
@@ -1266,11 +1243,17 @@ open class Renderer: NSObject {
     }
     
     /**
-     Add a new gaze target to the AR world
+     Add a new gaze target to the AR world. Requires a `.worldTracking` or `.worldTrackingWithFaceDetection` `sessionType`.
      - Parameters:
         - gazeTarget: The gaze target to add
      */
     public func add(gazeTarget: GazeTarget) {
+        
+        guard sessionType == .worldTracking || sessionType == .worldTrackingWithFaceDetection else {
+            let error = AKError.recoverableError(.configurationError(.sessionTypeCapabilities))
+            monitor?.update(renderErrors: [error])
+            return
+        }
         
         let theType = type(of: gazeTarget).type
         let identifier = UUID()
@@ -1289,6 +1272,41 @@ open class Renderer: NSObject {
             hasUninitializedModules = true
         } else {
             entitiesForRenderModule[UnanchoredRenderModule.identifier] = [gazeTarget]
+        }
+        
+    }
+    
+    /**
+     Add a new tracked body to the AR world. Requires a `.bodyTracking` `sessionType`.
+     - Parameters:
+     - trackedBody: The `RealBody` object add
+     */
+    public func add(trackedBody: RealBody) {
+        
+        guard sessionType == .bodyTracking else {
+            let error = AKError.recoverableError(.configurationError(.sessionTypeCapabilities))
+            monitor?.update(renderErrors: [error])
+            return
+        }
+        
+        let theType = type(of: trackedBody).type
+        trackedBody.identifier = nil
+        // This will start off as unanchored until ARKit detects a body
+        trackedBody.position.parentPosition = nil
+        
+        // Resgister the AKModel with the model provider.
+        modelProvider?.registerAsset(trackedBody.asset, forObjectType: theType, identifier: trackedBody.identifier)
+        
+        // Keep track of the tracker bucketed by the RenderModule
+        // This will be used to load individual models per anchor.
+        if let existingGeometries = entitiesForRenderModule[UnanchoredRenderModule.identifier] {
+            var mutableExistingGeometries = existingGeometries
+            mutableExistingGeometries.append(trackedBody)
+            entitiesForRenderModule[UnanchoredRenderModule.identifier] = mutableExistingGeometries
+            unanchoredRenderModule?.state = .uninitialized
+            hasUninitializedModules = true
+        } else {
+            entitiesForRenderModule[UnanchoredRenderModule.identifier] = [trackedBody]
         }
         
     }
@@ -1318,8 +1336,9 @@ open class Renderer: NSObject {
             return
         }
         
-        session.remove(anchor: arAnchor)
+        modelManager.clearCache(asset: akAnchor.asset)
         
+        session.remove(anchor: arAnchor)
     }
     /**
      Remove a new AKAugmentedTracker to the AR world
@@ -1342,6 +1361,8 @@ open class Renderer: NSObject {
         
         unanchoredRenderModule?.state = .uninitialized
         hasUninitializedModules = true
+        
+        modelManager.clearCache(asset: akTracker.asset)
     }
     /**
      Remove a new path to the AR world
@@ -1358,6 +1379,7 @@ open class Renderer: NSObject {
             if let arAnchor = session.currentFrame?.anchors.first(where: {$0.identifier == segment.identifier}) {
                 session.remove(anchor: arAnchor)
             }
+            modelManager.clearCache(asset: segment.asset)
         }
         if let uuid = akPath.identifier {
             uuids.append(uuid)
@@ -1372,7 +1394,6 @@ open class Renderer: NSObject {
             existingGeometries?.remove(at: index)
         }
         entitiesForRenderModule[PathsRenderModule.identifier] = existingGeometries
-        
     }
     
     /**
@@ -1396,6 +1417,33 @@ open class Renderer: NSObject {
         
         unanchoredRenderModule?.state = .uninitialized
         hasUninitializedModules = true
+        
+        modelManager.clearCache(asset: gazeTarget.asset)
+    }
+    
+    /**
+     Remove a tracked body from the AR world
+     - Parameters:
+     - trackedBody: The `RealBody` object add
+     */
+    public func remove(trackedbody: RealBody) {
+        
+        if let uuid = trackedbody.identifier {
+            freeTextureMemory(for: [uuid])
+        }
+        
+        let anchorType = type(of: trackedbody).type
+        modelProvider?.unregisterAsset(forObjectType: anchorType, identifier: trackedbody.identifier)
+        var existingGeometries = entitiesForRenderModule[UnanchoredRenderModule.identifier]
+        if let index = existingGeometries?.firstIndex(where: {$0.identifier == trackedbody.identifier}) {
+            existingGeometries?.remove(at: index)
+        }
+        entitiesForRenderModule[UnanchoredRenderModule.identifier] = existingGeometries
+        
+        unanchoredRenderModule?.state = .uninitialized
+        hasUninitializedModules = true
+        
+        modelManager.clearCache(asset: trackedbody.asset)
     }
     
     // MARK: - Private
@@ -1496,6 +1544,8 @@ open class Renderer: NSObject {
     
     fileprivate let sharedCaptureManager = MTLCaptureManager.shared()
     fileprivate var captureScope: MTLCaptureScope?
+    
+    fileprivate let modelManager: ModelManager
     
     // MARK: ARKit Session Configuration
     
@@ -2013,7 +2063,7 @@ open class Renderer: NSObject {
                         }
                     }
                     
-                    if loadedCount == uninitializedCount {
+                    if loadedCount >= uninitializedCount {
                         loadPipelines(for: modulesLoaded)
                     }
                 })
@@ -2027,7 +2077,7 @@ open class Renderer: NSObject {
                 // Initialize the module
                 module.initializeBuffers(withDevice: device, maxInFlightFrames: Constants.maxInFlightFrames, maxInstances: Constants.maxInstances)
                 loadedCount += 1
-                if loadedCount == uninitializedCount {
+                if loadedCount >= uninitializedCount {
                     loadPipelines(for: modulesLoaded)
                 }
             }
@@ -2058,13 +2108,14 @@ open class Renderer: NSObject {
         }()
         
         renderModules.filter({moduleIdentifiers.contains($0.moduleIdentifier)}).forEach { module in
-            module.loadPipeline(withModuleEntities: entitiesForRenderModule[module.moduleIdentifier] ?? [], metalLibrary: defaultLibrary, renderDestination: renderDestination, textureBundle: textureBundle, renderPass: shadowRenderPass, numQualityLevels: numQualityLevels) { [weak self] drawCallGroups in
+            // FIXME: decouple loading thae pipeline with the render pass so there is not so much duplicated effort
+            module.loadPipeline(withModuleEntities: entitiesForRenderModule[module.moduleIdentifier] ?? [], metalLibrary: defaultLibrary, renderDestination: renderDestination, modelManager: modelManager, renderPass: shadowRenderPass, numQualityLevels: numQualityLevels) { [weak self] drawCallGroups in
                 let removeIDs = drawCallGroups.map({$0.uuid})
                 mutableShadowPassDrawCallGroups.removeAll(where: {removeIDs.contains($0.uuid)})
                 mutableShadowPassDrawCallGroups.append(contentsOf: drawCallGroups)
                 self?.shadowRenderPass?.drawCallGroups = mutableShadowPassDrawCallGroups
             }
-            module.loadPipeline(withModuleEntities: entitiesForRenderModule[module.moduleIdentifier] ?? [], metalLibrary: defaultLibrary, renderDestination: renderDestination, textureBundle: textureBundle, renderPass: mainRenderPass, numQualityLevels: numQualityLevels) { [weak self] drawCallGroups in
+            module.loadPipeline(withModuleEntities: entitiesForRenderModule[module.moduleIdentifier] ?? [], metalLibrary: defaultLibrary, renderDestination: renderDestination, modelManager: modelManager, renderPass: mainRenderPass, numQualityLevels: numQualityLevels) { [weak self] drawCallGroups in
                 let removeIDs = drawCallGroups.map({$0.uuid})
                 mutableMainPassDrawCallGroups.removeAll(where: {removeIDs.contains($0.uuid)})
                 mutableMainPassDrawCallGroups.append(contentsOf: drawCallGroups)
@@ -2342,13 +2393,28 @@ extension Renderer: ARSessionDelegate {
                 
             } else if let arBodyAnchor = anchor as? ARBodyAnchor {
                 
-                modulesToUpdate.insert(UnanchoredRenderModule.identifier)
+                let realBodyAnchor: RealBody? = {
+                    if let found = bodies.first(where: { k in
+                        k.identifier == arBodyAnchor.identifier
+                    }) as? RealBody {
+                        return found
+                    } else if let found = bodies.first(where: { k in
+                        k.identifier == nil
+                    }) as? RealBody {
+                        return found
+                    }
+                    return nil
+                }()
                 
-                if let bodyAnchor = bodies.first(where: { k in
-                    k.identifier == arBodyAnchor.identifier
-                }) as? RealBody {
-                    bodyAnchor.update(with: arBodyAnchor)
+                if realBodyAnchor?.identifier == nil {
+                    // RealBody anchors don't have idnetifiers until they are anchored to a ARBodyAnchor. If this is the case, the geometry has also not been loaded yet so it is not enough to just reload the pipeline. The module nust be reinitialized
+                    realBodyAnchor?.identifier = arBodyAnchor.identifier
+                    unanchoredRenderModule?.state = .uninitialized
+                    hasUninitializedModules = true
+                } else {
+                    modulesToUpdate.insert(UnanchoredRenderModule.identifier)
                 }
+                realBodyAnchor?.update(with: arBodyAnchor)
                 
             } else {
                 if let akAnchor = augmentedAnchors.first(where: { k in

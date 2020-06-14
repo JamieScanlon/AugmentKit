@@ -124,7 +124,7 @@ class PathsRenderModule: RenderModule {
         
     }
     
-    func loadPipeline(withModuleEntities: [AKEntity], metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, renderPass: RenderPass? = nil, numQualityLevels: Int = 1, completion: (([DrawCallGroup]) -> Void)? = nil) {
+    func loadPipeline(withModuleEntities: [AKEntity], metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, modelManager: ModelManager, renderPass: RenderPass? = nil, numQualityLevels: Int = 1, completion: (([DrawCallGroup]) -> Void)? = nil) {
         
         guard let renderPass = renderPass else {
             print("Warning - Skipping all draw calls because the render pass is nil.")
@@ -156,8 +156,8 @@ class PathsRenderModule: RenderModule {
             return
         }
         
-        DispatchQueue.global(qos: .default).async { [weak self] in
-            
+        modelManager.meshGPUData(for: pathSegmentAsset) { [weak self] (meshGPUData, cacheKey) in
+                
             var drawCallGroups = [DrawCallGroup]()
             
             guard let geometricEntities = self?.geometricEntities else {
@@ -168,15 +168,13 @@ class PathsRenderModule: RenderModule {
                 return
             }
             
-            let meshGPUData = ModelIOTools.meshGPUData(from: pathSegmentAsset, device: device, vertexDescriptor: RenderUtilities.createStandardVertexDescriptor(), loadTextures: renderPass.usesLighting, textureBundle: textureBundle)
-            
             // Create a draw call group for every model asset. Each model asset may have multiple instances.
             for geometricEntity in geometricEntities {
                 
                 let uuid = geometricEntity.identifier ?? UUID()
                 
                 // Create a draw call group that contins all of the individual draw calls for this model
-                if let drawCallGroup = self?.createDrawCallGroup(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass, meshGPUData: meshGPUData, geometricEntity: geometricEntity, numQualityLevels: numQualityLevels) {
+                if let meshGPUData = meshGPUData, let drawCallGroup = self?.createDrawCallGroup(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass, meshGPUData: meshGPUData, geometricEntity: geometricEntity, numQualityLevels: numQualityLevels) {
                     drawCallGroup.moduleIdentifier = PathsRenderModule.identifier
                     drawCallGroups.append(drawCallGroup)
                 }
@@ -184,12 +182,9 @@ class PathsRenderModule: RenderModule {
             
             // Because there must be a deterministic way to order the draw calls so the draw call groups are sorted by UUID.
             drawCallGroups.sort { $0.uuid.uuidString < $1.uuid.uuidString }
-            DispatchQueue.main.async { [weak self] in
-                self?.state = .ready
-                completion?(drawCallGroups)
-            }
+            self?.state = .ready
+            completion?(drawCallGroups)
         }
-        
     }
     
     //
@@ -328,9 +323,6 @@ class PathsRenderModule: RenderModule {
         
         // Push a debug group allowing us to identify render commands in the GPU Frame Capture tool
         renderEncoder.pushDebugGroup("Draw Paths")
-        
-        // Set render command encoder state
-        renderEncoder.setCullMode(.back)
         
         if let argumentBufferProperties = argumentBufferProperties, let vertexArgumentBuffer = argumentBufferProperties.vertexArgumentBuffer {
             renderEncoder.pushDebugGroup("Argument Buffer")
@@ -531,7 +523,8 @@ class PathsRenderModule: RenderModule {
         // Create a draw call group containing draw calls. Each draw call is associated with a `DrawData` object in the `MeshGPUData`
         var drawCalls = [DrawCall]()
         for drawData in meshGPUData.drawData {
-            let drawCall = DrawCall(metalLibrary: metalLibrary, renderPass: renderPass, vertexFunctionName: "pathVertexShader", fragmentFunctionName: "pathFragmentShader", vertexDescriptor: meshGPUData.vertexDescriptor, drawData: drawData, numQualityLevels: numQualityLevels)
+            // The cull mode is set to from because the x geometry is flipped in the shader
+            let drawCall = DrawCall(metalLibrary: metalLibrary, renderPass: renderPass, vertexFunctionName: "pathVertexShader", fragmentFunctionName: "pathFragmentShader", vertexDescriptor: meshGPUData.vertexDescriptor, cullMode: .front, drawData: drawData, numQualityLevels: numQualityLevels)
             drawCalls.append(drawCall)
         }
         

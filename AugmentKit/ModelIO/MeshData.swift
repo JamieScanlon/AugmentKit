@@ -325,6 +325,7 @@ public struct SkeletonData: JointPathRemappable {
     var jointNames = [String]()
     var parentIndices = [Int?]()
     var animations = [SkeletonAnimation]()
+    var bindTransforms = [matrix_float4x4]()
     var inverseBindTransforms = [matrix_float4x4]() // The starting set of transforms from each node to it's parent. The number of items should be jointCount
     var restTransforms = [matrix_float4x4]() // The number of items should be jointCount
     var jointCount: Int {

@@ -54,20 +54,20 @@ public struct AKWorldConfiguration {
     /**
      If `true`, for devices with the TrueDepth camera, facial data will be collected.
      */
-    public var usesFaceTracking: Bool = false
+    public var sessionType: AKSessionType = .worldTracking
     /**
      Initialize the `AKWorldConfiguration` object
      - Parameters:
         - usesLocation: When true, AKWorld manager is able to translate postions to real work latitude and longitude. Defaults to `true`.
         - renderDistance: Sets the maximum distance (in meters) that will be rendred. Defaults to 500.
         - hasCoachingOverlay: If `true` a coaching overlay view will automatically be created and added as a subview to the `renderDestination`
-        - usesFaceTracking: If `true`, for devices with the TrueDepth camera, facial data will be collected.
+        - sessionType: The type of AR session. Defaults to `.worldTracking`
      */
-    public init(usesLocation: Bool = true, renderDistance: Double = 500, hasCoachingOverlay: Bool = true, usesFaceTracking: Bool = false) {
+    public init(usesLocation: Bool = true, renderDistance: Double = 500, hasCoachingOverlay: Bool = true, sessionType: AKSessionType = .worldTracking) {
         self.usesLocation = usesLocation
         self.renderDistance = renderDistance
         self.hasCoachingOverlay = hasCoachingOverlay
-        self.usesFaceTracking = usesFaceTracking
+        self.sessionType = sessionType
     }
 }
 
@@ -371,9 +371,8 @@ open class AKWorld: NSObject {
         - renderDestination: The `MTKView` to which the AR world will be rendered.
         - configuration: The `AKWorldConfiguration` object used for configuring the world.
         - textureBundle: The `Bundle` from which the renderer will look for texture assets.
-        - enableFaceTracking: Defaults to `false`. If set to `true`, the world will be initialized with multi-cam world tracking with face tracking.
     */
-    public init(renderDestination: MTKView, configuration: AKWorldConfiguration = AKWorldConfiguration(), textureBundle: Bundle? = nil, enableFaceTracking: Bool = false) {
+    public init(renderDestination: MTKView, configuration: AKWorldConfiguration = AKWorldConfiguration(), textureBundle: Bundle? = nil) {
         
         let bundle: Bundle = {
             if let textureBundle = textureBundle {
@@ -388,7 +387,7 @@ open class AKWorld: NSObject {
             fatalError("Metal is not supported on this device")
         }
         self.device = aDevice
-        self.renderer = Renderer(session: self.session, metalDevice: self.device, renderDestination: renderDestination, textureBundle: bundle, sessionType: enableFaceTracking ? .worldTrackingWithFaceDetection : .worldTracking)
+        self.renderer = Renderer(session: self.session, metalDevice: self.device, renderDestination: renderDestination, textureBundle: bundle, sessionType: configuration.sessionType)
         self.worldStatus = AKWorldStatus(timestamp: Date())
         super.init()
         
@@ -461,7 +460,7 @@ open class AKWorld: NSObject {
     // MARK: Adding and removing anchors
     
     /**
-     Add a new `AKAugmentedAnchor` to the AR world.
+     Add a new `AKAugmentedAnchor` to the AR world. The `AKSesstionType` must be set to `.worldTracking` or `.worldTrackingWithFaceDetection`
      - Parameters:
         - anchor: The `AKAugmentedAnchor` object containing model and position information for the rendered anchor.
      */
@@ -479,7 +478,7 @@ open class AKWorld: NSObject {
     }
     
     /**
-     Add a new `AKAugmentedTracker` to the AR world.
+     Add a new `AKAugmentedTracker` to the AR world. The `AKSesstionType` must be set to `.worldTracking` or `.worldTrackingWithFaceDetection`
      - Parameters:
         - tracker: The `AKAugmentedTracker` object containing model and position information for the rendered tracker.
      */
@@ -497,7 +496,7 @@ open class AKWorld: NSObject {
     }
     
     /**
-     Add a new `GazeTarget` to the AR world.
+     Add a new `GazeTarget` to the AR world. The `AKSesstionType` must be set to `.worldTracking` or `.worldTrackingWithFaceDetection`
      - Parameters:
         - gazeTarget: The `GazeTarget` object containing model and position information for the rendered tracker.
      */
@@ -515,7 +514,7 @@ open class AKWorld: NSObject {
     }
     
     /**
-     Add a new `AKPath` to the AR world.
+     Add a new `AKPath` to the AR world. The `AKSesstionType` must be set to `.worldTracking` or `.worldTrackingWithFaceDetection`
      - Parameters:
         - akPath: The `AKPath` object containing model and position information for the rendered tracker.
      */
@@ -530,6 +529,24 @@ open class AKWorld: NSObject {
      */
     public func remove(akPath: AKPath) {
         renderer.remove(akPath: akPath)
+    }
+    
+    /**
+     Add a new `RealBody` to the AR world. The `AKSesstionType` must be set to `.bodyTracking`
+     - Parameters:
+     - body: The `RealBody` object containing model and position information for the rendered tracked body.
+     */
+    public func add(body: RealBody) {
+        renderer.add(trackedBody: body)
+    }
+    
+    /**
+     Remove an `RealBody` from the AR world.
+     - Parameters:
+     - body: The `RealBody` object to be removed.
+     */
+    public func remove(body: RealBody) {
+        renderer.remove(trackedbody: body)
     }
     
     // MARK: World Map

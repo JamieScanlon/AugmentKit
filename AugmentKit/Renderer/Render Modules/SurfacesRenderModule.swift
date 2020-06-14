@@ -123,7 +123,7 @@ class SurfacesRenderModule: RenderModule {
         
     }
     
-    func loadPipeline(withModuleEntities moduleEntities: [AKEntity], metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, renderPass: RenderPass? = nil, numQualityLevels: Int = 1, completion: (([DrawCallGroup]) -> Void)? = nil) {
+    func loadPipeline(withModuleEntities moduleEntities: [AKEntity], metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, modelManager: ModelManager, renderPass: RenderPass? = nil, numQualityLevels: Int = 1, completion: (([DrawCallGroup]) -> Void)? = nil) {
         
         guard let device = device else {
             print("Serious Error - device not found")
@@ -135,63 +135,74 @@ class SurfacesRenderModule: RenderModule {
             return
         }
         
-        DispatchQueue.global(qos: .default).async { [weak self] in
+        var drawCallGroups = [DrawCallGroup]()
         
-            var drawCallGroups = [DrawCallGroup]()
+        let scatteringFunction = MDLScatteringFunction()
+        let material = MDLMaterial(name: "AKRealSurfaceAnchor - baseMaterial", scatteringFunction: scatteringFunction)
+        let property = MDLMaterialProperty(name: "bsseColor", semantic: .baseColor, float4: SIMD4<Float>(0, 0, 0, 0)) // Clear black
+        material.setProperty(property)
+        
+        let total = moduleEntities.count
+        var count = 0
+        
+        for moduleEntity in moduleEntities {
             
-            let scatteringFunction = MDLScatteringFunction()
-            let material = MDLMaterial(name: "AKRealSurfaceAnchor - baseMaterial", scatteringFunction: scatteringFunction)
-            let property = MDLMaterialProperty(name: "bsseColor", semantic: .baseColor, float4: SIMD4<Float>(0, 0, 0, 0)) // Clear black
-            material.setProperty(property)
-            
-            for moduleEntity in moduleEntities {
+            if let surfaceEntity = moduleEntity as? AKRealSurfaceAnchor {
                 
-                if let surfaceEntity = moduleEntity as? AKRealSurfaceAnchor {
-                    
-                    guard let uuid = surfaceEntity.identifier, let planeGeometry = surfaceEntity.geometry else {
-                        continue
-                    }
-                    
-                    let meshGPUData = ModelIOTools.meshGPUData(from: planeGeometry.vertices, indices: planeGeometry.triangleIndices, textureCoordinates: planeGeometry.textureCoordinates, device: device, material: material, textureBundle: textureBundle)
-                    
-                    if let drawCallGroup = self?.createDrawCallGroup(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass, meshGPUData: meshGPUData, geometricEntity: surfaceEntity, numQualityLevels: numQualityLevels) {
-                        drawCallGroup.moduleIdentifier = SurfacesRenderModule.identifier
-                        drawCallGroups.append(drawCallGroup)
-                    }
-                    
-                } else if let geometricEntity = moduleEntity as? AKGeometricEntity {
-                    
-                    guard let uuid = geometricEntity.identifier else {
-                        continue
-                    }
-                    
-                    let mdlAsset = geometricEntity.asset
-                    let shaderPreference = geometricEntity.shaderPreference
-                    
-                    let meshGPUData = ModelIOTools.meshGPUData(from: mdlAsset, device: device, vertexDescriptor: RenderUtilities.createStandardVertexDescriptor(), frameRate: 60, shaderPreference: shaderPreference, loadTextures: renderPass?.usesLighting ?? true, textureBundle: textureBundle)
-                    
-                    if let drawCallGroup = self?.createDrawCallGroup(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass, meshGPUData: meshGPUData, geometricEntity: geometricEntity, numQualityLevels: numQualityLevels) {
-                        drawCallGroup.moduleIdentifier = SurfacesRenderModule.identifier
-                        drawCallGroups.append(drawCallGroup)
-                    }
-                    
+                guard let uuid = surfaceEntity.identifier, let planeGeometry = surfaceEntity.geometry else {
+                    continue
                 }
                 
+                let meshGPUData = ModelIOTools.meshGPUData(from: planeGeometry.vertices, indices: planeGeometry.triangleIndices, textureCoordinates: planeGeometry.textureCoordinates, device: modelManager.device, material: material, textureBundle: modelManager.textureBundle)
+                
+                let drawCallGroup = createDrawCallGroup(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass, meshGPUData: meshGPUData, geometricEntity: surfaceEntity, numQualityLevels: numQualityLevels)
+                drawCallGroup.moduleIdentifier = SurfacesRenderModule.identifier
+                drawCallGroups.append(drawCallGroup)
+                
+                count += 1
+                if count == total {
+                    
+                    // In the buffer, the anchors are layed out by UUID in sorted order. So if there are
+                    // 5 anchors with UUID = "A..." and 3 UUIDs = "B..." and 1 UUID = "C..." then that's
+                    // how they will layed out in memory. Therefore updating the buffers is a 2 step process.
+                    // First, loop through all of the ARAnchors and gather the UUIDs as well as the counts for each.
+                    // Second, layout and update the buffers in the desired order.
+                    drawCallGroups.sort { $0.uuid.uuidString < $1.uuid.uuidString }
+                    state = .ready
+                    completion?(drawCallGroups)
+                }
+                
+            } else if let geometricEntity = moduleEntity as? AKGeometricEntity {
+                
+                guard let uuid = geometricEntity.identifier else {
+                    continue
+                }
+                
+                let mdlAsset = geometricEntity.asset
+                let shaderPreference = geometricEntity.shaderPreference
+                
+                modelManager.meshGPUData(for: mdlAsset, shaderPreference: shaderPreference) { [weak self] (meshGPUData, cacheKey) in
+                        
+                    if let meshGPUData = meshGPUData, let drawCallGroup = self?.createDrawCallGroup(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass, meshGPUData: meshGPUData, geometricEntity: geometricEntity, numQualityLevels: numQualityLevels) {
+                        drawCallGroup.moduleIdentifier = SurfacesRenderModule.identifier
+                        drawCallGroups.append(drawCallGroup)
+                    }
+                    
+                    count += 1
+                    if count == total {
+                        
+                        // In the buffer, the anchors are layed out by UUID in sorted order. So if there are
+                        // 5 anchors with UUID = "A..." and 3 UUIDs = "B..." and 1 UUID = "C..." then that's
+                        // how they will layed out in memory. Therefore updating the buffers is a 2 step process.
+                        // First, loop through all of the ARAnchors and gather the UUIDs as well as the counts for each.
+                        // Second, layout and update the buffers in the desired order.
+                        drawCallGroups.sort { $0.uuid.uuidString < $1.uuid.uuidString }
+                        self?.state = .ready
+                        completion?(drawCallGroups)
+                    }
+                }
             }
-            
-            // In the buffer, the anchors are layed out by UUID in sorted order. So if there are
-            // 5 anchors with UUID = "A..." and 3 UUIDs = "B..." and 1 UUID = "C..." then that's
-            // how they will layed out in memory. Therefore updating the buffers is a 2 step process.
-            // First, loop through all of the ARAnchors and gather the UUIDs as well as the counts for each.
-            // Second, layout and update the buffers in the desired order.
-            drawCallGroups.sort { $0.uuid.uuidString < $1.uuid.uuidString }
-            DispatchQueue.main.async { [weak self] in
-                self?.state = .ready
-                completion?(drawCallGroups)
-            }
-            
         }
-        
     }
     
     //
@@ -628,7 +639,8 @@ class SurfacesRenderModule: RenderModule {
                 }
             }()
             
-            let drawCall = DrawCall(metalLibrary: metalLibrary, renderPass: renderPass, vertexFunctionName: vertexShaderName, fragmentFunctionName: fragmentShaderName, vertexDescriptor: meshGPUData.vertexDescriptor, drawData: drawData, numQualityLevels: numQualityLevels)
+            // The cull mode is set to from because the x geometry is flipped in the shader
+            let drawCall = DrawCall(metalLibrary: metalLibrary, renderPass: renderPass, vertexFunctionName: vertexShaderName, fragmentFunctionName: fragmentShaderName, vertexDescriptor: meshGPUData.vertexDescriptor, cullMode: .front, drawData: drawData, numQualityLevels: numQualityLevels)
             drawCalls.append(drawCall)
             
         }

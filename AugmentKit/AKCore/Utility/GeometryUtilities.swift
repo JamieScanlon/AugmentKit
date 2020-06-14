@@ -532,6 +532,25 @@ public extension SIMD3 where Scalar == Float {
     }
 }
 
+// MARK: - Int
+
+// MARK: Degree / Radian conversion
+
+public extension Int {
+    /**
+     Converts degrees to radians
+     */
+    func degreesToRadians() -> Double {
+        return Double(self) * .pi / 180
+    }
+    /**
+     Converts radians to degrees
+     */
+    func radiansToDegrees() -> Double {
+        return Double(self) * 180 / .pi
+    }
+}
+
 // MARK: - Float
 
 public extension FloatingPoint {
@@ -548,21 +567,41 @@ public extension FloatingPoint {
     }
 }
 
+// MARK: Degree / Radian conversion
+
+public extension FloatingPoint {
+    /**
+     Converts degrees to radians
+     */
+    func degreesToRadians() -> Self {
+        return self * .pi / 180
+    }
+    /**
+     Converts radians to degrees
+     */
+    func radiansToDegrees() -> Self {
+        return self * 180 / .pi
+    }
+}
+
 // MARK: - EulerAngles
 
 /**
- A structure representing euler angles (roll, yaw, pitch). Parameters are ordered in the ARKit rotation order, ZYX: first roll (about Z axis), then yaw (about Y axis), then pitch (about X axis)
+ A structure representing euler angles (roll, yaw, pitch). Parameters are ordered in the ARKit rotation order, ZYX: first roll (about Z axis), then yaw (about Y axis), then pitch (about X axis). All values are in radians.
  */
 public struct EulerAngles {
+    /// roll (about Z axis) in radians
     public var roll: Float
+    /// yaw (about Y axis in radians
     public var yaw: Float
+    ///  pitch (about X axis) in radians
     public var pitch: Float
     
     /// Creates a new `EulerAngles` object representing euler angles (roll, yaw, pitch). When rotating an object, ARKit uses the rotation order convention of ZYX or roll, yaw, pitch.
     /// - Parameters:
-    ///   - roll: roll (about Z axis)
-    ///   - yaw: yaw (about Y axis)
-    ///   - pitch: pitch (about X axis)
+    ///   - roll: roll (about Z axis) in radians
+    ///   - yaw: yaw (about Y axis) in radians
+    ///   - pitch: pitch (about X axis) in radians
     public init(roll: Float = 0, yaw: Float = 0, pitch: Float = 0) {
         self.roll = roll
         self.yaw = yaw
@@ -580,6 +619,21 @@ extension EulerAngles {
         q *= simd_quatf(angle: yaw, axis: SIMD3<Float>(0, 1, 0))
         q *= simd_quatf(angle: pitch, axis: SIMD3<Float>(1, 0, 0))
         return q
+    }
+}
+
+extension EulerAngles: AdditiveArithmetic {
+    
+    public static var zero: EulerAngles {
+        return EulerAngles()
+    }
+    
+    static public func + (lhs: EulerAngles, rhs: EulerAngles) -> EulerAngles {
+        return EulerAngles(roll: lhs.roll + rhs.roll, yaw: lhs.yaw + rhs.yaw, pitch: lhs.pitch + rhs.pitch)
+    }
+    
+    public static func - (lhs: EulerAngles, rhs: EulerAngles) -> EulerAngles {
+        return EulerAngles(roll: lhs.roll - rhs.roll, yaw: lhs.yaw - rhs.yaw, pitch: lhs.pitch - rhs.pitch)
     }
 }
 
@@ -690,10 +744,10 @@ extension simd_quatf {
         
         let q = vector
         
-        // roll (x-axis rotation)
+        // pitch (x-axis rotation)
         let sinr_cosp = 2 * (q.w * q.x + q.y * q.z)
         let cosr_cosp = 1 - 2 * (q.x * q.x + q.y * q.y)
-        let roll = atan2(sinr_cosp, cosr_cosp)
+        let pitch = atan2(sinr_cosp, cosr_cosp)
         
         // yaw (y-axis rotation)
         let sinp = 2 * (q.w * q.y - q.z * q.x)
@@ -705,10 +759,10 @@ extension simd_quatf {
             }
         }()
         
-        // pitch (z-axis rotation)
+        // roll (z-axis rotation)
         let siny_cosp = 2 * (q.w * q.z + q.x * q.y)
         let cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z)
-        let pitch = atan2(siny_cosp, cosy_cosp)
+        let roll = atan2(siny_cosp, cosy_cosp)
         
         return EulerAngles(roll: roll, yaw: yaw, pitch: pitch)
     }
@@ -829,10 +883,10 @@ extension simd_quatd {
         
         let q = vector
         
-        // roll (x-axis rotation)
+        // pitch (x-axis rotation)
         let sinr_cosp = 2 * (q.w * q.x + q.y * q.z)
         let cosr_cosp = 1 - 2 * (q.x * q.x + q.y * q.y)
-        let roll = atan2(sinr_cosp, cosr_cosp)
+        let pitch = atan2(sinr_cosp, cosr_cosp)
         
         // yaw (y-axis rotation)
         let sinp = 2 * (q.w * q.y - q.z * q.x)
@@ -844,10 +898,10 @@ extension simd_quatd {
             }
         }()
         
-        // pitch (z-axis rotation)
+        // roll (z-axis rotation)
         let siny_cosp = 2 * (q.w * q.z + q.x * q.y)
         let cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z)
-        let pitch = atan2(siny_cosp, cosy_cosp)
+        let roll = atan2(siny_cosp, cosy_cosp)
         
         return EulerAngles(roll: Float(roll), yaw: Float(yaw), pitch: Float(pitch))
     }

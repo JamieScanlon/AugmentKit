@@ -174,13 +174,14 @@ extension SkinningModule {
     }
     
     //  Using the the skeletonData and a keyframe animation transform, compute the joint transform
-    func evaluateJointTransforms(animationTransforms: [matrix_float4x4], skeletonData: SkeletonData) -> [matrix_float4x4] {
+    func evaluateJointTransforms(skeletonData: SkeletonData, keyframeIndex: Int) -> [matrix_float4x4] {
+        let animationTransforms = evaluateAnimation(skeletonData, keyframeIndex: keyframeIndex)
         let jointCount = skeletonData.jointCount
         let inverseBindTransforms = skeletonData.inverseBindTransforms
         let restTransforms = skeletonData.restTransforms
-        
         var jointTransforms = [matrix_float4x4]()
         jointTransforms.reserveCapacity(jointCount)
+        
         for index in 0..<skeletonData.jointCount {
             jointTransforms.append(animationTransforms[index] * restTransforms[index] * inverseBindTransforms[index])
         }
@@ -188,5 +189,28 @@ extension SkinningModule {
         return jointTransforms
     }
     
+    //  Using the the skeletonData and a keyframe animation transform, compute the joint transform
+    func evaluateJointTransforms(skeletonData: SkeletonData, jointModelTransforms: [matrix_float4x4], jointLocalTransforms: [matrix_float4x4], jointMap: [Int]?) -> [matrix_float4x4] {
+        let jointCount = skeletonData.jointCount
+        let inverseBindTransforms = skeletonData.inverseBindTransforms
+        let restTransforms = skeletonData.restTransforms
+        
+        var jointTransforms = [matrix_float4x4]()
+        jointTransforms.reserveCapacity(jointCount)
+        for index in 0..<skeletonData.jointCount {
+            let mappedIndex: Int = {
+                if let jointMap = jointMap, index < jointMap.count {
+                    return jointMap[index]
+                } else {
+                    return index
+                }
+            }()
+            
+            // TODO: WIP - Figure out how to calculate the pose based on jointModelTransforms and jointLocalTransforms
+            jointTransforms.append(restTransforms[index] * inverseBindTransforms[index]) // REST
+        }
+        
+        return jointTransforms
+    }
 }
 

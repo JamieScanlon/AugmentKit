@@ -73,7 +73,10 @@ open class RealBody: AKBody {
     /// The names of all the joints in the model. Only names matching `ARSkeleton.JointName` values will be tracked when calling `update(with: ARBodyAnchor?)`
     public var jointNames: [String] = []
     
-    /// The relative joint transforms of the model.
+    /// The transform of each joint relative to the transform of the the parent joint.
+    public var localJointTransforms: [matrix_float4x4] = []
+    
+    /// The transform of each joint relative to the transform of the the hip joint. The hip joint is the root of the skeleton and is located at the model origin.
     public var jointTransforms: [matrix_float4x4] = []
     
     /// When `true` this object has a parent `ARBodyAnchor`. If this is `false` it will not be rendered.
@@ -85,15 +88,14 @@ open class RealBody: AKBody {
      Initializes a new object with an `MDLAsset` and transform that represents a position relative to the object it is tracking.
      - Parameters:
      - withModelAsset: The `MDLAsset` associated with the entity.
-     - withRelativeTransform: A transform used to create a `AKRelativePosition`
      */
-    public init(with asset: MDLAsset, relativeTransform: matrix_float4x4, to position: AKRelativePosition) {
+    public init(with asset: MDLAsset, relativeTransform: matrix_float4x4 = matrix_identity_float4x4) {
         self.asset = asset
-        let myPosition = AKRelativePosition(withTransform: relativeTransform, relativeTo: position)
+        let myPosition = AKRelativePosition(withTransform: relativeTransform, relativeTo: nil)
         self.position = myPosition
     }
     
-    /// Updates the transform of the parent transform as well as updating the joint transforms. The `jointTransforms` will be overwritten with transforms provided by the `ARBodyAnchor`'s `skeleton` property. The `jointNames` array is used as a key for fetching these transforms therefor only names matching `ARSkeleton.JointName` values will be used for updating the `jointTransforms` property.
+    /// Updates the transform of the parent transform as well as updating the joint transforms. The `jointTransforms`, `localJointTransforms`, and `jointNames` will be overwritten provided by the `ARBodyAnchor`'s `skeleton` property.
     /// - Parameter bodyAnchor: An `ARBodyAnchor` that was detected by ARKit.
     public func update(with bodyAnchor: ARBodyAnchor?) {
         
@@ -101,13 +103,15 @@ open class RealBody: AKBody {
             position.parentPosition = nil
             return
         }
+        identifier = bodyAnchor.identifier
         if position.parentPosition == nil {
             position.parentPosition = AKRelativePosition(withTransform: bodyAnchor.transform)
+            jointNames = bodyAnchor.skeleton.definition.jointNames
         } else {
             position.parentPosition?.transform = bodyAnchor.transform
         }
-        
-        jointTransforms = jointNames.map{ bodyAnchor.skeleton.modelTransform(for: ARSkeleton.JointName(rawValue: $0)) ?? matrix_identity_float4x4 }
+        localJointTransforms = bodyAnchor.skeleton.jointLocalTransforms
+        jointTransforms = bodyAnchor.skeleton.jointModelTransforms
     }
 }
 
@@ -119,7 +123,7 @@ extension RealBody: CustomStringConvertible, CustomDebugStringConvertible {
     }
     /// :nodoc:
     public var debugDescription: String {
-        let myDescription = "<RealBody: \(Unmanaged.passUnretained(self).toOpaque())> type: \(AugmentedTracker.type), identifier: \(identifier?.debugDescription ?? "None"), position: \(position), asset: \(asset), effects: \(effects.debugDescription), shaderPreference: \(shaderPreference), generatesShadows: \(generatesShadows), needsColorTextureUpdate: \(needsColorTextureUpdate), needsMeshUpdate: \(needsMeshUpdate), jointNames: \(jointNames), jointTransforms: \(jointTransforms), isAnchored: \(isAnchored)"
+        let myDescription = "<RealBody: \(Unmanaged.passUnretained(self).toOpaque())> type: \(RealBody.type), identifier: \(identifier?.debugDescription ?? "None"), position: \(position), asset: \(asset), effects: \(effects.debugDescription), shaderPreference: \(shaderPreference), generatesShadows: \(generatesShadows), needsColorTextureUpdate: \(needsColorTextureUpdate), needsMeshUpdate: \(needsMeshUpdate), jointNames: \(jointNames), jointTransforms: \(jointTransforms), localJointTransforms: \(localJointTransforms), isAnchored: \(isAnchored)"
         return myDescription
     }
     

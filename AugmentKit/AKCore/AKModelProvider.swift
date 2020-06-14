@@ -120,7 +120,6 @@ open class AKModelProvider: ModelProvider {
         } else if let anchorAsset = assetsByType[type] {
             completion(anchorAsset)
         } else {
-            print("Warning - Failed to find an MDLAsset for type: \(type).")
             completion(nil)
         }
     }

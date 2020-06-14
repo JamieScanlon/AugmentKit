@@ -106,6 +106,10 @@ public enum AKError: Error {
  */
 public enum AKErrorType {
     /**
+     An error related to misconfiguration of the renderer..
+     */
+    case configurationError(ConfigurationErrorReason)
+    /**
      An error related to loading or parsing an `MDLAsset` model.
      */
     case modelError(ModelErrorReason)
@@ -157,6 +161,16 @@ public enum RenderPipelineErrorReason {
      The render pipline had to abort a draw call due to errors
      */
     case drawAborted(PipelineErrorInfo)
+}
+
+/**
+ `ConfigurationErrorReason` is used as an Associted Value for a `AKErrorType.modelError` and provides the reason for the error. All `ConfigurationErrorReason`s relate to misconfiguration of the renderer.
+ */
+public enum ConfigurationErrorReason {
+    /**
+     The current `AKSessionType` is not capable of performing the requested action
+     */
+    case sessionTypeCapabilities
 }
 
 /**

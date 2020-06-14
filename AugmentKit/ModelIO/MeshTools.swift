@@ -232,212 +232,216 @@ class ModelIOTools {
     
     // MARK: Encoding Mesh Data
     
-    /// Encodes an MDLAsset from ModelIO into a MeshGPUData object which is used internally to set up the render pipeline.
-    static func meshGPUData(from asset: MDLAsset, device: MTLDevice, vertexDescriptor: MDLVertexDescriptor?, frameRate: Double = 60, shaderPreference: ShaderPreference = .pbr, loadTextures: Bool = true, textureBundle: Bundle? = nil) -> MeshGPUData {
+    /// Encodes an MDLAsset from ModelIO into a MeshGPUData object which is used internally to set up the render pipeline. Because the work done in this method is CPU intensive, it is offloaded to a background queue and the result is provided in a completion handler. THE COMPLETION HANDLER IS CALLED ON THE BACKGROUND THREAD so callers may need to dispatch back to the appropriate thread in the completion handler.
+    static func meshGPUData(from asset: MDLAsset, device: MTLDevice, vertexDescriptor: MDLVertexDescriptor?, frameRate: Double = 60, shaderPreference: ShaderPreference = .pbr, loadTextures: Bool = true, textureBundle: Bundle? = nil, completion: ((MeshGPUData) -> Void)?) {
         
         // see: https://github.com/metal-by-example/modelio-materials
         
-        let textureLoader: MTKTextureLoader? = {
-            if loadTextures {
-                return MTKTextureLoader(device: device)
-            } else {
-                return nil
-            }
-        }()
-        var meshGPUData = MeshGPUData()
-        var parentWorldTransformsByIndex = [Int: matrix_float4x4]()
-        var parentWorldAnimationTransformsByIndex = [Int: [matrix_float4x4]]()
+        DispatchQueue.global(qos: .default).async {
         
-        // Vertex Descriptor that will be used by the render pipeline. If none was provided
-        // a standard one is created which is a Vertiex Descriptor compatible with AnchorShaders.metal
-        let concreteVertexDescriptor: MDLVertexDescriptor = {
-            if let vertexDescriptor = vertexDescriptor {
-                return vertexDescriptor
-            } else {
-                return RenderUtilities.createStandardVertexDescriptor()
-            }
-        }()
-        
-        // The loadTextures() method iterates all of the materials in the asset and, if
-        // they are strings or URLs, loads their associated image data. The material
-        // property will then report its type as `.texture` and will have an `MDLTextureSampler`
-        // object as its `textureSamplerValue` property.
-        asset.loadTextures()
-        
-        // Find the root meshes
-//        for sourceMesh in asset.childObjects(of: MDLMesh.self) as! [MDLMesh] {
-//
-//            // Calculate tangent information
-////            sourceMesh.addTangentBasis(forTextureCoordinateAttributeNamed: MDLVertexAttributeTextureCoordinate, normalAttributeNamed: MDLVertexAttributeNormal, tangentAttributeNamed: MDLVertexAttributeTangent)
-//
-//            // Set the Vertex Descriptor
-//            sourceMesh.vertexDescriptor = concreteVertexDescriptor
-//
-//        }
-        
-        //
-        // Animation frame times @ 60fps
-        //
-        
-        let sampleTimes = sampleTimeInterval(start: asset.startTime, end: asset.endTime, frameInterval: 1.0 / frameRate)
-        let hasAnimation = sampleTimes.count > 0
-        
-        //
-        // Parse and store the mesh data
-        //
-        
-        var masterMeshes: [MDLMesh] = []
-        var masterDrawDatas: [DrawData] = []
-        walkMasters(in: asset) { object in
+            let textureLoader: MTKTextureLoader? = {
+                if loadTextures {
+                    return MTKTextureLoader(device: device)
+                } else {
+                    return nil
+                }
+            }()
+            var meshGPUData = MeshGPUData()
+            var parentWorldTransformsByIndex = [Int: matrix_float4x4]()
+            var parentWorldAnimationTransformsByIndex = [Int: [matrix_float4x4]]()
             
-            guard let mesh = object as? MDLMesh else {
-                return
-            }
+            // Vertex Descriptor that will be used by the render pipeline. If none was provided
+            // a standard one is created which is a Vertiex Descriptor compatible with AnchorShaders.metal
+            let concreteVertexDescriptor: MDLVertexDescriptor = {
+                if let vertexDescriptor = vertexDescriptor {
+                    return vertexDescriptor
+                } else {
+                    return RenderUtilities.createStandardVertexDescriptor()
+                }
+            }()
             
-            // Calculate tangent information
-//            mesh.addTangentBasis(forTextureCoordinateAttributeNamed: MDLVertexAttributeTextureCoordinate, normalAttributeNamed: MDLVertexAttributeNormal, tangentAttributeNamed: MDLVertexAttributeTangent)
+            // The loadTextures() method iterates all of the materials in the asset and, if
+            // they are strings or URLs, loads their associated image data. The material
+            // property will then report its type as `.texture` and will have an `MDLTextureSampler`
+            // object as its `textureSamplerValue` property.
+            asset.loadTextures()
             
-            // Set the Vertex Descriptor
-            mesh.vertexDescriptor = concreteVertexDescriptor
-            
-            let drawData = store(mesh, device: device, textureBundle: textureBundle, textureLoader: textureLoader, vertexDescriptor: vertexDescriptor, baseURL: asset.url?.deletingLastPathComponent())
-            masterDrawDatas.append(drawData)
-            masterMeshes.append(mesh)
-            
-        }
-        
-        //
-        // Find and parse skeleton animations
-        // Only One MDLSkeleton is supported. If there are multiple, the firs will be used and the others ignored.
-        //
-        
-        let baseSkeleton: SkeletonData? = createSkeleton(from: asset)
-        
-        walkSceneGraph(in: asset) { object, currentIndex, parentIndex in
+            // Find the root meshes
+    //        for sourceMesh in asset.childObjects(of: MDLMesh.self) as! [MDLMesh] {
+    //
+    //            // Calculate tangent information
+    ////            sourceMesh.addTangentBasis(forTextureCoordinateAttributeNamed: MDLVertexAttributeTextureCoordinate, normalAttributeNamed: MDLVertexAttributeNormal, tangentAttributeNamed: MDLVertexAttributeTangent)
+    //
+    //            // Set the Vertex Descriptor
+    //            sourceMesh.vertexDescriptor = concreteVertexDescriptor
+    //
+    //        }
             
             //
-            // Calculate the World Transform / World Transform Animations for each node
+            // Animation frame times @ 60fps
             //
             
-            if hasAnimation {
-                
-                // Get the local transform for this node
-                let myLocalTransformAnimations: [matrix_float4x4] = {
-                    if let transform = object.transform {
-                        if transform.keyTimes.count > 1 {
-                            return sampleTimes.map { transform.localTransform?(atTime: $0) ?? matrix_identity_float4x4 }
-                        } else {
-                            return [matrix_float4x4](repeating: transform.matrix, count: sampleTimes.count)
-                        }
-                    } else {
-                        return [matrix_float4x4](repeating: matrix_identity_float4x4, count: sampleTimes.count)
-                    }
-                }()
-                
-                // Get the world transform for this node
-                let myWorldTransformAnimations: [matrix_float4x4] = {
-                    if let parentIndex = parentIndex, let parentAnimationTransforms = parentWorldAnimationTransformsByIndex[parentIndex] {
-                        // If this node has a parent, calculate the world transform by multiplying the parent world transform and the local transform
-                        let myTransformAnimations: [matrix_float4x4] = (0..<min(parentAnimationTransforms.count, myLocalTransformAnimations.count)).map { index in
-                            let parentTransformAtIndex = parentAnimationTransforms[index]
-                            let localTransformAtIndex = myLocalTransformAnimations[index]
-                            return parentTransformAtIndex * localTransformAtIndex
-                        }
-                        return myTransformAnimations
-                    } else {
-                        // If this node has no parent, the world transform is the local transform
-                        return myLocalTransformAnimations
-                    }
-                }()
-                
-                parentWorldAnimationTransformsByIndex[currentIndex] = myWorldTransformAnimations
-                
-            } else {
-                
-                // Get the local transform for this node
-                let myLocalTransform: matrix_float4x4 = {
-                    if let transform = object.transform, !transform.matrix.isZero() {
-                        return transform.matrix
-                    } else {
-                        return matrix_identity_float4x4
-                    }
-                }()
-                
-                // Get the local transform for this node
-                let myWorldTransform: matrix_float4x4 = {
-                    if let parentIndex = parentIndex, let parentTransform = parentWorldTransformsByIndex[parentIndex] {
-                        // If this node has a parent, calculate the world transform by multiplying the parent world transform and the local transform
-                        return parentTransform * myLocalTransform
-                    } else {
-                        // If this node has no parent, the world transform is the local transform
-                        return myLocalTransform
-                    }
-                }()
-                
-                parentWorldTransformsByIndex[currentIndex] = myWorldTransform
-                
-            }
+            let sampleTimes = sampleTimeInterval(start: asset.startTime, end: asset.endTime, frameInterval: 1.0 / frameRate)
+            let hasAnimation = sampleTimes.count > 0
             
             //
-            // Create DrawData Objects for each MDLMesh found
+            // Parse and store the mesh data
             //
             
-            if let mesh = object as? MDLMesh {
+            var masterMeshes: [MDLMesh] = []
+            var masterDrawDatas: [DrawData] = []
+            walkMasters(in: asset) { object in
+                
+                guard let mesh = object as? MDLMesh else {
+                    return
+                }
                 
                 // Calculate tangent information
-//                mesh.addTangentBasis(forTextureCoordinateAttributeNamed: MDLVertexAttributeTextureCoordinate, normalAttributeNamed: MDLVertexAttributeNormal, tangentAttributeNamed: MDLVertexAttributeTangent)
+    //            mesh.addTangentBasis(forTextureCoordinateAttributeNamed: MDLVertexAttributeTextureCoordinate, normalAttributeNamed: MDLVertexAttributeNormal, tangentAttributeNamed: MDLVertexAttributeTangent)
                 
                 // Set the Vertex Descriptor
                 mesh.vertexDescriptor = concreteVertexDescriptor
                 
-                // Create a new DrawData object from the mesh
-                var drawData = store(mesh, device: device, textureBundle: textureBundle, textureLoader: textureLoader, vertexDescriptor: vertexDescriptor, baseURL: asset.url?.deletingLastPathComponent())
-                
-                // Update the skeleton property with any animation
-                drawData.skeleton = skeletonDataAnimation(from: baseSkeleton, for: object, keyTimes: sampleTimes)
-                
-                // Update the World Transforms (calculated previously)
-                if hasAnimation {
-                    drawData.worldTransformAnimations = parentWorldAnimationTransformsByIndex[currentIndex] ?? []
-                } else {
-                    drawData.worldTransform = parentWorldTransformsByIndex[currentIndex] ?? matrix_identity_float4x4
-                }
-                
-                // Add the new DrawData object to meshGPUData
-                meshGPUData.drawData.append(drawData)
-                
-            } else if let instance = object.instance, let masterIndex = findMasterIndex(masterMeshes, instance) {
-                
-                // Get a copy of the DrawData object from the array of master DrawData objects
-                var drawData = masterDrawDatas[masterIndex]
-                
-                // Update the skeleton property with any animation
-                drawData.skeleton = skeletonDataAnimation(from: baseSkeleton, for: object, keyTimes: sampleTimes)
-                
-                // Update the World Transforms (calculated previously)
-                if hasAnimation {
-                    drawData.worldTransformAnimations = parentWorldAnimationTransformsByIndex[currentIndex] ?? []
-                    print()
-                } else {
-                    drawData.worldTransform = parentWorldTransformsByIndex[currentIndex] ?? matrix_identity_float4x4
-                }
-                
-                // Add the new DrawData object to meshGPUData
-                meshGPUData.drawData.append(drawData)
+                let drawData = store(mesh, device: device, textureBundle: textureBundle, textureLoader: textureLoader, vertexDescriptor: vertexDescriptor, baseURL: asset.url?.deletingLastPathComponent())
+                masterDrawDatas.append(drawData)
+                masterMeshes.append(mesh)
                 
             }
             
+            //
+            // Find and parse skeleton animations
+            // Only One MDLSkeleton is supported. If there are multiple, the firs will be used and the others ignored.
+            //
+            
+            let baseSkeleton: SkeletonData? = createSkeleton(from: asset)
+            
+            walkSceneGraph(in: asset) { object, currentIndex, parentIndex in
+                
+                //
+                // Calculate the World Transform / World Transform Animations for each node
+                //
+                
+                if hasAnimation {
+                    
+                    // Get the local transform for this node
+                    let myLocalTransformAnimations: [matrix_float4x4] = {
+                        if let transform = object.transform {
+                            if transform.keyTimes.count > 1 {
+                                return sampleTimes.map { transform.localTransform?(atTime: $0) ?? matrix_identity_float4x4 }
+                            } else {
+                                return [matrix_float4x4](repeating: transform.matrix, count: sampleTimes.count)
+                            }
+                        } else {
+                            return [matrix_float4x4](repeating: matrix_identity_float4x4, count: sampleTimes.count)
+                        }
+                    }()
+                    
+                    // Get the world transform for this node
+                    let myWorldTransformAnimations: [matrix_float4x4] = {
+                        if let parentIndex = parentIndex, let parentAnimationTransforms = parentWorldAnimationTransformsByIndex[parentIndex] {
+                            // If this node has a parent, calculate the world transform by multiplying the parent world transform and the local transform
+                            let myTransformAnimations: [matrix_float4x4] = (0..<min(parentAnimationTransforms.count, myLocalTransformAnimations.count)).map { index in
+                                let parentTransformAtIndex = parentAnimationTransforms[index]
+                                let localTransformAtIndex = myLocalTransformAnimations[index]
+                                return parentTransformAtIndex * localTransformAtIndex
+                            }
+                            return myTransformAnimations
+                        } else {
+                            // If this node has no parent, the world transform is the local transform
+                            return myLocalTransformAnimations
+                        }
+                    }()
+                    
+                    parentWorldAnimationTransformsByIndex[currentIndex] = myWorldTransformAnimations
+                    
+                } else {
+                    
+                    // Get the local transform for this node
+                    let myLocalTransform: matrix_float4x4 = {
+                        if let transform = object.transform, !transform.matrix.isZero() {
+                            return transform.matrix
+                        } else {
+                            return matrix_identity_float4x4
+                        }
+                    }()
+                    
+                    // Get the local transform for this node
+                    let myWorldTransform: matrix_float4x4 = {
+                        if let parentIndex = parentIndex, let parentTransform = parentWorldTransformsByIndex[parentIndex] {
+                            // If this node has a parent, calculate the world transform by multiplying the parent world transform and the local transform
+                            return parentTransform * myLocalTransform
+                        } else {
+                            // If this node has no parent, the world transform is the local transform
+                            return myLocalTransform
+                        }
+                    }()
+                    
+                    parentWorldTransformsByIndex[currentIndex] = myWorldTransform
+                    
+                }
+                
+                //
+                // Create DrawData Objects for each MDLMesh found
+                //
+                
+                if let mesh = object as? MDLMesh {
+                    
+                    // Calculate tangent information
+    //                mesh.addTangentBasis(forTextureCoordinateAttributeNamed: MDLVertexAttributeTextureCoordinate, normalAttributeNamed: MDLVertexAttributeNormal, tangentAttributeNamed: MDLVertexAttributeTangent)
+                    
+                    // Set the Vertex Descriptor
+                    mesh.vertexDescriptor = concreteVertexDescriptor
+                    
+                    // Create a new DrawData object from the mesh
+                    var drawData = store(mesh, device: device, textureBundle: textureBundle, textureLoader: textureLoader, vertexDescriptor: vertexDescriptor, baseURL: asset.url?.deletingLastPathComponent())
+                    
+                    // Update the skeleton property with any animation
+                    drawData.skeleton = skeletonDataAnimation(from: baseSkeleton, for: object, keyTimes: sampleTimes)
+                    
+                    // Update the World Transforms (calculated previously)
+                    if hasAnimation {
+                        drawData.worldTransformAnimations = parentWorldAnimationTransformsByIndex[currentIndex] ?? []
+                    } else {
+                        drawData.worldTransform = parentWorldTransformsByIndex[currentIndex] ?? matrix_identity_float4x4
+                    }
+                    
+                    // Add the new DrawData object to meshGPUData
+                    meshGPUData.drawData.append(drawData)
+                    
+                } else if let instance = object.instance, let masterIndex = findMasterIndex(masterMeshes, instance) {
+                    
+                    // Get a copy of the DrawData object from the array of master DrawData objects
+                    var drawData = masterDrawDatas[masterIndex]
+                    
+                    // Update the skeleton property with any animation
+                    drawData.skeleton = skeletonDataAnimation(from: baseSkeleton, for: object, keyTimes: sampleTimes)
+                    
+                    // Update the World Transforms (calculated previously)
+                    if hasAnimation {
+                        drawData.worldTransformAnimations = parentWorldAnimationTransformsByIndex[currentIndex] ?? []
+                        print()
+                    } else {
+                        drawData.worldTransform = parentWorldTransformsByIndex[currentIndex] ?? matrix_identity_float4x4
+                    }
+                    
+                    // Add the new DrawData object to meshGPUData
+                    meshGPUData.drawData.append(drawData)
+                    
+                }
+                
+            }
+            
+            // Update the Vertex Descriptor
+            if let vertexDescriptor = vertexDescriptor, let mtlVertexDescriptor = MTKMetalVertexDescriptorFromModelIO(vertexDescriptor) {
+                meshGPUData.vertexDescriptor = mtlVertexDescriptor
+            }
+            
+            // Shader preference
+            meshGPUData.shaderPreference = shaderPreference
+            
+            completion?(meshGPUData)
+            
         }
-        
-        // Update the Vertex Descriptor
-        if let vertexDescriptor = vertexDescriptor, let mtlVertexDescriptor = MTKMetalVertexDescriptorFromModelIO(vertexDescriptor) {
-            meshGPUData.vertexDescriptor = mtlVertexDescriptor
-        }
-        
-        // Shader preference
-        meshGPUData.shaderPreference = shaderPreference
-        
-        return meshGPUData
         
     }
     
@@ -882,35 +886,6 @@ class ModelIOTools {
         
     }
     
-    /// Create a `SkeletonData` object of the provided `MDLObject` has joint transform informtaion
-    /// - Parameter object: An `MDLObject`
-    /// - Parameter from: A base `SkeletonData` object
-    /// - Parameter keyTimes: Keyframe sample times
-    /// - Returns: `SkeletonData` or `nil` if not data is found
-    private static func skeletonDataAnimation(from baseSkeleton: SkeletonData?, for object: MDLObject, keyTimes: [TimeInterval]) -> SkeletonData? {
-        
-        guard let baseSkeleton = baseSkeleton else {
-            return nil
-        }
-        
-        // MDLAnimationBindComponent? Im not sure what this component's role is in joint anomation because, guess what, "No Overview Available"
-        guard let jointAnimation = object.components.first(where: {$0 is MDLPackedJointAnimation}) as? MDLPackedJointAnimation else {
-            return baseSkeleton
-        }
-        
-        var skeleton = baseSkeleton
-        var animations = [SkeletonAnimation]()
-        for time in keyTimes {
-            let translations = jointAnimation.translations.float3Array(atTime: time)
-            let rotations = jointAnimation.rotations.floatQuaternionArray(atTime: time)
-            let animation = SkeletonAnimation(keyTime: time, translations: translations, rotations: rotations)
-            animations.append(animation)
-        }
-        
-        skeleton.animations = animations
-        return skeleton
-    }
-    
     private static func readMaterialPropertyValue(from property: MDLMaterialProperty, textureLoader: MTKTextureLoader? = nil, bundle: Bundle? = nil, baseURL: URL? = nil) -> (uniform: Any?, texture: MTLTexture?)? {
         
         var result: (uniform: Any?, texture: MTLTexture?) = (nil, nil)
@@ -1011,18 +986,6 @@ class ModelIOTools {
         
         return nil
     }
-
-    ///  Compute an index map from all elements of A.jointPaths to the corresponding paths in B.jointPaths
-    private static func mapJoints<A: JointPathRemappable, B: JointPathRemappable>(from src: A, to dst: B) -> [Int] {
-        let dstJointPaths = dst.jointPaths
-        return src.jointPaths.compactMap { srcJointPath in
-            if let index = dstJointPaths.firstIndex(of: srcJointPath) {
-                return index
-            }
-            print("Warning! animated joint \(srcJointPath) does not exist in skeleton")
-            return nil
-        }
-    }
     
     /// Construct a `SkeletonData`. This generates a base object with no animation.
     private static func createSkeleton(from asset: MDLAsset) -> SkeletonData? {
@@ -1040,11 +1003,16 @@ class ModelIOTools {
         }
         
         let jointCount = skeleton.jointPaths.count
-        
-        var skeletonData = SkeletonData()
-        skeletonData.jointPaths = skeleton.jointPaths
-        skeletonData.inverseBindTransforms = skeleton.jointBindTransforms.float4x4Array.map{ $0.inverse }
+        let jointPaths = skeleton.jointPaths
+        let bindTransforms = skeleton.jointBindTransforms.float4x4Array
         let jointRestTransforms = skeleton.jointRestTransforms.float4x4Array
+//        print("********************")
+//        print("*  MeshTools - createSkeleton()")
+//        print("********************")
+        var skeletonData = SkeletonData()
+        skeletonData.jointPaths = jointPaths
+        skeletonData.bindTransforms = Array(repeating: matrix_identity_float4x4, count: jointCount)
+        skeletonData.inverseBindTransforms = Array(repeating: matrix_identity_float4x4, count: jointCount)
         skeletonData.parentIndices = Array(repeating: nil, count: jointCount)
         skeletonData.restTransforms = Array(repeating: matrix_identity_float4x4, count: jointCount)
         for (index, path) in skeletonData.jointPaths.enumerated() {
@@ -1053,6 +1021,7 @@ class ModelIOTools {
             let basePath = components.dropLast().joined(separator: "/")
             let parentIndex = skeletonData.jointPaths.firstIndex(of: basePath)
             let jointRestTransform = jointRestTransforms[index]
+            let jointBindTransform = bindTransforms[index]
             let parentRestTransform: matrix_float4x4 = {
                 if let parentIndex = parentIndex {
                     return skeletonData.restTransforms[parentIndex]
@@ -1060,12 +1029,60 @@ class ModelIOTools {
                     return matrix_identity_float4x4
                 }
             }()
+            let parentBindTransform: matrix_float4x4 = {
+                if let parentIndex = parentIndex {
+                    return skeletonData.bindTransforms[parentIndex]
+                } else {
+                    return matrix_identity_float4x4
+                }
+            }()
             skeletonData.parentIndices[index] = parentIndex
             skeletonData.restTransforms[index] = parentRestTransform * jointRestTransform
+            skeletonData.bindTransforms[index] = parentBindTransform * jointBindTransform
+            skeletonData.inverseBindTransforms[index] = jointBindTransform.inverse
             skeletonData.jointNames.append(name)
+//            print("***** \(name) @ \(index) *****")
+//            print("** path: \(path)")
+//            print("** parentIndex: \(parentIndex)")
+//            print("** restTransform:\n\(jointRestTransform)")
+//            print("** parentRestTransform:\n\(parentRestTransform)")
+//            print("** parentBindTransform:\n\(parentBindTransform)")
+//            print("** skeletonData restTransform (parentRest * rest):\n\(skeletonData.restTransforms[index])")
+//            print("** skeletonData bindTransform (parentBind * bind):\n\(skeletonData.bindTransforms[index])")
+//            print("** bindTransform:\n\(jointBindTransform)")
+//            print("** inverseBindTransform:\n\(skeletonData.inverseBindTransforms[index])")
         }
         
         return skeletonData
+    }
+    
+    /// Create a `SkeletonData` object of the provided `MDLObject` has joint transform informtaion
+    /// - Parameter object: An `MDLObject`
+    /// - Parameter from: A base `SkeletonData` object
+    /// - Parameter keyTimes: Keyframe sample times
+    /// - Returns: `SkeletonData` or `nil` if not data is found
+    private static func skeletonDataAnimation(from baseSkeleton: SkeletonData?, for object: MDLObject, keyTimes: [TimeInterval]) -> SkeletonData? {
+        
+        guard let baseSkeleton = baseSkeleton else {
+            return nil
+        }
+        
+        // MDLAnimationBindComponent? Im not sure what this component's role is in joint anomation because, guess what, "No Overview Available"
+        guard let jointAnimation = object.components.first(where: {$0 is MDLPackedJointAnimation}) as? MDLPackedJointAnimation else {
+            return baseSkeleton
+        }
+        
+        var skeleton = baseSkeleton
+        var animations = [SkeletonAnimation]()
+        for time in keyTimes {
+            let translations = jointAnimation.translations.float3Array(atTime: time)
+            let rotations = jointAnimation.rotations.floatQuaternionArray(atTime: time)
+            let animation = SkeletonAnimation(keyTime: time, translations: translations, rotations: rotations)
+            animations.append(animation)
+        }
+        
+        skeleton.animations = animations
+        return skeleton
     }
 
     ///  Count the element count of the subgraph rooted at object.

@@ -102,7 +102,7 @@ class UnanchoredRenderModule: RenderModule, SkinningModule {
         }
         
         textureLoader = aTextureLoader
-        geometricEntities.append(contentsOf: theGeometricEntities)
+        geometricEntities = theGeometricEntities
         
         //
         // Create and load our models
@@ -118,7 +118,6 @@ class UnanchoredRenderModule: RenderModule, SkinningModule {
             hasLoadedTrackerAsset = true
             
             guard let asset = asset else {
-                print("Warning (UnanchoredRenderModule) - Failed to get a MDLAsset for type \(UserTracker.type) from the modelProvider.")
                 let newError = AKError.warning(.modelError(.modelNotFound(ModelErrorInfo(type: UserTracker.type))))
                 recordNewError(newError)
                 if hasLoadedTrackerAsset && hasLoadedTargetAsset {
@@ -141,7 +140,7 @@ class UnanchoredRenderModule: RenderModule, SkinningModule {
             hasLoadedTargetAsset = true
             
             guard let asset = asset else {
-                print("Warning (UnanchoredRenderModule) - Failed to get a MDLAsset for type \(GazeTarget.type) from the modelProvider.")
+                // The GazeTarget has not been set up
                 let newError = AKError.warning(.modelError(.modelNotFound(ModelErrorInfo(type: GazeTarget.type))))
                 recordNewError(newError)
                 if hasLoadedTrackerAsset && hasLoadedTargetAsset {
@@ -162,11 +161,11 @@ class UnanchoredRenderModule: RenderModule, SkinningModule {
         for geometricEntity in theGeometricEntities {
             
             if let identifier = geometricEntity.identifier {
-                modelProvider.loadAsset(forObjectType:  "AnyUnanchored", identifier: identifier) { [weak self] asset in
+                modelProvider.loadAsset(forObjectType:  type(of: geometricEntity).type, identifier: identifier) { [weak self] asset in
                     
                     guard let asset = asset else {
-                        print("Warning (AnchorsRenderModule) - Failed to get a MDLAsset for type \"AnyAnchor\") with identifier \(identifier) from the modelProvider. Aborting the render phase.")
-                        let newError = AKError.warning(.modelError(.modelNotFound(ModelErrorInfo(type:  "AnyAnchor", identifier: identifier))))
+                        print("Warning (UnanchoredRenderModule) - Failed to get a MDLAsset for type \"\(type(of: geometricEntity).type)\") with identifier \(identifier) from the modelProvider. Aborting the render phase.")
+                        let newError = AKError.warning(.modelError(.modelNotFound(ModelErrorInfo(type:  type(of: geometricEntity).type, identifier: identifier))))
                         recordNewError(newError)
                         completion()
                         return
@@ -186,72 +185,73 @@ class UnanchoredRenderModule: RenderModule, SkinningModule {
         
     }
     
-    func loadPipeline(withModuleEntities: [AKEntity], metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, renderPass: RenderPass? = nil, numQualityLevels: Int = 1, completion: (([DrawCallGroup]) -> Void)? = nil) {
+    func loadPipeline(withModuleEntities moduleEntities: [AKEntity], metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, modelManager: ModelManager, renderPass: RenderPass? = nil, numQualityLevels: Int = 1, completion: (([DrawCallGroup]) -> Void)? = nil) {
         
-        guard let device = device else {
-            print("Serious Error - device not found")
-            let underlyingError = NSError(domain: AKErrorDomain, code: AKErrorCodeDeviceNotFound, userInfo: nil)
-            let newError = AKError.seriousError(.renderPipelineError(.failedToInitialize(PipelineErrorInfo(moduleIdentifier: moduleIdentifier, underlyingError: underlyingError))))
-            recordNewError(newError)
-            state = .uninitialized
-            completion?([])
-            return
+        var drawCallGroups = [DrawCallGroup]()
+        
+        let filteredGeometryUUIDs = geometricEntities.compactMap({$0.identifier})
+        let filteredModelsByUUID = modelAssetsByUUID.filter { (uuid, asset) in
+            filteredGeometryUUIDs.contains(uuid)
         }
         
-        DispatchQueue.global(qos: .default).async { [weak self] in
+        let realBodies: [RealBody] = moduleEntities.compactMap { entity in
+            if let aBody = entity as? RealBody {
+                return aBody
+            } else {
+                return nil
+            }
+        }
         
-            var drawCallGroups = [DrawCallGroup]()
+        let total = filteredModelsByUUID.count
+        var count = 0
+        
+        for item in filteredModelsByUUID {
             
-            guard let geometricEntities = self?.geometricEntities, let modelAssetsByUUID = self?.modelAssetsByUUID, let shaderPreferenceByUUID = self?.shaderPreferenceByUUID else {
-                DispatchQueue.main.async { [weak self] in
-                    self?.state = .ready
-                    completion?(drawCallGroups)
-                }
-                return
+            guard let geometricEntity = geometricEntities.first(where: {$0.identifier == item.key}) else {
+                continue
             }
             
-            let filteredGeometryUUIDs = geometricEntities.compactMap({$0.identifier})
-            let filteredModelsByUUID = modelAssetsByUUID.filter { (uuid, asset) in
-                filteredGeometryUUIDs.contains(uuid)
+            let uuid = item.key
+            
+            let realBody = realBodies.first(where: { entity in
+                entity.identifier == uuid
+            })
+            
+            // Ignore any RealBody entities that aren't anchored to ARBodyAnchors
+            if realBody?.isAnchored == false {
+                continue
             }
-            for item in filteredModelsByUUID {
-                
-                guard let geometricEntity = geometricEntities.first(where: {$0.identifier == item.key}) else {
-                    continue
+            
+            let mdlAsset = item.value
+            let shaderPreference: ShaderPreference = {
+                if let prefernece = shaderPreferenceByUUID[uuid] {
+                    return prefernece
+                } else {
+                    return .pbr
                 }
-                
-                let uuid = item.key
-                let mdlAsset = item.value
-                let shaderPreference: ShaderPreference = {
-                    if let prefernece = shaderPreferenceByUUID[uuid] {
-                        return prefernece
-                    } else {
-                        return .pbr
-                    }
-                }()
-                
-                let meshGPUData = ModelIOTools.meshGPUData(from: mdlAsset, device: device, vertexDescriptor: RenderUtilities.createStandardVertexDescriptor(), frameRate: 60, shaderPreference: shaderPreference, loadTextures: renderPass?.usesLighting ?? true, textureBundle: textureBundle)
-                
-                if let drawCallGroup = self?.createDrawCallGroup(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass, meshGPUData: meshGPUData, geometricEntity: geometricEntity, numQualityLevels: numQualityLevels) {
+            }()
+            
+            // TODO: Joint Layout - , jointLayout: realBody?.jointNames\
+            modelManager.meshGPUData(for: mdlAsset, shaderPreference: shaderPreference) { [weak self] (meshGPUData, cacheKey) in
+                    
+                if let meshGPUData = meshGPUData, let drawCallGroup = self?.createDrawCallGroup(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass, meshGPUData: meshGPUData, geometricEntity: geometricEntity, numQualityLevels: numQualityLevels) {
                     drawCallGroup.moduleIdentifier = UnanchoredRenderModule.identifier
                     drawCallGroups.append(drawCallGroup)
                 }
                 
+                count += 1
+                if count == total {
+                    // In the buffer, the anchors are layed out by UUID in sorted order. So if there are
+                    // 5 anchors with UUID = "A..." and 3 UUIDs = "B..." and 1 UUID = "C..." then that's
+                    // how they will layed out in memory. Therefore updating the buffers is a 2 step process.
+                    // First, loop through all of the ARAnchors and gather the UUIDs as well as the counts for each.
+                    // Second, layout and update the buffers in the desired order.
+                    drawCallGroups.sort { $0.uuid.uuidString < $1.uuid.uuidString }
+                    self?.state = .ready
+                    completion?(drawCallGroups)
+                }
             }
-            
-            // In the buffer, the anchors are layed out by UUID in sorted order. So if there are
-            // 5 anchors with UUID = "A..." and 3 UUIDs = "B..." and 1 UUID = "C..." then that's
-            // how they will layed out in memory. Therefore updating the buffers is a 2 step process.
-            // First, loop through all of the ARAnchors and gather the UUIDs as well as the counts for each.
-            // Second, layout and update the buffers in the desired order.
-            drawCallGroups.sort { $0.uuid.uuidString < $1.uuid.uuidString }
-            DispatchQueue.main.async { [weak self] in
-                self?.state = .ready
-                completion?(drawCallGroups)
-            }
-            
         }
-        
     }
     
     //
@@ -277,8 +277,8 @@ class UnanchoredRenderModule: RenderModule, SkinningModule {
         
         argumentBufferProperties = theArgumentBufferProperties
         
-        let trackers: [AKAugmentedTracker] = moduleEntities.compactMap({
-            if let aTracker = $0 as? AKAugmentedTracker {
+        let trackers: [AKTracker] = moduleEntities.compactMap({
+            if let aTracker = $0 as? AKTracker {
                 return aTracker
             } else {
                 return nil
@@ -398,7 +398,22 @@ class UnanchoredRenderModule: RenderModule, SkinningModule {
                         // Update skeletons
                         //
                         
-                        updateSkeletonAnimation(from: drawData, frameNumber: cameraProperties.currentFrame, frameRate: cameraProperties.frameRate)
+                        if let body = akTracker as? AKBody {
+                            let jointMap: [Int]? = {
+                                if let cachedJointMap = jointMapsByUUID[uuid] {
+                                    return cachedJointMap
+                                } else if let skeleton = drawData.skeleton {
+                                    let aMap = generateJointMap(from: body, to: skeleton)
+                                    jointMapsByUUID[uuid] = aMap
+                                    return aMap
+                                } else {
+                                    return nil
+                                }
+                            }()
+                            updateTrackedSkeleton(from: drawData, body: body, jointMap: jointMap)
+                        } else {
+                            updateSkeletonAnimation(from: drawData, frameNumber: cameraProperties.currentFrame, frameRate: cameraProperties.frameRate)
+                        }
                         
                         //
                         // Update Environment
@@ -689,9 +704,6 @@ class UnanchoredRenderModule: RenderModule, SkinningModule {
         // Push a debug group allowing us to identify render commands in the GPU Frame Capture tool
         renderEncoder.pushDebugGroup("Draw Unanchored")
         
-        // Set render command encoder state
-        renderEncoder.setCullMode(.back)
-        
         if let argumentBufferProperties = argumentBufferProperties, let vertexArgumentBuffer = argumentBufferProperties.vertexArgumentBuffer {
             renderEncoder.pushDebugGroup("Argument Buffer")
             renderEncoder.setVertexBuffer(vertexArgumentBuffer, offset: argumentBufferProperties.vertexArgumentBufferOffset(forFrame: bufferIndex), index: Int(kBufferIndexPrecalculationOutputBuffer.rawValue))
@@ -807,7 +819,7 @@ class UnanchoredRenderModule: RenderModule, SkinningModule {
     private enum Constants {
         static let maxTrackerInstanceCount = 64
         static let maxTargetInstanceCount = 64
-        static let maxJointCount = 100
+        static let maxJointCount = 256
         static let alignedJointTransform = (MemoryLayout<matrix_float4x4>.stride & ~0xFF) + 0x100
         static let alignedEffectsUniformSize = ((MemoryLayout<AnchorEffectsUniforms>.stride * (Constants.maxTrackerInstanceCount + Constants.maxTargetInstanceCount)) & ~0xFF) + 0x100
         static let alignedEnvironmentUniformSize = ((MemoryLayout<EnvironmentUniforms>.stride * (Constants.maxTrackerInstanceCount + Constants.maxTargetInstanceCount)) & ~0xFF) + 0x100
@@ -823,6 +835,7 @@ class UnanchoredRenderModule: RenderModule, SkinningModule {
     private var shaderPreferenceByUUID = [UUID: ShaderPreference]()
     private var environmentTextureByUUID = [UUID: MTLTexture]()
     private var geometryCountByUUID = [UUID: Int]()
+    private var jointMapsByUUID = [UUID: [Int]]()
     private var ambientIntensity: Float?
     private var ambientLightColor: SIMD3<Float>?
     private var unanchoredUniformBuffer: MTLBuffer?
@@ -898,7 +911,8 @@ class UnanchoredRenderModule: RenderModule, SkinningModule {
                 }
             }()
             
-            let drawCall = DrawCall(metalLibrary: metalLibrary, renderPass: renderPass, vertexFunctionName: vertexShaderName, fragmentFunctionName: fragmentShaderName, vertexDescriptor: meshGPUData.vertexDescriptor, drawData: drawData, numQualityLevels: numQualityLevels)
+            // The cull mode is set to from because the x geometry is flipped in the shader
+            let drawCall = DrawCall(metalLibrary: metalLibrary, renderPass: renderPass, vertexFunctionName: vertexShaderName, fragmentFunctionName: fragmentShaderName, vertexDescriptor: meshGPUData.vertexDescriptor, cullMode: .front, drawData: drawData, numQualityLevels: numQualityLevels)
             drawCalls.append(drawCall)
             
         }
@@ -906,6 +920,26 @@ class UnanchoredRenderModule: RenderModule, SkinningModule {
         let drawCallGroup = DrawCallGroup(drawCalls: drawCalls, uuid: uuid, generatesShadows: geometricEntity.generatesShadows)
         return drawCallGroup
         
+    }
+    
+    private func generateJointMap(from body: AKBody, to skeleton: SkeletonData) -> [Int]? {
+        let fromJointNames = body.jointNames
+        let toJointName = skeleton.jointNames
+        guard fromJointNames.count >= toJointName.count else {
+            print("WARNING: Cannot map joints from the AKBody to the SkeletonData because the joints in the AKBody are not a superset of the joints in SkeletonData")
+            return nil
+        }
+        var map = [Int]()
+        for name in toJointName {
+            if let fromIndex = fromJointNames.firstIndex(of: name) {
+                map.append(fromIndex)
+            }
+        }
+        guard map.count == toJointName.count else {
+            print("WARNING: Cannot map joints from the AKBody to the SkeletonData because the joints in the AKBody are not a superset of the joints in SkeletonData")
+            return nil
+        }
+        return map
     }
     
     private func updateSkeletonAnimation(from drawData: DrawData, frameNumber: UInt, frameRate: Double = 60) {
@@ -918,9 +952,21 @@ class UnanchoredRenderModule: RenderModule, SkinningModule {
             let keyTimes = skeleton.animations.map{ $0.keyTime }
             let time = (Double(frameNumber) * 1.0 / frameRate)
             let keyframeIndex = lowerBoundKeyframeIndex(keyTimes, key: time) ?? 0
-            let animationTransforms = evaluateAnimation(skeleton, keyframeIndex: keyframeIndex)
-            let jointTransforms = evaluateJointTransforms(animationTransforms: animationTransforms, skeletonData: skeleton)
-            
+            let jointTransforms = evaluateJointTransforms(skeletonData: skeleton, keyframeIndex: keyframeIndex)
+            for k in 0..<jointTransforms.count {
+                jointTransformData[k] = jointTransforms[k]
+            }
+        }
+    }
+    
+    private func updateTrackedSkeleton(from drawData: DrawData, body: AKBody, jointMap: [Int]? = nil) {
+        
+        let capacity = Constants.alignedJointTransform * Constants.maxJointCount
+        let boundJointTransformData = jointTransformBufferAddress?.bindMemory(to: matrix_float4x4.self, capacity: capacity)
+        let jointTransformData = UnsafeMutableBufferPointer<matrix_float4x4>(start: boundJointTransformData, count: Constants.maxJointCount)
+        
+        if let skeleton = drawData.skeleton {
+            let jointTransforms = evaluateJointTransforms(skeletonData: skeleton, jointModelTransforms: body.jointTransforms, jointLocalTransforms: body.localJointTransforms, jointMap: jointMap)
             for k in 0..<jointTransforms.count {
                 jointTransformData[k] = jointTransforms[k]
             }

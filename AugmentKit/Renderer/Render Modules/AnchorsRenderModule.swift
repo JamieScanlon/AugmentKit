@@ -158,7 +158,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
         
     }
     
-    func loadPipeline(withModuleEntities: [AKEntity], metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, textureBundle: Bundle, renderPass: RenderPass? = nil, numQualityLevels: Int = 1, completion: (([DrawCallGroup]) -> Void)? = nil) {
+    func loadPipeline(withModuleEntities: [AKEntity], metalLibrary: MTLLibrary, renderDestination: RenderDestinationProvider, modelManager: ModelManager, renderPass: RenderPass? = nil, numQualityLevels: Int = 1, completion: (([DrawCallGroup]) -> Void)? = nil) {
         
         guard let device = device else {
             print("Serious Error - device not found")
@@ -181,62 +181,53 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             return
         }
         
-        DispatchQueue.global(qos: .default).async { [weak self] in
+        var drawCallGroups = [DrawCallGroup]()
         
-            var drawCallGroups = [DrawCallGroup]()
+        // Get a list of uuids
+        let filteredGeometryUUIDs = geometricEntities.compactMap({$0.identifier})
+        
+        // filter the `modelAssetsByUUID` by the model asses contained in the list of uuids
+        let filteredModelsByUUID = modelAssetsByUUID.filter { (uuid, asset) in
+            filteredGeometryUUIDs.contains(uuid)
+        }
+        
+        let total = filteredModelsByUUID.count
+        var count = 0
+        
+        // Create a draw call group for every model asset. Each model asset may have multiple instances.
+        for item in filteredModelsByUUID {
             
-            guard let geometricEntities = self?.geometricEntities, let modelAssetsByUUID = self?.modelAssetsByUUID, let shaderPreferenceByUUID = self?.shaderPreferenceByUUID else {
-                DispatchQueue.main.async { [weak self] in
-                    self?.state = .ready
-                    completion?(drawCallGroups)
-                }
-                return
+            guard let geometricEntity = geometricEntities.first(where: {$0.identifier == item.key}) else {
+                continue
             }
             
-            // Get a list of uuids
-            let filteredGeometryUUIDs = geometricEntities.compactMap({$0.identifier})
-            
-            // filter the `modelAssetsByUUID` by the model asses contained in the list of uuids
-            let filteredModelsByUUID = modelAssetsByUUID.filter { (uuid, asset) in
-                filteredGeometryUUIDs.contains(uuid)
-            }
-            
-            // Create a draw call group for every model asset. Each model asset may have multiple instances.
-            for item in filteredModelsByUUID {
-                
-                guard let geometricEntity = geometricEntities.first(where: {$0.identifier == item.key}) else {
-                    continue
+            let uuid = item.key
+            let mdlAsset = item.value
+            let shaderPreference: ShaderPreference = {
+                if let prefernece = shaderPreferenceByUUID[uuid] {
+                    return prefernece
+                } else {
+                    return .pbr
                 }
-                
-                let uuid = item.key
-                let mdlAsset = item.value
-                let shaderPreference: ShaderPreference = {
-                    if let prefernece = shaderPreferenceByUUID[uuid] {
-                        return prefernece
-                    } else {
-                        return .pbr
-                    }
-                }()
-                
-                // Build the GPU Data
-                let meshGPUData = ModelIOTools.meshGPUData(from: mdlAsset, device: device, vertexDescriptor: RenderUtilities.createStandardVertexDescriptor(), frameRate: 60, shaderPreference: shaderPreference, loadTextures: renderPass?.usesLighting ?? true, textureBundle: textureBundle)
-                
+            }()
+            
+            modelManager.meshGPUData(for: mdlAsset, shaderPreference: shaderPreference) { [weak self] (meshGPUData, cacheKey) in
+                    
                 // Create a draw call group that contins all of the individual draw calls for this model
-                if let drawCallGroup = self?.createDrawCallGroup(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass, meshGPUData: meshGPUData, geometricEntity: geometricEntity, numQualityLevels: numQualityLevels) {
+                if let meshGPUData = meshGPUData, let drawCallGroup = self?.createDrawCallGroup(forUUID: uuid, withMetalLibrary: metalLibrary, renderDestination: renderDestination, renderPass: renderPass, meshGPUData: meshGPUData, geometricEntity: geometricEntity, numQualityLevels: numQualityLevels) {
                     drawCallGroup.moduleIdentifier = AnchorsRenderModule.identifier
                     drawCallGroups.append(drawCallGroup)
                 }
                 
-            }
-            
-            // Because there must be a deterministic way to order the draw calls so the draw call groups are sorted by UUID.
-            drawCallGroups.sort { $0.uuid.uuidString < $1.uuid.uuidString }
-            DispatchQueue.main.async { [weak self] in
-                self?.state = .ready
-                completion?(drawCallGroups)
+                count += 1
+                if count == total {
+                    // Because there must be a deterministic way to order the draw calls so the draw call groups are sorted by UUID.
+                    drawCallGroups.sort { $0.uuid.uuidString < $1.uuid.uuidString }
+                    self?.state = .ready
+                    completion?(drawCallGroups)
+                }
             }
         }
-        
     }
     
     //
@@ -748,7 +739,8 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
                 }
             }()
             
-            let drawCall = DrawCall(metalLibrary: metalLibrary, renderPass: renderPass, vertexFunctionName: vertexShaderName, fragmentFunctionName: fragmentShaderName, vertexDescriptor:  meshGPUData.vertexDescriptor, drawData: drawData, numQualityLevels: numQualityLevels)
+            // The cull mode is set to from because the x geometry is flipped in the shader
+            let drawCall = DrawCall(metalLibrary: metalLibrary, renderPass: renderPass, vertexFunctionName: vertexShaderName, fragmentFunctionName: fragmentShaderName, vertexDescriptor:  meshGPUData.vertexDescriptor, cullMode: .front, drawData: drawData, numQualityLevels: numQualityLevels)
             drawCalls.append(drawCall)
             
         }
@@ -768,9 +760,7 @@ class AnchorsRenderModule: RenderModule, SkinningModule {
             let keyTimes = skeleton.animations.map{ $0.keyTime }
             let time = (Double(frameNumber) * 1.0 / frameRate)
             let keyframeIndex = lowerBoundKeyframeIndex(keyTimes, key: time) ?? 0
-            let animationTransforms = evaluateAnimation(skeleton, keyframeIndex: keyframeIndex)
-            let jointTransforms = evaluateJointTransforms(animationTransforms: animationTransforms, skeletonData: skeleton)
-            
+            let jointTransforms = evaluateJointTransforms(skeletonData: skeleton, keyframeIndex: keyframeIndex)
             for k in 0..<jointTransforms.count {
                 jointTransformData[k] = jointTransforms[k]
             }

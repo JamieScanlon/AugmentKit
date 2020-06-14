@@ -44,7 +44,7 @@ class DrawCallGroup {
     var generatesShadows: Bool
     
     /// The order of `drawCalls` is usually taken directly from the order in which the meshes are parsed from the MDLAsset.
-    /// see: `ModelIOTools.meshGPUData(from asset: MDLAsset, device: MTLDevice, textureBundle: Bundle, vertexDescriptor: MDLVertexDescriptor?, frameRate: Double = 60, shaderPreference: ShaderPreference = .pbr)`
+    /// see: `ModelIOTools.meshGPUData(from:,device:,vertexDescriptor:,frameRate:,shaderPreference:,loadTextures:,textureBundle:,completion:)`
     var drawCalls = [DrawCall]()
     
     init(drawCalls: [DrawCall] = [], uuid: UUID = UUID(), generatesShadows: Bool = true) {

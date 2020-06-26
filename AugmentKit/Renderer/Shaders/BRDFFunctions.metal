@@ -65,22 +65,27 @@ float D_Charlie(float roughness, float nDoth) {
     return (2.0 + invAlpha) * pow(sin2h, invAlpha * 0.5) / (2.0 * M_PI_F);
 }
 
-float V_SmithG_GGX(float roughness, float nDotl, float nDotv) {
-    float roughnessAlpha = sqr(roughness * 0.5 + 0.5);
-    float a² = sqr(roughnessAlpha);
-    float bL = sqr(nDotl);
-    float bV = sqr(nDotv);
-    float GsL = 1.0 / (nDotl + sqrt(a² + bL - a² * bL));
-    float GsV = 1.0 / (nDotv + sqrt(a² + bV - a² * bV));
+/// Heitz 2014, "Understanding the Masking-Shadowing Function in Microfacet-Based BRDFs"
+/// Full Smith-GGX
+float V_SmithG_GGX(float roughness, float nDotv, float nDotl) {
+    float a² = sqr(roughness);
+    float nDotl² = sqr(nDotl);
+    float nDotv² = sqr(nDotv);
+    float GsL = 1.0 / (nDotl + sqrt(a² + (1.0 - a²) * nDotl²));
+    float GsV = 1.0 / (nDotv + sqrt(a² + (1.0 - a²) * nDotv²));
     return GsL * GsV;
 }
 
 /// Heitz 2014, "Understanding the Masking-Shadowing Function in Microfacet-Based BRDFs"
+/// The following, noted by Heitz, takes the height of the microfacets into account to correlate masking and shadowing.
+/// Even though this is suppose to lead to more accurate results, I found it much too 'shiney' to looks realistic.
 float V_SmithGGXCorrelated(float roughness, float nDotv, float nDotl) {
     float a² = sqr(roughness);
+    float nDotl² = sqr(nDotl);
+    float nDotv² = sqr(nDotv);
     // TODO: lambdaV can be pre-computed for all the lights, it should be moved out of this function
-    float lambdaV = nDotl * sqrt((nDotv - a² * nDotv) * nDotv + a²);
-    float lambdaL = nDotv * sqrt((nDotl - a² * nDotl) * nDotl + a²);
+    float lambdaV = nDotl * sqrt(nDotv² * (1.0 - a²) + a²);
+    float lambdaL = nDotv * sqrt(nDotl² * (1.0 - a²) + a²);
     float v = 0.5 / (lambdaV + lambdaL);
     // a2=0 => v = 1 / 4*nDotl*nDotv   => min=1/4, max=+inf
     // a2=1 => v = 1 / 2*(nDotl+nDotv) => min=1/4, max=+inf
@@ -88,7 +93,7 @@ float V_SmithGGXCorrelated(float roughness, float nDotv, float nDotl) {
     return min(v, MAXFLOAT);
 }
 
-/// Hammon 2017, "PBR Diffuse Lighting for GGX+Smith Microsurfaces"
+/// Optimized version of the above
 float V_SmithGGXCorrelated_Fast(float roughness, float nDotv, float nDotl) {
     float v = 0.5 / mix(2.0 * nDotl * nDotv, nDotl + nDotv, roughness);
     return min(v, MAXFLOAT);
@@ -115,8 +120,9 @@ float V_Neubelt(float roughness, float nDotv, float nDotl) {
 
 /// Schlick 1994, "An Inexpensive BRDF Model for Physically-Based Rendering"
 float3 F_Schlick3(float3 f0, float f90, float vDoth) {
-    float f = pow(clamp(1.0 - vDoth, 0.0, 1.0), 5.0);
-    return f + f0 * (f90 - f);
+//    float f = pow(clamp(1.0 - vDoth, 0.0, 1.0), 5.0);
+//    return f + f0 * (f90 - f);
+    return f0 + (f90 - f0) * pow(clamp(1.0 - vDoth, 0.0, 1.0), 5.0);
 }
 
 float F_Schlick(float f0, float f90, float vDoth) {
@@ -136,7 +142,7 @@ float F_Schlick(float f0, float f90, float vDoth) {
 // F90 is the Fresnel of the material at 90º
 // F90 can be approximated by 1.0 because Fresnel goes to 1 as the angle of incidence goes to 90º
 //
-float3 Fresnel(float3 f0, float vDoth) {
+float3 fresnel(float3 f0, float vDoth) {
     float f90 = saturate(dot(f0, float3(50.0 * 0.33)));
     return F_Schlick3(f0, f90, vDoth);
 }
@@ -159,12 +165,12 @@ float distributionCloth(float roughness, float nDoth) {
 }
 
 float visibility(float roughness, float nDotv, float nDotl) {
-    // Correct
-    return V_SmithGGXCorrelated(roughness, nDotv, nDotl);
-    // Fast
+    // Full Smith-GGX
+    return V_SmithG_GGX(roughness, nDotv, nDotl);
+    // Correlated (Suppose to be more accurate but it's too shiney for me)
+//    return V_SmithGGXCorrelated(roughness, nDotv, nDotl);
+    // Optimized Correlated (Again too shiney)
 //    return V_SmithGGXCorrelated_Fast(roughness, nDotv, nDotl);
-    // Less shiney
-//    return V_SmithG_GGX(roughness, nDotv, nDotl);
 }
 
 float visibilityAnisotropic(float roughness, float at, float ab, float tDotv, float bDotv, float tDotl, float bDotl, float nDotv, float nDotl) {

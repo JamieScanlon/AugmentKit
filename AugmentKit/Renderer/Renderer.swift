@@ -2308,6 +2308,7 @@ open class Renderer: NSObject {
         environmentProbeAnchors.forEach { environmentAnchor in
             let environmentPosition = SIMD3<Float>(environmentAnchor.transform.columns.3.x, environmentAnchor.transform.columns.3.y, environmentAnchor.transform.columns.3.z)
             let cube = AKCube(position: AKVector(environmentPosition), extent: AKVector(environmentAnchor.extent))
+            var entityIDs = [UUID]()
             let anchorIDs: [UUID] = augmentedAnchors.compactMap{ normalAnchor in
                 let anchorPosition = AKVector(x: normalAnchor.worldLocation.transform.columns.3.x, y: normalAnchor.worldLocation.transform.columns.3.y, z: normalAnchor.worldLocation.transform.columns.3.z)
                 if cube.contains(anchorPosition) {
@@ -2316,7 +2317,59 @@ open class Renderer: NSObject {
                     return nil
                 }
             }
-            environmentAnchorsWithReatedAnchors[environmentAnchor] = anchorIDs
+            entityIDs.append(contentsOf: anchorIDs)
+            
+            let realAnchorIDs: [UUID] = realAnchors.compactMap{ normalAnchor in
+                let anchorPosition = AKVector(x: normalAnchor.worldLocation.transform.columns.3.x, y: normalAnchor.worldLocation.transform.columns.3.y, z: normalAnchor.worldLocation.transform.columns.3.z)
+                if cube.contains(anchorPosition) {
+                    return normalAnchor.identifier
+                } else {
+                    return nil
+                }
+            }
+            entityIDs.append(contentsOf: realAnchorIDs)
+            
+            let trackerIDs: [UUID] = realAnchors.compactMap{ normalAnchor in
+                let anchorPosition = AKVector(x: normalAnchor.worldLocation.transform.columns.3.x, y: normalAnchor.worldLocation.transform.columns.3.y, z: normalAnchor.worldLocation.transform.columns.3.z)
+                if cube.contains(anchorPosition) {
+                    return normalAnchor.identifier
+                } else {
+                    return nil
+                }
+            }
+            entityIDs.append(contentsOf: trackerIDs)
+            
+            let pathIDs: [UUID] = realAnchors.compactMap{ normalAnchor in
+                let anchorPosition = AKVector(x: normalAnchor.worldLocation.transform.columns.3.x, y: normalAnchor.worldLocation.transform.columns.3.y, z: normalAnchor.worldLocation.transform.columns.3.z)
+                if cube.contains(anchorPosition) {
+                    return normalAnchor.identifier
+                } else {
+                    return nil
+                }
+            }
+            entityIDs.append(contentsOf: pathIDs)
+            
+            let gazeTargetIDs: [UUID] = realAnchors.compactMap{ normalAnchor in
+                let anchorPosition = AKVector(x: normalAnchor.worldLocation.transform.columns.3.x, y: normalAnchor.worldLocation.transform.columns.3.y, z: normalAnchor.worldLocation.transform.columns.3.z)
+                if cube.contains(anchorPosition) {
+                    return normalAnchor.identifier
+                } else {
+                    return nil
+                }
+            }
+            entityIDs.append(contentsOf: gazeTargetIDs)
+            
+            let bodyIDs: [UUID] = realAnchors.compactMap{ normalAnchor in
+                let anchorPosition = AKVector(x: normalAnchor.worldLocation.transform.columns.3.x, y: normalAnchor.worldLocation.transform.columns.3.y, z: normalAnchor.worldLocation.transform.columns.3.z)
+                if cube.contains(anchorPosition) {
+                    return normalAnchor.identifier
+                } else {
+                    return nil
+                }
+            }
+            entityIDs.append(contentsOf: bodyIDs)
+            
+            environmentAnchorsWithReatedAnchors[environmentAnchor] = entityIDs
         }
     }
     
@@ -2457,8 +2510,10 @@ extension Renderer: ARSessionDelegate {
                 
                 if let index = environmentProbeAnchors.firstIndex(of: environmentProbeAnchor) {
                     environmentProbeAnchors.replaceSubrange(index..<(index + 1), with: [environmentProbeAnchor])
-                    remapEnvironmentProbes()
+                } else {
+                    environmentProbeAnchors.append(environmentProbeAnchor)
                 }
+                remapEnvironmentProbes()
                 if environmentProbeAnchor.extent.x.isInfinite {
                     let aGPUTexture = GPUPassTexture(texture: environmentCubeMap, label: "Global Environment Texture", shaderAttributeIndex: Int(kTextureIndexEnvironmentMap.rawValue))
                     environmentTexture = aGPUTexture

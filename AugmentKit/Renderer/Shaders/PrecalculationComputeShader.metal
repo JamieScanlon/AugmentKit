@@ -36,7 +36,7 @@ kernel void precalculationComputeShader(constant SharedUniforms &sharedUniforms 
     int hasGeometry = anchorInstanceUniforms[index].hasGeometry;
     int hasHeading = anchorInstanceUniforms[index].hasHeading;
 
-    float4x4 coordinateSpaceTransform = float4x4(float4(1.0, 0, 0, 0),
+    float4x4 coordinateSpaceTransform = float4x4(float4(-1.0, 0, 0, 0),
                                                  float4(0, 1.0, 0, 0),
                                                  float4(0, 0, -1.0, 0),
                                                  float4(0, 0, 0, 1.0));

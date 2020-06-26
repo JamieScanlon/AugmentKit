@@ -827,43 +827,43 @@ class ModelIOTools {
                 if subData.baseColorTexture != nil {
                     drawData.hasBaseColorMap = true
                 }
-                if subData.normalTexture != nil {
+                if subData.normalTexture != nil, AKCapabilities.NormalMap {
                     drawData.hasNormalMap = true
                 }
-                if subData.ambientOcclusionTexture != nil {
+                if subData.ambientOcclusionTexture != nil, AKCapabilities.AmbientOcclusionMap {
                     drawData.hasAmbientOcclusionMap = true
                 }
-                if subData.roughnessTexture != nil {
+                if subData.roughnessTexture != nil, AKCapabilities.RoughnessMap {
                     drawData.hasRoughnessMap = true
                 }
-                if subData.metallicTexture != nil {
+                if subData.metallicTexture != nil, AKCapabilities.MetallicMap {
                     drawData.hasMetallicMap = true
                 }
-                if subData.emissionTexture != nil {
+                if subData.emissionTexture != nil, AKCapabilities.EmissionMap {
                     drawData.hasEmissionMap = true
                 }
-                if subData.subsurfaceTexture != nil {
+                if subData.subsurfaceTexture != nil, AKCapabilities.SubsurfaceMap {
                     drawData.hasSubsurfaceMap = true
                 }
-                if subData.specularTexture != nil {
+                if subData.specularTexture != nil, AKCapabilities.SpecularMap {
                     drawData.hasSpecularMap = true
                 }
-                if subData.specularTintTexture != nil {
+                if subData.specularTintTexture != nil, AKCapabilities.SpecularTintMap {
                     drawData.hasSpecularTintMap = true
                 }
-                if subData.anisotropicTexture != nil {
+                if subData.anisotropicTexture != nil, AKCapabilities.AnisotropicMap {
                     drawData.hasAnisotropicMap = true
                 }
-                if subData.sheenTexture != nil {
+                if subData.sheenTexture != nil, AKCapabilities.SheenMap {
                     drawData.hasSheenMap = true
                 }
-                if subData.sheenTintTexture != nil {
+                if subData.sheenTintTexture != nil, AKCapabilities.SheenTintMap {
                     drawData.hasSheenTintMap = true
                 }
-                if subData.clearcoatTexture != nil {
+                if subData.clearcoatTexture != nil, AKCapabilities.ClearcoatMap {
                     drawData.hasClearcoatMap = true
                 }
-                if subData.clearcoatGlossTexture != nil {
+                if subData.clearcoatGlossTexture != nil, AKCapabilities.ClearcoatGlossMap {
                     drawData.hasClearcoatGlossMap = true
                 }
                 

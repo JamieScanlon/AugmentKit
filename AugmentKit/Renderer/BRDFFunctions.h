@@ -31,7 +31,7 @@
 
 #include <simd/simd.h>
 
-vector_float3 Fresnel(vector_float3 f0, float lDoth);
+vector_float3 fresnel(vector_float3 f0, float lDoth);
 float distribution(float roughness, float nDoth);
 float distributionAnisotropic(float at, float ab, float tDoth, float bDoth, float nDoth);
 float distributionClearCoat(float roughness, float nDoth);
@@ -45,7 +45,7 @@ float D_GGX(float roughness, float nDoth);
 float D_GGX_Anisotropic(float at, float ab, float tDoth, float bDoth, float nDoth);
 float D_Ashikhmin(float roughness, float nDoth);
 float D_Charlie(float roughness, float nDoth);
-float V_SmithG_GGX(float roughness, float nDotl, float nDotv);
+float V_SmithG_GGX(float roughness, float nDotv, float nDotl);
 float V_SmithGGXCorrelated(float roughness, float nDotv, float nDotl);
 float V_SmithGGXCorrelated_Fast(float roughness, float nDotv, float nDotl);
 float V_SmithGGXCorrelated_Anisotropic(float at, float ab, float tDotv, float bDotv, float tDotl, float bDotl, float nDotv, float nDotl);

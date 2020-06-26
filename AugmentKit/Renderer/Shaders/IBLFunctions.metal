@@ -250,7 +250,7 @@ float prefilteredImportanceSampling(float ipdf, float2 iblMaxMipLevel) {
 //
 //            float D = distribution(parameters.roughness, nDoth);
 //            float V = visibility(parameters.roughness, nDotv, nDotl);
-//            float3  F = Fresnel(parameters.f0, lDoth);
+//            float3  F = fresnel(parameters.f0, lDoth);
 //            float3 Fr = F * (D * V * nDotl * ipdf * invNumSamples);
 //
 //            indirectSpecular += (Fr * L);
@@ -426,7 +426,7 @@ float2 integrateBRDF(float roughness, float nDotv) {
 //            float G = geometrySmith(nDotl, nDotv, roughness);
             float G = GDFG(nDotl, nDotv, roughness);
             float G_Vis = G * vDoth / (nDoth * nDotv);
-            float Fc = powr(1 - vDoth, 5); // Use Fresnel(float3 f0, float vDoth) ?
+            float Fc = powr(1 - vDoth, 5); // Use fresnel(float3 f0, float vDoth) ?
             A += (1 - Fc) * G_Vis;
             B += Fc * G_Vis;
         }

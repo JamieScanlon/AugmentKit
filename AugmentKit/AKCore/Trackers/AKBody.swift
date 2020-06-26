@@ -33,9 +33,6 @@ public protocol AKBody: AKTracker {
     /// The names of all the joints in the model.
     var jointNames: [String] { get }
     
-    /// The transform of each joint relative to the transform of the the parent joint.
-    var localJointTransforms: [matrix_float4x4] { get }
-    
     /// The transform of each joint relative to the transform of the the hip joint. The hip joint is the root of the skeleton and is located at the model origin.
     var jointTransforms: [matrix_float4x4] { get }
 }

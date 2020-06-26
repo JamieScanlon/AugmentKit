@@ -87,6 +87,21 @@ constant bool has_clearcoat_map [[ function_constant(kFunctionConstantClearcoatM
 constant bool has_clearcoatGloss_map [[ function_constant(kFunctionConstantClearcoatGlossMapIndex) ]];
 constant bool has_any_map = has_base_color_map || has_normal_map || has_metallic_map || has_roughness_map || has_ambient_occlusion_map || has_emission_map || has_subsurface_map || has_specular_map || has_specularTint_map || has_anisotropic_map || has_sheen_map || has_sheenTint_map || has_clearcoat_map || has_clearcoatGloss_map;
 
+// See: https://google.github.io/filament/Filament.html#materialsystem/standardmodelsummary
+// Material         Reflectance     IOR             Linear value
+// Water            2%              1.33            0.35
+// Fabric           4% to 5.6%      1.5 to 1.62     0.5 to 0.59
+// Common liquids   2% to 4%        1.33 to 1.5     0.35 to 0.5
+// Common gemstones 5% to 16%       1.58 to 2.33    0.56 to 1.0
+// Plastics, glass  4% to 5%        1.5 to 1.58     0.5 to 0.56
+// Other            2% to 5%        1.33 to 1.58    0.35 to 0.56
+// Eyes             2.5%            1.38            0.39
+// Skin             2.8%            1.4             0.42
+// Hair             4.6%            1.55            0.54
+// Teeth            5.8%            1.63            0.6
+// Default value    4%              1.5             0.5
+#define COMMON_REFLECTANCE 0.04
+
 // MARK: - Structs
 
 // MARK: Anchors Vertex In
@@ -144,33 +159,51 @@ constexpr sampler nearestSampler(address::repeat, min_filter::linear, mag_filter
 constexpr sampler reflectiveEnvironmentSampler(address::clamp_to_edge, min_filter::nearest, mag_filter::linear, mip_filter::none);
 constexpr sampler cubeSampler(coord::normalized, filter::linear, mip_filter::linear);
 
+float computeDielectricF0(float reflectance) {
+    return 0.16 * reflectance * reflectance;
+}
+
+float3 computeF0(float4 baseColor, float metallic, float reflectance) {
+    return baseColor.rgb * metallic + (reflectance * (1.0 - metallic));
+}
+
+float3 computeDiffuseColor(float4 baseColor, float metallic) {
+    return baseColor.rgb * (1.0 - metallic);
+}
+
 float3 computeNormalMap(ColorInOut in, texture2d<float> normalMapTexture) {
     float4 normalMap = float4((float4(normalMapTexture.sample(nearestSampler, float2(in.texCoord)).rgb, 0.0)));
     float3x3 tbn = float3x3(in.tangent, in.bitangent, in.normal);
     return float3(normalize(tbn * normalMap.xyz));
 }
 
+/// The Cook-Torrance approximation of the microfacet model integration
+/// Fr(v, l) = D(h, α) * G(v, l, α) * F(v, h, f0) / 4 * (n⋅v) * (n⋅l)
 float3 computeIsotropicSpecular(LightingParameters parameters) {
     
-    // Normal Distribution Function (NDF):
+    // Normal Distribution Function (D):
     // The NDF, also known as the specular distribution, describes the distribution of microfacets for the surface.
     // Determines the size and shape of the highlight.
     float D = distribution(parameters.roughness, parameters.nDoth);
     
-    // Geometric Shadowing:
+    // Geometric Shadowing. Specular G divided by 4 * nDotv * nDotl which we are calling visibility (V):
     // The geometric shadowing term describes the shadowing from the microfacets.
     // This means ideally it should depend on roughness and the microfacet distribution.
     // The following geometric shadowing models use Smith's method for their respective NDF.
     // Smith breaks G into two components: light and view, and uses the same equation for both.
     float V = visibility(parameters.roughness, parameters.nDotv, parameters.nDotl);
     
-    // Fresnel Reflectance:
+    // Fresnel Reflectance (F):
     // The fraction of incoming light that is reflected as opposed to refracted from a flat surface at a given lighting angle.
     // Fresnel Reflectance goes to 1 as the angle of incidence goes to 90º. The value of Fresnel Reflectance at 0º
     // is the specular reflectance color.
-    float3 F = Fresnel(parameters.f0, parameters.lDoth);
+    float3 F = fresnel(parameters.f0, parameters.lDoth);
+
+    // This is the return value for the standard model but it doesn't include any contribution from the environment map towards the specular reflections. Fully implementing IBL would solve for this.
+//    return D * V * F;
     
-    return (D * V) * F;
+    // In the mean time, this is an approximation of how the environment map would contribute to the specular reflections. All the other terms asside from D, V, and F are just a way of encorporating the environment into the specular reflection but the better way to do this would be to fullt implement IBL.
+    return (D * V * F * parameters.reflectedColor) * (1.0 + parameters.metalness * parameters.baseColor.rgb) + parameters.reflectedColor * parameters.metalness * parameters.baseColor.rgb;
 }
 
 /// From Filament implementation
@@ -210,11 +243,10 @@ float3 computeDiffuse(LightingParameters parameters) {
     // Filament implementation
     
     // For Cloth or Clearcoat Gloss use the following
-//    float3 diffuseColor = (1.0 - parameters.metalness) * parameters.baseColor.rgb;
+//    float3 diffuseColor = parameters.baseColor.rgb;
     
     // For standard model diffuse color use the following
-    float3 diffuseColor = parameters.baseColor.rgb;
-    
+    float3 diffuseColor = computeDiffuseColor(parameters.baseColor, parameters.metalness);
     diffuseColor = diffuseColor * diffuse(parameters.roughness, parameters.nDotv, parameters.nDotl, parameters.lDoth);
     return diffuseColor;
     
@@ -222,7 +254,7 @@ float3 computeDiffuse(LightingParameters parameters) {
 
 float3 computeIBLDiffuse(LightingParameters parameters, texturecube<float> diffuseEnvTexture) {
     
-    float3 diffuseColor = (1.0 - parameters.metalness) * parameters.baseColor.rgb;
+    float3 diffuseColor = computeDiffuseColor(parameters.baseColor, parameters.metalness);
     float3 diffuseLight = diffuseEnvTexture.sample(cubeSampler, parameters.normal).rgb;
     diffuseLight *= parameters.ambientIntensity;
     
@@ -261,7 +293,7 @@ float3 computeSpecular(LightingParameters parameters) {
 //    }
 //    specularLight *= parameters.ambientIntensity;
 //    
-//    float3 specularColor = mix(0.04, parameters.baseColor.rgb, parameters.metalness);
+//    float3 specularColor = mix(COMMON_REFLECTANCE, parameters.baseColor.rgb, parameters.metalness);
 //    
 //    float3 iblContribution = specularLight * ((specularColor * brdf.x) + brdf.y);
 //    return iblContribution;
@@ -274,7 +306,7 @@ float2 computeClearcoatLobe(LightingParameters parameters) {
     float clearCoatRoughness = (1.0 - parameters.clearcoatGloss) * (1.0 - parameters.clearcoatGloss);
     float D = distributionClearCoat(clearCoatRoughness, parameters.nDoth);
     float V = visibilityClearCoat(parameters.lDoth);
-    float F = F_Schlick(0.04, 1.0, parameters.lDoth) * parameters.clearcoat; // fix IOR to 1.5
+    float F = F_Schlick(COMMON_REFLECTANCE, 1.0, parameters.lDoth) * parameters.clearcoat; // fix IOR to 1.5
     
     float clearCoat = D * V * F;
     return float2(clearCoat, F);
@@ -285,22 +317,9 @@ float3 computeClearcoat(LightingParameters parameters) {
     
     return float3(0);
     
-    // Method 1: filament implementation:
+    // Filament implementation:
 //    float clearCoat = computeClearcoatLobe(parameters).x;
 //    return float3(clearCoat);
-    
-    // Method 2
-    
-    // For Dielectics (non-metals) the Fresnel for 0º typically ranges from 0.02 (water) to 0.1 (diamond) but for
-    // the sake of simplicity, it is common to set this value as a constant of 0.04 (plastic/glass) for all materials.
-    //    float3 Fr = mix(0.1, 0.04, parameters.fresnelLDotH);
-    //    float Dr = TrowbridgeReitzNDF(mix(.6, 0.001, parameters.clearcoatGloss), parameters.nDoth);
-    //    float clearcoatRoughness = sqr(parameters.roughness * 0.5 + 0.5);
-    //    float Gr = V_SmithG_GGX(parameters.nDotl, clearcoatRoughness) * V_SmithG_GGX(parameters.nDotv, clearcoatRoughness);
-    //
-    //    float3 clearcoatOutput = parameters.clearcoat * Gr * Fr * Dr * parameters.directionalLightCol;
-    //    return clearcoatOutput;
-    
 }
 
 float3 computeSheen(LightingParameters parameters) {
@@ -415,10 +434,10 @@ LightingParameters calculateParameters(ColorInOut in,
         metalness *= mapWeight;
         float uniformContribution = (1.f - mapWeight) * materialUniforms.metalness;
         metalness += uniformContribution;
-        parameters.metalness = metalness;
+        parameters.metalness = clamp(metalness, 0.0, 1.0);
     } else {
         float metalness = materialUniforms.metalness;
-        parameters.metalness = metalness;
+        parameters.metalness = clamp(metalness, 0.0, 1.0);
     }
     
     // Roughness
@@ -569,14 +588,8 @@ LightingParameters calculateParameters(ColorInOut in,
     parameters.viewDir = -normalize(in.eyePosition);
     parameters.reflectedVector = reflect(-parameters.viewDir, parameters.normal);
     parameters.reflectedColor = (environmentUniforms[in.iid].hasEnvironmentMap == 1) ? environmentCubemap.sample(reflectiveEnvironmentSampler, parameters.reflectedVector).xyz : float3(0, 0, 0);
-    // clamp to minimum roucgness. MIN_PERCEPTUAL_ROUGHNESS = 0.045, MIN_ROUGHNESS = 0.002025
-//    float perceptualRoughness = has_roughness_map ? max(roughnessMap.sample(linearSampler, in.texCoord.xy).x, 0.001f) : materialUniforms.roughness;
-//    parameters.perceptualRoughness = clamp(perceptualRoughness, 0.045, 1.0);
     float roughness = parameters.perceptualRoughness * parameters.perceptualRoughness;
     parameters.roughness = clamp(roughness, 0.002025, 1.0);
-//    uint8_t mipLevel = parameters.roughness * emissionMap.get_num_mip_levels();
-//    parameters.emissionColor = has_emission_map ? emissionMap.sample(mipSampler, parameters.reflectedVector, level(mipLevel)).xyz : materialUniforms.emissionColor.xyz;
-//    parameters.emissionColor = has_emission_map ? emissionMap.sample(linearSampler, in.texCoord.xy) : materialUniforms.emissionColor;
     parameters.directionalLightCol = environmentUniforms[in.iid].directionalLightColor;
     parameters.ambientLightCol = environmentUniforms[in.iid].ambientLightColor;
     parameters.ambientIntensity = environmentUniforms[in.iid].ambientLightIntensity;
@@ -591,10 +604,12 @@ LightingParameters calculateParameters(ColorInOut in,
     parameters.nDoth = max(0.001f,saturate(dot(parameters.normal, parameters.halfVector)));
     parameters.nDotv = max(0.001f,saturate(dot(parameters.normal, parameters.viewDir)));
     parameters.lDoth = max(0.001f,saturate(dot(parameters.lightDirection, parameters.halfVector)));
-    parameters.f0 = parameters.specular * mix(float3(1.0), parameters.baseColorHueSat, parameters.specularTint);
-    parameters.fresnelNDotL = Fresnel(parameters.f0, parameters.nDotl);
-    parameters.fresnelNDotV = Fresnel(parameters.f0, parameters.nDotv);
-    parameters.fresnelLDotH = Fresnel(parameters.f0, parameters.lDoth);
+    float reflectance = computeDielectricF0(COMMON_REFLECTANCE);
+    parameters.f0 = computeF0(parameters.baseColor, parameters.metalness, reflectance);
+//    parameters.f0 = parameters.specular * mix(float3(1.0), parameters.baseColorHueSat, parameters.specularTint);
+    parameters.fresnelNDotL = fresnel(parameters.f0, parameters.nDotl);
+    parameters.fresnelNDotV = fresnel(parameters.f0, parameters.nDotv);
+    parameters.fresnelLDotH = fresnel(parameters.f0, parameters.lDoth);
     
     return parameters;
     
@@ -675,8 +690,7 @@ vertex ColorInOut anchorGeometryVertexTransform(Vertex in [[stage_in]],
     ColorInOut out;
     
     // Make position a float4 to perform 4x4 matrix math on it
-//    float4 position = float4(in.position, 1.0);
-    float4 position = float4(-1.0 * in.position.x, in.position.y, in.position.z, 1.0);
+    float4 position = float4(in.position, 1.0);
     float3 normal = in.normal;
     float3 tangent = in.tangent;
     int argumentBufferIndex = drawCallIndex;
@@ -743,8 +757,7 @@ vertex ColorInOut anchorGeometryVertexTransformSkinned(Vertex in [[stage_in]],
     ColorInOut out;
     
     // Make position a float4 to perform 4x4 matrix math on it
-//    float4 position = float4(in.position, 1.0f);
-    float4 position = float4(-1.0 * in.position.x, in.position.y, in.position.z, 1.0);
+    float4 position = float4(in.position, 1.0f);
     int argumentBufferIndex = drawCallIndex;
     
     ushort4 jointIndex = in.jointIndices;

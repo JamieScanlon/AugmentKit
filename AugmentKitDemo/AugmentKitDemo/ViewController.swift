@@ -286,7 +286,7 @@ class ViewController: UIViewController {
         
     }
     
-    @IBAction fileprivate func tvTapped(_ sender: UIButton) {
+    @IBAction fileprivate func usdzTapped(_ sender: UIButton) {
         
         // Create a new anchor at the current locaiton
         
@@ -310,7 +310,7 @@ class ViewController: UIViewController {
         
     }
     
-    @IBAction fileprivate func planeTapped(_ sender: UIButton) {
+    @IBAction fileprivate func blinnTapped(_ sender: UIButton) {
         
         // Create a new anchor at the current locaiton
         
@@ -356,30 +356,41 @@ class ViewController: UIViewController {
             return
         }
         
+        // Simple asset that uses Blinn-Phong shader
         guard let aPinAsset = AKSceneKitUtils.mdlAssetFromScene(named: "Pin.scn", world: world) else {
             print("ERROR: Could not load the SceneKit model")
             return
         }
         
-        guard let aUSDZAsset = MDLAssetTools.asset(named: "toy_robot_vintage.usdz", inBundle: Bundle.main) else {
+        // Animated USDZ asset
+        guard let animatedUSDZAsset = MDLAssetTools.asset(named: "toy_robot_vintage.usdz", inBundle: Bundle.main) else {
             print("ERROR: Could not load the USDZ model")
             return
         }
         
+        // USDZ
+        guard let aUSDZAsset = MDLAssetTools.asset(named: "retrotv.usdz", inBundle: Bundle.main) else {
+            print("ERROR: Could not load the USDZ model")
+            return
+        }
+        
+        // Simple asset that uses Blinn-Phong shader
         guard let aShipAsset = AKSceneKitUtils.mdlAssetFromScene(named: "ship.scn", world: world) else {
             print("ERROR: Could not load the SceneKit model")
             return
         }
         
+        // SceneKit Asset
         guard let aMaxAsset = AKSceneKitUtils.mdlAssetFromScene(named: "Art.scnassets/character/max.scn", world: world) else {
             print("ERROR: Could not load the SceneKit model")
             return
         }
         
-//        guard let aRKAsset = MDLAssetTools.asset(named: "RedBall.reality", inBundle: Bundle.main) else {
-//            print("ERROR: Could not load the USDZ model")
-//            return
-//        }
+        // RealityKit Asset
+        guard let aRKAsset = MDLAssetTools.asset(named: "RedBall.reality", inBundle: Bundle.main) else {
+            print("ERROR: Could not load the USDZ model")
+            return
+        }
         
         usdzAsset = aUSDZAsset
         pinAsset = aPinAsset

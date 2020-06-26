@@ -16,7 +16,7 @@ public struct AKCapabilities {
     public static let EmissionMap = true
     public static let NormalMap = true
     public static let RoughnessMap = true
-    public static let MetallicMap = false
+    public static let MetallicMap = true
     public static let SpecularMap = true
     public static let SpecularTintMap = true
     public static let AnisotropicMap = false
@@ -24,6 +24,6 @@ public struct AKCapabilities {
     public static let SheenTintMap = false
     public static let ClearcoatMap = false
     public static let ClearcoatGlossMap = false
-    public static let EnvironmentMap = false
+    public static let EnvironmentMap = true
     public static let LevelOfDetail = true
 }

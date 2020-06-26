@@ -190,7 +190,7 @@ extension SkinningModule {
     }
     
     //  Using the the skeletonData and a keyframe animation transform, compute the joint transform
-    func evaluateJointTransforms(skeletonData: SkeletonData, jointModelTransforms: [matrix_float4x4], jointLocalTransforms: [matrix_float4x4], jointMap: [Int]?) -> [matrix_float4x4] {
+    func evaluateJointTransforms(skeletonData: SkeletonData, jointModelTransforms: [matrix_float4x4], jointMap: [Int]?) -> [matrix_float4x4] {
         let jointCount = skeletonData.jointCount
         let inverseBindTransforms = skeletonData.inverseBindTransforms
         let restTransforms = skeletonData.restTransforms

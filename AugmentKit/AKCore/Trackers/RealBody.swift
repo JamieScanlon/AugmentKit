@@ -73,9 +73,6 @@ open class RealBody: AKBody {
     /// The names of all the joints in the model. Only names matching `ARSkeleton.JointName` values will be tracked when calling `update(with: ARBodyAnchor?)`
     public var jointNames: [String] = []
     
-    /// The transform of each joint relative to the transform of the the parent joint.
-    public var localJointTransforms: [matrix_float4x4] = []
-    
     /// The transform of each joint relative to the transform of the the hip joint. The hip joint is the root of the skeleton and is located at the model origin.
     public var jointTransforms: [matrix_float4x4] = []
     
@@ -104,14 +101,28 @@ open class RealBody: AKBody {
             return
         }
         identifier = bodyAnchor.identifier
+        jointNames = bodyAnchor.skeleton.definition.jointNames
         if position.parentPosition == nil {
             position.parentPosition = AKRelativePosition(withTransform: bodyAnchor.transform)
-            jointNames = bodyAnchor.skeleton.definition.jointNames
         } else {
             position.parentPosition?.transform = bodyAnchor.transform
         }
-        localJointTransforms = bodyAnchor.skeleton.jointLocalTransforms
-        jointTransforms = bodyAnchor.skeleton.jointModelTransforms
+        jointTransforms = generateJointTransforms(from: bodyAnchor.skeleton)
+    }
+    
+    // MARK: - Private
+    
+    /// Generates an array of joint transforms where the indexes of the transfors of the join are guaranteed to be the same index as the name of the join in `joinNames`
+    private func generateJointTransforms(from skeleton: ARSkeleton3D) -> [matrix_float4x4] {
+        let returnTransforms: [matrix_float4x4] = skeleton.definition.jointNames.compactMap {
+            let aJoint = ARSkeleton.JointName(rawValue: $0)
+            if let aTransform = skeleton.modelTransform(for: aJoint) {
+                return aTransform
+            } else {
+                return nil
+            }
+        }
+        return returnTransforms
     }
 }
 
@@ -123,7 +134,7 @@ extension RealBody: CustomStringConvertible, CustomDebugStringConvertible {
     }
     /// :nodoc:
     public var debugDescription: String {
-        let myDescription = "<RealBody: \(Unmanaged.passUnretained(self).toOpaque())> type: \(RealBody.type), identifier: \(identifier?.debugDescription ?? "None"), position: \(position), asset: \(asset), effects: \(effects.debugDescription), shaderPreference: \(shaderPreference), generatesShadows: \(generatesShadows), needsColorTextureUpdate: \(needsColorTextureUpdate), needsMeshUpdate: \(needsMeshUpdate), jointNames: \(jointNames), jointTransforms: \(jointTransforms), localJointTransforms: \(localJointTransforms), isAnchored: \(isAnchored)"
+        let myDescription = "<RealBody: \(Unmanaged.passUnretained(self).toOpaque())> type: \(RealBody.type), identifier: \(identifier?.debugDescription ?? "None"), position: \(position), asset: \(asset), effects: \(effects.debugDescription), shaderPreference: \(shaderPreference), generatesShadows: \(generatesShadows), needsColorTextureUpdate: \(needsColorTextureUpdate), needsMeshUpdate: \(needsMeshUpdate), jointNames: \(jointNames), jointTransforms: \(jointTransforms), isAnchored: \(isAnchored)"
         return myDescription
     }
     

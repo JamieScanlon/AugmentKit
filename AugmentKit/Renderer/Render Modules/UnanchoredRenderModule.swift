@@ -966,7 +966,7 @@ class UnanchoredRenderModule: RenderModule, SkinningModule {
         let jointTransformData = UnsafeMutableBufferPointer<matrix_float4x4>(start: boundJointTransformData, count: Constants.maxJointCount)
         
         if let skeleton = drawData.skeleton {
-            let jointTransforms = evaluateJointTransforms(skeletonData: skeleton, jointModelTransforms: body.jointTransforms, jointLocalTransforms: body.localJointTransforms, jointMap: jointMap)
+            let jointTransforms = evaluateJointTransforms(skeletonData: skeleton, jointModelTransforms: body.jointTransforms, jointMap: jointMap)
             for k in 0..<jointTransforms.count {
                 jointTransformData[k] = jointTransforms[k]
             }
